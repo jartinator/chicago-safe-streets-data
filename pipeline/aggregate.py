@@ -343,6 +343,13 @@ def build_mellow(raw_gj):
 
 
 def stub_layer(status_note):
+    """Empty GeoJSON FeatureCollection stub — for geometry layers only.
+
+    For a non-geometry, dict-with-a-records-list layer (e.g. council_records.json),
+    write a same-shaped "empty" function next to that layer's builder instead
+    (see empty_council_records()) — this shape has no "data_tier" key at the
+    top level, so a caller that reads one from the other will KeyError.
+    """
     return {"type": "FeatureCollection", "features": [],
             "properties": {"status": "no_data_yet", "note": status_note}}
 
@@ -406,14 +413,15 @@ def crash_trend(dates):
     when the pipeline runs.
     """
     if not dates:
-        return {"direction": "insufficient_data", "window_end": None, "pct_change": None}
+        return {"direction": "insufficient_data", "window_end": None,
+                "recent_12mo": None, "prior_12mo": None, "pct_change": None}
     parsed = sorted(datetime.strptime(d, "%Y-%m-%d") for d in dates)
     anchor = parsed[-1]
     recent_start = anchor - timedelta(days=365)
     prior_start = anchor - timedelta(days=730)
     if parsed[0] > prior_start:
         return {"direction": "insufficient_data", "window_end": anchor.date().isoformat(),
-                "pct_change": None}
+                "recent_12mo": None, "prior_12mo": None, "pct_change": None}
     recent = sum(1 for d in parsed if d > recent_start)
     prior = sum(1 for d in parsed if prior_start < d <= recent_start)
     pct_change = round(100 * (recent - prior) / prior, 1) if prior > 0 else None
@@ -511,22 +519,27 @@ def load_name_to_ward():
             if w.get("alderman")}
 
 
-EMPTY_COUNCIL_RECORDS = {
-    "data_tier": "real",
-    "topic_tag_tier": "derived",
-    "note": ("Council legislative records were not pulled this run "
-             "(pull_council_records.py didn't run, or the Legistar Web API was "
-             "unreachable). See CONTRIBUTING.md."),
-    "records": [],
-}
+def empty_council_records():
+    """Same {data_tier, note, records} shape as build_council_records()'s success
+    path — NOT stub_layer()'s GeoJSON FeatureCollection shape, which main()
+    can't read a "data_tier" key from. A fresh dict/list every call, not a
+    shared module-level constant, so nothing downstream can ever mutate a
+    value shared across pipeline runs within the same process.
+    """
+    return {
+        "data_tier": "real",
+        "topic_tag_tier": "derived",
+        "note": ("Council legislative records were not pulled this run "
+                 "(pull_council_records.py didn't run, or the Legistar Web API was "
+                 "unreachable). See CONTRIBUTING.md."),
+        "records": [],
+    }
 
 
 def build_council_records(name_to_ward):
     records_path = RAW_DIR / "council_records.json"
     if not records_path.exists():
-        # Same {data_tier, note, records} shape as the success path — NOT
-        # stub_layer()'s GeoJSON shape, which main() can't read data_tier from.
-        return dict(EMPTY_COUNCIL_RECORDS), []
+        return empty_council_records(), []
 
     raw = json.loads(records_path.read_text())
     tags = {t["matter_id"]: t for t in
@@ -539,8 +552,15 @@ def build_council_records(name_to_ward):
     out = []
     for r in raw.get("records", []):
         mid = r["matter_id"]
-        tag = corrections.get(mid) or tags.get(mid)
-        if not tag:
+        # Resolve which source actually supplied the tag up front, rather than
+        # re-deriving provenance later from `mid in corrections` — a falsy-but-
+        # present correction (e.g. `{}`) would otherwise fall through to `tags`
+        # while still being labeled "manual_correction".
+        if corrections.get(mid):
+            tag, tag_source = corrections[mid], "manual_correction"
+        elif tags.get(mid):
+            tag, tag_source = tags[mid], tags[mid].get("tagged_by", "unknown")
+        else:
             continue  # not yet classified this run
         sponsor_wards = sorted({name_to_ward[s.strip().lower()] for s in (r.get("sponsors") or [])
                                 if s.strip().lower() in name_to_ward})
@@ -557,7 +577,7 @@ def build_council_records(name_to_ward):
             # fields rather than KeyError on a partial manual override.
             "topic_relevant": tag.get("topic_relevant", True),
             "topic_reason": tag.get("topic_reason", "(manual correction, no reason given)"),
-            "topic_tagged_by": tag.get("tagged_by", "manual_correction" if mid in corrections else "unknown"),
+            "topic_tagged_by": tag_source,
             "data_tier": "real",
             "topic_tag_tier": "derived",
         })

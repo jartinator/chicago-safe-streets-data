@@ -1,4 +1,4 @@
-# SCHEMA.md — published data contracts (v1.3)
+# SCHEMA.md — published data contracts (v1.4)
 
 Everything the site consumes lives in `site/data/` and is produced by
 `pipeline/aggregate.py` (plus `make_mock_obstructions.py`). These files ARE the
@@ -143,7 +143,8 @@ Comparable, density-normalized danger score per ward, sorted by
             crashes_per_10k_pop (nullable), crashes_per_bikeway_mile (nullable),
             comparable_danger_score (0-100, nullable), data_tier: "derived",
             crash_trend: { direction: "improving"|"worsening"|"flat"|"insufficient_data",
-                           window_end (nullable), recent_12mo, prior_12mo, pct_change (nullable) },
+                           window_end (nullable), recent_12mo (nullable), prior_12mo (nullable),
+                           pct_change (nullable) },
             infra_growth_trend: { miles_added, pct_growth (nullable), since } | null }] }
 ```
 `comparable_danger_score` is a 0-100 blend of each ward's percentile rank on

@@ -129,4 +129,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.3"
+CONTRACT_VERSION = "1.4"
