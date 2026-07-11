@@ -2,10 +2,10 @@
 
 Fetches the public GeoJSON export from mellowbikemap.com (the open-source
 jeancochrane/mellow-bike-map project, MIT licensed) and saves it to
-pipeline/raw/mellow_routes.geojson untouched. The API returns bare
-MultiLineString geometry with no properties; exploding into per-segment
-LineStrings and assigning the crowdsourced data_tier happens in aggregate.py,
-same split as pull_bike_routes.py/aggregate.py.
+pipeline/raw/mellow_routes.geojson untouched. The API returns one
+MultiLineString feature per route_type (sidewalk/street/route/path);
+assigning segment ids, lengths, and the crowdsourced data_tier happens in
+aggregate.py, same split as pull_bike_routes.py/aggregate.py.
 
 Unlike the Socrata pulls, this is a single small third-party app with no
 uptime guarantee, so a failure here is non-fatal: it warns and leaves

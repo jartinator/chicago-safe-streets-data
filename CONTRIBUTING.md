@@ -50,9 +50,10 @@ consultation with Bike Lane Uprising — treat it as swappable.
 [mellow-bike-map](https://github.com/jeancochrane/mellow-bike-map) project's
 public GeoJSON API (`mellowbikemap.com/api/routes/`, MIT licensed) — it is
 **not** a stub layer, despite shipping as one until the pipeline is first run
-with network access. `aggregate.py` explodes the API's bare MultiLineString
-geometry into per-segment LineStrings and tags every feature
-`data_tier: "crowdsourced"`.
+with network access. The API returns one MultiLineString feature per
+`route_type` (sidewalk/street/route/path); `aggregate.py` keeps each intact
+(not exploded into per-segment LineStrings — see SCHEMA.md) and tags every
+feature `data_tier: "crowdsourced"`.
 
 This is a small third-party app with no uptime guarantee, so `pull_mellow.py`
 treats a failed pull as non-fatal: it warns and leaves `raw/mellow_routes.geojson`
