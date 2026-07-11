@@ -52,7 +52,7 @@
       limitations: "Proxy for aggressive driving, not crashes — exists only at fixed camera locations, so sparse and biased toward where cameras are installed rather than where violations actually occur.",
       links: [
         { text: "Speed Camera Violations", url: "https://data.cityofchicago.org/d/hhkd-xvj4" },
-        { text: "Red-Light Camera Violations", url: "https://data.cityofchicago.org/d/spng-6irc" }
+        { text: "Red-Light Camera Violations", url: "https://data.cityofchicago.org/d/spqx-js37" }
       ],
       metaId: "cameras"
     },

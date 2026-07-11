@@ -126,6 +126,6 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 }
 @media (max-width: 760px) {
   .map-wrap { flex-direction: column; height: auto; }
-  #map { height: 55vh; }
+  #map { flex: none; height: 55vh; }
   .map-side { width: auto; max-width: none; border-left: none; border-top: 1px solid var(--line); }
 }

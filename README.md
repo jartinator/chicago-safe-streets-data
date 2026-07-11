@@ -33,7 +33,7 @@ Use it to spot patterns worth acting on, not to prove causation.
 | [CDOT Bike Routes](https://data.cityofchicago.org/d/hvv9-38ut) | real | No install dates; current-state only; no planned/future layer. The pipeline snapshots this layer on every run into `data/snapshots/` to build install history over time. |
 | Ward boundaries (2023 remap) | real | Clean spatial-join target; redrawn only at redistricting. |
 | [311 Service Requests](https://data.cityofchicago.org/d/v6vf-nfxy) (bike-related) | proxy | Self-reported — biased toward wards with engaged 311 users; request-type names shift over time (we filter by substring). |
-| Camera violations — [speed](https://data.cityofchicago.org/d/hhkd-xvj4) / [red-light](https://data.cityofchicago.org/d/spng-6irc) | proxy | Aggressive-driving proxy, not crashes; exists only at fixed camera locations, so sparse and location-biased. |
+| Camera violations — [speed](https://data.cityofchicago.org/d/hhkd-xvj4) / [red-light](https://data.cityofchicago.org/d/spqx-js37) | proxy | Aggressive-driving proxy, not crashes; exists only at fixed camera locations, so sparse and location-biased. |
 | Bike-lane obstructions | **mock** | Entirely synthetic demonstration data. Schema mirrors Bike Lane Uprising's public submission fields (they have no public API); the category enum is a placeholder pending a data-sharing conversation. |
 
 Every layer in the UI carries a **real / proxy / mock / crowdsourced / no-data-yet**
