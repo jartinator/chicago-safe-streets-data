@@ -71,8 +71,9 @@ def main():
         violations_count = row.get("violations")
         if violations_count:
             try:
-                cameras[key]["violations_total"] += int(violations_count)
-                total_violations += int(violations_count)
+                count = int(float(violations_count))
+                cameras[key]["violations_total"] += count
+                total_violations += count
             except (ValueError, TypeError):
                 pass
 
@@ -125,8 +126,9 @@ def main():
         violations_count = row.get("violations")
         if violations_count:
             try:
-                cameras[key]["violations_total"] += int(violations_count)
-                total_violations += int(violations_count)
+                count = int(float(violations_count))
+                cameras[key]["violations_total"] += count
+                total_violations += count
             except (ValueError, TypeError):
                 pass
 

@@ -80,7 +80,7 @@ def build_routes(crashes):
     props = gj["features"][0]["properties"] if gj["features"] else {}
     id_key = _first_key(props, ["objectid", "objectid_1", "segment_id", "id"])
     street_key = _first_key(props, ["st_name", "street", "street_nam", "name"])
-    type_key = _first_key(props, ["displayroute", "bikeroute", "type", "facility"])
+    type_key = _first_key(props, ["displayroute", "displayrou", "bikeroute", "type", "facility"])
 
     seg_crashes = Counter(c["segment_id"] for c in crashes if c.get("segment_id"))
     lengths = gdf.to_crs(METRIC_CRS).geometry.length

@@ -27,7 +27,7 @@ DATASETS = {
                                    # portal for "Boundaries - Wards (2023-)" and update.
     "sr311": "v6vf-nfxy",          # 311 Service Requests (unified, Dec 2018-)
     "speed_cameras": "hhkd-xvj4",  # Speed Camera Violations
-    "red_light_cameras": "spng-6irc",  # Red Light Camera Violations
+    "red_light_cameras": "spqx-js37",  # Red Light Camera Violations
 }
 
 # Crash data is citywide-reliable only from this date (capability report).
