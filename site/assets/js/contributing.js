@@ -11,7 +11,7 @@
     { name: "cameras.json", tier: "proxy" },
     { name: "obstructions_mock.geojson", tier: "mock" },
     { name: "planned_routes.geojson", tier: "stub" },
-    { name: "mellow_routes.geojson", tier: "stub" }
+    { name: "mellow_routes.geojson", tier: "crowdsourced" }
   ];
 
   const OBSTRUCTION_FIELDS = [

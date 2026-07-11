@@ -102,16 +102,29 @@
     }
   });
 
-  // Mellow overlay (stub)
+  // Mellow overlay: geometry is MultiLineString (one feature per route_type,
+  // thousands of parts each) — Leaflet draws a nested coordinate array as one
+  // multi-part polyline, so convert without flattening.
+  function toLatLngs(geometry) {
+    if (geometry.type === "MultiLineString") {
+      return geometry.coordinates.map((part) => part.map(([lng, lat]) => [lat, lng]));
+    }
+    return geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  }
+
   if (mellowData.features.length === 0) {
     const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
     noDataMarker._mellowStub = true;
     layers.mellow.addLayer(noDataMarker);
   } else {
+    // Canvas renderer, not SVG: each feature's MultiLineString can carry tens
+    // of thousands of parts (citywide street coverage) — SVG gives each part
+    // its own DOM path command and chokes; canvas draws directly, no DOM cost.
+    const mellowRenderer = L.canvas();
     mellowData.features.forEach((feature) => {
       const line = L.polyline(
-        feature.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
-        { color: "#ec4899", weight: 3, opacity: 0.7 }
+        toLatLngs(feature.geometry),
+        { color: "#ec4899", weight: 2, opacity: 0.6, renderer: mellowRenderer }
       );
       layers.mellow.addLayer(line);
     });

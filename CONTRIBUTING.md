@@ -43,11 +43,24 @@ consultation with Bike Lane Uprising — treat it as swappable.
 - `planned_routes.geojson` — CDOT publishes planned bikeways only as PDF maps
   (Chicago Cycling Strategy). Digitizing them is manual work; include a
   "last verified" date in `properties.note` and keep the dashed styling.
-- `mellow_routes.geojson` — the open-source
-  [mellow-bike-map](https://github.com/jeancochrane/mellow-bike-map) project
-  tags low-stress OSM ways; its Django fixtures can be exported
-  (`manage.py dumpdata`) and converted to LineStrings. Tag every feature
-  `data_tier: "crowdsourced"` — it is curated, not verified.
+
+## Mellow Bike Map
+
+`mellow_routes.geojson` is pulled live by `pipeline/pull_mellow.py` from the
+[mellow-bike-map](https://github.com/jeancochrane/mellow-bike-map) project's
+public GeoJSON API (`mellowbikemap.com/api/routes/`, MIT licensed) — it is
+**not** a stub layer, despite shipping as one until the pipeline is first run
+with network access. `aggregate.py` explodes the API's bare MultiLineString
+geometry into per-segment LineStrings and tags every feature
+`data_tier: "crowdsourced"`.
+
+This is a small third-party app with no uptime guarantee, so `pull_mellow.py`
+treats a failed pull as non-fatal: it warns and leaves `raw/mellow_routes.geojson`
+absent, and `aggregate.py` falls back to the stub layer for that run rather than
+failing the whole pipeline. If the app ever goes offline for good, the repo's
+Django fixtures (`app/mbm/fixtures/mellowroute.json`) only contain OSM way ids,
+not geometry, so a real fallback would mean standing up the app locally against
+a `chicago_ways` OSM extract — treat that as a last resort, not routine.
 
 ## Fork for another city
 

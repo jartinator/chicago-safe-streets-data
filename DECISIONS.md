@@ -64,3 +64,17 @@ environment forced a deviation. Newest last.
     a scheduled cloud pull of several large Socrata datasets is exactly the kind
     of flaky, quota-sensitive job the free-tier constraint warns about. CI
     deploys the site on merge; data refresh stays a one-command local task.
+
+13. **Correction to #7: Mellow Bike Map does have a public API.** #7 was written
+    from inside a sandbox with blocked egress, and "we can't reach it from here"
+    got recorded as "it has no public API" — a claim the UI then repeated
+    (`sources.js`, DECISIONS.md #7 itself). A live check found
+    `mellowbikemap.com/api/routes/` returns a public GeoJSON FeatureCollection
+    (MIT licensed, confirmed via HTTP fetch), so `pull_mellow.py` now pulls it
+    and `aggregate.py` builds a real `crowdsourced`-tier layer. #7 stays as
+    written for history; this entry is the correction. The Django fixtures #7
+    pointed to as the export path remain a poor fallback (OSM way ids, no
+    geometry) — CONTRIBUTING.md now documents the API path as primary. Because
+    it's a small third-party app with no uptime guarantee, a failed pull is
+    non-fatal and falls back to the stub shape for that run, same treatment as
+    the ward-dataset-id guard in #6.
