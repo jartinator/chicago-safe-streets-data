@@ -255,6 +255,37 @@ def build_council_records(rng, n=20):
             "records": records}
 
 
+def build_menu_spending(rng, n=60):
+    categories = ["Street Resurfacing", "Bike Lane Striping", "Traffic Calming",
+                  "Sidewalk Repair", "Lighting"]
+    items = []
+    for i in range(n):
+        items.append({
+            "ward": str(rng.randrange(1, 51)),
+            "cost": round(rng.choice([0, rng.uniform(500, 40_000)]), 2),
+            "category": rng.choice(categories),
+            "year": rng.choice([2022, 2023, 2024]),
+        })
+    return items
+
+
+def build_hearings():
+    # pull_hearings.py is a LIVE_STAGES module (network), not run under
+    # --fixtures — this mirrors its honest "no structured data" fallback
+    # shape so aggregate.py's file-found branch is still exercised in CI.
+    return {
+        "as_of": "2026-07-11T00:00:00+00:00",
+        "structured_data_available": False,
+        "note": "Fixture: no public JSON/RSS endpoint confirmed; link-out only.",
+        "committees": [
+            {"committee": "Committee on Pedestrian and Traffic Safety", "meetings": [],
+             "calendar_url": "https://chicityclerkelms.chicago.gov/Meetings?body=Committee+on+Pedestrian+and+Traffic+Safety"},
+            {"committee": "Committee on Transportation and Public Way", "meetings": [],
+             "calendar_url": "https://chicityclerkelms.chicago.gov/Meetings?body=Committee+on+Transportation+and+Public+Way"},
+        ],
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seed", type=int, default=42)
@@ -268,6 +299,8 @@ def main():
     cameras = build_cameras(rng)
     ward_demographics = build_ward_demographics(rng)
     council_records = build_council_records(rng)
+    menu_spending = build_menu_spending(rng)
+    hearings = build_hearings()
 
     write_json(RAW_DIR / "bike_routes.geojson", routes)
     write_json(RAW_DIR / "wards.geojson", wards)
@@ -278,6 +311,8 @@ def main():
     write_json(RAW_DIR / "cameras.json", cameras)
     write_json(RAW_DIR / "ward_demographics.json", ward_demographics)
     write_json(RAW_DIR / "council_records.json", council_records)
+    write_json(RAW_DIR / "menu_spending.json", menu_spending)
+    write_json(RAW_DIR / "hearings.json", hearings)
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
 
     print(f"fixtures: {len(routes['features'])} route segments, {len(wards['features'])} wards, "

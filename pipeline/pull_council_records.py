@@ -19,6 +19,7 @@ Idempotent: re-running overwrites cleanly.
 """
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -26,13 +27,21 @@ from config import RAW_DIR, SAFETY_TOPIC_KEYWORDS, LEGISTAR_DATA_FROZEN_AT
 from legistar import fetch_all, fetch_one, keyword_filter
 from socrata import write_json
 
+# Legistar has no documented batch-by-many-ids endpoint for /sponsors, so this
+# is one request per matched matter — bounded concurrency keeps a broad
+# keyword-net run (potentially hundreds of matters) from taking many minutes
+# of sequential round-trips.
+SPONSOR_FETCH_WORKERS = 8
+
 
 def fetch_sponsors(matter_id):
     try:
         rows = fetch_one(f"matters/{matter_id}/sponsors")
-        return [r.get("MatterSponsorName") for r in rows if r.get("MatterSponsorName")]
-    except requests.RequestException:
-        return []
+        return matter_id, [r.get("MatterSponsorName") for r in rows if r.get("MatterSponsorName")]
+    except requests.RequestException as exc:
+        print(f"  WARNING: sponsors fetch failed for matter {matter_id} ({exc}) — "
+              f"treating as no sponsors for this record.", file=sys.stderr)
+        return matter_id, []
 
 
 def main():
@@ -53,6 +62,10 @@ def main():
               f"will ship as a stub this run. See DECISIONS.md.", file=sys.stderr)
         return
 
+    matter_ids = [m.get("MatterId") for m in matters if m.get("MatterId")]
+    with ThreadPoolExecutor(max_workers=SPONSOR_FETCH_WORKERS) as pool:
+        sponsors_by_id = dict(pool.map(fetch_sponsors, matter_ids))
+
     records = []
     for m in matters:
         mid = m.get("MatterId")
@@ -63,7 +76,7 @@ def main():
             "status": m.get("MatterStatusName"),
             "intro_date": m.get("MatterIntroDate"),
             "body": m.get("MatterBodyName"),
-            "sponsors": fetch_sponsors(mid) if mid else [],
+            "sponsors": sponsors_by_id.get(mid, []) if mid else [],
             "url": f"https://chicago.legistar.com/LegislationDetail.aspx?ID={mid}" if mid else None,
         })
 

@@ -11,7 +11,12 @@
     { name: "cameras.json", tier: "proxy" },
     { name: "obstructions_mock.geojson", tier: "mock" },
     { name: "planned_routes.geojson", tier: "stub" },
-    { name: "mellow_routes.geojson", tier: "crowdsourced" }
+    { name: "mellow_routes.geojson", tier: "crowdsourced" },
+    { name: "ward_safety_index.json", tier: "derived" },
+    { name: "council_records.json", tier: "real" },
+    { name: "aldermen_safety_record.json", tier: "derived" },
+    { name: "hearings.json", tier: "real" },
+    { name: "menu_spending.json", tier: "proxy" }
   ];
 
   const OBSTRUCTION_FIELDS = [

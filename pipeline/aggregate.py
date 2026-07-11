@@ -10,7 +10,7 @@ Usage: python aggregate.py
 import argparse
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import geopandas as gpd
 from shapely.geometry import Point, shape
@@ -381,40 +381,48 @@ def percentile_rank(values_by_key):
     return {k: ranks.get(k) for k in values_by_key}
 
 
-def crash_year_counts(crashes):
-    """{ward: {year: count}} from crash dates, located crashes only.
+def crash_ward_dates(crashes):
+    """{ward: [date, ...]} from crash dates, located crashes only.
 
     Takes the raw joined-crash records (crashes_joined.json shape), which key
     the date as "crash_date" — not build_crash_geojson()'s renamed "date".
     """
-    out = defaultdict(lambda: defaultdict(int))
+    out = defaultdict(list)
     for c in crashes:
         w = c.get("ward")
         d = c.get("crash_date")
         if not w or not d:
             continue
-        out[w][d[:4]] += 1
+        out[w].append(d[:10])
     return out
 
 
-def crash_trend(year_counts):
-    """YoY direction from the two most recent full years present for a ward."""
-    years = sorted(year_counts.keys())
-    if len(years) < 2:
-        return {"direction": "insufficient_data", "recent_year": None,
-                "prior_year": None, "pct_change": None}
-    prior_year, recent_year = years[-2], years[-1]
-    prior, recent = year_counts[prior_year], year_counts[recent_year]
-    if prior == 0:
-        pct_change = None
-    else:
-        pct_change = round(100 * (recent - prior) / prior, 1)
+def crash_trend(dates):
+    """Trailing-12-months vs the prior 12 months, anchored to the latest crash date.
+
+    Calendar-year buckets would compare a partial current year against a full
+    prior year and call a mid-year pipeline run "improving" purely from having
+    fewer months of data — a rolling window avoids that bias regardless of
+    when the pipeline runs.
+    """
+    if not dates:
+        return {"direction": "insufficient_data", "window_end": None, "pct_change": None}
+    parsed = sorted(datetime.strptime(d, "%Y-%m-%d") for d in dates)
+    anchor = parsed[-1]
+    recent_start = anchor - timedelta(days=365)
+    prior_start = anchor - timedelta(days=730)
+    if parsed[0] > prior_start:
+        return {"direction": "insufficient_data", "window_end": anchor.date().isoformat(),
+                "pct_change": None}
+    recent = sum(1 for d in parsed if d > recent_start)
+    prior = sum(1 for d in parsed if prior_start < d <= recent_start)
+    pct_change = round(100 * (recent - prior) / prior, 1) if prior > 0 else None
     direction = ("insufficient_data" if pct_change is None
                  else "improving" if pct_change <= -5
                  else "worsening" if pct_change >= 5
                  else "flat")
-    return {"direction": direction, "recent_year": recent_year, "prior_year": prior_year,
-            "pct_change": pct_change}
+    return {"direction": direction, "window_end": anchor.date().isoformat(),
+            "recent_12mo": recent, "prior_12mo": prior, "pct_change": pct_change}
 
 
 def infra_growth_trend(wards_gdf):
@@ -442,7 +450,7 @@ def infra_growth_trend(wards_gdf):
 def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf):
     pop = ward_population()
     miles = ward_bikeway_miles(routes_gj, wards_gdf)
-    year_counts = crash_year_counts(crashes)
+    ward_dates = crash_ward_dates(crashes)
     infra_trend, infra_note = infra_growth_trend(wards_gdf)
 
     per_capita, per_mile = {}, {}
@@ -469,11 +477,13 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf):
             "crashes_per_10k_pop": per_capita.get(w),
             "crashes_per_bikeway_mile": per_mile.get(w),
             "comparable_danger_score": blended,
-            "crash_trend": crash_trend(year_counts.get(w, {})),
+            "crash_trend": crash_trend(ward_dates.get(w, [])),
             "infra_growth_trend": infra_trend.get(w),
             "data_tier": "derived",
         })
-    records.sort(key=lambda r: -(r["comparable_danger_score"] or -1))
+    # None (no score computable) sorts after every real score, including a real 0.
+    records.sort(key=lambda r: (r["comparable_danger_score"] is None,
+                                -(r["comparable_danger_score"] or 0)))
     return {
         "data_tier": "derived",
         "note": ("comparable_danger_score is a 0-100 blend of each ward's percentile rank on "
@@ -486,12 +496,37 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf):
     }
 
 
-def build_council_records():
+def load_name_to_ward():
+    """{lowercased alderman name: ward} from the manually-filled aldermen.json.
+
+    Built once in main() and threaded through both build_council_records() and
+    build_aldermen_safety_record() — they used to each rebuild this
+    independently from the same file.
+    """
+    aldermen_path = SITE_DATA_DIR / "aldermen.json"
+    if not aldermen_path.exists():
+        return {}
+    aldermen = json.loads(aldermen_path.read_text())
+    return {w["alderman"].strip().lower(): w["ward"] for w in aldermen.get("wards", [])
+            if w.get("alderman")}
+
+
+EMPTY_COUNCIL_RECORDS = {
+    "data_tier": "real",
+    "topic_tag_tier": "derived",
+    "note": ("Council legislative records were not pulled this run "
+             "(pull_council_records.py didn't run, or the Legistar Web API was "
+             "unreachable). See CONTRIBUTING.md."),
+    "records": [],
+}
+
+
+def build_council_records(name_to_ward):
     records_path = RAW_DIR / "council_records.json"
     if not records_path.exists():
-        return stub_layer(
-            "Council legislative records were not pulled this run (pull_council_records.py "
-            "didn't run, or the Legistar Web API was unreachable). See CONTRIBUTING.md."), []
+        # Same {data_tier, note, records} shape as the success path — NOT
+        # stub_layer()'s GeoJSON shape, which main() can't read data_tier from.
+        return dict(EMPTY_COUNCIL_RECORDS), []
 
     raw = json.loads(records_path.read_text())
     tags = {t["matter_id"]: t for t in
@@ -500,14 +535,6 @@ def build_council_records():
     corrections = {t["matter_id"]: t for t in
                    json.loads((RAW_DIR / "safety_topic_corrections.json").read_text())} \
         if (RAW_DIR / "safety_topic_corrections.json").exists() else {}
-
-    aldermen_path = SITE_DATA_DIR / "aldermen.json"
-    name_to_ward = {}
-    if aldermen_path.exists():
-        aldermen = json.loads(aldermen_path.read_text())
-        for w in aldermen.get("wards", []):
-            if w.get("alderman"):
-                name_to_ward[w["alderman"].strip().lower()] = w["ward"]
 
     out = []
     for r in raw.get("records", []):
@@ -526,9 +553,11 @@ def build_council_records():
             "sponsors": r.get("sponsors") or [],
             "sponsor_wards": sponsor_wards,
             "url": r.get("url"),
-            "topic_relevant": tag["topic_relevant"],
-            "topic_reason": tag["topic_reason"],
-            "topic_tagged_by": tag["tagged_by"],
+            # Corrections is hand-edited (like aldermen.json); default missing
+            # fields rather than KeyError on a partial manual override.
+            "topic_relevant": tag.get("topic_relevant", True),
+            "topic_reason": tag.get("topic_reason", "(manual correction, no reason given)"),
+            "topic_tagged_by": tag.get("tagged_by", "manual_correction" if mid in corrections else "unknown"),
             "data_tier": "real",
             "topic_tag_tier": "derived",
         })
@@ -548,7 +577,7 @@ def build_council_records():
     }, out
 
 
-def build_aldermen_safety_record(council_records):
+def build_aldermen_safety_record(council_records, name_to_ward):
     by_sponsor = defaultdict(lambda: {"relevant_count": 0, "total_count": 0, "records": []})
     for r in council_records:
         for sponsor in r["sponsors"]:
@@ -561,13 +590,6 @@ def build_aldermen_safety_record(council_records):
                 "status": r["status"], "intro_date": r["intro_date"],
                 "topic_relevant": r["topic_relevant"], "url": r["url"],
             })
-    aldermen_path = SITE_DATA_DIR / "aldermen.json"
-    name_to_ward = {}
-    if aldermen_path.exists():
-        aldermen = json.loads(aldermen_path.read_text())
-        for w in aldermen.get("wards", []):
-            if w.get("alderman"):
-                name_to_ward[w["alderman"].strip().lower()] = w["ward"]
     out = []
     for sponsor, d in sorted(by_sponsor.items(), key=lambda kv: -kv[1]["relevant_count"]):
         out.append({
@@ -615,7 +637,10 @@ def build_menu_spending():
         w = str(item.get("ward")) if item.get("ward") is not None else None
         if not w:
             continue
-        cost = float(item.get("cost") or item.get("amount") or 0)
+        cost_val = item.get("cost")
+        if cost_val is None:
+            cost_val = item.get("amount")
+        cost = float(cost_val) if cost_val is not None else 0.0
         category = str(item.get("category") or "").lower()
         by_ward[w]["total_spent"] += cost
         by_ward[w]["items"] += 1
@@ -654,8 +679,9 @@ def main():
     findings = build_findings(crashes, routes_gj, corridors, wards_gj)
 
     ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf)
-    council_records_out, council_records_list = build_council_records()
-    aldermen_safety_record = build_aldermen_safety_record(council_records_list)
+    name_to_ward = load_name_to_ward()
+    council_records_out, council_records_list = build_council_records(name_to_ward)
+    aldermen_safety_record = build_aldermen_safety_record(council_records_list, name_to_ward)
     hearings_out = build_hearings()
     menu_spending_out = build_menu_spending()
 

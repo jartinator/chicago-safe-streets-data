@@ -143,15 +143,19 @@ Comparable, density-normalized danger score per ward, sorted by
             crashes_per_10k_pop (nullable), crashes_per_bikeway_mile (nullable),
             comparable_danger_score (0-100, nullable), data_tier: "derived",
             crash_trend: { direction: "improving"|"worsening"|"flat"|"insufficient_data",
-                           recent_year, prior_year, pct_change (nullable) },
+                           window_end (nullable), recent_12mo, prior_12mo, pct_change (nullable) },
             infra_growth_trend: { miles_added, pct_growth (nullable), since } | null }] }
 ```
 `comparable_danger_score` is a 0-100 blend of each ward's percentile rank on
 crashes-per-10k-population and crashes-per-bikeway-mile — a relative ranking
-across wards, not an absolute risk measure. `population` comes from
+across wards, not an absolute risk measure (ties/no-data wards sort after every
+ward with a real score, including a real score of 0). `population` comes from
 `pull_ward_demographics.py` (ACS 5-Year by Ward); `bikeway_miles` clips
-`bike_routes.geojson` to each ward polygon. `infra_growth_trend` is `null`
-until at least two `data/snapshots/bike_routes_*.geojson` snapshots exist.
+`bike_routes.geojson` to each ward polygon. `crash_trend` compares the trailing
+365 days to the prior 365 days (anchored to the ward's latest crash date), not
+calendar years — a calendar-year comparison would bias "improving" for any
+pipeline run mid-year, when the current year's bucket is partial. `infra_growth_trend`
+is `null` until at least two `data/snapshots/bike_routes_*.geojson` snapshots exist.
 
 ## council_records.json — tier real (topic_relevant tag: tier derived)
 Street/bike-safety-related City Council legislation pulled from the Legistar

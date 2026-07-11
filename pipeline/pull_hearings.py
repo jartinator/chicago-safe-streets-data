@@ -35,7 +35,10 @@ def try_fetch_structured(committee):
         )
         if resp.status_code == 200 and "application/json" in resp.headers.get("Content-Type", ""):
             return resp.json()
-    except requests.RequestException:
+    except (requests.RequestException, ValueError):
+        # ValueError covers resp.json()'s JSONDecodeError — a 200 with an
+        # application/json header but a malformed body is a real ASP.NET
+        # failure mode, not just a network error.
         pass
     return None
 
