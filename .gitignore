@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 pipeline/raw/*
 !pipeline/raw/.gitkeep
+data/snapshots/*
+!data/snapshots/.gitkeep
