@@ -8,10 +8,13 @@ Stages:
   1. pull_people          (cyclist filter lives in the People dataset)
   2. pull_crashes, pull_vehicles   (batched CRASH_RECORD_ID lookups)
   3. pull_bike_routes, pull_wards, pull_311, pull_cameras, pull_mellow
-  4. snapshot_bike_routes (dated copy — builds install-date history over time)
-  5. make_mock_obstructions
-  6. spatial_join
-  7. aggregate            (writes site/data/*)
+  4. pull_ward_demographics, pull_council_records, pull_menu_spending, pull_hearings
+     (ward-accountability layer — see DECISIONS.md; each is non-fatal on failure)
+  5. snapshot_bike_routes (dated copy — builds install-date history over time)
+  6. make_mock_obstructions
+  7. spatial_join
+  8. classify_safety_topic (LLM tagging stage — explicit exception, see CONTRIBUTING.md)
+  9. aggregate            (writes site/data/*)
 
 Weekly refresh = run this, review the printed sanity output, commit site/data.
 """
@@ -27,11 +30,14 @@ LIVE_STAGES = [
     ["pull_crashes.py"], ["pull_vehicles.py"],
     ["pull_bike_routes.py"], ["pull_wards.py"], ["pull_311.py"], ["pull_cameras.py"],
     ["pull_mellow.py"],
+    ["pull_ward_demographics.py"], ["pull_council_records.py"],
+    ["pull_menu_spending.py"], ["pull_hearings.py"],
 ]
 COMMON_STAGES = [
     ["snapshot_bike_routes.py"],
     ["make_mock_obstructions.py"],
     ["spatial_join.py"],
+    ["classify_safety_topic.py"],
     ["aggregate.py"],
 ]
 

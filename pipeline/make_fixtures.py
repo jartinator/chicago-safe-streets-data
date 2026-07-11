@@ -215,6 +215,46 @@ def build_cameras(rng, n=40):
     return rows
 
 
+def build_ward_demographics(rng):
+    return [{"acs_year": "2023", "ward": str(w), "total_population": rng.randrange(30_000, 90_000)}
+            for w in range(1, 51)]
+
+
+FIXTURE_SPONSORS = [f"Alderman FIXTURE-{i}" for i in range(1, 11)]
+SAFETY_TITLES = [
+    "Protected bike lane installation on FIXTURE Ave",
+    "Complete Streets policy amendment for FIXTURE ward",
+    "Traffic calming speed humps on FIXTURE St",
+    "Vision Zero pedestrian safety improvements at FIXTURE/FIXTURE",
+]
+NON_SAFETY_TITLES = [
+    "Issuance of special event license for Bike the FIXTURE Boulevard (annual)",
+    "Damage to vehicle claim for FIXTURE, Jane",
+    "Zoning reclassification map at FIXTURE address",
+]
+
+
+def build_council_records(rng, n=20):
+    records = []
+    for i in range(n):
+        is_safety = rng.random() < 0.6
+        title = rng.choice(SAFETY_TITLES if is_safety else NON_SAFETY_TITLES)
+        sponsors = rng.sample(FIXTURE_SPONSORS, k=rng.randrange(1, 3))
+        d = rand_date(rng, datetime(2015, 1, 1), datetime(2023, 6, 21))
+        records.append({
+            "matter_id": 100000 + i,
+            "title": title,
+            "type": rng.choice(["Ordinance", "Order", "Resolution"]),
+            "status": rng.choice(["Passed", "Referred", "Failed"]),
+            "intro_date": d.strftime("%Y-%m-%dT%H:%M:%S"),
+            "body": "City Council",
+            "sponsors": sponsors,
+            "url": f"https://chicago.legistar.com/LegislationDetail.aspx?ID={100000 + i}",
+        })
+    return {"data_frozen_at": "2023-06-21", "keywords": ["bike", "traffic safety"],
+            "records": records}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seed", type=int, default=42)
@@ -226,6 +266,8 @@ def main():
     crashes, people, vehicles = build_crashes_and_people(rng)
     sr311 = build_311(rng)
     cameras = build_cameras(rng)
+    ward_demographics = build_ward_demographics(rng)
+    council_records = build_council_records(rng)
 
     write_json(RAW_DIR / "bike_routes.geojson", routes)
     write_json(RAW_DIR / "wards.geojson", wards)
@@ -234,10 +276,14 @@ def main():
     write_json(RAW_DIR / "vehicles_cyclist.json", vehicles)
     write_json(RAW_DIR / "sr311_bike.json", sr311)
     write_json(RAW_DIR / "cameras.json", cameras)
+    write_json(RAW_DIR / "ward_demographics.json", ward_demographics)
+    write_json(RAW_DIR / "council_records.json", council_records)
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
 
     print(f"fixtures: {len(routes['features'])} route segments, {len(wards['features'])} wards, "
-          f"{len(crashes)} crashes, {len(sr311)} 311 rows, {len(cameras)} cameras (seed={args.seed})")
+          f"{len(crashes)} crashes, {len(sr311)} 311 rows, {len(cameras)} cameras, "
+          f"{len(ward_demographics)} ward-pop rows, {len(council_records['records'])} "
+          f"council records (seed={args.seed})")
 
 
 if __name__ == "__main__":

@@ -28,7 +28,50 @@ DATASETS = {
     "sr311": "v6vf-nfxy",          # 311 Service Requests (unified, Dec 2018-)
     "speed_cameras": "hhkd-xvj4",  # Speed Camera Violations
     "red_light_cameras": "spqx-js37",  # Red Light Camera Violations
+    "acs_ward": "k5pk-wpt9",       # ACS 5-Year Data by Ward - Most Recent Year (2023 remap,
+                                   # pre-aggregated to wards by the city; confirmed live 2026-07-11)
 }
+
+# Legistar Web API (webapi.legistar.com) — the standard hosted API used by ~100+
+# municipalities, including Chicago's pre-2023 council records. Confirmed live,
+# no auth required, OData-style query params ($filter, $top, $orderby).
+#
+# IMPORTANT: Chicago's City Council migrated off Legistar to a new system (eLMS,
+# chicityclerkelms.chicago.gov) around 2023-06-21 — the Legistar API's most recent
+# MatterIntroDate is frozen at that date (confirmed live 2026-07-11). eLMS has a
+# public-looking Swagger UI at api.chicityclerkelms.chicago.gov but no working
+# endpoint could be found by direct guessing during research; see DECISIONS.md.
+# Legistar therefore covers historical council activity (pre-2023-06-21) well but
+# CANNOT answer "what's happening now" — pull_hearings.py degrades honestly for that.
+LEGISTAR_CLIENT = "chicago"
+LEGISTAR_API_URL = f"https://webapi.legistar.com/v1/{LEGISTAR_CLIENT}"
+LEGISTAR_DATA_FROZEN_AT = "2023-06-21"
+
+# City Clerk eLMS (successor to Legistar). Meetings page confirmed to exist and
+# render a real meeting calendar/table, but it appears to be JS-rendered with no
+# discovered public JSON endpoint — used only as a link-out target for now.
+ELMS_MEETINGS_URL = "https://chicityclerkelms.chicago.gov/Meetings"
+ELMS_COMMITTEES_OF_INTEREST = [
+    "Committee on Pedestrian and Traffic Safety",
+    "Committee on Transportation and Public Way",
+]
+
+# Ward Wise (Chi Hack Night, wardwisechicago.org) — volunteer project structuring
+# Aldermanic Menu Program spending (city only publishes PDFs). States it has a
+# public JSON API; every endpoint returned HTTP 500 during verification
+# (2026-07-11) — likely a maintenance gap in a small volunteer project, not a
+# permanent absence. pull_menu_spending.py treats failure as non-fatal, same
+# pattern as pull_mellow.py.
+WARD_WISE_API_URL = "https://www.wardwisechicago.org/api"
+
+# Keyword net for street/bike-safety-relevant legislation. Deliberately broad —
+# false positives get filtered out by classify_safety_topic.py, but a pull-time
+# keyword miss is unrecoverable, so pull_council_records.py casts wide.
+SAFETY_TOPIC_KEYWORDS = [
+    "bike", "bicycle", "cyclist", "complete streets", "vision zero",
+    "traffic calming", "protected lane", "bike lane", "pedestrian safety",
+    "speed hump", "traffic safety", "road diet", "curb extension",
+]
 
 # Crash data is citywide-reliable only from this date (capability report).
 CRASH_START_DATE = "2017-09-01"
@@ -84,6 +127,6 @@ INJURY_SEVERITY_MAP = {
     "NO INDICATION OF INJURY": "none",
 }
 
-DATA_TIERS = ("real", "proxy", "mock", "crowdsourced")
+DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.2"
+CONTRACT_VERSION = "1.3"
