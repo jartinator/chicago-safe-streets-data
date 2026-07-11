@@ -57,7 +57,7 @@
       const generatedDate = new Date(meta.generated_at).toLocaleString();
       metadataDiv.innerHTML = `
         <p><strong>Contract v${BSD.esc(meta.contract_version)}</strong>, generated ${BSD.esc(generatedDate)}, provenance: <code>${BSD.esc(meta.provenance)}</code></p>
-        <p><a href="https://github.com/jartinator/life-os/blob/main/chicago-bike-dashboard/SCHEMA.md" target="_blank" rel="noopener">View full field documentation (SCHEMA.md)</a> in the repo.</p>
+        <p><a href="https://github.com/jartinator/life-os/blob/master/chicago-bike-dashboard/SCHEMA.md" target="_blank" rel="noopener">View full field documentation (SCHEMA.md)</a> in the repo.</p>
       `;
       app.appendChild(metadataDiv);
 
@@ -84,16 +84,6 @@
           `).join("")}
         </tbody>
       `;
-      table.appendChild(document.createElement("tbody"));
-      table.innerHTML = table.innerHTML.replace("<tbody></tbody>", `<tbody>
-          ${FILES.map(f => `
-            <tr>
-              <td><code>${BSD.esc(f.name)}</code></td>
-              <td>${BSD.badgeHTML(f.tier)}</td>
-              <td><a href="data/${BSD.esc(f.name)}" download class="btn">Download</a></td>
-            </tr>
-          `).join("")}
-        </tbody>`);
       tableContainer.appendChild(table);
       app.appendChild(tableContainer);
 

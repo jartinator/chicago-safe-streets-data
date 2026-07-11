@@ -198,7 +198,7 @@ def build_corridors(routes_gj, crashes):
             "segments": d["segments"],
             "length_m": round(d["length_m"], 1),
             "crashes": d["crashes"],
-            "crashes_per_km": round(d["crashes"] / km, 2) if km > 0.2 else None,
+            "crashes_per_km": round(d["crashes"] / km, 2) if km >= 0.2 else None,
             "facility_mix": {k: round(v, 1) for k, v in d["facility_mix"].items()},
             "data_tier": "real",
         })

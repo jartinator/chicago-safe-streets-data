@@ -47,6 +47,10 @@ NOTES_TEMPLATES = [
 
 M_PER_DEG_LAT = 111_320.0
 
+# Fixed "as of" anchor, matching make_fixtures.py's convention, so --seed N
+# produces byte-identical output on every run regardless of wall-clock date.
+AS_OF = datetime(2026, 7, 1)
+
 
 def m_per_deg_lng(lat):
     return M_PER_DEG_LAT * math.cos(math.radians(lat))
@@ -70,10 +74,15 @@ def load_bike_routes():
 
 
 def extract_street_name(properties):
-    """Find street name in properties, case-insensitive against known keys."""
-    for key in ["st_name", "street", "name"]:
-        if key in properties:
-            return properties[key]
+    """Find street name in properties, case-insensitive against known keys.
+
+    Candidate list matches aggregate.py's build_routes() street-key lookup so
+    this module clusters obstructions on the same streets aggregate.py reports.
+    """
+    lower = {k.lower(): k for k in properties}
+    for key in ["st_name", "street", "street_nam", "name"]:
+        if key in lower:
+            return properties[lower[key]]
     return "Unknown"
 
 
@@ -100,7 +109,7 @@ def extract_random_point_on_linestring(rng, linestring_coords):
 
 def generate_random_date(rng, days_back=18 * 30):
     """Generate random datetime in last ~18 months, biased toward weekdays and rush hours."""
-    end = datetime.now()
+    end = AS_OF
     start = end - timedelta(days=days_back)
 
     # Pick random day

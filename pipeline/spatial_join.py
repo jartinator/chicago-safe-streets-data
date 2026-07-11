@@ -79,9 +79,18 @@ def main():
     # sjoin_nearest can duplicate a point equidistant to two segments; keep first.
     joined = joined[~joined.index.duplicated(keep="first")]
 
+    # Socrata omits null-valued fields from a row's JSON entirely rather than
+    # sending null, so the set of keys varies crash-to-crash (e.g. dooring_i
+    # is often absent). Use the union of every located crash's keys as the
+    # output template -- keying off only the first record would silently
+    # drop any field missing from that one row for every crash in the file.
+    crash_keys = set()
+    for c in located:
+        crash_keys.update(c.keys())
+
     out = []
     for _, row in joined.iterrows():
-        rec = {k: row.get(k) for k in located[0].keys()}
+        rec = {k: row.get(k) for k in crash_keys}
         ward = row.get("ward")
         seg = row.get("segment_id")
         dist = row.get("seg_distance_m")

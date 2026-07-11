@@ -71,10 +71,14 @@ def fetch_by_ids(dataset_id, id_field, ids, select=None, extra_where=None,
         where = f"{id_field} in({quoted})"
         if extra_where:
             where = f"({where}) AND ({extra_where})"
-        params = {"$limit": batch_size * 20, "$where": where}
+        limit = batch_size * 20
+        params = {"$limit": limit, "$where": where}
         if select:
             params["$select"] = select
         rows = _get(url, params).json()
+        if log and len(rows) == limit:
+            log(f"  WARNING: id batch at offset {i} returned exactly $limit={limit} rows "
+                f"-- results may be truncated; consider raising batch_size*20's multiplier")
         total += len(rows)
         yield from rows
         if log and (i // batch_size) % 20 == 0:

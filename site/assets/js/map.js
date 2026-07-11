@@ -53,8 +53,11 @@
     buildLayers();
     renderSide();
     syncLayers();
+    // showWard() clears state.corridor as a side effect, so capture the
+    // URL's initial corridor before it and re-apply it after.
+    const initialCorridor = state.corridor;
     if (state.ward) showWard(state.ward, false);
-    if (state.corridor) showCorridor(state.corridor, false);
+    if (initialCorridor) showCorridor(initialCorridor, false);
   }).catch(err => {
     side.innerHTML = `<div class="notice">Failed to load data: ${B.esc(err.message)}</div>`;
   });

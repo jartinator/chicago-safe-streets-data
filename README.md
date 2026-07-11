@@ -77,11 +77,11 @@ python3 -m http.server 8000      # http://localhost:8000
 1. `python3 pipeline/run_all.py`
 2. Review the printed sanity output (row counts, date ranges, % of crashes
    matched to a ward/bikeway).
-3. Commit the changed `site/data/` and `data/snapshots/`, merge to `main`.
+3. Commit the changed `site/data/` and `data/snapshots/`, merge to `master`.
 
 ## Deploy
 
-Merging to `main` triggers `.github/workflows/deploy-bike-dashboard.yml`
+Merging to `master` triggers `.github/workflows/deploy-bike-dashboard.yml`
 (repo root), which publishes `site/` to GitHub Pages. One-time setup:
 repo **Settings → Pages → Source: "GitHub Actions"**. Data refresh is
 deliberately a local, human-reviewed step — CI only ships what was committed.
