@@ -56,7 +56,7 @@ CONTRIBUTING.md   Swap data sources, fill stub layers, fork for another city
 ## Run it locally
 
 ```bash
-cd chicago-bike-dashboard/pipeline
+cd pipeline
 python3 -m pip install -r requirements.txt
 python3 run_all.py               # live pull from the Chicago Data Portal
 # or, with no network / for a demo:
@@ -77,11 +77,11 @@ python3 -m http.server 8000      # http://localhost:8000
 1. `python3 pipeline/run_all.py`
 2. Review the printed sanity output (row counts, date ranges, % of crashes
    matched to a ward/bikeway).
-3. Commit the changed `site/data/` and `data/snapshots/`, merge to `master`.
+3. Commit the changed `site/data/` and `data/snapshots/`, merge to `main`.
 
 ## Deploy
 
-Merging to `master` triggers `.github/workflows/deploy-bike-dashboard.yml`
+Merging to `main` triggers `.github/workflows/deploy.yml`
 (repo root), which publishes `site/` to GitHub Pages. One-time setup:
 repo **Settings → Pages → Source: "GitHub Actions"**. Data refresh is
 deliberately a local, human-reviewed step — CI only ships what was committed.

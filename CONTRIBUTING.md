@@ -59,18 +59,6 @@ consultation with Bike Lane Uprising — treat it as swappable.
    `spatial_join.py`).
 3. Update site copy (city name, links). Schemas and UI are city-agnostic.
 
-## Extract to a standalone repo
-
-This directory is self-contained inside a larger repo. To split it out:
-
-```bash
-git subtree split --prefix=chicago-bike-dashboard -b bike-dashboard-standalone
-```
-
-then copy `.github/workflows/deploy-bike-dashboard.yml` into the new repo's
-`.github/workflows/` and remove the `chicago-bike-dashboard/` path prefixes
-from it.
-
 ## Ground rules for PRs
 
 - Data-fetching modules stay deterministic. Analysis lives in `aggregate.py`.

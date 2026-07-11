@@ -57,7 +57,7 @@
       const generatedDate = new Date(meta.generated_at).toLocaleString();
       metadataDiv.innerHTML = `
         <p><strong>Contract v${BSD.esc(meta.contract_version)}</strong>, generated ${BSD.esc(generatedDate)}, provenance: <code>${BSD.esc(meta.provenance)}</code></p>
-        <p><a href="https://github.com/jartinator/life-os/blob/master/chicago-bike-dashboard/SCHEMA.md" target="_blank" rel="noopener">View full field documentation (SCHEMA.md)</a> in the repo.</p>
+        <p><a href="https://github.com/jartinator/chicago-safe-streets-data/blob/main/SCHEMA.md" target="_blank" rel="noopener">View full field documentation (SCHEMA.md)</a> in the repo.</p>
       `;
       app.appendChild(metadataDiv);
 
@@ -117,7 +117,7 @@
       archCard.className = "card";
       archCard.innerHTML = `
         <p>The pipeline is designed for offline, asynchronous processing: A Python backend pulls data from the Chicago Data Portal (Socrata) and optional external sources, performs spatial joins to the nearest bikeway segment and containing ward, and emits versioned static JSON and GeoJSON files into this site's <code>data/</code> directory. A static Leaflet front-end consumes these files to render interactive maps and tables. The pipeline runs weekly on a local machine and pushes fresh artifacts to this GitHub Pages site. No server-side processing or database is required — everything is static files and client-side rendering.</p>
-        <p>Repo: <a href="https://github.com/jartinator/life-os/tree/main/chicago-bike-dashboard" target="_blank" rel="noopener">github.com/jartinator/life-os/tree/main/chicago-bike-dashboard</a></p>
+        <p>Repo: <a href="https://github.com/jartinator/chicago-safe-streets-data" target="_blank" rel="noopener">github.com/jartinator/chicago-safe-streets-data</a></p>
       `;
       app.appendChild(archCard);
 
@@ -135,7 +135,7 @@
           <li><strong>Add an analysis layer:</strong> The pipeline structure supports new aggregate outputs and toggle controls in the front-end. Add a new Python module to compute derived metrics and emit a new JSON file.</li>
           <li><strong>Fork for another city:</strong> Replace the dataset IDs in <code>pipeline/config.py</code> with your city's Socrata portal IDs, update the ward geometry in the spatial-join step, and regenerate.</li>
         </ul>
-        <p>See <a href="https://github.com/jartinator/life-os/blob/main/chicago-bike-dashboard/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a> for detailed setup and contribution guidelines.</p>
+        <p>See <a href="https://github.com/jartinator/chicago-safe-streets-data/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">CONTRIBUTING.md</a> for detailed setup and contribution guidelines.</p>
       `;
       app.appendChild(extendCard);
 
