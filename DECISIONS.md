@@ -65,7 +65,61 @@ environment forced a deviation. Newest last.
     of flaky, quota-sensitive job the free-tier constraint warns about. CI
     deploys the site on merge; data refresh stays a one-command local task.
 
-13. **Correction to #7: Mellow Bike Map does have a public API.** #7 was written
+14. **Ward accountability layer sources.** Added to answer "how dangerous is my
+    ward relative to others, and what has my alderman done about street/bike
+    safety" (ward_safety_index.json, council_records.json,
+    aldermen_safety_record.json, hearings.json, menu_spending.json):
+    - **Population normalization** uses the city's ACS 5-Year by Ward dataset
+      (`k5pk-wpt9`), which is pre-aggregated to the current 2023 ward remap —
+      confirmed live via direct fetch 2026-07-11, no manual census-tract join
+      needed.
+    - **Voting/sponsorship history** uses the Legistar Web API
+      (`webapi.legistar.com/v1/chicago`), confirmed live and public with no
+      auth. This is the same API `chi-councilmatic`'s own scrapers use.
+      **Coverage gap:** Chicago's council migrated to a new system (eLMS,
+      `chicityclerkelms.chicago.gov`) around 2023-06-21 — Legistar's most
+      recent `MatterIntroDate` is frozen at that date. Direct guesses at an
+      eLMS JSON API (`/api/matters`, `/api/Events`, `swagger.json` under
+      `api.chicityclerkelms.chicago.gov`) all 404'd during research; its
+      Swagger UI page renders but no endpoint could be confirmed. So
+      `council_records.json` is real and useful for history but explicitly
+      cannot show anything after 2023-06-21 — `LEGISTAR_DATA_FROZEN_AT` in
+      `config.py` is surfaced in the output rather than silently going stale.
+    - **Upcoming hearings** could not be sourced structurally for the same
+      reason (no working eLMS API found). `pull_hearings.py` attempts a
+      content-negotiated JSON request against the eLMS meetings page each run
+      (in case an endpoint appears later) and otherwise honestly falls back to
+      a link-out (committee name + live calendar URL) rather than showing
+      stale or fabricated hearing dates.
+    - **Menu-fund spending** uses Ward Wise (`wardwisechicago.org`, a Chi Hack
+      Night volunteer project) since the city only publishes PDF reports.
+      Every Ward Wise API endpoint returned HTTP 500 during verification
+      (2026-07-11) — treated as a temporary gap in a small volunteer project,
+      same non-fatal-failure posture as Mellow Bike Map (#7/#13), not a
+      permanent absence.
+    - **Alderman-to-ward resolution** for voting records reuses the existing
+      "never auto-generate" rule (#8): a sponsor's Legistar name is matched to
+      a ward only via an *exact* match against the manually-filled
+      `aldermen.json`. No fuzzy matching. Until a human fills in real names,
+      `sponsor_wards`/`ward` on these new records stay `null` — an honest gap,
+      not a wrong guess.
+
+15. **LLM topic classification is a new, explicit exception to "no LLMs in
+    pull modules."** CONTRIBUTING.md's deterministic-pull rule stays true for
+    every pull module — the keyword net in `pull_council_records.py` is plain
+    substring matching. A new stage, `classify_safety_topic.py`, runs *after*
+    the deterministic pull and tags each already-fetched record
+    `topic_relevant: bool` (e.g. filtering out an incidental "Bike the
+    Boulevard" event permit that matched the keyword "bike" but isn't about
+    safety). It never invents a matter, sponsor, or date — same "labels, never
+    fabricates" posture as #8. Model: Haiku 4.5, structured tool-use output.
+    If `ANTHROPIC_API_KEY` is unset, the package is missing, or a call fails,
+    it falls back to `tagged_by: "keyword_fallback"` (mark relevant, since it
+    already passed the keyword net) rather than blocking the pipeline — the
+    UI badges LLM-reviewed and keyword-fallback tags distinctly via the new
+    `derived` data tier.
+
+16. **Correction to #7: Mellow Bike Map does have a public API.** #7 was written
     from inside a sandbox with blocked egress, and "we can't reach it from here"
     got recorded as "it has no public API" — a claim the UI then repeated
     (`sources.js`, DECISIONS.md #7 itself). A live check found

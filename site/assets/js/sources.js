@@ -104,6 +104,69 @@
         { text: "Source (GitHub)", url: "https://github.com/jeancochrane/mellow-bike-map" }
       ],
       metaId: "mellow_routes"
+    },
+    {
+      id: "ward_safety_index",
+      name: "Ward Safety Index (comparable danger score)",
+      origin: "Computed from crash data + ACS 5-Year by Ward population + CDOT Bike Routes",
+      tier: "derived",
+      cadence: "weekly pipeline run",
+      description: "A 0-100 relative danger ranking per ward, blending crashes-per-capita and crashes-per-bikeway-mile so wards can be compared fairly rather than by raw crash count, plus year-over-year crash trend and bikeway-mile growth trend.",
+      limitations: "A relative ranking across wards, not an absolute risk measure. Population comes from Census ACS estimates (sampling error applies). Infrastructure growth trend is null until at least two dated bike-route snapshots exist.",
+      links: [
+        { text: "ACS 5-Year Data by Ward", url: "https://data.cityofchicago.org/Community-Economic-Development/ACS-5-Year-Data-by-Ward-Most-Recent-Year/k5pk-wpt9" }
+      ],
+      metaId: "ward_safety_index"
+    },
+    {
+      id: "council_records",
+      name: "Council Records (street/bike-safety legislation)",
+      origin: "Legistar Web API (webapi.legistar.com), the hosted system Chicago's council used before 2023",
+      tier: "real",
+      cadence: "weekly pipeline run",
+      description: "Ordinances, orders, and resolutions matching a broad street/bike-safety keyword net, with sponsors and status. Each record is tagged topic_relevant by an automated classifier (see limitations) layered on top of the real fetched record.",
+      limitations: "Legistar data is frozen at 2023-06-21 — Chicago's council migrated to a new system (eLMS) after that date with no confirmed public API, so this cannot show anything more recent. Most street-safety actions pass by voice vote with no individual roll-call recorded. topic_relevant is an automated tag (LLM or keyword fallback), not a human review.",
+      links: [
+        { text: "Legistar Web API", url: "https://webapi.legistar.com/v1/chicago/matters" }
+      ],
+      metaId: "council_records"
+    },
+    {
+      id: "aldermen_safety_record",
+      name: "Alderman Safety Voting Record",
+      origin: "Derived from council_records.json",
+      tier: "derived",
+      cadence: "weekly pipeline run",
+      description: "Per-alderman rollup of sponsorships on safety-tagged legislation — an aggregate score and the individual record list behind it.",
+      limitations: "A broad proxy (sponsorships), not roll-call vote counts. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
+      links: [],
+      metaId: "aldermen_safety_record"
+    },
+    {
+      id: "hearings",
+      name: "Upcoming Bike/Traffic-Safety Committee Hearings",
+      origin: "City Clerk eLMS meeting calendar (chicityclerkelms.chicago.gov)",
+      tier: "real",
+      cadence: "weekly pipeline run, best-effort",
+      description: "Tracks the Committee on Pedestrian and Traffic Safety and Committee on Transportation and Public Way. Attempts a structured pull every run; links directly to the live official calendar when no structured data is available.",
+      limitations: "No public JSON/RSS endpoint for the eLMS calendar has been confirmed — this most often shows a link-out, not a parsed meeting list. Never shows stale or fabricated dates.",
+      links: [
+        { text: "eLMS meeting calendar", url: "https://chicityclerkelms.chicago.gov/Meetings" }
+      ],
+      metaId: "hearings"
+    },
+    {
+      id: "menu_spending",
+      name: "Aldermanic Menu Program Spending",
+      origin: "Ward Wise (wardwisechicago.org, Chi Hack Night volunteer project)",
+      tier: "proxy",
+      cadence: "weekly pipeline run, best-effort",
+      description: "Ward-level aldermanic discretionary capital spending, including a bike/traffic-calming-tagged subtotal — the city itself only publishes this as quarterly PDFs.",
+      limitations: "Community-structured from a volunteer project, not independently verified against source PDFs by this pipeline. Falls back to empty if Ward Wise is unreachable.",
+      links: [
+        { text: "Ward Wise", url: "https://www.wardwisechicago.org" }
+      ],
+      metaId: "menu_spending"
     }
   ];
 

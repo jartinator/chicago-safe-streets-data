@@ -10,14 +10,14 @@ Usage: python aggregate.py
 import argparse
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import geopandas as gpd
 from shapely.geometry import Point, shape
 
-from config import (RAW_DIR, SITE_DATA_DIR, METRIC_CRS, OUTPUT_CRS,
+from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
-                    INJURY_SEVERITY_MAP, CONTRACT_VERSION)
+                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, LEGISTAR_DATA_FROZEN_AT)
 from socrata import write_json
 from spatial_join import _first_key
 
@@ -343,8 +343,338 @@ def build_mellow(raw_gj):
 
 
 def stub_layer(status_note):
+    """Empty GeoJSON FeatureCollection stub — for geometry layers only.
+
+    For a non-geometry, dict-with-a-records-list layer (e.g. council_records.json),
+    write a same-shaped "empty" function next to that layer's builder instead
+    (see empty_council_records()) — this shape has no "data_tier" key at the
+    top level, so a caller that reads one from the other will KeyError.
+    """
     return {"type": "FeatureCollection", "features": [],
             "properties": {"status": "no_data_yet", "note": status_note}}
+
+
+def ward_population():
+    path = RAW_DIR / "ward_demographics.json"
+    if not path.exists():
+        return {}
+    rows = json.loads(path.read_text())
+    return {str(r["ward"]): float(r["total_population"]) for r in rows
+            if r.get("total_population") is not None}
+
+
+def ward_bikeway_miles(routes_gj, wards_gdf):
+    """Total bikeway length per ward, in miles (lines clipped to ward polygons)."""
+    if not routes_gj["features"]:
+        return {}
+    routes_gdf = gpd.GeoDataFrame.from_features(routes_gj["features"], crs=OUTPUT_CRS).to_crs(METRIC_CRS)
+    wards_m = wards_gdf.to_crs(METRIC_CRS)[["ward", "geometry"]]
+    overlaid = gpd.overlay(routes_gdf[["geometry"]], wards_m, how="intersection")
+    miles = defaultdict(float)
+    for _, row in overlaid.iterrows():
+        if row.geometry is not None:
+            miles[row["ward"]] += row.geometry.length / 1609.34
+    return dict(miles)
+
+
+def percentile_rank(values_by_key):
+    """0-100 rank of each key's value among all keys with a non-null value (higher = worse)."""
+    present = {k: v for k, v in values_by_key.items() if v is not None}
+    if len(present) < 2:
+        return {k: None for k in values_by_key}
+    ordered = sorted(present.items(), key=lambda kv: kv[1])
+    n = len(ordered)
+    ranks = {k: round(100 * i / (n - 1), 1) for i, (k, _) in enumerate(ordered)}
+    return {k: ranks.get(k) for k in values_by_key}
+
+
+def crash_ward_dates(crashes):
+    """{ward: [date, ...]} from crash dates, located crashes only.
+
+    Takes the raw joined-crash records (crashes_joined.json shape), which key
+    the date as "crash_date" — not build_crash_geojson()'s renamed "date".
+    """
+    out = defaultdict(list)
+    for c in crashes:
+        w = c.get("ward")
+        d = c.get("crash_date")
+        if not w or not d:
+            continue
+        out[w].append(d[:10])
+    return out
+
+
+def crash_trend(dates):
+    """Trailing-12-months vs the prior 12 months, anchored to the latest crash date.
+
+    Calendar-year buckets would compare a partial current year against a full
+    prior year and call a mid-year pipeline run "improving" purely from having
+    fewer months of data — a rolling window avoids that bias regardless of
+    when the pipeline runs.
+    """
+    if not dates:
+        return {"direction": "insufficient_data", "window_end": None,
+                "recent_12mo": None, "prior_12mo": None, "pct_change": None}
+    parsed = sorted(datetime.strptime(d, "%Y-%m-%d") for d in dates)
+    anchor = parsed[-1]
+    recent_start = anchor - timedelta(days=365)
+    prior_start = anchor - timedelta(days=730)
+    if parsed[0] > prior_start:
+        return {"direction": "insufficient_data", "window_end": anchor.date().isoformat(),
+                "recent_12mo": None, "prior_12mo": None, "pct_change": None}
+    recent = sum(1 for d in parsed if d > recent_start)
+    prior = sum(1 for d in parsed if prior_start < d <= recent_start)
+    pct_change = round(100 * (recent - prior) / prior, 1) if prior > 0 else None
+    direction = ("insufficient_data" if pct_change is None
+                 else "improving" if pct_change <= -5
+                 else "worsening" if pct_change >= 5
+                 else "flat")
+    return {"direction": direction, "window_end": anchor.date().isoformat(),
+            "recent_12mo": recent, "prior_12mo": prior, "pct_change": pct_change}
+
+
+def infra_growth_trend(wards_gdf):
+    """Bikeway-mile growth per ward between the oldest and newest route snapshot."""
+    snapshots = sorted(SNAPSHOT_DIR.glob("bike_routes_*.geojson")) if SNAPSHOT_DIR.exists() else []
+    if len(snapshots) < 2:
+        return {}, ("Only one bike-route snapshot exists so far — infrastructure growth trend "
+                     "needs at least two pipeline runs over time to compare. Check back after "
+                     "the next scheduled refresh.")
+    oldest_gj = json.loads(snapshots[0].read_text())
+    newest_gj = json.loads(snapshots[-1].read_text())
+    oldest_miles = ward_bikeway_miles({"features": oldest_gj["features"]}, wards_gdf)
+    newest_miles = ward_bikeway_miles({"features": newest_gj["features"]}, wards_gdf)
+    out = {}
+    for w in wards_gdf["ward"]:
+        old_m, new_m = oldest_miles.get(w, 0.0), newest_miles.get(w, 0.0)
+        pct = round(100 * (new_m - old_m) / old_m, 1) if old_m > 0 else None
+        out[w] = {"miles_added": round(new_m - old_m, 2), "pct_growth": pct,
+                  "since": snapshots[0].stem.replace("bike_routes_", "")}
+    note = (f"Compared {snapshots[0].stem.replace('bike_routes_', '')} to "
+            f"{snapshots[-1].stem.replace('bike_routes_', '')} ({len(snapshots)} snapshots total).")
+    return out, note
+
+
+def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf):
+    pop = ward_population()
+    miles = ward_bikeway_miles(routes_gj, wards_gdf)
+    ward_dates = crash_ward_dates(crashes)
+    infra_trend, infra_note = infra_growth_trend(wards_gdf)
+
+    per_capita, per_mile = {}, {}
+    for f in wards_gj["features"]:
+        w = f["properties"]["ward"]
+        crash_count = f["properties"]["cyclist_crashes"]
+        p, m = pop.get(w), miles.get(w)
+        per_capita[w] = round(crash_count / (p / 10_000), 2) if p and p > 0 else None
+        per_mile[w] = round(crash_count / m, 2) if m and m > 0 else None
+
+    capita_rank = percentile_rank(per_capita)
+    mile_rank = percentile_rank(per_mile)
+
+    records = []
+    for f in wards_gj["features"]:
+        w = f["properties"]["ward"]
+        ranks = [r for r in (capita_rank.get(w), mile_rank.get(w)) if r is not None]
+        blended = round(sum(ranks) / len(ranks), 1) if ranks else None
+        records.append({
+            "ward": w,
+            "cyclist_crashes": f["properties"]["cyclist_crashes"],
+            "population": pop.get(w),
+            "bikeway_miles": round(miles[w], 2) if w in miles else None,
+            "crashes_per_10k_pop": per_capita.get(w),
+            "crashes_per_bikeway_mile": per_mile.get(w),
+            "comparable_danger_score": blended,
+            "crash_trend": crash_trend(ward_dates.get(w, [])),
+            "infra_growth_trend": infra_trend.get(w),
+            "data_tier": "derived",
+        })
+    # None (no score computable) sorts after every real score, including a real 0.
+    records.sort(key=lambda r: (r["comparable_danger_score"] is None,
+                                -(r["comparable_danger_score"] or 0)))
+    return {
+        "data_tier": "derived",
+        "note": ("comparable_danger_score is a 0-100 blend of each ward's percentile rank on "
+                 "crashes-per-10k-population and crashes-per-bikeway-mile (higher = more "
+                 "dangerous relative to other wards). Population is missing for wards not "
+                 "present in ward_demographics.json; bikeway_miles is 0 for wards with no "
+                 "mapped bike infrastructure, which lowers crashes_per_bikeway_mile's "
+                 "denominator and is a meaningful signal, not a data gap. " + infra_note),
+        "wards": records,
+    }
+
+
+def load_name_to_ward():
+    """{lowercased alderman name: ward} from the manually-filled aldermen.json.
+
+    Built once in main() and threaded through both build_council_records() and
+    build_aldermen_safety_record() — they used to each rebuild this
+    independently from the same file.
+    """
+    aldermen_path = SITE_DATA_DIR / "aldermen.json"
+    if not aldermen_path.exists():
+        return {}
+    aldermen = json.loads(aldermen_path.read_text())
+    return {w["alderman"].strip().lower(): w["ward"] for w in aldermen.get("wards", [])
+            if w.get("alderman")}
+
+
+def empty_council_records():
+    """Same {data_tier, note, records} shape as build_council_records()'s success
+    path — NOT stub_layer()'s GeoJSON FeatureCollection shape, which main()
+    can't read a "data_tier" key from. A fresh dict/list every call, not a
+    shared module-level constant, so nothing downstream can ever mutate a
+    value shared across pipeline runs within the same process.
+    """
+    return {
+        "data_tier": "real",
+        "topic_tag_tier": "derived",
+        "note": ("Council legislative records were not pulled this run "
+                 "(pull_council_records.py didn't run, or the Legistar Web API was "
+                 "unreachable). See CONTRIBUTING.md."),
+        "records": [],
+    }
+
+
+def build_council_records(name_to_ward):
+    records_path = RAW_DIR / "council_records.json"
+    if not records_path.exists():
+        return empty_council_records(), []
+
+    raw = json.loads(records_path.read_text())
+    tags = {t["matter_id"]: t for t in
+            json.loads((RAW_DIR / "safety_topic_tags.json").read_text())} \
+        if (RAW_DIR / "safety_topic_tags.json").exists() else {}
+    corrections = {t["matter_id"]: t for t in
+                   json.loads((RAW_DIR / "safety_topic_corrections.json").read_text())} \
+        if (RAW_DIR / "safety_topic_corrections.json").exists() else {}
+
+    out = []
+    for r in raw.get("records", []):
+        mid = r["matter_id"]
+        # Resolve which source actually supplied the tag up front, rather than
+        # re-deriving provenance later from `mid in corrections` — a falsy-but-
+        # present correction (e.g. `{}`) would otherwise fall through to `tags`
+        # while still being labeled "manual_correction".
+        if corrections.get(mid):
+            tag, tag_source = corrections[mid], "manual_correction"
+        elif tags.get(mid):
+            tag, tag_source = tags[mid], tags[mid].get("tagged_by", "unknown")
+        else:
+            continue  # not yet classified this run
+        sponsor_wards = sorted({name_to_ward[s.strip().lower()] for s in (r.get("sponsors") or [])
+                                if s.strip().lower() in name_to_ward})
+        out.append({
+            "matter_id": mid,
+            "title": r.get("title"),
+            "type": r.get("type"),
+            "status": r.get("status"),
+            "intro_date": r.get("intro_date"),
+            "sponsors": r.get("sponsors") or [],
+            "sponsor_wards": sponsor_wards,
+            "url": r.get("url"),
+            # Corrections is hand-edited (like aldermen.json); default missing
+            # fields rather than KeyError on a partial manual override.
+            "topic_relevant": tag.get("topic_relevant", True),
+            "topic_reason": tag.get("topic_reason", "(manual correction, no reason given)"),
+            "topic_tagged_by": tag_source,
+            "data_tier": "real",
+            "topic_tag_tier": "derived",
+        })
+    out.sort(key=lambda r: r.get("intro_date") or "", reverse=True)
+    return {
+        "data_tier": "real",
+        "topic_tag_tier": "derived",
+        "note": (f"Sourced from the Legistar Web API, which is only current through "
+                 f"{raw.get('data_frozen_at', LEGISTAR_DATA_FROZEN_AT)} (Chicago's council "
+                 f"migrated to a new system after that date — see DECISIONS.md). "
+                 f"sponsor_wards resolves only when a sponsor's name exactly matches a "
+                 f"manually-filled entry in aldermen.json; empty means unresolved, not "
+                 f"'no sponsors'. topic_relevant/topic_reason are automated tags "
+                 f"(topic_tag_tier: derived) layered on real fetched records — see "
+                 f"topic_tagged_by ('llm' vs 'keyword_fallback')."),
+        "records": out,
+    }, out
+
+
+def build_aldermen_safety_record(council_records, name_to_ward):
+    by_sponsor = defaultdict(lambda: {"relevant_count": 0, "total_count": 0, "records": []})
+    for r in council_records:
+        for sponsor in r["sponsors"]:
+            d = by_sponsor[sponsor]
+            d["total_count"] += 1
+            if r["topic_relevant"]:
+                d["relevant_count"] += 1
+            d["records"].append({
+                "matter_id": r["matter_id"], "title": r["title"], "type": r["type"],
+                "status": r["status"], "intro_date": r["intro_date"],
+                "topic_relevant": r["topic_relevant"], "url": r["url"],
+            })
+    out = []
+    for sponsor, d in sorted(by_sponsor.items(), key=lambda kv: -kv[1]["relevant_count"]):
+        out.append({
+            "sponsor_name": sponsor,
+            "ward": name_to_ward.get(sponsor.strip().lower()),
+            "safety_sponsorships": d["relevant_count"],
+            "total_matched_sponsorships": d["total_count"],
+            "records": d["records"],
+            "data_tier": "derived",
+        })
+    return {
+        "data_tier": "derived",
+        "note": ("Aggregate count of Legistar-recorded sponsorships on matters tagged "
+                 "topic_relevant (see council_records.json). This is a broad proxy, not a "
+                 "record of roll-call votes: most Chicago council street-safety actions pass by "
+                 "voice vote at committee, with no individual vote recorded. ward is null until "
+                 "sponsor_name has an exact match in the manually-filled aldermen.json (see "
+                 "DECISIONS.md #8) — never auto-matched by fuzzy name similarity."),
+        "aldermen": out,
+    }
+
+
+def build_hearings():
+    path = RAW_DIR / "hearings.json"
+    if not path.exists():
+        return {"data_tier": "real", "as_of": None, "structured_data_available": False,
+                "note": "pull_hearings.py did not run this pipeline run.", "committees": []}
+    raw = json.loads(path.read_text())
+    raw["data_tier"] = "real"
+    return raw
+
+
+def build_menu_spending():
+    path = RAW_DIR / "menu_spending.json"
+    if not path.exists():
+        return {"data_tier": "proxy", "note": (
+            "Ward Wise (wardwisechicago.org), the only structured source for aldermanic menu "
+            "spending, was unreachable this run (the city itself only publishes PDF reports). "
+            "See CONTRIBUTING.md."), "wards": {}}
+    items = json.loads(path.read_text())
+    by_ward = defaultdict(lambda: {"total_spent": 0.0, "items": 0})
+    bike_keywords = ("bike", "bicycle", "traffic calming", "speed hump", "crosswalk",
+                      "curb", "pedestrian")
+    for item in items:
+        w = str(item.get("ward")) if item.get("ward") is not None else None
+        if not w:
+            continue
+        cost_val = item.get("cost")
+        if cost_val is None:
+            cost_val = item.get("amount")
+        cost = float(cost_val) if cost_val is not None else 0.0
+        category = str(item.get("category") or "").lower()
+        by_ward[w]["total_spent"] += cost
+        by_ward[w]["items"] += 1
+        if any(kw in category for kw in bike_keywords):
+            by_ward[w]["bike_safety_spent"] = by_ward[w].get("bike_safety_spent", 0.0) + cost
+    return {
+        "data_tier": "proxy",
+        "note": ("Ward Wise (Chi Hack Night volunteer project) structuring the city's "
+                 "PDF-only Aldermanic Menu Program reports. Not independently verified against "
+                 "the source PDFs by this pipeline."),
+        "wards": {w: {"total_spent": round(d["total_spent"], 2), "items": d["items"],
+                      "bike_safety_spent": round(d.get("bike_safety_spent", 0.0), 2)}
+                 for w, d in by_ward.items()},
+    }
 
 
 def main():
@@ -363,10 +693,17 @@ def main():
     wards_tmp["ward"] = wards_tmp[wkey].astype(str)
     sr311_by_ward, sr311_tagged = point_in_ward_counts(sr311, wards_tmp[["ward", "geometry"]])
 
-    wards_gj, _ = build_wards(crashes, sr311_by_ward)
+    wards_gj, wards_gdf = build_wards(crashes, sr311_by_ward)
     corridors = build_corridors(routes_gj, crashes)
     intersections = build_intersections(crashes)
     findings = build_findings(crashes, routes_gj, corridors, wards_gj)
+
+    ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf)
+    name_to_ward = load_name_to_ward()
+    council_records_out, council_records_list = build_council_records(name_to_ward)
+    aldermen_safety_record = build_aldermen_safety_record(council_records_list, name_to_ward)
+    hearings_out = build_hearings()
+    menu_spending_out = build_menu_spending()
 
     ward_311 = defaultdict(lambda: {"total": 0, "by_type": Counter()})
     for w, rec in sr311_tagged:
@@ -416,7 +753,22 @@ def main():
              "records": None, "date_range": None},
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
-             if mellow_gj["features"] else []),
+             if mellow_gj["features"] else []) + [
+            {"id": "ward_safety_index", "name": "Ward Safety Index (comparable danger score)",
+             "tier": "derived", "records": len(ward_safety_index["wards"]), "date_range": None},
+            {"id": "council_records", "name": "Council Records (street/bike-safety legislation)",
+             "tier": council_records_out["data_tier"], "records": len(council_records_list),
+             "date_range": None},
+            {"id": "aldermen_safety_record", "name": "Alderman Safety Voting Record",
+             "tier": "derived", "records": len(aldermen_safety_record["aldermen"]),
+             "date_range": None},
+            {"id": "hearings", "name": "Upcoming Bike/Traffic-Safety Committee Hearings",
+             "tier": "real", "records": len(hearings_out.get("committees", [])),
+             "date_range": None},
+            {"id": "menu_spending", "name": "Aldermanic Menu Program Spending (Ward Wise)",
+             "tier": "proxy", "records": len(menu_spending_out.get("wards", {})),
+             "date_range": None},
+        ],
     }
 
     write_json(SITE_DATA_DIR / "crashes_cyclist.geojson", crash_gj)
@@ -432,6 +784,11 @@ def main():
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
+    write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
+    write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
+    write_json(SITE_DATA_DIR / "aldermen_safety_record.json", aldermen_safety_record)
+    write_json(SITE_DATA_DIR / "hearings.json", hearings_out)
+    write_json(SITE_DATA_DIR / "menu_spending.json", menu_spending_out)
 
     aldermen_path = SITE_DATA_DIR / "aldermen.json"
     if not aldermen_path.exists():

@@ -12,7 +12,9 @@ honors those schemas.
 - `pipeline/socrata.py` — shared fetch helpers (paging, batched id lookups,
   GeoJSON export). All pull modules go through it.
 - `pipeline/pull_*.py` — one dataset each. Deterministic data fetching only:
-  no analysis, no LLMs, no side quests.
+  no analysis, no LLMs, no side quests. The one documented exception is
+  `classify_safety_topic.py`, which runs *after* all pulls, not as a pull
+  module itself — see "LLM topic classification" below and DECISIONS.md #15.
 - `pipeline/spatial_join.py` — crash → containing ward + nearest bikeway
   segment (30 m cap, distances computed in EPSG:26916 / UTM 16N).
 - `pipeline/aggregate.py` — owns every published schema; writes `site/data/`.
@@ -62,6 +64,39 @@ failing the whole pipeline. If the app ever goes offline for good, the repo's
 Django fixtures (`app/mbm/fixtures/mellowroute.json`) only contain OSM way ids,
 not geometry, so a real fallback would mean standing up the app locally against
 a `chicago_ways` OSM extract — treat that as a last resort, not routine.
+
+## Ward accountability layer (voting records, hearings, menu spending)
+
+`council_records.json`, `aldermen_safety_record.json`, `hearings.json`, and
+`menu_spending.json` all pull from third-party-hosted sources outside our
+control, so every one of `pull_council_records.py`, `pull_hearings.py`, and
+`pull_menu_spending.py` is non-fatal on failure — same posture as
+`pull_mellow.py`. See DECISIONS.md #14 for what each source can and can't do
+(notably: Legistar's council data is frozen at 2023-06-21, and no working
+public API was found for Chicago's newer eLMS system or for a live meeting
+calendar — both degrade to an honest stub/link-out rather than fabricating or
+silently going stale).
+
+`ward_safety_index.json`'s `infra_growth_trend` needs at least two
+`data/snapshots/bike_routes_*.geojson` snapshots to compute a growth rate —
+it's `null` until the pipeline has run at least twice over time.
+
+## LLM topic classification
+
+`classify_safety_topic.py` tags each record `pull_council_records.py` already
+fetched as `topic_relevant: true/false` (an LLM call, Haiku 4.5 by default,
+structured tool-use output) — see DECISIONS.md #15 for why this is an explicit
+exception to "no LLMs in pull modules," not a loophole. Ground rules for this
+stage specifically:
+
+- It may only classify records that were already deterministically fetched.
+  Never let it originate a matter, sponsor, vote, or date.
+- Tags are cached (`pipeline/raw/safety_topic_tags.json`) and overridable via
+  a hand-maintained `pipeline/raw/safety_topic_corrections.json` — same
+  manual-override posture as `aldermen.json`.
+- If `ANTHROPIC_API_KEY` is unset or the call fails, fall back to
+  `tagged_by: "keyword_fallback"` rather than blocking the pipeline; the UI
+  must badge `llm` vs `keyword_fallback` tags distinctly (`derived` tier).
 
 ## Fork for another city
 
