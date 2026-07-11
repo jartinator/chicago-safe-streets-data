@@ -31,10 +31,31 @@
   routeFeatures = bikeRoutes.features;
   obstructionPoints = obstructionsData.features;
 
+  // Flatten LineString or MultiLineString coordinates to one list of [lng, lat]
+  // pairs. The live CDOT bike-routes feed is MultiLineString (each feature can
+  // hold multiple disjoint parts); other layers may still be plain LineString.
+  function flattenCoords(geometry) {
+    const coords = geometry.coordinates;
+    if (geometry.type === "MultiLineString") {
+      return coords.flat();
+    }
+    return coords;
+  }
+
+  // Convert geometry to Leaflet latlngs, preserving MultiLineString's nested
+  // parts so Leaflet draws one multi-part polyline instead of joining
+  // disjoint segments with a straight line.
+  function toLatLngs(geometry) {
+    if (geometry.type === "MultiLineString") {
+      return geometry.coordinates.map((part) => part.map(([lng, lat]) => [lat, lng]));
+    }
+    return geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  }
+
   // Helper: calculate padded bbox
-  function getPaddedBBox(lineString, pad = 0.0006) {
+  function getPaddedBBox(geometry, pad = 0.0006) {
     let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    for (const [lng, lat] of lineString.coordinates) {
+    for (const [lng, lat] of flattenCoords(geometry)) {
       minLng = Math.min(minLng, lng);
       maxLng = Math.max(maxLng, lng);
       minLat = Math.min(minLat, lat);
@@ -65,7 +86,7 @@
     const props = feature.properties;
     const color = BSD.FACILITY_COLORS[props.facility_category] || BSD.FACILITY_COLORS.other;
     const line = L.polyline(
-      feature.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+      toLatLngs(feature.geometry),
       { color, weight: 6, lineCap: "round", opacity: 0.9 }
     );
 
@@ -79,7 +100,7 @@
     const count = obstructionCounts.get(feature.properties.segment_id);
     if (count >= 3) {
       const dashed = L.polyline(
-        feature.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+        toLatLngs(feature.geometry),
         { color: "#000", weight: 2.5, dashArray: "4,7", opacity: 0.6 }
       );
       layers.obstructions.addLayer(dashed);
@@ -90,7 +111,7 @@
   routeFeatures.forEach((feature) => {
     const crashes = feature.properties.crashes_within_30m;
     if (crashes >= 5) {
-      const coords = feature.geometry.coordinates;
+      const coords = flattenCoords(feature.geometry);
       const mid = coords[Math.floor(coords.length / 2)];
       const marker = L.circleMarker([mid[1], mid[0]], {
         radius: Math.min(crashes / 2, 15),
@@ -101,16 +122,6 @@
       layers.crashes.addLayer(marker);
     }
   });
-
-  // Mellow overlay: geometry is MultiLineString (one feature per route_type,
-  // thousands of parts each) — Leaflet draws a nested coordinate array as one
-  // multi-part polyline, so convert without flattening.
-  function toLatLngs(geometry) {
-    if (geometry.type === "MultiLineString") {
-      return geometry.coordinates.map((part) => part.map(([lng, lat]) => [lat, lng]));
-    }
-    return geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-  }
 
   if (mellowData.features.length === 0) {
     const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
@@ -138,7 +149,7 @@
   } else {
     plannedData.features.forEach((feature) => {
       const line = L.polyline(
-        feature.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+        toLatLngs(feature.geometry),
         { color: "#8b5cf6", weight: 3, opacity: 0.7 }
       );
       layers.planned.addLayer(line);
