@@ -7,7 +7,7 @@
 Stages:
   1. pull_people          (cyclist filter lives in the People dataset)
   2. pull_crashes, pull_vehicles   (batched CRASH_RECORD_ID lookups)
-  3. pull_bike_routes, pull_wards, pull_311, pull_cameras
+  3. pull_bike_routes, pull_wards, pull_311, pull_cameras, pull_mellow
   4. snapshot_bike_routes (dated copy — builds install-date history over time)
   5. make_mock_obstructions
   6. spatial_join
@@ -26,6 +26,7 @@ LIVE_STAGES = [
     ["pull_people.py"],
     ["pull_crashes.py"], ["pull_vehicles.py"],
     ["pull_bike_routes.py"], ["pull_wards.py"], ["pull_311.py"], ["pull_cameras.py"],
+    ["pull_mellow.py"],
 ]
 COMMON_STAGES = [
     ["snapshot_bike_routes.py"],

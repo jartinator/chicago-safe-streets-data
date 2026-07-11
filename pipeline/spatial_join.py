@@ -90,7 +90,12 @@ def main():
 
     out = []
     for _, row in joined.iterrows():
-        rec = {k: row.get(k) for k in crash_keys}
+        # Rows built via pandas backfill missing keys as NaN (a float), not None,
+        # since crash_keys is the union across all rows and Socrata omits null
+        # fields entirely. Normalize so downstream string ops (e.g. flag()) don't
+        # choke on a stray float.
+        rec = {k: (None if isinstance(v, float) and v != v else v)
+               for k, v in ((k, row.get(k)) for k in crash_keys)}
         ward = row.get("ward")
         seg = row.get("segment_id")
         dist = row.get("seg_distance_m")

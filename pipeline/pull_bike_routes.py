@@ -37,7 +37,7 @@ def main():
         properties = first_feature.get("properties", {})
 
         # Check for facility/route type keys (case-insensitive)
-        for candidate_key in ["displayroute", "bikeroute", "type"]:
+        for candidate_key in ["displayroute", "displayrou", "bikeroute", "type"]:
             for actual_key in properties.keys():
                 if actual_key.lower() == candidate_key.lower():
                     facility_type_key = actual_key

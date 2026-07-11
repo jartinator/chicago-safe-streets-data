@@ -12,6 +12,11 @@ SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots"
 
 SOCRATA_DOMAIN = "https://data.cityofchicago.org"
 
+# Mellow Bike Map (jeancochrane/mellow-bike-map, MIT licensed) — crowdsourced
+# low-stress-street tags. Not Socrata; a small third-party Django app, so
+# pull_mellow.py treats failures as non-fatal (falls back to the stub layer).
+MELLOW_API_URL = "https://mellowbikemap.com/api/routes/"
+
 # Socrata dataset IDs (Chicago Data Portal, open JSON endpoints, no auth for modest volumes)
 DATASETS = {
     "crashes": "85ca-t3if",        # Traffic Crashes - Crashes (one row per crash)
@@ -22,7 +27,7 @@ DATASETS = {
                                    # portal for "Boundaries - Wards (2023-)" and update.
     "sr311": "v6vf-nfxy",          # 311 Service Requests (unified, Dec 2018-)
     "speed_cameras": "hhkd-xvj4",  # Speed Camera Violations
-    "red_light_cameras": "spng-6irc",  # Red Light Camera Violations
+    "red_light_cameras": "spqx-js37",  # Red Light Camera Violations
 }
 
 # Crash data is citywide-reliable only from this date (capability report).
@@ -81,4 +86,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced")
 
-CONTRACT_VERSION = "1.1"
+CONTRACT_VERSION = "1.2"

@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 import geopandas as gpd
-from shapely.geometry import Point
+from shapely.geometry import Point, shape
 
 from config import (RAW_DIR, SITE_DATA_DIR, METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
@@ -80,7 +80,7 @@ def build_routes(crashes):
     props = gj["features"][0]["properties"] if gj["features"] else {}
     id_key = _first_key(props, ["objectid", "objectid_1", "segment_id", "id"])
     street_key = _first_key(props, ["st_name", "street", "street_nam", "name"])
-    type_key = _first_key(props, ["displayroute", "bikeroute", "type", "facility"])
+    type_key = _first_key(props, ["displayroute", "displayrou", "bikeroute", "type", "facility"])
 
     seg_crashes = Counter(c["segment_id"] for c in crashes if c.get("segment_id"))
     lengths = gdf.to_crs(METRIC_CRS).geometry.length
@@ -314,6 +314,34 @@ def build_findings(crashes, routes_gj, corridors, wards_gj):
     return findings
 
 
+def build_mellow(raw_gj):
+    """Tag Mellow Bike Map's features with segment ids, lengths, and data_tier.
+
+    The public API returns one MultiLineString per route_type (sidewalk/street/
+    route/path), each with thousands of parts — kept intact rather than exploded
+    into individual LineStrings (that would mean tens of thousands of separate
+    Leaflet layers). Leaflet natively draws a MultiLineString's nested coordinate
+    array as one efficient multi-part polyline; network.js relies on that.
+    """
+    gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in raw_gj["features"]],
+                           crs=OUTPUT_CRS)
+    lengths = gdf.to_crs(METRIC_CRS).geometry.length
+    feats = []
+    for f, geom, length in zip(raw_gj["features"], gdf.geometry, lengths):
+        route_type = (f.get("properties") or {}).get("type") or "unknown"
+        feats.append({
+            "type": "Feature",
+            "geometry": geom.__geo_interface__,
+            "properties": {
+                "segment_id": f"mellow-{route_type}",
+                "route_type": route_type,
+                "length_m": round(float(length), 1),
+                "data_tier": "crowdsourced",
+            },
+        })
+    return {"type": "FeatureCollection", "features": feats}
+
+
 def stub_layer(status_note):
     return {"type": "FeatureCollection", "features": [],
             "properties": {"status": "no_data_yet", "note": status_note}}
@@ -360,6 +388,15 @@ def main():
         "cameras": cameras,
     }
 
+    mellow_raw_path = RAW_DIR / "mellow_routes.geojson"
+    if mellow_raw_path.exists():
+        mellow_gj = build_mellow(json.loads(mellow_raw_path.read_text()))
+    else:
+        mellow_gj = stub_layer(
+            "Mellow Bike Map (crowdsourced low-stress streets) was not pulled this run "
+            "(pull_mellow.py didn't run, or the source was unreachable). "
+            "See CONTRIBUTING.md.")
+
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -377,7 +414,9 @@ def main():
              "records": len(cameras), "date_range": None},
             {"id": "obstructions", "name": "Bike-lane Obstructions", "tier": "mock",
              "records": None, "date_range": None},
-        ],
+        ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
+               "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
+             if mellow_gj["features"] else []),
     }
 
     write_json(SITE_DATA_DIR / "crashes_cyclist.geojson", crash_gj)
@@ -392,9 +431,7 @@ def main():
     write_json(SITE_DATA_DIR / "planned_routes.geojson", stub_layer(
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
         "See CONTRIBUTING.md to digitize and drop data in."))
-    write_json(SITE_DATA_DIR / "mellow_routes.geojson", stub_layer(
-        "Mellow Bike Map (crowdsourced low-stress streets) has no public API. "
-        "See CONTRIBUTING.md for the export path from jeancochrane/mellow-bike-map."))
+    write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
 
     aldermen_path = SITE_DATA_DIR / "aldermen.json"
     if not aldermen_path.exists():

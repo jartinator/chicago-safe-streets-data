@@ -94,13 +94,16 @@
     {
       id: "mellow_map",
       name: "Mellow Bike Map",
-      origin: "Community crowdsourced",
+      origin: "mellowbikemap.com (jeancochrane/mellow-bike-map, MIT licensed)",
       tier: "crowdsourced",
-      cadence: "N/A",
-      description: "Placeholder for future crowdsourced low-stress street tags.",
-      limitations: "Crowdsourced/manually curated — unverified, coverage depends on contributors. Not yet integrated; no public API.",
-      links: [],
-      metaId: null
+      cadence: "weekly pipeline run, best-effort (small third-party app, no uptime SLA)",
+      description: "Community-tagged low-stress Chicago streets, pulled from the project's public GeoJSON route API.",
+      limitations: "Crowdsourced/manually curated — unverified, coverage depends on contributors. The API returns geometry only, no street names or route labels. Small third-party app: if it's unreachable during a pipeline run, this layer falls back to a stub until the next run.",
+      links: [
+        { text: "Mellow Bike Map", url: "https://mellowbikemap.com" },
+        { text: "Source (GitHub)", url: "https://github.com/jeancochrane/mellow-bike-map" }
+      ],
+      metaId: "mellow_routes"
     }
   ];
 

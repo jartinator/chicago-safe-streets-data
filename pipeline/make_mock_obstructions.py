@@ -97,6 +97,17 @@ def group_segments_by_street(features):
     return by_street
 
 
+def flatten_line_coords(coords):
+    """Flatten LineString or MultiLineString coordinates to one list of [lng, lat] pairs.
+
+    make_fixtures.py emits LineString; the live CDOT pull is MultiLineString
+    (each feature can hold multiple disjoint parts) — normalize both here.
+    """
+    if coords and isinstance(coords[0][0], (int, float)):
+        return coords
+    return [pt for part in coords for pt in part]
+
+
 def extract_random_point_on_linestring(rng, linestring_coords):
     """Pick a random vertex on a LineString and jitter it."""
     if len(linestring_coords) < 2:
@@ -157,7 +168,7 @@ def generate_obstructions(rng, count, by_street):
 
         segments = by_street[street]
         feature = rng.choice(segments)
-        coords = feature["geometry"]["coordinates"]
+        coords = flatten_line_coords(feature["geometry"]["coordinates"])
 
         point = extract_random_point_on_linestring(rng, coords)
         if not point:
