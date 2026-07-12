@@ -18,8 +18,10 @@ from shapely.geometry import Point, shape, LineString, MultiLineString
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
-                    INJURY_SEVERITY_MAP, CONTRACT_VERSION)
+                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE)
 from council_merge import load_all_council_records
+from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
+                           build_findings_core)
 from socrata import write_json
 from spatial_join import _first_key
 
@@ -30,6 +32,20 @@ def severity(rec):
 
 def flag(rec, key):
     return (rec.get(key) or "").upper() == "Y"
+
+
+def crash_tuples(crashes):
+    """Raw joined-crash records -> the plain crash tuples crash_metrics operates on.
+
+    Built once in main() and threaded through findings, the ward safety index,
+    and the citywide trend so every published number derives from one shape.
+    """
+    return [{"date": (c.get("crash_date") or "")[:10],
+             "severity": severity(c),
+             "hit_and_run": flag(c, "hit_and_run_i"),
+             "dooring": flag(c, "dooring_i"),
+             "ward": c.get("ward")}
+            for c in crashes if c.get("crash_date")]
 
 
 def facility_category(raw_label, unmatched):
@@ -230,90 +246,21 @@ def build_intersections(crashes, cell_m=100):
     return out[:25]
 
 
-def build_findings(crashes, routes_gj, corridors, wards_gj):
-    findings = []
-    cat_len = Counter()
-    cat_crashes = Counter()
-    for f in routes_gj["features"]:
-        p = f["properties"]
-        cat_len[p["facility_category"]] += p["length_m"]
-        cat_crashes[p["facility_category"]] += p["crashes_within_30m"]
-    per_km = {c: (cat_crashes[c] / (cat_len[c] / 1000)) for c in cat_len if cat_len[c] > 500}
-    if "painted" in per_km and "protected" in per_km and per_km["protected"] > 0:
-        ratio = per_km["painted"] / per_km["protected"]
-        findings.append({
-            "id": "painted-vs-protected",
-            "title": "Crash density: painted vs. protected lanes",
-            "stat": f"{ratio:.1f}x",
-            "description": (f"Painted-only bike lanes see {per_km['painted']:.1f} cyclist crashes "
-                            f"per km vs {per_km['protected']:.1f} on protected lanes — "
-                            f"{ratio:.1f}x the density, raw counts not normalized by ridership."),
-            "caveat": "Raw counts overrepresent high-traffic corridors; no volume normalization. "
-                      "Dooring crashes are undercounted citywide.",
-            "map_state": {"screen": "map", "layers": ["crashes", "infrastructure"], "filters": {}},
-            "data_tier": "real",
-        })
-    top = [c for c in corridors if c["crashes_per_km"]][:5]
-    if top:
-        findings.append({
-            "id": "top-corridors",
-            "title": "Highest crash-density corridors",
-            "stat": top[0]["street"].title(),
-            "description": "Top corridors by cyclist crashes per km of bikeway: " +
-                           "; ".join(f"{c['street'].title()} ({c['crashes_per_km']}/km)" for c in top) + ".",
-            "caveat": "Raw counts, not normalized by bike volume. Dooring is undercounted.",
-            "map_state": {"screen": "map", "layers": ["crashes", "infrastructure"],
-                          "corridor": top[0]["street"], "filters": {}},
-            "data_tier": "real",
-        })
+def build_findings(tuples, corridors, wards_gj, as_of_date):
+    """Thin live-path wrapper over crash_metrics.build_findings_core.
+
+    The assembly itself lives in crash_metrics so refresh_reporting.py can rebuild
+    the identical findings from committed site data. Protected-share miles come
+    from the raw CDOT layer's centerline mileage (citywide_miles_by_category),
+    matching bikeway_mileage_series.json's methodology; the `trail` category is
+    excluded inside protected_share (off-street trails are OSM/crowdsourced and
+    never enter real-tier statistics).
+    """
+    raw_routes = json.loads((RAW_DIR / "bike_routes.geojson").read_text())
+    by_category_miles = citywide_miles_by_category(raw_routes)
     ward_counts = {f["properties"]["ward"]: f["properties"]["cyclist_crashes"]
                    for f in wards_gj["features"]}
-    total = sum(ward_counts.values())
-    top_wards = sorted(ward_counts.items(), key=lambda kv: -kv[1])[:5]
-    if total:
-        share = 100 * sum(v for _, v in top_wards) / total
-        findings.append({
-            "id": "ward-concentration",
-            "title": "Ward concentration",
-            "stat": f"{share:.0f}%",
-            "description": (f"5 of 50 wards account for {share:.0f}% of located cyclist crashes: "
-                            + ", ".join(f"Ward {w} ({v})" for w, v in top_wards) + "."),
-            "caveat": "Ward totals reflect where people ride most, not only where streets are worst.",
-            "map_state": {"screen": "map", "layers": ["crashes", "wards"],
-                          "ward": top_wards[0][0], "filters": {}},
-            "data_tier": "real",
-        })
-    doorings = sum(1 for c in crashes if flag(c, "dooring_i"))
-    findings.append({
-        "id": "dooring-undercount",
-        "title": "Dooring: the number that is too low",
-        "stat": str(doorings),
-        "description": (f"Only {doorings} crashes carry a dooring flag. Dooring is structurally "
-                        "excluded from 'reportable' crash records unless damage/injury thresholds "
-                        "are met, so true dooring risk — especially on painted-lane corridors — "
-                        "is higher than any number on this site."),
-        "caveat": "Structural undercount; treat as a floor, never a rate.",
-        "map_state": {"screen": "map", "layers": ["crashes"], "filters": {"dooring": True}},
-        "data_tier": "real",
-    })
-    vehicles_path = RAW_DIR / "vehicles_cyclist.json"
-    if vehicles_path.exists():
-        vt = Counter((v.get("vehicle_type") or "UNKNOWN")
-                     for v in json.loads(vehicles_path.read_text()))
-        vt.pop("UNKNOWN", None)
-        top3 = vt.most_common(3)
-        if top3:
-            findings.append({
-                "id": "vehicle-types",
-                "title": "What cyclists collide with",
-                "stat": top3[0][0].title(),
-                "description": "Most common motor-vehicle unit types in cyclist crashes: " +
-                               ", ".join(f"{k.title()} ({v})" for k, v in top3) + ".",
-                "caveat": "Unit types as recorded by responding officers; fleet mix not normalized.",
-                "map_state": {"screen": "table", "layers": [], "filters": {}},
-                "data_tier": "real",
-            })
-    return findings
+    return build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date)
 
 
 def build_mellow(raw_gj):
@@ -625,11 +572,26 @@ def build_bikeway_mileage_series(snapshot_dir=SNAPSHOT_DIR):
     return {"data_tier": "derived", "note": note, "series": series}
 
 
-def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir=SNAPSHOT_DIR):
+def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir=SNAPSHOT_DIR,
+                            tuples=None):
     pop = ward_population()
     miles = ward_bikeway_miles(routes_gj, wards_gdf)
     ward_dates = crash_ward_dates(crashes)
     infra_trend, infra_note = infra_growth_trend(wards_gdf, snapshot_dir)
+
+    # Per-ward reporting series (crash_metrics): trailing-12mo windows anchored at
+    # the GLOBAL latest crash date (comparable across wards, unlike crash_trend's
+    # per-ward anchor) plus a contiguous monthly series since CRASH_START_DATE.
+    if tuples is None:
+        tuples = crash_tuples(crashes)
+    anchor = max((t["date"] for t in tuples), default=None)
+    start_month = CRASH_START_DATE[:7]
+    end_month = anchor[:7] if anchor else start_month
+    ward_monthly = per_ward_monthly(tuples, start_month, end_month)
+    tuples_by_ward = defaultdict(list)
+    for t in tuples:
+        if t.get("ward"):
+            tuples_by_ward[t["ward"]].append(t)
 
     per_capita, per_mile = {}, {}
     for f in wards_gj["features"]:
@@ -657,6 +619,9 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
             "comparable_danger_score": blended,
             "crash_trend": crash_trend(ward_dates.get(w, [])),
             "infra_growth_trend": infra_trend.get(w),
+            "windows": (window_counts(tuples_by_ward.get(w, []), anchor)
+                        if anchor else None),
+            "monthly": ward_monthly.get(w) or monthly_counts([], start_month, end_month),
             "data_tier": "derived",
         })
     # None (no score computable) sorts after every real score, including a real 0.
@@ -901,9 +866,26 @@ def main():
     wards_gj, wards_gdf = build_wards(crashes, sr311_by_ward)
     corridors = build_corridors(routes_gj, crashes)
     intersections = build_intersections(crashes)
-    findings = build_findings(crashes, routes_gj, corridors, wards_gj)
 
-    ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir)
+    tuples = crash_tuples(crashes)
+    as_of_date = datetime.now(timezone.utc).date().isoformat()
+    findings = build_findings(tuples, corridors, wards_gj, as_of_date)
+
+    # Citywide monthly trend since CRASH_START_DATE, from the same crash tuples.
+    trend_anchor = max((t["date"] for t in tuples), default=None)
+    trend_months = monthly_counts(tuples, CRASH_START_DATE[:7],
+                                  trend_anchor[:7] if trend_anchor else CRASH_START_DATE[:7])
+    citywide_trend = {
+        "data_tier": "real",
+        "window_end": trend_anchor,
+        "note": ("Monthly counts of police-reported cyclist crashes citywide since Sept 2017; "
+                 "ksi = crashes whose worst injury was fatal or incapacitating (\"killed or "
+                 "seriously injured\"). Recent months are provisional — records get amended."),
+        "months": trend_months,
+    }
+
+    ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf,
+                                                snapshot_dir, tuples=tuples)
     bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir)
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
@@ -972,6 +954,10 @@ def main():
             [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
               "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
              if osm_trails_gj["features"] else []) + [
+            {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
+             "tier": "real", "records": len(citywide_trend["months"]),
+             "date_range": ([CRASH_START_DATE, citywide_trend["window_end"]]
+                            if citywide_trend["window_end"] else None)},
             {"id": "ward_safety_index", "name": "Ward Safety Index (comparable danger score)",
              "tier": "derived", "records": len(ward_safety_index["wards"]), "date_range": None},
             {"id": "bikeway_mileage_series", "name": "Bikeway Mileage Series (by facility type, over time)",
@@ -1002,6 +988,7 @@ def main():
     write_json(SITE_DATA_DIR / "corridors.json", corridors)
     write_json(SITE_DATA_DIR / "intersections.json", intersections)
     write_json(SITE_DATA_DIR / "findings.json", findings)
+    write_json(SITE_DATA_DIR / "citywide_trend.json", citywide_trend)
     write_json(SITE_DATA_DIR / "meta.json", meta)
     write_json(SITE_DATA_DIR / "planned_routes.geojson", stub_layer(
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
