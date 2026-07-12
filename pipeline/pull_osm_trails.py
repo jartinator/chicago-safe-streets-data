@@ -23,7 +23,7 @@ from socrata import write_json
 def main():
     parser = argparse.ArgumentParser(
         description="Pull named off-street trails from the OSM Overpass API.")
-    parser.parse_args([])
+    parser.parse_args()
 
     try:
         resp = requests.post(OVERPASS_API_URL, data={"data": OSM_TRAILS_QUERY}, timeout=120)

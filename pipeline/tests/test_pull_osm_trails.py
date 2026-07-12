@@ -19,6 +19,7 @@ class _Resp:
 def test_pull_writes_raw_on_success(tmp_path, monkeypatch):
     payload = {"elements": [{"type": "way", "tags": {"name": "Lakefront Trail"},
                              "geometry": [{"lat": 41.8, "lon": -87.6}]}]}
+    monkeypatch.setattr(sys, "argv", ["pull_osm_trails.py"])
     monkeypatch.setattr(pull_osm_trails, "RAW_DIR", tmp_path)
     monkeypatch.setattr(pull_osm_trails.requests, "post",
                         lambda *a, **k: _Resp(payload))
@@ -30,6 +31,7 @@ def test_pull_writes_raw_on_success(tmp_path, monkeypatch):
 def test_pull_is_non_fatal_on_failure(tmp_path, monkeypatch, capsys):
     def _boom(*a, **k):
         raise pull_osm_trails.requests.RequestException("network down")
+    monkeypatch.setattr(sys, "argv", ["pull_osm_trails.py"])
     monkeypatch.setattr(pull_osm_trails, "RAW_DIR", tmp_path)
     monkeypatch.setattr(pull_osm_trails.requests, "post", _boom)
     pull_osm_trails.main()  # must NOT raise
