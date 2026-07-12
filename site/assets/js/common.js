@@ -13,6 +13,17 @@
       + "topic tag) rather than sourced directly — read as an analytical signal, not a raw fact.",
   };
 
+  // One-line plain-language versions of the tiers, used by the tier-explainer
+  // modal that opens when any badge is tapped.
+  const TIER_PLAIN = {
+    real: "from official records",
+    proxy: "a related signal, not a direct measure",
+    derived: "calculated by us from real data",
+    mock: "fake demo data — not real reports",
+    crowdsourced: "volunteer-reported, unverified",
+    stub: "no data yet — a placeholder for a future source",
+  };
+
   const DISCLAIMERS = {
     dooring: "Dooring undercount: dooring crashes are structurally excluded from official " +
       "“reportable” crash records unless damage/injury thresholds are met. Any crash density " +
@@ -28,10 +39,10 @@
     ["index.html", "Map"],
     ["network.html", "Network"],
     ["findings.html", "Findings"],
-    ["table.html", "Data Table"],
+    ["table.html", "Explore Data"],
     ["sources.html", "Sources"],
     ["action.html", "Take Action"],
-    ["contributing.html", "Open Data"],
+    ["contributing.html", "Downloads & Docs"],
   ];
 
   const FACILITY_COLORS = {
@@ -66,16 +77,40 @@
       c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  // Badges are tappable, never hover-only: a <button> with data-tier that the
+  // delegated document click handler (wired in initPage) opens the explainer for.
   function badgeHTML(tier) {
     const t = TIER_INFO[tier] ? tier : "stub";
-    return `<span class="badge tier-${t}" title="${esc(TIER_INFO[t])}">${t === "stub" ? "no data yet" : t}</span>`;
+    return `<button type="button" class="badge tier-${t}" data-tier="${t}">` +
+      `${t === "stub" ? "no data yet" : t}</button>`;
   }
   function badge(tier) {
-    const el = document.createElement("span");
-    el.outerHTML = badgeHTML(tier);
     const tmp = document.createElement("div");
     tmp.innerHTML = badgeHTML(tier);
     return tmp.firstChild;
+  }
+
+  // Shared modal: one lazily-created <dialog class="modal"> reused by every
+  // caller. Focus returns to the invoking element on close.
+  let _modal = null;
+  function openModal({ title, bodyHTML }) {
+    const opener = document.activeElement;
+    if (!_modal) {
+      _modal = document.createElement("dialog");
+      _modal.className = "modal";
+      document.body.appendChild(_modal);
+    }
+    _modal.innerHTML =
+      `<div class="modal-head"><strong>${esc(title)}</strong>` +
+      `<button type="button" class="btn modal-close" aria-label="Close">×</button></div>` +
+      `<div class="modal-body">${bodyHTML}</div>`;
+    _modal.querySelector(".modal-close").addEventListener("click", () => _modal.close());
+    _modal.addEventListener("close", function onClose() {
+      _modal.removeEventListener("close", onClose);
+      if (opener && opener.focus) opener.focus();
+    });
+    _modal.showModal();
+    return _modal;
   }
 
   function noticeHTML(kind) {
@@ -191,8 +226,22 @@
       `Directional signals, not statistical analysis. This tool does not collect reports — ` +
       `use <a href="${LINKS.threeOneOne}" target="_blank" rel="noopener">311</a> or ` +
       `<a href="${LINKS.blu}" target="_blank" rel="noopener">Bike Lane Uprising</a>. ` +
-      `Open source & open data — see the <a href="contributing.html">Open Data page</a>.`;
+      `Open source & open data — see the <a href="contributing.html">Downloads & Docs page</a>. ` +
+      `Every number is labeled — real · proxy · derived · mock · crowdsourced — ` +
+      `tap any label to see what it means.`;
     document.body.append(footer);
+
+    // Delegated handler: tapping any tier badge anywhere opens the explainer.
+    document.addEventListener("click", e => {
+      const b = e.target.closest && e.target.closest(".badge[data-tier]");
+      if (!b) return;
+      const t = b.dataset.tier;
+      openModal({
+        title: `Data quality: ${t === "stub" ? "no data yet" : t}`,
+        bodyHTML: `<p><strong>${esc(TIER_PLAIN[t])}.</strong></p><p>${esc(TIER_INFO[t])}</p>` +
+          `<p><a href="sources.html">See where every dataset comes from →</a></p>`,
+      });
+    });
 
     // Provenance banner: fixture builds must never pass as real data.
     loadJSON("data/meta.json").then(meta => {
@@ -207,14 +256,15 @@
   }
 
   window.BSD = {
-    TIER_INFO, DISCLAIMERS, LINKS, FACILITY_COLORS, FACILITY_LABELS,
+    TIER_INFO, TIER_PLAIN, DISCLAIMERS, LINKS, FACILITY_COLORS, FACILITY_LABELS,
     SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_COLORS,
     TREND_LABELS, TREND_ARROWS,
-    esc, badge, badgeHTML, noticeHTML, loadJSON, fmt, qs, setParams,
+    esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
     downloadCSV, initPage, trendHTML, scoreColor, money,
   };
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { trendHTML, scoreColor, money, esc, fmt };
+    // Pure (DOM-free) helpers only — openModal/badge/initPage are browser-bound.
+    module.exports = { trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN };
   }
 })();

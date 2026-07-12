@@ -30,4 +30,21 @@ assert.ok(improving.includes("▼"), "improving trend shows down arrow");
 assert.ok(improving.includes("-30%"), "improving trend shows signed -30%");
 assert.ok(!improving.includes("+30%"), "improving trend must not show +30%");
 
+// Tappable badges: badgeHTML renders a <button> carrying data-tier so the
+// delegated click handler can open the tier explainer.
+const proxyBadge = B.badgeHTML("proxy");
+assert.ok(proxyBadge.includes("<button"), "badge renders as a <button>");
+assert.ok(proxyBadge.includes('data-tier="proxy"'), "badge carries data-tier");
+assert.ok(proxyBadge.includes("tier-proxy"), "badge keeps tier-{t} class");
+const bogusBadge = B.badgeHTML("bogus");
+assert.ok(bogusBadge.includes('data-tier="stub"'), "unknown tier falls back to stub");
+assert.ok(bogusBadge.includes("no data yet"), "stub badge label is 'no data yet'");
+
+// Plain-language tier explainers for the modal.
+assert.strictEqual(typeof B.TIER_PLAIN, "object");
+for (const tier of ["real", "proxy", "derived", "mock", "crowdsourced", "stub"]) {
+  assert.ok(typeof B.TIER_PLAIN[tier] === "string" && B.TIER_PLAIN[tier].length > 0,
+    `TIER_PLAIN has plain wording for '${tier}'`);
+}
+
 console.log("common-helpers OK");
