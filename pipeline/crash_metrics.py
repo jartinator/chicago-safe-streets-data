@@ -141,10 +141,11 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
             "id": "ksi-trend",
             "title": "Cyclists killed or seriously injured",
             "stat": str(ksi["recent_12mo"]["ksi"]),
-            "description": (f"{ksi['recent_12mo']['ksi']} cyclists were killed or seriously injured "
-                            f"(\"incapacitating\" in police records) in the 12 months through "
-                            f"{ksi['window_end']}, vs {ksi['prior_12mo']['ksi']} the prior 12 months. "
-                            "Vision Zero's goal is zero."),
+            "description": (f"A cyclist was killed or seriously injured "
+                            f"(\"incapacitating\" in police records) in "
+                            f"{ksi['recent_12mo']['ksi']} crashes in the 12 months through "
+                            f"{ksi['window_end']}, vs {ksi['prior_12mo']['ksi']} the prior "
+                            "12 months. Vision Zero's goal is zero."),
             "caveat": "Counts, not rates — ridership growth is not netted out. "
                       "Recent months are provisional.",
             "map_state": {"screen": "map", "layers": ["crashes"], "filters": {}},

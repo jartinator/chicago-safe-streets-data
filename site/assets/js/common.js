@@ -109,6 +109,9 @@
       _modal.removeEventListener("close", onClose);
       if (opener && opener.focus) opener.focus();
     });
+    // Re-entrancy guard: opening from inside an open modal (e.g. a badge in a
+    // modal body) must swap content, not throw InvalidStateError.
+    if (_modal.open) _modal.close();
     _modal.showModal();
     return _modal;
   }
