@@ -44,7 +44,7 @@
   });
 
   const state = {
-    layers: new Set((B.qs().get("layers") || "crashes,infrastructure").split(",").filter(Boolean)),
+    layers: new Set((B.qs().get("layers") || "crashes,infrastructure,trails").split(",").filter(Boolean)),
     sev: B.qs().get("sev") || "",
     from: B.qs().get("from") || "",
     to: B.qs().get("to") || "",
@@ -58,6 +58,7 @@
     { id: "crashes", label: "Cyclist crashes", tier: "real" },
     { id: "obstructions", label: "Obstructions", tier: "mock" },
     { id: "infrastructure", label: "Bike infrastructure", tier: "real" },
+    { id: "trails", label: "Off-street trails", tier: "crowdsourced" },
     { id: "planned", label: "Planned routes", tier: "stub" },
     { id: "cameras", label: "Camera violations", tier: "proxy" },
     { id: "wards", label: "Ward boundaries", tier: "real" },
@@ -72,6 +73,7 @@
     B.loadJSON("data/obstructions_mock.geojson").catch(() => ({ features: [] })),
     B.loadJSON("data/bike_routes.geojson"),
     B.loadJSON("data/planned_routes.geojson"),
+    B.loadJSON("data/osm_trails.geojson").catch(() => ({ features: [] })),
     B.loadJSON("data/cameras.json"),
     B.loadJSON("data/wards.geojson"),
     B.loadJSON("data/corridors.json"),
@@ -79,8 +81,8 @@
     B.loadJSON("data/aldermen.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/ward_safety_index.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/menu_spending.json").catch(() => ({ wards: {} })),
-  ]).then(([crashes, obstructions, routes, planned, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
-    Object.assign(data, { crashes, obstructions, routes, planned, cameras, wards, corridors, intersections });
+  ]).then(([crashes, obstructions, routes, planned, trails, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
+    Object.assign(data, { crashes, obstructions, routes, planned, trails, cameras, wards, corridors, intersections });
     data.aldermanByWard = {};
     (aldermen.wards || []).forEach(w => { data.aldermanByWard[w.ward] = w; });
     // safetyByWard/safetyRank: rank is 1-based array order since the file is
@@ -169,6 +171,11 @@
       }).on("click", () => showSegment(p));
       return line;
     }));
+
+    groups.trails = L.layerGroup((data.trails.features || []).map(f =>
+      L.geoJSON(f, {
+        style: { color: B.FACILITY_COLORS.trail, weight: 3.5, opacity: 0.9 },
+      }).on("click", () => showTrail(f.properties))));
 
     groups.planned = L.layerGroup(data.planned.features.map(f =>
       L.geoJSON(f, { style: { color: "#64748b", weight: 3, dashArray: "6,6" } })));
@@ -340,6 +347,9 @@
       if (cb.dataset.layer === "planned" && cb.checked) {
         setDetail(`<h3>Planned routes ${B.badgeHTML("stub")}</h3><p class="muted">${B.esc(data.planned.properties?.note || "No data yet.")}</p>`);
       }
+      if (cb.dataset.layer === "trails" && cb.checked && !(data.trails.features || []).length) {
+        setDetail(`<h3>Off-street trails ${B.badgeHTML("stub")}</h3><p class="muted">${B.esc(data.trails.properties?.note || "No trail data this run.")}</p>`);
+      }
       renderSide(document.getElementById("detail").innerHTML);
       syncLayers();
     }));
@@ -507,6 +517,17 @@
       <p><a href="#" id="segCorridor">Whole corridor →</a></p>`);
     const a = document.getElementById("segCorridor");
     if (a) a.addEventListener("click", e => { e.preventDefault(); showCorridor(p.street || "(unnamed)", true); });
+  }
+
+  function showTrail(p) {
+    setDetail(`
+      <h3>${B.esc(p.name || "Off-street trail")} ${B.badgeHTML("crowdsourced")}</h3>
+      <div class="notice">${B.esc(B.TIER_INFO.crowdsourced)}</div>
+      <dl>
+        <dt>Type</dt><dd>${B.esc(B.FACILITY_LABELS.trail)}</dd>
+        <dt>Length</dt><dd>${B.fmt(Math.round(p.length_m))} m</dd>
+      </dl>
+      <p class="muted">Off-street trail geometry from OpenStreetMap — crowdsourced, coverage varies.</p>`);
   }
 
   function showCamera(c) {
