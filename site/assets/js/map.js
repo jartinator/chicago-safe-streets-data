@@ -193,12 +193,16 @@
     const legend = Object.entries(B.FACILITY_COLORS).map(([k, c]) =>
       `<span style="white-space:nowrap"><span class="legend-swatch" style="background:${c}"></span> ${B.FACILITY_LABELS[k]}</span>`
     ).join(" &nbsp; ");
+    // The last bucket carries two swatches: tan for a real sub-20 score and
+    // gray for a ward with no score at all — both fills appear on the map,
+    // so both belong in the legend.
     const shadeLegend = state.shade === "danger" ? `
       <div class="muted" style="margin:0.4rem 0" title="${B.esc(data.safetyNote || "")}">
         <strong>Danger score ${B.badgeHTML("derived")}</strong><br>
-        ${[[B.scoreColor(85), "80+"], [B.scoreColor(65), "60+"], [B.scoreColor(45), "40+"],
-           [B.scoreColor(25), "20+"], [B.scoreColor(null), "<20 / no data"]].map(([c, label]) =>
-          `<span style="white-space:nowrap"><span class="legend-swatch" style="background:${c}"></span> ${B.esc(label)}</span>`
+        ${[[[B.scoreColor(85)], "80+"], [[B.scoreColor(65)], "60+"], [[B.scoreColor(45)], "40+"],
+           [[B.scoreColor(25)], "20+"], [[B.scoreColor(10), B.scoreColor(null)], "<20 / no data"]].map(([colors, label]) =>
+          `<span style="white-space:nowrap">${colors.map(c =>
+            `<span class="legend-swatch" style="background:${c}"></span>`).join("")} ${B.esc(label)}</span>`
         ).join(" &nbsp; ")}
       </div>` : "";
 
