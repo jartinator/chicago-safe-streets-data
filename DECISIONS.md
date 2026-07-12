@@ -243,3 +243,41 @@ environment forced a deviation. Newest last.
     street lines are `derived` (computed from CDOT's `real` segments), trail
     lines are `crowdsourced` (OSM) throughout, and crowdsourced trail mileage
     never enters real/derived-tier statistics.
+
+20. **The network map gets its own visual language, split from the transportation
+    map.** `network.html` and `index.html` had converged: both rendered
+    grade-colored main routes with white casing, both rendered crash severity
+    rings and obstruction heat, and the network map's white "nodes" were crash
+    clusters wearing a station icon — grade-coloring each *segment* of a route
+    also made a line impossible to trace end to end. Per
+    `docs/superpowers/specs/2026-07-12-network-map-distinction.md`, the network
+    map now answers one question only ("how do I get from area A to area B"),
+    with exactly three, independently toggleable concerns: **major routes**
+    render one **solid color per named line** (`LINE_COLORS`) instead of
+    per-segment grade coloring, so a route reads as one continuous line;
+    **connecting routes** split into two independent, overlappable levels
+    (connecting infrastructure, mellow routes) instead of one bundled toggle;
+    and **route quality** becomes an opt-in **border** layer (`quality` toggle)
+    that reuses the old always-on casing treatment, now grade-colored and
+    optional rather than a constant white outline. All safety data is removed
+    outright from `network.html` — crash rings, obstruction heat, the dooring
+    notice, and the crash-cluster stations are gone; that analysis lives
+    exclusively on `index.html`, which is unchanged. The white nodes are now
+    real: **interchanges**, derived from pairwise geometric intersections
+    between roster line segments (merged within 150 m, emitted only where ≥ 2
+    distinct lines meet), plus curated **orientation points** (hand-picked
+    major-road crossings for wayfinding) — both served from the new
+    `site/data/network_nodes.json`.
+    - **Curated-trails fallback.** The redesign also re-cut the roster to 21
+      lines (dropping the loop/belmont/31st fragments; adding California, King
+      Drive, Lawrence, Roosevelt, Marquette, and 83rd), which meant the 5
+      roster trail lines needed real geometry to render as major routes. But
+      this environment's egress policy blocks the Overpass API — confirmed:
+      proxy 403 on both `overpass-api.de` and the kumi.systems mirror, and
+      Socrata is blocked too — so `pull_osm_trails.py` can't run here. Per
+      owner approval, `data/curated_trails.geojson` ships hand-traced
+      approximate geometry (~100-300 m tolerance) at `crowdsourced` tier, the
+      same provenance posture as the mellow routes (#7/#16). `aggregate.py`
+      and `refresh_reporting.py` both prefer a real Overpass pull over it the
+      moment `pipeline/raw/osm_trails.json` exists — nothing needs to be
+      deleted or edited in the curated file to "upgrade" away from it.

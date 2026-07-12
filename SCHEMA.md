@@ -130,27 +130,52 @@ No `street` name — the source API doesn't label individual segments. If the
 pull didn't run or the source was unreachable, this file falls back to the
 stub shape above with `properties.note` explaining why.
 
-## osm_trails.geojson — tier crowdsourced (falls back to stub)
-LineString/MultiLineString FeatureCollection of named off-street trails, pulled
-from the OpenStreetMap Overpass API by `pull_osm_trails.py`/`aggregate.py`. CDOT's
-`bike_routes.geojson` is on-street only, so these trails (Lakefront, 312 RiverRun,
-North Shore Channel, North Branch, etc.) come from OSM instead. OSM ways sharing a
-`name` are grouped into one feature (a MultiLineString when the trail spans several
-ways). Properties:
+## osm_trails.geojson — tier crowdsourced (three-tier fallback, never stub-or-nothing)
+LineString/MultiLineString FeatureCollection of named off-street trails. CDOT's
+`bike_routes.geojson` is on-street only, so these trails (Lakefront, Bloomingdale/606,
+Major Taylor, North Shore Channel, North Branch, etc.) come from elsewhere. Built by
+`build_osm_trails_layer()` (shared by `aggregate.py` and `refresh_reporting.py`) in
+priority order:
+
+1. `pipeline/raw/osm_trails.json` — a real pull from the OpenStreetMap Overpass API
+   (`pull_osm_trails.py`) — via `build_osm_trails()`. OSM ways sharing a `name` are
+   grouped into one feature (a MultiLineString when the trail spans several ways).
+2. else `data/curated_trails.geojson` — a checked-in, hand-traced editorial fallback
+   (see below) — via `build_curated_trails()`, passed through with pipeline-computed
+   `length_m`.
+3. else the empty stub (`properties.status = "no_data_yet"`).
+
+This environment's egress policy blocks Overpass (and the kumi.systems mirror, and
+Socrata), so tier 2 — the curated fallback — is what currently ships in
+`site/data/osm_trails.geojson`. Properties (both real-Overpass and curated-fallback
+features share this shape):
 
 | key | type | notes |
 |---|---|---|
-| segment_id | string | `osm-trail-<slug>`, e.g. `osm-trail-lakefront-trail` |
-| name | string | trail name from OSM `tags.name` |
+| segment_id | string | `osm-trail-<slug>` (Overpass) or `curated-trail-<slug>` (fallback) |
+| name | string | trail name (OSM `tags.name`, or the curated file's `name`) |
 | facility_category | "trail" | reuses the shared facility styling |
-| length_m | float | total length across all parts |
+| length_m | float | total length across all parts, always pipeline-computed (never trusted from the source) |
 | data_tier | "crowdsourced" | |
 
-The query pulls only named off-street ways (`highway=cycleway`, or
-`path`/`footway` with `bicycle=designated`) and excludes `is_sidepath=yes` to drop
-road-parallel cycle tracks that duplicate CDOT on-street segments. If the pull
-didn't run or Overpass was unreachable, this file falls back to the stub shape
-(`properties.status = "no_data_yet"`).
+The Overpass query (when it can run) pulls only named off-street ways
+(`highway=cycleway`, or `path`/`footway` with `bicycle=designated`) and excludes
+`is_sidepath=yes` to drop road-parallel cycle tracks that duplicate CDOT on-street
+segments.
+
+### data/curated_trails.geojson — checked-in editorial input (pipeline INPUT), tier crowdsourced
+Hand-traced fallback geometry for the 5 roster trail lines, written because
+Overpass is unreachable from this build environment (see DECISIONS.md). Not a
+published site file; consumed by `build_curated_trails()` at
+`pipeline.config.CURATED_TRAILS_PATH`. Same FeatureCollection shape as
+`osm_trails.geojson`'s per-feature properties (`segment_id`, `name`,
+`facility_category: "trail"`, `data_tier: "crowdsourced"`), plus a per-feature
+`note` giving the tracing rationale and a top-level `note` (provenance/approximation
+caveat, ~100-300 m tolerance) that passes through onto the built `osm_trails.geojson`
+whenever this fallback is the active tier. Editorial and approximate by design —
+`build_osm_trails_layer()` prefers a real Overpass pull the moment
+`pipeline/raw/osm_trails.json` exists, with no changes needed to this file to
+"upgrade" away from it.
 
 ## aldermen.json
 `{ note, lookup_url, wards: [{ ward, alderman: null, email: null }] }` —
@@ -408,3 +433,83 @@ is a stub (no live Overpass pull yet), trail lines appear with
 - **`meta.json`** — `sources` gains
   `{ id: "main_routes", name: "Main Routes (curated line roster)", tier: "derived",
   records: <line count>, date_range: null }`.
+
+## Contract v1.8 changes, continued (network map distinction)
+
+Shipped under the same `contract_version` (1.8 — `pipeline/config.py`'s
+`CONTRACT_VERSION` was not bumped for this round; `meta.json` on disk still reads
+`"1.8"`). See `docs/superpowers/specs/2026-07-12-network-map-distinction.md` for the
+full design; this section documents what's actually built.
+
+### data/main_routes.json — roster re-cut
+Same checked-in-config contract as the v1.8 section above (format unchanged); the
+line **list** was re-curated to 21 lines:
+
+- **Dropped:** `loop` (downtown circulator; fragment cluster), `belmont` (3.8 mi),
+  `31st` (1.8 mi). Their segments remain in the local/connecting network, just not
+  as named lines.
+- **Added (6):** `california`, `mlk-drive`, `lawrence`, `roosevelt`, `marquette`,
+  `83rd` — each a single-street line matched on one `streets` token, chosen so
+  every roster line is long enough to carry a rider neighborhood-to-neighborhood.
+- **Final roster: 16 street lines + 5 trail lines = 21 lines**, up from ~18.
+  `data/main_routes.json`'s `note` field and DECISIONS.md #19's "~18" line-count
+  description predate this re-cut.
+
+### data/orientation_points.json — checked-in editorial input (pipeline INPUT)
+Curated wayfinding points (major-road crossings on roster lines), hand-picked —
+not derived from any source dataset:
+```json
+[{"label": "Milwaukee / North / Damen", "lat": 41.9103, "lng": -87.6773}, …]
+```
+Not a published site file; consumed by `build_network_nodes()` at
+`pipeline.config.ORIENTATION_POINTS_PATH` and passed through into
+`network_nodes.json` (below) with `kind: "orientation"`, `lines: []`, and
+`data_tier: "derived"` — "derived" because the *node* is a pipeline-emitted record
+even though the underlying lat/lng were hand-picked, matching the tier already used
+elsewhere for editorial-but-machine-published records (e.g. `aldermen.json`'s
+pre-v1.7 shape).
+
+### site/data/network_nodes.json — tier derived (produced by `build_network_nodes`)
+New pipeline product for the network map's white nodes — replaces the crash-cluster
+"stations" the network map used to show. Rebuilt by both the live `aggregate.py`
+path and `refresh_reporting.py`, from `main_routes.geojson` + `orientation_points.json`,
+so the two build paths can never drift:
+```json
+{ "nodes": [
+    { "id": "node-001" | "orient-001", "kind": "interchange" | "orientation",
+      "lat": 41.91, "lng": -87.67, "label": "…",
+      "lines": ["milwaukee", "bloomingdale"] | [], "data_tier": "derived" }
+  ], "data_tier": "derived" }
+```
+Two kinds, both `data_tier: "derived"`:
+
+- **`interchange`** — geometric line-crossing nodes, derived (no editorial input).
+  For every pair of *distinct* roster line ids, `build_network_nodes()` checks all
+  member-segment pairs for exact 2-D line-segment intersections (pure Python, no new
+  deps). Raw intersection points within **150 m** of each other are unioned into one
+  cluster and collapsed to their centroid; a cluster is only emitted as a node if it
+  spans **≥ 2 distinct line ids** (`lines` is that id set, sorted by roster order).
+  `label` joins the involved lines' display names with `" × "` (e.g.
+  `"Milwaukee Line × Bloomingdale Trail (606)"`). `id` is `node-NNN`, assigned after
+  sorting nodes by `(lat, lng)` — not stable across a roster change, since a dropped
+  or added line can shift the whole node count and ordering.
+- **`orientation`** — one node per `data/orientation_points.json` entry, passed
+  through verbatim (`label`, `lat`, `lng`) with `lines: []`. `id` is `orient-NNN` in
+  file order.
+
+Current build: 40 interchange nodes + 10 orientation nodes = 50 total (matches
+`meta.json`'s `network_nodes` source `records` count).
+
+### meta.json — new/changed source entries
+- **`network_nodes`** (new): `{ id: "network_nodes", name: "Network Map Nodes
+  (interchanges + orientation points)", tier: "derived", records: <node count>,
+  date_range: null }`. Written by both build paths; placed just after `main_routes`,
+  before `citywide_trend`.
+- **`osm_trails`** (formalized, was previously implicit): `{ id: "osm_trails",
+  name: "OpenStreetMap Off-street Trails", tier: "crowdsourced",
+  records: <feature count>, date_range: null }`, placed just before `main_routes`.
+  **Conditional:** this entry is only written/updated when the built
+  `osm_trails.geojson` has at least one feature — i.e. tier 1 (real Overpass) or
+  tier 2 (curated fallback) produced something. A stub build (tier 3) leaves any
+  prior `osm_trails` source entry untouched rather than overwriting it with a
+  zero-record one, so `meta.json` never claims a source ran when it didn't.
