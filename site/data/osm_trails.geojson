@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [], "properties": {"status": "no_data_yet", "note": "OpenStreetMap off-street trails (Lakefront, 312 RiverRun, North Shore Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py didn't run, or Overpass was unreachable). See CONTRIBUTING.md."}}

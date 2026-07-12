@@ -24,7 +24,6 @@ CORRIDORS = [
     ("CLARK ST", [(41.900, -87.631), (41.975, -87.660)], "PROTECTED BIKE LANE"),
     ("DEARBORN ST", [(41.870, -87.629), (41.900, -87.629)], "PROTECTED BIKE LANE"),
     ("ELSTON AVE", [(41.900, -87.660), (41.970, -87.740)], "BUFFERED BIKE LANE"),
-    ("LAKEFRONT TRAIL", [(41.750, -87.560), (41.850, -87.610), (41.980, -87.655)], "OFF-STREET TRAIL"),
     ("KINZIE ST", [(41.889, -87.640), (41.889, -87.680)], "PROTECTED BIKE LANE"),
     ("55TH ST", [(41.795, -87.580), (41.795, -87.680)], "BUFFERED BIKE LANE"),
     ("AUGUSTA BLVD", [(41.899, -87.660), (41.899, -87.740)], "NEIGHBORHOOD GREENWAY"),
@@ -353,6 +352,20 @@ def build_hearings():
     }
 
 
+# Two named off-street trails in the Overpass `out geom` shape (way elements with
+# inline {lat, lon} geometry + tags.name). Lakefront moved here from CORRIDORS so
+# the bike_routes fixture matches the real on-street-only CDOT layer.
+def build_osm_trails_raw():
+    def way(name, pts):
+        return {"type": "way", "id": abs(hash(name)) % 100000,
+                "tags": {"name": name, "highway": "cycleway"},
+                "geometry": [{"lat": la, "lon": lo} for la, lo in pts]}
+    return {"elements": [
+        way("Lakefront Trail", [(41.750, -87.560), (41.850, -87.610), (41.980, -87.655)]),
+        way("North Branch Trail", [(41.980, -87.700), (42.060, -87.760), (42.150, -87.785)]),
+    ]}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seed", type=int, default=42)
@@ -369,6 +382,7 @@ def main():
     councilmatic_records = build_councilmatic_records(rng)
     menu_spending = build_menu_spending(rng)
     hearings = build_hearings()
+    osm_trails = build_osm_trails_raw()
 
     write_json(RAW_DIR / "bike_routes.geojson", routes)
     write_json(RAW_DIR / "wards.geojson", wards)
@@ -382,6 +396,7 @@ def main():
     write_json(RAW_DIR / "councilmatic_records.json", councilmatic_records)
     write_json(RAW_DIR / "menu_spending.json", menu_spending)
     write_json(RAW_DIR / "hearings.json", hearings)
+    write_json(RAW_DIR / "osm_trails.json", osm_trails)
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
     write_fixture_snapshots()
 

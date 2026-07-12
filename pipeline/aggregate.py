@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
 import geopandas as gpd
-from shapely.geometry import Point, shape
+from shapely.geometry import Point, shape, LineString, MultiLineString
 
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
@@ -337,6 +337,65 @@ def build_mellow(raw_gj):
             "properties": {
                 "segment_id": f"mellow-{route_type}",
                 "route_type": route_type,
+                "length_m": round(float(length), 1),
+                "data_tier": "crowdsourced",
+            },
+        })
+    return {"type": "FeatureCollection", "features": feats}
+
+
+def _slug(name):
+    """Lowercase, non-alphanumeric runs -> single hyphen; trimmed. For segment ids."""
+    out = []
+    prev_dash = False
+    for ch in name.strip().lower():
+        if ch.isalnum():
+            out.append(ch)
+            prev_dash = False
+        elif not prev_dash:
+            out.append("-")
+            prev_dash = True
+    return "".join(out).strip("-")
+
+
+def build_osm_trails(raw):
+    """Group Overpass named off-street ways into one feature per trail name.
+
+    Overpass `out geom` returns way elements with an inline `geometry` list of
+    {lat, lon} points and a `tags.name`. Ways sharing a name (a trail is chopped
+    into many OSM ways) collapse into a single MultiLineString feature — one
+    Leaflet layer per trail, not per fragment (same rationale as build_mellow).
+    Tier is crowdsourced; facility_category reuses the pre-wired "trail" styling.
+    """
+    by_name = defaultdict(list)  # name -> list[list[(lon, lat)]]
+    for el in raw.get("elements", []):
+        if el.get("type") != "way":
+            continue
+        name = (el.get("tags") or {}).get("name")
+        geom = el.get("geometry") or []
+        if not name or len(geom) < 2:
+            continue
+        by_name[name].append([(pt["lon"], pt["lat"]) for pt in geom])
+
+    if not by_name:
+        return {"type": "FeatureCollection", "features": []}
+
+    names = sorted(by_name)
+    shapes = []
+    for name in names:
+        parts = by_name[name]  # each part has >=2 coords (filtered above)
+        shapes.append(LineString(parts[0]) if len(parts) == 1 else MultiLineString(parts))
+    lengths = gpd.GeoDataFrame(geometry=shapes, crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+
+    feats = []
+    for name, geom, length in zip(names, shapes, lengths):
+        feats.append({
+            "type": "Feature",
+            "geometry": geom.__geo_interface__,
+            "properties": {
+                "segment_id": f"osm-trail-{_slug(name)}",
+                "name": name,
+                "facility_category": "trail",
                 "length_m": round(float(length), 1),
                 "data_tier": "crowdsourced",
             },
@@ -881,6 +940,15 @@ def main():
             "(pull_mellow.py didn't run, or the source was unreachable). "
             "See CONTRIBUTING.md.")
 
+    osm_trails_raw_path = RAW_DIR / "osm_trails.json"
+    if osm_trails_raw_path.exists():
+        osm_trails_gj = build_osm_trails(json.loads(osm_trails_raw_path.read_text()))
+    else:
+        osm_trails_gj = stub_layer(
+            "OpenStreetMap off-street trails (Lakefront, 312 RiverRun, North Shore "
+            "Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py "
+            "didn't run, or Overpass was unreachable). See CONTRIBUTING.md.")
+
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -900,7 +968,10 @@ def main():
              "records": None, "date_range": None},
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
-             if mellow_gj["features"] else []) + [
+             if mellow_gj["features"] else []) + (
+            [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
+              "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
+             if osm_trails_gj["features"] else []) + [
             {"id": "ward_safety_index", "name": "Ward Safety Index (comparable danger score)",
              "tier": "derived", "records": len(ward_safety_index["wards"]), "date_range": None},
             {"id": "bikeway_mileage_series", "name": "Bikeway Mileage Series (by facility type, over time)",
@@ -936,6 +1007,7 @@ def main():
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
+    write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails_gj)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
     write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)

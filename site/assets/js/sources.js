@@ -22,7 +22,7 @@
       origin: "Chicago Data Portal (Socrata)",
       tier: "real",
       cadence: "weekly + dated snapshots",
-      description: "Current bike facility inventory (protected lanes, buffered lanes, painted lanes, greenways, shared-lane markings, trails). We snapshot the layer on every run to build install history over time.",
+      description: "Current bike facility inventory (protected lanes, buffered lanes, painted lanes, greenways, shared-lane markings). On-street only — off-street trails come from the separate OpenStreetMap trails layer. We snapshot the layer on every run to build install history over time.",
       limitations: "No install-date field — current-state only with no planned/future layer; facility taxonomy mapped to public-facing categories; historical snapshots let us infer installation over time but exact dates are not authoritative.",
       links: [
         { text: "CDOT Bike Routes", url: "https://data.cityofchicago.org/d/hvv9-38ut" }
@@ -104,6 +104,20 @@
         { text: "Source (GitHub)", url: "https://github.com/jeancochrane/mellow-bike-map" }
       ],
       metaId: "mellow_routes"
+    },
+    {
+      id: "osm_trails",
+      name: "OpenStreetMap Off-street Trails",
+      origin: "OpenStreetMap via the Overpass API",
+      tier: "crowdsourced",
+      cadence: "weekly pipeline run, best-effort (public Overpass instance, no uptime SLA)",
+      description: "Named off-street trails — Lakefront Trail, 312 RiverRun, North Shore Channel Trail, North Branch Trail, and peers — that CDOT's on-street Bike Routes layer structurally omits. Pulled as named off-street ways and grouped into one feature per trail.",
+      limitations: "Community-edited, so completeness and naming vary by contributor. No install dates. Geometry intentionally extends beyond the city line where a trail continues into the forest preserves. Road-parallel cycle tracks (is_sidepath) are excluded to avoid duplicating CDOT segments. Falls back to a stub if Overpass is unreachable during a run.",
+      links: [
+        { text: "OpenStreetMap", url: "https://www.openstreetmap.org" },
+        { text: "Overpass API", url: "https://overpass-api.de" }
+      ],
+      metaId: "osm_trails"
     },
     {
       id: "ward_safety_index",

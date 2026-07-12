@@ -130,6 +130,28 @@ No `street` name — the source API doesn't label individual segments. If the
 pull didn't run or the source was unreachable, this file falls back to the
 stub shape above with `properties.note` explaining why.
 
+## osm_trails.geojson — tier crowdsourced (falls back to stub)
+LineString/MultiLineString FeatureCollection of named off-street trails, pulled
+from the OpenStreetMap Overpass API by `pull_osm_trails.py`/`aggregate.py`. CDOT's
+`bike_routes.geojson` is on-street only, so these trails (Lakefront, 312 RiverRun,
+North Shore Channel, North Branch, etc.) come from OSM instead. OSM ways sharing a
+`name` are grouped into one feature (a MultiLineString when the trail spans several
+ways). Properties:
+
+| key | type | notes |
+|---|---|---|
+| segment_id | string | `osm-trail-<slug>`, e.g. `osm-trail-lakefront-trail` |
+| name | string | trail name from OSM `tags.name` |
+| facility_category | "trail" | reuses the shared facility styling |
+| length_m | float | total length across all parts |
+| data_tier | "crowdsourced" | |
+
+The query pulls only named off-street ways (`highway=cycleway`, or
+`path`/`footway` with `bicycle=designated`) and excludes `is_sidepath=yes` to drop
+road-parallel cycle tracks that duplicate CDOT on-street segments. If the pull
+didn't run or Overpass was unreachable, this file falls back to the stub shape
+(`properties.status = "no_data_yet"`).
+
 ## aldermen.json
 `{ note, lookup_url, wards: [{ ward, alderman: null, email: null }] }` —
 static, hand-maintained; see DECISIONS.md #8.
