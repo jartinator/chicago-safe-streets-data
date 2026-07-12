@@ -16,6 +16,7 @@
   // orientation points only once you're zoomed to street level. Corridor
   // labels for the demoted local network share the orientation threshold.
   const NODE_INTERCHANGE_MIN_ZOOM = 11;
+  const LINE_LABEL_MIN_ZOOM = 11; // street-line labels collide at citywide zoom; trails stay labeled
   const LABEL_MIN_ZOOM = 13;
 
   // Explicit panes (not DOM insertion order) so z-order is stable no matter
@@ -43,7 +44,8 @@
     nodesInterchange: L.layerGroup(), // interchange nodes, toggle "nodes" + z >= 11
     nodesOrientation: L.layerGroup(), // orientation nodes, toggle "nodes" + z >= 13
     labels: L.layerGroup(),        // corridor labels for local streets, z >= 13
-    lineLabels: L.layerGroup(),    // major-route line-name labels, always on
+    lineLabelsTrails: L.layerGroup(),  // trail-line name labels: peripheral, shown at all zooms
+    lineLabelsStreets: L.layerGroup(), // street-line name labels: central and collision-prone, z >= LINE_LABEL_MIN_ZOOM
     planned: L.layerGroup(),
     plannedCasing: L.layerGroup(),
   };
@@ -200,7 +202,10 @@
     const tooltip = L.tooltip({ permanent: true, direction: "center", className: "line-label" })
       .setLatLng(labelAnchor(members))
       .setContent(`<span style="color:${color}">${BSD.esc(lineMeta.name)}</span>`);
-    layers.lineLabels.addLayer(tooltip);
+    // Trail labels sit at the city's edges and read fine citywide; the street
+    // lines cluster downtown and their labels pile up below LINE_LABEL_MIN_ZOOM.
+    if (lineMeta.source === "osm_trails") layers.lineLabelsTrails.addLayer(tooltip);
+    else layers.lineLabelsStreets.addLayer(tooltip);
   });
 
   // Corridor labels for the local network: one permanent tooltip per street,
@@ -226,7 +231,9 @@
     mellowData.features.forEach((feature) => {
       const line = L.polyline(
         BSDNet.toLatLngs(feature.geometry),
-        { color: "#ec4899", weight: 2, opacity: 0.6, renderer: mellowRenderer, pane: "mellowPane" }
+        // Kept faint (w1.5 op0.4) so the citywide view reads major-routes-first;
+        // mellow is background texture, not a competing network.
+        { color: "#ec4899", weight: 1.5, opacity: 0.4, renderer: mellowRenderer, pane: "mellowPane" }
       );
       layers.mellow.addLayer(line);
     });
@@ -291,7 +298,8 @@
   // labels on top). Toggleable overlays are mounted below from `state.overlays`.
   layers.casing.addTo(map);
   layers.lines.addTo(map);
-  layers.lineLabels.addTo(map);
+  layers.lineLabelsTrails.addTo(map);
+  // lineLabelsStreets mounts via updateDeclutter() once zoomed past LINE_LABEL_MIN_ZOOM.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
   if (state.overlays.has("connecting")) {
     layers.local.addTo(map);
@@ -313,6 +321,11 @@
   // demoted local network's corridor labels wait for LABEL_MIN_ZOOM.
   function updateDeclutter() {
     const z = map.getZoom();
+    if (z >= LINE_LABEL_MIN_ZOOM) {
+      if (!map.hasLayer(layers.lineLabelsStreets)) layers.lineLabelsStreets.addTo(map);
+    } else if (map.hasLayer(layers.lineLabelsStreets)) {
+      map.removeLayer(layers.lineLabelsStreets);
+    }
     if (nodesEnabled && z >= NODE_INTERCHANGE_MIN_ZOOM) {
       if (!map.hasLayer(layers.nodesInterchange)) layers.nodesInterchange.addTo(map);
     } else if (map.hasLayer(layers.nodesInterchange)) {
@@ -385,11 +398,20 @@
   function legendRow(line) {
     const color = BSDNet.LINE_COLORS[line.id] || BSDNet.FALLBACK_LINE_COLOR;
     const tier = line.no_data ? "stub" : line.data_tier;
+    // Name row and termini row are separate lines: with the tier badge in the
+    // flex row there isn't enough width left for "name — termini" without
+    // one-word-per-line wrapping in the 300px panel.
+    const termini = line.termini
+      ? `<div style="margin-left: calc(22px + 0.5rem); color: #64748b; font-size: 0.92em;">${BSD.esc(line.termini)}</div>`
+      : "";
     return `
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.85em;">
-        <div style="width: 22px; height: 4px; border-radius: 2px; background: ${color}; flex: none;"></div>
-        <span style="flex: 1;">${BSD.esc(line.name)}${line.termini ? ` — ${BSD.esc(line.termini)}` : ""}</span>
-        ${BSD.badgeHTML(tier)}
+      <div style="margin-bottom: 0.45rem; font-size: 0.85em;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 22px; height: 4px; border-radius: 2px; background: ${color}; flex: none;"></div>
+          <span style="flex: 1; min-width: 0;">${BSD.esc(line.name)}</span>
+          ${BSD.badgeHTML(tier)}
+        </div>
+        ${termini}
       </div>
     `;
   }
@@ -437,7 +459,7 @@
         </div>
       </div>
 
-      <div class="legend-swatch">
+      <div class="line-legend">
         ${legendGroupHTML("Trails", trailLines)}
         ${legendGroupHTML("Street lines", streetLines)}
       </div>
