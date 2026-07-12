@@ -255,6 +255,42 @@ def build_council_records(rng, n=20):
             "records": records}
 
 
+def build_councilmatic_records(rng, n=8):
+    """Synthetic post-2023 council records mirroring pull_councilmatic's output,
+    so `run_all.py --fixtures` exercises the two-source merge and the
+    recorded_votes path offline."""
+    records = []
+    for i in range(n):
+        is_safety = rng.random() < 0.7
+        title = rng.choice(SAFETY_TITLES if is_safety else NON_SAFETY_TITLES)
+        sponsors = rng.sample(FIXTURE_SPONSORS, k=rng.randrange(1, 3))
+        d = rand_date(rng, datetime(2023, 7, 1), datetime(2026, 6, 1))
+        ident = f"O2025-{10000 + i}"
+        records.append({
+            "matter_id": ident,
+            "title": title,
+            "type": rng.choice(["ordinance", "resolution", "order"]),
+            "status": rng.choice(["Passed", "Introduced", "Referred"]),
+            "intro_date": d.strftime("%Y-%m-%dT%H:%M:%S"),
+            "body": None,
+            "sponsors": sponsors,
+            "url": f"https://chicago.councilmatic.org/legislation/{ident}/",
+            "source": "councilmatic",
+        })
+    # One record carries a contested split so the merge + accountability paths run.
+    records[0]["recorded_votes"] = {
+        "date": "2026-03-18", "yes": 30, "no": 18, "absent": 2,
+        "no_voters": rng.sample(FIXTURE_SPONSORS, k=3), "result": "pass",
+    }
+    return {
+        "source": "councilmatic",
+        "covers_from": "2023-06-21",
+        "latest_action_date": max(r["intro_date"] for r in records)[:10],
+        "keywords": ["bike", "traffic safety"],
+        "records": records,
+    }
+
+
 def build_menu_spending(rng, n=60):
     categories = ["Street Resurfacing", "Bike Lane Striping", "Traffic Calming",
                   "Sidewalk Repair", "Lighting"]
@@ -299,6 +335,7 @@ def main():
     cameras = build_cameras(rng)
     ward_demographics = build_ward_demographics(rng)
     council_records = build_council_records(rng)
+    councilmatic_records = build_councilmatic_records(rng)
     menu_spending = build_menu_spending(rng)
     hearings = build_hearings()
 
@@ -311,14 +348,17 @@ def main():
     write_json(RAW_DIR / "cameras.json", cameras)
     write_json(RAW_DIR / "ward_demographics.json", ward_demographics)
     write_json(RAW_DIR / "council_records.json", council_records)
+    write_json(RAW_DIR / "councilmatic_records.json", councilmatic_records)
     write_json(RAW_DIR / "menu_spending.json", menu_spending)
     write_json(RAW_DIR / "hearings.json", hearings)
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
 
     print(f"fixtures: {len(routes['features'])} route segments, {len(wards['features'])} wards, "
           f"{len(crashes)} crashes, {len(sr311)} 311 rows, {len(cameras)} cameras, "
-          f"{len(ward_demographics)} ward-pop rows, {len(council_records['records'])} "
-          f"council records (seed={args.seed})")
+          f"{len(ward_demographics)} ward-pop rows, "
+          f"{len(council_records['records'])} legistar + "
+          f"{len(councilmatic_records['records'])} councilmatic council rows, "
+          f"(seed={args.seed})")
 
 
 if __name__ == "__main__":
