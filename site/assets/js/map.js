@@ -21,6 +21,7 @@
     dooring: B.qs().get("dooring") === "1",
     ward: B.qs().get("ward") || "",
     corridor: B.qs().get("corridor") || "",
+    shade: B.qs().get("shade") || "density",
   };
 
   const LAYERS = [
@@ -46,10 +47,23 @@
     B.loadJSON("data/corridors.json"),
     B.loadJSON("data/intersections.json"),
     B.loadJSON("data/aldermen.json").catch(() => ({ wards: [] })),
-  ]).then(([crashes, obstructions, routes, planned, cameras, wards, corridors, intersections, aldermen]) => {
+    B.loadJSON("data/ward_safety_index.json").catch(() => ({ wards: [] })),
+    B.loadJSON("data/menu_spending.json").catch(() => ({ wards: {} })),
+  ]).then(([crashes, obstructions, routes, planned, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
     Object.assign(data, { crashes, obstructions, routes, planned, cameras, wards, corridors, intersections });
     data.aldermanByWard = {};
     (aldermen.wards || []).forEach(w => { data.aldermanByWard[w.ward] = w; });
+    // safetyByWard/safetyRank: rank is 1-based array order since the file is
+    // sorted by comparable_danger_score desc.
+    data.safetyByWard = {};
+    data.safetyRank = {};
+    (safety.wards || []).forEach((w, i) => {
+      data.safetyByWard[String(w.ward)] = w;
+      data.safetyRank[String(w.ward)] = i + 1;
+    });
+    data.safetyCount = (safety.wards || []).length;
+    data.safetyNote = safety.note || "";
+    data.menuByWard = menu.wards || {};
     buildLayers();
     renderSide();
     syncLayers();
@@ -107,13 +121,37 @@
         color: "#b45309", weight: 1.5, fillOpacity: 0.25,
       }).on("click", () => showCamera(c))));
 
-    groups.wards = L.layerGroup(data.wards.features.map(f => {
+    groups.wards = buildWardsGroup();
+  }
+
+  // Ward fill depends on state.shade: "density" (real, current default) uses
+  // the wards.geojson density_band; "danger" (derived) uses the comparable
+  // danger score from ward_safety_index.json, null-safe via B.scoreColor.
+  function wardFill(p) {
+    if (state.shade === "danger") {
+      const s = data.safetyByWard[String(p.ward)];
+      const score = s ? s.comparable_danger_score : null;
+      return { fillColor: B.scoreColor(score), fillOpacity: 0.35 };
+    }
+    const fill = { low: "#e2e8f0", medium: "#f8c471", high: "#e26855" }[p.density_band] || "#e2e8f0";
+    return { fillColor: fill, fillOpacity: 0.18 };
+  }
+
+  function buildWardsGroup() {
+    return L.layerGroup(data.wards.features.map(f => {
       const p = f.properties;
-      const fill = { low: "#e2e8f0", medium: "#f8c471", high: "#e26855" }[p.density_band] || "#e2e8f0";
+      const { fillColor, fillOpacity } = wardFill(p);
       return L.geoJSON(f, {
-        style: { color: "#475569", weight: 1, fillColor: fill, fillOpacity: 0.18 },
+        style: { color: "#475569", weight: 1, fillColor, fillOpacity },
       }).on("click", () => showWard(p.ward, true));
     }));
+  }
+
+  function rebuildWards() {
+    const had = map.hasLayer(groups.wards);
+    if (had) map.removeLayer(groups.wards);
+    groups.wards = buildWardsGroup();
+    if (had) groups.wards.addTo(map);
   }
 
   function rebuildCrashes() {
@@ -139,6 +177,7 @@
     B.setParams({
       layers: [...state.layers].join(","), sev: state.sev, from: state.from,
       to: state.to, dooring: state.dooring, ward: state.ward, corridor: state.corridor,
+      shade: state.shade,
     });
   }
 
@@ -154,10 +193,28 @@
     const legend = Object.entries(B.FACILITY_COLORS).map(([k, c]) =>
       `<span style="white-space:nowrap"><span class="legend-swatch" style="background:${c}"></span> ${B.FACILITY_LABELS[k]}</span>`
     ).join(" &nbsp; ");
+    const shadeLegend = state.shade === "danger" ? `
+      <div class="muted" style="margin:0.4rem 0" title="${B.esc(data.safetyNote || "")}">
+        <strong>Danger score ${B.badgeHTML("derived")}</strong><br>
+        ${[[B.scoreColor(85), "80+"], [B.scoreColor(65), "60+"], [B.scoreColor(45), "40+"],
+           [B.scoreColor(25), "20+"], [B.scoreColor(null), "<20 / no data"]].map(([c, label]) =>
+          `<span style="white-space:nowrap"><span class="legend-swatch" style="background:${c}"></span> ${B.esc(label)}</span>`
+        ).join(" &nbsp; ")}
+      </div>` : "";
 
     side.innerHTML = `
-      <h2>Layers</h2>
+      <h2>Infrastructure × policy × outcomes</h2>
+      <p class="muted">Where crashes, bike infrastructure, and ward-level policy overlap. Click a ward or corridor to dig in.</p>
       <div class="layer-control">${layerRows}</div>
+      <div class="filter-row">
+        <label style="display:inline-flex;gap:0.3rem;align-items:center">Ward shading:
+          <select id="shade">
+            <option value="density" ${state.shade === "density" ? "selected" : ""}>Crash density (real)</option>
+            <option value="danger" ${state.shade === "danger" ? "selected" : ""}>Danger score (derived)</option>
+          </select>
+        </label>
+      </div>
+      ${shadeLegend}
       <div class="filter-row">
         <select id="sev">${sevOpts}</select>
         <label style="display:inline-flex;gap:0.3rem;align-items:center">
@@ -184,6 +241,12 @@
       renderSide(document.getElementById("detail").innerHTML);
       syncLayers();
     }));
+    side.querySelector("#shade").addEventListener("change", e => {
+      state.shade = e.target.value;
+      rebuildWards();
+      syncLayers();
+      renderSide(document.getElementById("detail").innerHTML);
+    });
     side.querySelector("#sev").addEventListener("change", e => { state.sev = e.target.value; rebuildCrashes(); syncLayers(); });
     side.querySelector("#dooring").addEventListener("change", e => { state.dooring = e.target.checked; rebuildCrashes(); syncLayers(); });
     side.querySelector("#from").addEventListener("change", e => { state.from = e.target.value; rebuildCrashes(); syncLayers(); });
@@ -236,6 +299,20 @@
     });
     const top = Object.entries(streets).sort((a, z) => z[1].crashes - a[1].crashes).slice(0, 6);
     const ald = data.aldermanByWard[String(w)] || {};
+
+    // Ward accountability rows: danger score/rank, crash trend, bikeway
+    // miles, menu spending — all sourced from ward_safety_index.json and
+    // menu_spending.json, both of which are allowed to fail to load or omit
+    // this ward, so every field below is null-safe.
+    const s = data.safetyByWard[String(w)];
+    const rank = s ? data.safetyRank[String(w)] : null;
+    const score = s ? s.comparable_danger_score : null;
+    const scoreRow = score == null ? "—" : `${score} / 100 — rank ${rank} of ${data.safetyCount} wards`;
+    const trendRow = s && s.crash_trend ? B.trendHTML(s.crash_trend) : "—";
+    const bikewayMilesRow = s && s.bikeway_miles != null ? B.esc(String(s.bikeway_miles)) : "—";
+    const m = data.menuByWard[String(w)];
+    const menuRow = m ? `${B.money(m.bike_safety_spent)} of ${B.money(m.total_spent)}` : "no data this run";
+
     setDetail(`
       <h3>Ward ${B.esc(w)} ${B.badgeHTML("real")}</h3>
       <dl>
@@ -243,12 +320,19 @@
         <dt>Injury crashes / fatal</dt><dd>${B.fmt(p.injuries)} / ${B.fmt(p.fatalities)}</dd>
         <dt>311 bike complaints ${B.badgeHTML("proxy")}</dt><dd>${B.fmt(p.complaints_311)}</dd>
         <dt>Alderman</dt><dd>${B.esc(ald.alderman || "—")} — <a href="${B.LINKS.aldermanLookup}" target="_blank" rel="noopener">official lookup</a></dd>
+        <dt>Danger score ${B.badgeHTML("derived")}</dt>
+        <dd>${scoreRow}</dd>
+        <dt>Crash trend ${B.badgeHTML("derived")}</dt>
+        <dd>${trendRow}</dd>
+        <dt>Bikeway miles</dt><dd>${bikewayMilesRow}</dd>
+        <dt>Menu $ on bike safety ${B.badgeHTML("proxy")}</dt>
+        <dd>${menuRow}</dd>
       </dl>
       <h4 style="margin:0.5rem 0 0.2rem">Corridors in view</h4>
       ${top.map(([s, v]) => `<div><a href="#" data-corridor="${B.esc(s)}">${B.esc(s)}</a>
         <span class="muted">${B.fmt(v.crashes)} crashes near ${(v.length / 1000).toFixed(1)} km</span></div>`).join("") || '<p class="muted">No bikeways intersect this ward.</p>'}
       <p style="margin-top:0.6rem"><a class="btn" href="table.html?ward=${encodeURIComponent(w)}">Ward data table</a>
-      <a class="btn" href="action.html?ward=${encodeURIComponent(w)}">Take action</a></p>`);
+      <a class="btn primary" href="action.html?ward=${encodeURIComponent(w)}">Ward report &amp; take action</a></p>`);
     document.querySelectorAll("[data-corridor]").forEach(a =>
       a.addEventListener("click", e => { e.preventDefault(); showCorridor(a.dataset.corridor, true); }));
     syncLayers();
@@ -274,7 +358,8 @@
       </dl>
       <h4 style="margin:0.5rem 0 0.2rem">Crash hotspots on corridor</h4>
       ${spots.map(s => `<div><a href="#" data-spot="${s.lat},${s.lng}">${B.esc(s.label)}</a> <span class="muted">${s.crashes} crashes</span></div>`).join("") || '<p class="muted">No clustered hotspots here.</p>'}
-      ${B.noticeHTML("normalization")}`);
+      ${B.noticeHTML("normalization")}
+      <p><a class="btn" href="network.html?corridor=${encodeURIComponent(street)}">Plan a route here →</a></p>`);
     document.querySelectorAll("[data-spot]").forEach(a => a.addEventListener("click", e => {
       e.preventDefault();
       const [lat, lng] = a.dataset.spot.split(",").map(Number);
