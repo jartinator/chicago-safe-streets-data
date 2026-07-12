@@ -1,10 +1,11 @@
 """Offline refresh of the committed reporting data — no live pull required.
 
-Recomputes findings.json, citywide_trend.json, and the windows/monthly fields in
-ward_safety_index.json from data ALREADY COMMITTED under site/data/ (the last
-socrata pull), using the exact same crash_metrics functions as aggregate.py, so
-the published numbers can ship without a multi-hour live run and without logic
-drift. The weekly `python run_all.py` remains the canonical path.
+Recomputes findings.json, citywide_trend.json, the windows/monthly fields in
+ward_safety_index.json, and main_routes.geojson from data ALREADY COMMITTED
+under site/data/ (the last socrata pull), using the exact same crash_metrics /
+aggregate.build_main_routes functions as the live path, so the published
+numbers can ship without a multi-hour live run and without logic drift. The
+weekly `python run_all.py` remains the canonical path.
 
 Provenance guard: refuses to run when meta.json's provenance is not "socrata" —
 fixture/synthetic data must never be re-stamped as reporting truth (see the
@@ -21,6 +22,7 @@ Usage: python refresh_reporting.py
 import argparse
 import json
 
+from aggregate import build_main_routes, load_main_routes_roster
 from config import SITE_DATA_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -120,9 +122,18 @@ def main():
         rec["monthly"] = ward_monthly.get(w) or monthly_counts([], start_month, end_month)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", wsi)
 
-    # meta.json: stamp the (possibly newer) contract version and register the new
-    # citywide_trend source if this meta predates it. generated_at stays — it
-    # describes the underlying pull, which this script does not redo.
+    # Main routes: rebuild the curated-line layer from the committed CDOT segments
+    # + committed OSM trails + checked-in roster, via the exact same
+    # build_main_routes the live aggregate path calls (no logic drift possible).
+    main_routes = build_main_routes(_load("bike_routes.geojson"),
+                                    _load("osm_trails.geojson"),
+                                    load_main_routes_roster())
+    write_json(SITE_DATA_DIR / "main_routes.geojson", main_routes)
+
+    # meta.json: stamp the (possibly newer) contract version and register the
+    # citywide_trend / main_routes sources if this meta predates them.
+    # generated_at stays — it describes the underlying pull, which this script
+    # does not redo.
     meta["contract_version"] = CONTRACT_VERSION
     if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
         entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
@@ -131,6 +142,16 @@ def main():
         ids = [s.get("id") for s in meta["sources"]]
         pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
         meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
+    mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
+                "tier": "derived", "records": len(main_routes["lines"]),
+                "date_range": None}
+    ids = [s.get("id") for s in meta["sources"]]
+    if "main_routes" in ids:
+        meta["sources"][ids.index("main_routes")] = mr_entry
+    else:
+        # aggregate.py places main_routes just before citywide_trend
+        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
+        meta["sources"].insert(pos, mr_entry)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")
@@ -138,6 +159,13 @@ def main():
     print(f"  citywide_trend: {len(months)} months; ward_safety_index: "
           f"{len(wsi['wards'])} wards got windows+monthly; "
           f"contract_version={CONTRACT_VERSION}")
+    print(f"  main_routes: {len(main_routes['features'])} member segments across "
+          f"{len(main_routes['lines'])} lines:")
+    for ln in main_routes["lines"]:
+        pct = ln.get("pct_protected")
+        pct_s = f"{pct:5.1f}% protected" if pct is not None else " " * 16
+        flag_s = "  NO DATA" if ln.get("no_data") else ""
+        print(f"    {ln['id']:<20} {ln['miles_total']:6.2f} mi  {pct_s}{flag_s}")
 
 
 if __name__ == "__main__":
