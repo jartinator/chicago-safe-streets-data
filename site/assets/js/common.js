@@ -117,9 +117,10 @@
     const color = trend.direction === "worsening" ? "var(--sev-incap)"
       : trend.direction === "improving" ? "var(--accent)"
       : "var(--ink-soft)";
-    const pctAbs = Math.abs(trend.pct_change);
-    const pctStr = pctAbs % 1 === 0 ? pctAbs.toFixed(0) : pctAbs.toFixed(1);
-    const text = `${arrow} ${label} (+${pctStr}% vs prior 12 mo)`;
+    const pct = trend.pct_change;
+    const pctStr = pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1);
+    const sign = pct > 0 ? "+" : "";
+    const text = `${arrow} ${label} (${sign}${pctStr}% vs prior 12 mo)`;
     return `<span style="color: ${color}">${esc(text)}</span>`;
   }
 
