@@ -66,6 +66,76 @@ def _load(name):
     return json.loads((SITE_DATA_DIR / name).read_text())
 
 
+def upsert_meta_sources(meta, months, anchor, osm_trails, main_routes, network_nodes):
+    """Register/update the citywide_trend, main_routes, osm_trails, and
+    network_nodes source entries in meta["sources"] in place, matching
+    aggregate.py's final ordering exactly: ... mellow_routes, osm_trails,
+    main_routes, network_nodes, citywide_trend, ward_safety_index, ...
+
+    The order these four blocks RUN in matters, not just each entry's target
+    position, because later blocks anchor on ids inserted by earlier ones:
+
+    1. citywide_trend anchors on "ward_safety_index" (or list end).
+    2. main_routes anchors on "citywide_trend" (now present from step 1), so it
+       always lands immediately before it.
+    3. osm_trails anchors on "main_routes" (now present from step 2), so it
+       always lands immediately before it — even on a legacy meta.json that has
+       neither id yet. (Anchoring osm_trails on "main_routes" before main_routes
+       has been upserted — the original bug — left osm_trails stranded at the
+       end of the list on such a meta.json, drifting from aggregate.py's order.)
+    4. network_nodes anchors on "citywide_trend" (still present), landing
+       immediately after main_routes (since main_routes was inserted just
+       before citywide_trend in step 2).
+    """
+    if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
+        entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
+                 "tier": "real", "records": len(months),
+                 "date_range": [CRASH_START_DATE, anchor]}
+        ids = [s.get("id") for s in meta["sources"]]
+        pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
+        meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
+
+    # main_routes upsert runs BEFORE the osm_trails block below, so that block's
+    # "insert just before main_routes" anchor always has a main_routes entry to
+    # anchor on, even starting from a legacy meta.json with neither id.
+    mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
+                "tier": "derived", "records": len(main_routes["lines"]),
+                "date_range": None}
+    ids = [s.get("id") for s in meta["sources"]]
+    if "main_routes" in ids:
+        meta["sources"][ids.index("main_routes")] = mr_entry
+    else:
+        # aggregate.py places main_routes just before citywide_trend
+        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
+        meta["sources"].insert(pos, mr_entry)
+
+    # osm_trails: register/update the source entry only when the layer actually
+    # has features (mirrors aggregate.py's conditional inclusion — an empty stub
+    # never gets a source entry).
+    if osm_trails["features"]:
+        osm_entry = {"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
+                     "tier": "crowdsourced", "records": len(osm_trails["features"]),
+                     "date_range": None}
+        ids = [s.get("id") for s in meta["sources"]]
+        if "osm_trails" in ids:
+            meta["sources"][ids.index("osm_trails")] = osm_entry
+        else:
+            # aggregate.py places osm_trails just before main_routes
+            pos = ids.index("main_routes") if "main_routes" in ids else len(ids)
+            meta["sources"].insert(pos, osm_entry)
+
+    nn_entry = {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
+                "tier": "derived", "records": len(network_nodes["nodes"]),
+                "date_range": None}
+    ids = [s.get("id") for s in meta["sources"]]
+    if "network_nodes" in ids:
+        meta["sources"][ids.index("network_nodes")] = nn_entry
+    else:
+        # aggregate.py places network_nodes just after main_routes, before citywide_trend
+        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
+        meta["sources"].insert(pos, nn_entry)
+
+
 def main():
     argparse.ArgumentParser(
         description="Recompute committed reporting JSON from the last socrata pull."
@@ -145,53 +215,12 @@ def main():
     write_json(SITE_DATA_DIR / "network_nodes.json", network_nodes)
 
     # meta.json: stamp the (possibly newer) contract version and register the
-    # citywide_trend / main_routes sources if this meta predates them.
+    # citywide_trend / osm_trails / main_routes / network_nodes sources if this
+    # meta predates them (see upsert_meta_sources for the ordering rationale).
     # generated_at stays — it describes the underlying pull, which this script
     # does not redo.
     meta["contract_version"] = CONTRACT_VERSION
-    if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
-        entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
-                 "tier": "real", "records": len(months),
-                 "date_range": [CRASH_START_DATE, anchor]}
-        ids = [s.get("id") for s in meta["sources"]]
-        pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
-        meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
-    # osm_trails: register/update the source entry only when the layer actually
-    # has features (mirrors aggregate.py's conditional inclusion — an empty stub
-    # never gets a source entry).
-    if osm_trails["features"]:
-        osm_entry = {"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
-                     "tier": "crowdsourced", "records": len(osm_trails["features"]),
-                     "date_range": None}
-        ids = [s.get("id") for s in meta["sources"]]
-        if "osm_trails" in ids:
-            meta["sources"][ids.index("osm_trails")] = osm_entry
-        else:
-            # aggregate.py places osm_trails just before main_routes
-            pos = ids.index("main_routes") if "main_routes" in ids else len(ids)
-            meta["sources"].insert(pos, osm_entry)
-
-    mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
-                "tier": "derived", "records": len(main_routes["lines"]),
-                "date_range": None}
-    ids = [s.get("id") for s in meta["sources"]]
-    if "main_routes" in ids:
-        meta["sources"][ids.index("main_routes")] = mr_entry
-    else:
-        # aggregate.py places main_routes just before citywide_trend
-        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
-        meta["sources"].insert(pos, mr_entry)
-
-    nn_entry = {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
-                "tier": "derived", "records": len(network_nodes["nodes"]),
-                "date_range": None}
-    ids = [s.get("id") for s in meta["sources"]]
-    if "network_nodes" in ids:
-        meta["sources"][ids.index("network_nodes")] = nn_entry
-    else:
-        # aggregate.py places network_nodes just after main_routes, before citywide_trend
-        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
-        meta["sources"].insert(pos, nn_entry)
+    upsert_meta_sources(meta, months, anchor, osm_trails, main_routes, network_nodes)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")

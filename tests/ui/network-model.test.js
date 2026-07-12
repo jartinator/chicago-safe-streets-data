@@ -27,24 +27,6 @@ const grouped2 = N.groupByCorridor([
 assert.strictEqual(grouped2.size, 1, "groupByCorridor: empty string and null share (unnamed) bucket");
 assert.strictEqual(grouped2.get("(unnamed)").length, 2, "groupByCorridor: both features bucketed");
 
-// ---- countObstructions ----
-const routeFeatures = [
-  {
-    properties: { segment_id: "A" },
-    geometry: {
-      type: "LineString",
-      coordinates: [[-87.65, 41.90], [-87.64, 41.91]],
-    },
-  },
-];
-const obstructionPoints = [
-  { geometry: { coordinates: [-87.645, 41.905] } }, // inside bbox
-  { geometry: { coordinates: [-87.6445, 41.906] } }, // inside bbox
-  { geometry: { coordinates: [-87.9, 42.5] } }, // far outside bbox
-];
-const counts = N.countObstructions(routeFeatures, obstructionPoints);
-assert.strictEqual(counts.get("A"), 2, "countObstructions: 2 of 3 points inside bbox");
-
 // ---- toLatLngs ----
 const multiLine = {
   type: "MultiLineString",

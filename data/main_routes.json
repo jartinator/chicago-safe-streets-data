@@ -83,7 +83,7 @@
       "name": "King Drive Line",
       "termini": "Bronzeville ⇄ Chatham",
       "source": "bike_routes",
-      "streets": ["MARTIN LUTHER KING JR"]
+      "streets": ["MARTIN LUTHER KING JR", "DR MARTIN LUTHER KING JR"]
     },
     {
       "id": "lawrence",

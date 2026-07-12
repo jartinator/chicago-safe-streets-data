@@ -51,18 +51,6 @@
            lng >= bbox[0][1] && lng <= bbox[1][1];
   }
 
-  // Count obstructions falling within each route segment's padded bbox.
-  // Returns Map<segment_id, count>.
-  function countObstructions(routeFeatures, obstructionPoints) {
-    const counts = new Map();
-    routeFeatures.forEach((feature) => {
-      const bbox = getPaddedBBox(feature.geometry);
-      const count = obstructionPoints.filter((p) => pointInBBox(p, bbox)).length;
-      counts.set(feature.properties.segment_id, count);
-    });
-    return counts;
-  }
-
   // Group route features by corridor (street name). A missing/empty street
   // is bucketed under "(unnamed)". Returns Map<street, feature[]>.
   function groupByCorridor(routeFeatures) {
@@ -227,7 +215,7 @@
 
   const api = {
     flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
-    countObstructions, groupByCorridor,
+    groupByCorridor,
     DEFAULT_OVERLAYS, parseOverlays, serializeOverlays,
     GRADE_COLORS, LOCAL_STYLE, CONNECTING_TRAIL_STYLE,
     LINE_COLORS, FALLBACK_LINE_COLOR, lineStyle, qualityCasingStyle,

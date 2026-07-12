@@ -149,12 +149,26 @@
       origin: "Computed from CDOT Bike Routes + OSM trails roster",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "The ~18 marquee corridors drawn heavy on the map. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland) whose color varies along its length by facility grade (off-street / protected / painted / none). The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
+      description: "21 marquee corridors (16 street lines + 5 trail lines) drawn heavy on the map. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland) whose color varies along its length by facility grade (off-street / protected / painted / none). The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
       limitations: "the roster is editorial: we chose which corridors count as main routes; segment grades and mileage are computed from source data each run. Gaps in a corridor stay holes in the line — geometry is never fabricated. Street lines are derived from CDOT data; trail lines are crowdsourced OSM data; the two never blend.",
       links: [
         { text: "Roster config (data/main_routes.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/main_routes.json" }
       ],
       metaId: "main_routes"
+    },
+    {
+      id: "network_nodes",
+      name: "Network nodes (interchanges + orientation points)",
+      short: "Network nodes",
+      origin: "Computed from Main Routes geometry + a curated orientation-points list",
+      tier: "derived",
+      cadence: "weekly pipeline run",
+      description: "Derived interchange nodes computed from geometric intersections between main-route lines (merged within 150 m, only where 2+ lines meet) plus hand-picked orientation points (data/orientation_points.json) for wayfinding on the network map.",
+      limitations: "Interchanges only appear where two or more main-route lines actually cross in main_routes.geojson's geometry — a real-world crossing that isn't on the roster produces no node. Orientation points are a hand-picked list, not derived from any line's geometry, so their coverage is only as complete as that list.",
+      links: [
+        { text: "Orientation points config (data/orientation_points.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/orientation_points.json" }
+      ],
+      metaId: "network_nodes"
     },
     {
       id: "ward_safety_index",

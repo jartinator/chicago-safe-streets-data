@@ -158,6 +158,15 @@ features share this shape):
 | length_m | float | total length across all parts, always pipeline-computed (never trusted from the source) |
 | data_tier | "crowdsourced" | |
 
+The top-level envelope is uniform across tiers 1 and 2 — both
+`build_osm_trails()` and `build_curated_trails()` stamp `data_tier: "crowdsourced"`
+on the FeatureCollection itself (not just per-feature), so a consumer can read
+the layer's tier without inspecting individual features. Only `note` (the
+curated fallback's provenance/approximation caveat) is tier-2-specific; tier 1
+carries no top-level `note`. Tier 3 (the empty stub) uses `stub_layer()`'s
+different shape (`properties.status`/`properties.note`, no top-level
+`data_tier` — see the stub note in `aggregate.py`).
+
 The Overpass query (when it can run) pulls only named off-street ways
 (`highway=cycleway`, or `path`/`footway` with `bicycle=designated`) and excludes
 `is_sidepath=yes` to drop road-parallel cycle tracks that duplicate CDOT on-street
@@ -434,12 +443,12 @@ is a stub (no live Overpass pull yet), trail lines appear with
   `{ id: "main_routes", name: "Main Routes (curated line roster)", tier: "derived",
   records: <line count>, date_range: null }`.
 
-## Contract v1.8 changes, continued (network map distinction)
+## Contract v1.9 changes (network map distinction)
 
-Shipped under the same `contract_version` (1.8 — `pipeline/config.py`'s
-`CONTRACT_VERSION` was not bumped for this round; `meta.json` on disk still reads
-`"1.8"`). See `docs/superpowers/specs/2026-07-12-network-map-distinction.md` for the
-full design; this section documents what's actually built.
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.9"` for this round — it
+adds a new published file, `site/data/network_nodes.json` (see below). See
+`docs/superpowers/specs/2026-07-12-network-map-distinction.md` for the full design;
+this section documents what's actually built.
 
 ### data/main_routes.json — roster re-cut
 Same checked-in-config contract as the v1.8 section above (format unchanged); the

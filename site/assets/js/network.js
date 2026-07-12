@@ -148,9 +148,9 @@
   });
 
   // Roster OSM trails get the identical major-route treatment. Their stats
-  // stay crowdsourced-tier — the detail panel says so. Trails carry no
-  // explicit grade property from the pipeline (uniformly off-street), so
-  // default to "offstreet" for the quality-border color.
+  // stay crowdsourced-tier — the detail panel says so. The pipeline
+  // (pipeline/aggregate.py) always stamps trail members' grade as
+  // "offstreet"; the `|| "offstreet"` fallback here is purely defensive.
   rosterTrailFeatures.forEach((feature) => {
     drawMajorRoute(
       feature, feature.properties.line_id, feature.properties.grade || "offstreet",
@@ -171,16 +171,25 @@
     layers.local.addLayer(line);
   });
 
-  (osmTrailsData.features || []).forEach((feature) => {
-    // Roster trails are already drawn heavy as major routes above — don't
-    // double-draw them in the connecting-infrastructure layer.
-    if (rosterIndex.has(String(feature.properties.segment_id))) return;
-    const line = L.polyline(BSDNet.toLatLngs(feature.geometry), {
-      pane: "connectingTrailsPane", lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTING_TRAIL_STYLE,
+  if ((osmTrailsData.features || []).length === 0) {
+    // Mirror the mellow-layer stub pattern: no trail data yet, so drop an
+    // invisible marker in the layer (keeps it non-empty for Leaflet) and let
+    // the toggle handler / detail panel show the same no_data_yet notice.
+    const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
+    noDataMarker._trailsStub = true;
+    layers.connectingTrails.addLayer(noDataMarker);
+  } else {
+    osmTrailsData.features.forEach((feature) => {
+      // Roster trails are already drawn heavy as major routes above — don't
+      // double-draw them in the connecting-infrastructure layer.
+      if (rosterIndex.has(String(feature.properties.segment_id))) return;
+      const line = L.polyline(BSDNet.toLatLngs(feature.geometry), {
+        pane: "connectingTrailsPane", lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTING_TRAIL_STYLE,
+      });
+      line.on("click", () => showDetail({ ...feature, _trail: true }));
+      layers.connectingTrails.addLayer(line);
     });
-    line.on("click", () => showDetail({ ...feature, _trail: true }));
-    layers.connectingTrails.addLayer(line);
-  });
+  }
 
   // Major-route line-name labels: one permanent tooltip per line at the
   // midpoint of its longest member — always visible, tinted to the line's
@@ -311,9 +320,6 @@
     layers.plannedCasing.addTo(map);
   }
 
-  let connectingEnabled = state.overlays.has("connecting");
-  let nodesEnabled = state.overlays.has("nodes");
-
   // Zoom-dependent declutter: node markers and corridor labels are dense at
   // city scale, so they're only shown once zoomed in enough to read them.
   // Simplest compliant approach: add/remove the whole group. Interchange
@@ -326,17 +332,17 @@
     } else if (map.hasLayer(layers.lineLabelsStreets)) {
       map.removeLayer(layers.lineLabelsStreets);
     }
-    if (nodesEnabled && z >= NODE_INTERCHANGE_MIN_ZOOM) {
+    if (state.overlays.has("nodes") && z >= NODE_INTERCHANGE_MIN_ZOOM) {
       if (!map.hasLayer(layers.nodesInterchange)) layers.nodesInterchange.addTo(map);
     } else if (map.hasLayer(layers.nodesInterchange)) {
       map.removeLayer(layers.nodesInterchange);
     }
-    if (nodesEnabled && z >= LABEL_MIN_ZOOM) {
+    if (state.overlays.has("nodes") && z >= LABEL_MIN_ZOOM) {
       if (!map.hasLayer(layers.nodesOrientation)) layers.nodesOrientation.addTo(map);
     } else if (map.hasLayer(layers.nodesOrientation)) {
       map.removeLayer(layers.nodesOrientation);
     }
-    if (connectingEnabled && z >= LABEL_MIN_ZOOM) {
+    if (state.overlays.has("connecting") && z >= LABEL_MIN_ZOOM) {
       if (!map.hasLayer(layers.labels)) layers.labels.addTo(map);
     } else if (map.hasLayer(layers.labels)) {
       map.removeLayer(layers.labels);
@@ -368,6 +374,16 @@
   const plannedBadgeTier = plannedData.properties?.status === "no_data_yet"
     ? "stub"
     : (plannedData.features[0]?.properties?.data_tier || "real");
+
+  // Connecting-infrastructure badge: this one toggle gates two tiers at once
+  // — the demoted local ("bus") street network (real CDOT data) and the
+  // non-roster OSM trails (crowdsourced) — so show both badges rather than
+  // just "real". Grouped in their own flex span (instead of two bare
+  // .badge buttons) so the layer-control CSS's `margin-left: auto` right-align
+  // rule pushes them over as one unit instead of splitting the free space
+  // between them and spreading them apart / wrapping awkwardly in the 300px panel.
+  const connectingBadgesHTML =
+    `<span style="display:inline-flex; gap:0.3rem; margin-left:auto; flex:none;">${BSD.badgeHTML("real")}${BSD.badgeHTML("crowdsourced")}</span>`;
 
   // Quality-border grade legend (spec §6): main-route quality border colors
   // per segment grade. `none` is dashed on the map, so its swatch is dashed
@@ -443,7 +459,7 @@
         </div>
         <div class="filter-row">
           <input type="checkbox" id="connecting-toggle" ${state.overlays.has("connecting") ? "checked" : ""}>
-          <label for="connecting-toggle">Connecting infrastructure ${BSD.badgeHTML("real")}</label>
+          <label for="connecting-toggle" style="flex: 1 1 0; min-width: 0;"><span style="flex: 1 1 auto; min-width: 0;">Connecting infrastructure</span>${connectingBadgesHTML}</label>
         </div>
         <div class="filter-row">
           <input type="checkbox" id="mellow-toggle" ${state.overlays.has("mellow") ? "checked" : ""}>
@@ -480,6 +496,9 @@
   if (state.overlays.has("planned") && plannedData.features.length === 0) {
     showDetail({ _plannedStub: true, properties: plannedData.properties });
   }
+  if (state.overlays.has("connecting") && (osmTrailsData.features || []).length === 0) {
+    showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
+  }
 
   // Toggle handlers: mutate state.overlays, sync the map layer, then push
   // the new state to the URL so every toggle is deep-linkable.
@@ -492,14 +511,19 @@
   });
 
   document.getElementById("connecting-toggle").addEventListener("change", (e) => {
-    connectingEnabled = e.target.checked;
     if (e.target.checked) state.overlays.add("connecting"); else state.overlays.delete("connecting");
     if (e.target.checked) {
       layers.local.addTo(map);
       layers.connectingTrails.addTo(map);
+      if ((osmTrailsData.features || []).length === 0) {
+        showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
+      }
     } else {
       map.removeLayer(layers.local);
       map.removeLayer(layers.connectingTrails);
+      if ((osmTrailsData.features || []).length === 0) {
+        document.getElementById("detail").innerHTML = "";
+      }
     }
     updateDeclutter(); // corridor labels only make sense while connecting infra is drawn
     syncURL();
@@ -522,7 +546,6 @@
   });
 
   document.getElementById("nodes-toggle").addEventListener("change", (e) => {
-    nodesEnabled = e.target.checked;
     if (e.target.checked) state.overlays.add("nodes"); else state.overlays.delete("nodes");
     updateDeclutter();
     syncURL();
@@ -553,6 +576,16 @@
       detail.innerHTML = `
         <div>
           <strong>Mellow Bike Map</strong>
+          <p class="muted">${BSD.esc(feature.properties.note)}</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (feature._trailsStub) {
+      detail.innerHTML = `
+        <div>
+          <strong>OpenStreetMap Off-street Trails</strong>
           <p class="muted">${BSD.esc(feature.properties.note)}</p>
         </div>
       `;

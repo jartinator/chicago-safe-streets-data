@@ -99,3 +99,46 @@ def test_build_network_nodes_no_orientation_points_is_fine():
     out = aggregate.build_network_nodes(_main_routes_fixture(), [])
     assert all(n["kind"] == "interchange" for n in out["nodes"])
     assert len(out["nodes"]) == 2
+
+
+def test_line_bbox_padded_by_150m_merge_distance():
+    segs = [((-87.65, 41.80), (-87.65, 41.90))]
+    bbox = aggregate._line_bbox(segs)
+    assert bbox is not None
+    min_lon, min_lat, max_lon, max_lat = bbox
+    # padding should be positive but small (150 m in degrees, not a huge margin)
+    assert 0 < (-87.65 - min_lon) < 0.01
+    assert 0 < (max_lon - (-87.65)) < 0.01
+    assert min_lat < 41.80 and max_lat > 41.90
+
+
+def test_line_bbox_empty_segments_is_none():
+    assert aggregate._line_bbox([]) is None
+
+
+def test_line_bboxes_disjoint():
+    b1 = (-87.70, 41.80, -87.65, 41.90)
+    b2 = (-87.60, 41.80, -87.55, 41.90)  # east of b1, no overlap
+    b3 = (-87.66, 41.80, -87.61, 41.90)  # overlaps b1
+    assert aggregate._line_bboxes_disjoint(b1, b2) is True
+    assert aggregate._line_bboxes_disjoint(b1, b3) is False
+
+
+def test_build_network_nodes_skips_far_apart_line_pair_via_bbox_prefilter():
+    """A pair of lines whose bboxes don't overlap must contribute zero
+    interchange nodes, even though nothing else about their geometry would
+    prevent a crossing check — the line-level bbox prefilter (aggregate.py's
+    O(n^2) cost fix) must never change which pairs actually get an interchange."""
+    main_routes_gj = {
+        "lines": [{"id": "near-a", "name": "Near A"}, {"id": "near-b", "name": "Near B"},
+                  {"id": "far", "name": "Far Away"}],
+        "features": [
+            _line_feat("near-a", [[-87.65, 41.80], [-87.65, 41.90]]),
+            _line_feat("near-b", [[-87.70, 41.85], [-87.60, 41.85]]),  # crosses near-a
+            _line_feat("far", [[-85.00, 39.00], [-85.00, 39.10]]),     # far from both
+        ],
+    }
+    out = aggregate.build_network_nodes(main_routes_gj, [])
+    interchanges = [n for n in out["nodes"] if n["kind"] == "interchange"]
+    assert len(interchanges) == 1
+    assert interchanges[0]["lines"] == ["near-a", "near-b"]

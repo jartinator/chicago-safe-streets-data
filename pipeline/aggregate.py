@@ -327,7 +327,7 @@ def build_osm_trails(raw):
         by_name[name].append([(pt["lon"], pt["lat"]) for pt in geom])
 
     if not by_name:
-        return {"type": "FeatureCollection", "features": []}
+        return {"type": "FeatureCollection", "features": [], "data_tier": "crowdsourced"}
 
     names = sorted(by_name)
     shapes = []
@@ -349,7 +349,7 @@ def build_osm_trails(raw):
                 "data_tier": "crowdsourced",
             },
         })
-    return {"type": "FeatureCollection", "features": feats}
+    return {"type": "FeatureCollection", "features": feats, "data_tier": "crowdsourced"}
 
 
 def build_curated_trails(curated_gj):
@@ -690,6 +690,30 @@ def _cluster_points(points, threshold_m):
     return clusters
 
 
+# Padding (in degrees, at Chicago's latitude) added around each line's bbox before
+# the build_network_nodes() pairwise prefilter below, so two lines whose segments
+# don't literally overlap but whose nearest points are still within the 150 m merge
+# distance aren't wrongly skipped.
+_NODE_MERGE_PAD_LON_DEG = 150 / _LON_M_PER_DEG
+_NODE_MERGE_PAD_LAT_DEG = 150 / _LAT_M_PER_DEG
+
+
+def _line_bbox(segs):
+    """(min_lon, min_lat, max_lon, max_lat) over every vertex in segs, padded by
+    the 150 m node-merge distance. None for an empty segment list."""
+    lons = [pt[0] for seg in segs for pt in seg]
+    lats = [pt[1] for seg in segs for pt in seg]
+    if not lons:
+        return None
+    return (min(lons) - _NODE_MERGE_PAD_LON_DEG, min(lats) - _NODE_MERGE_PAD_LAT_DEG,
+            max(lons) + _NODE_MERGE_PAD_LON_DEG, max(lats) + _NODE_MERGE_PAD_LAT_DEG)
+
+
+def _line_bboxes_disjoint(b1, b2):
+    """True when two (min_lon, min_lat, max_lon, max_lat) boxes cannot overlap."""
+    return b1[2] < b2[0] or b2[2] < b1[0] or b1[3] < b2[1] or b2[3] < b1[1]
+
+
 def build_network_nodes(main_routes_gj, orientation_points):
     """Interchange + orientation nodes for the network map (spec §7,
     docs/superpowers/specs/2026-07-12-network-map-distinction.md).
@@ -702,6 +726,13 @@ def build_network_nodes(main_routes_gj, orientation_points):
     lines meet are emitted as nodes. Orientation points are curated wayfinding
     labels appended verbatim after the interchanges, tier derived, lines
     always empty (they aren't derived from any line's geometry).
+
+    Before the O(segments_a * segments_b) inner loop for a pair of lines, a
+    cheap line-level bbox prefilter (each line's overall bbox, computed once
+    and padded by the 150 m merge distance) skips the pair entirely when the
+    boxes can't overlap — most roster line pairs are nowhere near each other,
+    so this cuts the dominant cost on the full network without changing which
+    intersections are found.
     """
     id_to_name, id_to_order = _line_id_to_name_and_order(main_routes_gj)
 
@@ -711,9 +742,13 @@ def build_network_nodes(main_routes_gj, orientation_points):
         segs_by_line[line_id].extend(_geometry_segments(f["geometry"]))
 
     line_ids = sorted(segs_by_line)  # deterministic pairing order
+    line_bboxes = {lid: _line_bbox(segs_by_line[lid]) for lid in line_ids}
     raw_points = []  # (lat, lon, {line_id, line_id})
     for i, a in enumerate(line_ids):
         for b in line_ids[i + 1:]:
+            bbox_a, bbox_b = line_bboxes[a], line_bboxes[b]
+            if bbox_a is None or bbox_b is None or _line_bboxes_disjoint(bbox_a, bbox_b):
+                continue
             for p1, p2 in segs_by_line[a]:
                 for p3, p4 in segs_by_line[b]:
                     hit = _segment_intersection(p1, p2, p3, p4)
