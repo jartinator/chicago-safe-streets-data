@@ -121,13 +121,14 @@
     {
       id: "council_records",
       name: "Council Records (street/bike-safety legislation)",
-      origin: "Legistar Web API (webapi.legistar.com), the hosted system Chicago's council used before 2023",
+      origin: "Legistar Web API (webapi.legistar.com) through 2023-06-21, plus Chicago Councilmatic (chicago.councilmatic.org, DataMade) from then to the present",
       tier: "real",
       cadence: "weekly pipeline run",
-      description: "Ordinances, orders, and resolutions matching a broad street/bike-safety keyword net, with sponsors and status. Each record is tagged topic_relevant by an automated classifier (see limitations) layered on top of the real fetched record.",
-      limitations: "Legistar data is frozen at 2023-06-21 — Chicago's council migrated to a new system (eLMS) after that date with no confirmed public API, so this cannot show anything more recent. Most street-safety actions pass by voice vote with no individual roll-call recorded. topic_relevant is an automated tag (LLM or keyword fallback), not a human review.",
+      description: "Ordinances, orders, and resolutions matching a broad street/bike-safety keyword net, with sponsors and status. Each record is tagged topic_relevant by an automated classifier (see limitations) layered on top of the real fetched record. The `source` column on each record shows which pull produced it.",
+      limitations: "Legistar data is frozen at 2023-06-21 — Chicago's council migrated to a new system (eLMS) after that date with no confirmed public API. That gap is covered post-2023 by Chicago Councilmatic, a republished mirror of the official record, so council_records.json overall is current to the present even though the Legistar half alone is frozen. Exactly how Councilmatic's scraper reaches the post-migration source isn't verifiable from outside DataMade. Most street-safety actions pass by voice vote with no individual roll-call recorded — Vote is populated only for the rare contested (non-unanimous) roll calls. topic_relevant is an automated tag (LLM or keyword fallback), not a human review.",
       links: [
-        { text: "Legistar Web API", url: "https://webapi.legistar.com/v1/chicago/matters" }
+        { text: "Legistar Web API", url: "https://webapi.legistar.com/v1/chicago/matters" },
+        { text: "Chicago Councilmatic", url: "https://chicago.councilmatic.org" }
       ],
       metaId: "council_records"
     },
@@ -138,7 +139,7 @@
       tier: "derived",
       cadence: "weekly pipeline run",
       description: "Per-alderman rollup of sponsorships on safety-tagged legislation — an aggregate score and the individual record list behind it.",
-      limitations: "A broad proxy (sponsorships), not roll-call vote counts. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
+      limitations: "A broad proxy — primarily sponsorships; the only roll-call signal is recorded_no_votes from rare contested votes. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
       links: [],
       metaId: "aldermen_safety_record"
     },

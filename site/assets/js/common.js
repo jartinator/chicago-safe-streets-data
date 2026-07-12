@@ -93,6 +93,52 @@
     return n == null ? "—" : Number(n).toLocaleString("en-US");
   }
 
+  const TREND_LABELS = {
+    improving: "Improving",
+    worsening: "Worsening",
+    flat: "Flat",
+    insufficient_data: "Insufficient data",
+  };
+
+  const TREND_ARROWS = {
+    improving: "▼",
+    worsening: "▲",
+    flat: "→",
+    insufficient_data: "·",
+  };
+
+  function trendHTML(trend) {
+    if (trend.direction === "insufficient_data" || trend.pct_change == null) {
+      return `<span style="color: var(--ink-soft)">· Insufficient data</span>`;
+    }
+
+    const arrow = TREND_ARROWS[trend.direction];
+    const label = TREND_LABELS[trend.direction];
+    const color = trend.direction === "worsening" ? "var(--sev-incap)"
+      : trend.direction === "improving" ? "var(--accent)"
+      : "var(--ink-soft)";
+    const pct = trend.pct_change;
+    const pctStr = pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1);
+    const sign = pct > 0 ? "+" : "";
+    const text = `${arrow} ${label} (${sign}${pctStr}% vs prior 12 mo)`;
+    return `<span style="color: ${color}">${esc(text)}</span>`;
+  }
+
+  function scoreColor(score) {
+    if (score == null) return "#e2e8f0";
+    if (score >= 80) return "#991b1b";
+    if (score >= 60) return "#dc2626";
+    if (score >= 40) return "#f59e0b";
+    if (score >= 20) return "#fbbf24";
+    return "#fde68a";
+  }
+
+  function money(n) {
+    if (n == null) return "—";
+    const rounded = Math.round(n);
+    return "$" + rounded.toLocaleString("en-US");
+  }
+
   function qs() {
     return new URLSearchParams(location.search);
   }
@@ -163,7 +209,12 @@
   window.BSD = {
     TIER_INFO, DISCLAIMERS, LINKS, FACILITY_COLORS, FACILITY_LABELS,
     SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_COLORS,
+    TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, loadJSON, fmt, qs, setParams,
-    downloadCSV, initPage,
+    downloadCSV, initPage, trendHTML, scoreColor, money,
   };
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { trendHTML, scoreColor, money, esc, fmt };
+  }
 })();

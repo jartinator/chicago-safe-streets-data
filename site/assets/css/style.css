@@ -131,3 +131,18 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   #map { flex: none; height: 55vh; }
   .map-side { width: auto; max-width: none; border-left: none; border-top: 1px solid var(--line); }
 }
+
+/* ---- network (metro) screen ---- */
+.station-label {
+  background: transparent; border: none; box-shadow: none;
+  font-size: 0.68rem; font-weight: 700; color: var(--ink);
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+.station-label::before { display: none; }
+.line-label {
+  background: transparent; border: none; box-shadow: none;
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-soft); opacity: 0.85;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+.line-label::before { display: none; }
