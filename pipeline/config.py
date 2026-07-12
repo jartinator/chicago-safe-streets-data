@@ -61,6 +61,13 @@ DATASETS = {
                                    # pre-aggregated to wards by the city; confirmed live 2026-07-11)
 }
 
+# Ward Offices — the city's official roster of current alderpersons (name, email,
+# phone, website per ward). Same Socrata portal as crashes. Ingesting the official
+# roster is NOT the "never auto-generate" guessing DECISIONS.md #8 forbids — that
+# rule was about inferring names. Verified live 2026-07-12.
+WARD_OFFICES_DATASET = "htai-wnw4"
+ALDERMAN_LOOKUP_URL = "https://www.chicago.gov/city/en/about/wards.html"
+
 # Legistar Web API (webapi.legistar.com) — the standard hosted API used by ~100+
 # municipalities, including Chicago's pre-2023 council records. Confirmed live,
 # no auth required, OData-style query params ($filter, $top, $orderby).

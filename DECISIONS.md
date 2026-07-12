@@ -44,6 +44,10 @@ environment forced a deviation. Newest last.
 8. **Alderman names are never generated.** `aldermen.json` ships with all 50
    wards and `null` names plus the official lookup URL. Filling it is a manual,
    verifiable step — a wrong auto-filled alderman name would be worse than none.
+   - *2026-07-12:* the never-auto-generate rule was about *guessing* names. The
+     city's own Ward Offices dataset (`htai-wnw4`) is the authoritative roster
+     and is now ingested by `pull_aldermen.py`; exact-match-only sponsor
+     resolution unchanged; failed pulls keep the previous file.
 
 9. **No geocoder.** Address search would need an external geocoding API (not
    free-tier-safe, and a new data dependency). Ward search is by number, and
