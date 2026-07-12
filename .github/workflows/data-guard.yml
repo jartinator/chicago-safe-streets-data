@@ -1,0 +1,27 @@
+# Blocks a synthetic fixtures build from reaching main.
+# PR #3 once committed `make_fixtures.py` output over the real Socrata pull;
+# this guard fails if site/data/meta.json provenance isn't "socrata".
+# See pipeline/check_provenance.py (also run locally during the weekly refresh).
+name: Data guard
+
+on:
+  pull_request:
+    paths:
+      - "site/data/**"
+      - "pipeline/**"
+      - ".github/workflows/data-guard.yml"
+  push:
+    branches: [main]
+    paths:
+      - "site/data/**"
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check data provenance
+        run: python pipeline/check_provenance.py
