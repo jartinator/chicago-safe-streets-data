@@ -183,3 +183,24 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
 @media (min-width: 760px) {
   .source-facts { grid-template-columns: max-content 1fr; }
 }
+
+/* ---- main routes: completion bars + roster report card ---- */
+.completion-bar {
+  display: flex; height: 12px; border-radius: 6px; overflow: hidden;
+  background: var(--line); margin: 0.3rem 0;
+}
+.completion-bar .seg { height: 100%; }
+.completion-bar.mini { height: 8px; flex: 1; min-width: 56px; margin: 0; }
+.route-roster { margin: 0.5rem 0 0.7rem; }
+.route-roster summary { cursor: pointer; font-size: 0.9rem; }
+.route-row {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.18rem 0;
+  text-decoration: none; color: inherit; font-size: 0.82rem;
+}
+.route-row:hover .route-name { text-decoration: underline; }
+.route-row .route-name {
+  flex: 0 0 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.route-row.no-data { opacity: 0.6; }
+.route-row.no-data .route-name { color: var(--ink-soft); }
+.route-pct { white-space: nowrap; font-size: 0.74rem; min-width: 5.4em; text-align: right; }

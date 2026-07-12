@@ -1,10 +1,14 @@
 /* Screen 1: primary geographic map — density exploration with toggleable,
  * quality-badged overlays and ward -> corridor -> intersection drill-down.
- * URL state: ?layers=crashes,infrastructure&ward=1&corridor=MILWAUKEE%20AVE
+ * Default view leads with the curated main-route lines ("rail"); the full
+ * 1,008-segment infrastructure + every-named-trail layers are the opt-in
+ * "all detail" view.
+ * URL state: ?layers=crashes,mainroutes&ward=1&corridor=MILWAUKEE%20AVE
  *            &sev=incapacitating&from=2023-01-01&to=2026-01-01&dooring=1 */
 (function () {
   const B = window.BSD;
   const BM = window.BSDMap;
+  const MR = window.BSDMainRoutes;
   B.initPage("index.html");
 
   const map = L.map("map", { zoomSnap: 0.5 }).setView([41.87, -87.66], 11);
@@ -29,6 +33,15 @@
   // [data-spot] anchors. Binding once on the stable #side container (which
   // is never replaced, only its innerHTML) survives every re-render.
   side.addEventListener("click", e => {
+    // Tier badges are <button>s handled by the document-level explainer —
+    // a stub badge inside a roster row must not also trigger the row link.
+    if (e.target.closest(".badge[data-tier]")) return;
+    const lineLink = e.target.closest("[data-line]");
+    if (lineLink) {
+      e.preventDefault();
+      showLine(lineLink.dataset.line, true);
+      return;
+    }
     const corridorLink = e.target.closest("[data-corridor]");
     if (corridorLink) {
       e.preventDefault();
@@ -44,7 +57,10 @@
   });
 
   const state = {
-    layers: new Set((B.qs().get("layers") || "crashes,infrastructure,trails").split(",").filter(Boolean)),
+    // Default layers: main routes on, full infrastructure/trails detail off
+    // (the roster's major trails stay visible by default *inside*
+    // mainroutes; only the every-named-trail OSM layer is opt-in).
+    layers: new Set((B.qs().get("layers") || "crashes,mainroutes").split(",").filter(Boolean)),
     sev: B.qs().get("sev") || "",
     from: B.qs().get("from") || "",
     to: B.qs().get("to") || "",
@@ -55,6 +71,7 @@
   };
 
   const LAYERS = [
+    { id: "mainroutes", label: "Main routes", tier: "derived" },
     { id: "crashes", label: "Cyclist crashes", tier: "real" },
     { id: "obstructions", label: "Obstructions", tier: "mock" },
     { id: "infrastructure", label: "Bike infrastructure", tier: "real" },
@@ -74,6 +91,7 @@
     B.loadJSON("data/bike_routes.geojson"),
     B.loadJSON("data/planned_routes.geojson"),
     B.loadJSON("data/osm_trails.geojson").catch(() => ({ features: [] })),
+    B.loadJSON("data/main_routes.geojson").catch(() => ({ lines: [], features: [] })),
     B.loadJSON("data/cameras.json"),
     B.loadJSON("data/wards.geojson"),
     B.loadJSON("data/corridors.json"),
@@ -81,8 +99,19 @@
     B.loadJSON("data/aldermen.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/ward_safety_index.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/menu_spending.json").catch(() => ({ wards: {} })),
-  ]).then(([crashes, obstructions, routes, planned, trails, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
-    Object.assign(data, { crashes, obstructions, routes, planned, trails, cameras, wards, corridors, intersections });
+  ]).then(([crashes, obstructions, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
+    Object.assign(data, { crashes, obstructions, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections });
+    // Per-line geographic bounds (union of member-segment bboxes) for the
+    // roster's click-to-zoom. no_data lines have no members, hence no entry.
+    data.lineBounds = {};
+    (mainRoutes.features || []).forEach(f => {
+      const [minX, minY, maxX, maxY] = bboxOf(f.geometry);
+      const id = f.properties.line_id;
+      const b = data.lineBounds[id];
+      data.lineBounds[id] = b
+        ? [Math.min(b[0], minX), Math.min(b[1], minY), Math.max(b[2], maxX), Math.max(b[3], maxY)]
+        : [minX, minY, maxX, maxY];
+    });
     data.aldermanByWard = {};
     (aldermen.wards || []).forEach(w => { data.aldermanByWard[w.ward] = w; });
     // safetyByWard/safetyRank: rank is 1-based array order since the file is
@@ -176,6 +205,17 @@
       L.geoJSON(f, {
         style: { color: B.FACILITY_COLORS.trail, weight: 3.5, opacity: 0.9 },
       }).on("click", () => showTrail(f.properties))));
+
+    // Main routes: the curated "rail" lines drawn heavy — white casing under
+    // a grade-colored stroke per member segment. All casings go in first so
+    // one line's casing never overpaints a neighboring line's stroke where
+    // corridors touch. Both strokes click through to the line report card.
+    const mrFeatures = data.mainRoutes.features || [];
+    const mrLayer = (f, style) => L.geoJSON(f, { style })
+      .on("click", () => showLine(f.properties.line_id, false));
+    groups.mainroutes = L.layerGroup(
+      mrFeatures.map(f => mrLayer(f, MR.CASING_STYLE)).concat(
+        mrFeatures.map(f => mrLayer(f, MR.gradeStyle(f.properties.grade)))));
 
     groups.planned = L.layerGroup(data.planned.features.map(f =>
       L.geoJSON(f, { style: { color: "#64748b", weight: 3, dashArray: "6,6" } })));
@@ -287,6 +327,26 @@
 
   /* ---------- side panel ---------- */
 
+  // Roster report card: every main-route line as a compact row — name +
+  // mini completion bar + printed % protected. Stub trail lines (no OSM
+  // pull yet) render greyed with the stub badge and sink to the bottom.
+  function rosterHTML() {
+    const lines = (data.mainRoutes && data.mainRoutes.lines) || [];
+    if (!lines.length) return "";
+    const rows = MR.rosterOrder(lines).map(l => {
+      const bar = MR.completionSegments(l.miles_by_grade).map(s =>
+        `<span class="seg" style="width:${s.pct.toFixed(2)}%;background:${s.color}" title="${B.esc(`${s.label}: ${s.miles.toFixed(1)} mi`)}"></span>`).join("");
+      const right = l.no_data ? B.badgeHTML("stub")
+        : `<span class="completion-bar mini">${bar}</span>
+           <span class="route-pct muted">${B.esc(MR.pctText(l) || `${l.miles_total} mi`)}</span>`;
+      return `<a href="#" class="route-row${l.no_data ? " no-data" : ""}" data-line="${B.esc(l.id)}">
+        <span class="route-name" title="${B.esc(`${l.name} — ${l.termini}`)}">${B.esc(l.name)}</span>${right}</a>`;
+    }).join("");
+    return `<details class="route-roster" open>
+      <summary><strong>Main routes — report card</strong> ${B.badgeHTML("derived")}</summary>
+      ${rows}</details>`;
+  }
+
   function renderSide(detailHTML) {
     const layerRows = LAYERS.map(l => `
       <label><input type="checkbox" data-layer="${l.id}" ${state.layers.has(l.id) ? "checked" : ""}>
@@ -313,6 +373,7 @@
     side.innerHTML = `
       <h2>Infrastructure × policy × outcomes</h2>
       <p class="muted">Where crashes, bike infrastructure, and ward-level policy overlap. Click a ward or corridor to dig in.</p>
+      ${rosterHTML()}
       <div class="layer-control">${layerRows}</div>
       <div class="muted" id="densityHint" style="margin:0.4rem 0;display:none">Zoomed out: dots show density per ~100 m cell. Zoom in (or click a cell) to see individual, clickable records.</div>
       <div class="filter-row">
@@ -349,6 +410,9 @@
       }
       if (cb.dataset.layer === "trails" && cb.checked && !(data.trails.features || []).length) {
         setDetail(`<h3>Off-street trails ${B.badgeHTML("stub")}</h3><p class="muted">${B.esc(data.trails.properties?.note || "No trail data this run.")}</p>`);
+      }
+      if (cb.dataset.layer === "mainroutes" && cb.checked && !(data.mainRoutes.features || []).length) {
+        setDetail(`<h3>Main routes ${B.badgeHTML("stub")}</h3><p class="muted">${B.esc(data.mainRoutes.note || "No main-routes data this run.")}</p>`);
       }
       renderSide(document.getElementById("detail").innerHTML);
       syncLayers();
@@ -528,6 +592,59 @@
         <dt>Length</dt><dd>${B.fmt(Math.round(p.length_m))} m</dd>
       </dl>
       <p class="muted">Off-street trail geometry from OpenStreetMap — crowdsourced, coverage varies.</p>`);
+  }
+
+  // Main-route line report card. `zoom` fits the map to the line's member
+  // segments (roster clicks); direct map clicks pass false. Street lines
+  // (CDOT, derived stats) and trail lines (OSM, crowdsourced) never blend:
+  // crashes print only for street lines, trails get length + notice, and
+  // no_data stub trails get the grey placeholder card.
+  function showLine(lineId, zoom) {
+    const line = ((data.mainRoutes && data.mainRoutes.lines) || []).find(l => l.id === lineId);
+    if (!line) return;
+    const b = data.lineBounds[lineId];
+    if (zoom && b) map.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [20, 20] });
+    const tier = MR.lineBadgeTier(line);
+    const heading = `<h3 class="card-heading">${B.esc(line.name)} ${B.badgeHTML(tier)}</h3>
+      <p class="muted" style="margin:.1rem 0 .5rem">${B.esc(line.termini)}</p>`;
+
+    if (line.no_data) {
+      setDetail(`${heading}
+        <p class="muted">No data this run: this line fills from the OpenStreetMap
+        off-street-trails pull (crowdsourced), which hasn't produced data yet.
+        The line stays on the roster so the gap is visible, not hidden.</p>`);
+      return;
+    }
+
+    const segs = MR.completionSegments(line.miles_by_grade);
+    const bar = `<div class="completion-bar" role="img" aria-label="Facility mix along ${B.esc(line.name)}">${segs.map(s =>
+      `<span class="seg" style="width:${s.pct.toFixed(2)}%;background:${s.color}" title="${B.esc(`${s.label}: ${s.miles.toFixed(1)} mi`)}"></span>`).join("")}</div>`;
+    const legend = segs.map(s =>
+      `<span style="white-space:nowrap"><span class="legend-swatch" style="background:${s.color}"></span> ${B.esc(s.label)} ${s.miles.toFixed(1)} mi</span>`).join(" &nbsp; ");
+    const pct = MR.pctText(line);
+    const isStreet = line.source === "bike_routes";
+    const stats = isStreet
+      ? `<dl>
+          <dt>Length (existing bikeway)</dt><dd>${B.esc(String(line.miles_total))} mi</dd>
+          <dt>Crashes within 30 m of line ${B.badgeHTML("real")}</dt>
+          <dd>${B.fmt(line.crashes_total)} <span class="muted">since Sept 2017</span></dd>
+        </dl>`
+      : `<dl><dt>Length</dt><dd>${B.esc(String(line.miles_total))} mi</dd></dl>
+        <p class="muted">Off-street trail geometry from OpenStreetMap — crowdsourced, unverified, coverage varies.</p>`;
+
+    setDetail(`${heading}
+      ${pct ? `<p style="margin:.2rem 0 .1rem"><strong style="font-size:1.15rem">${B.esc(pct)}</strong></p>` : ""}
+      ${bar}
+      <div class="muted" style="margin:.3rem 0 .5rem;font-size:.78rem">${legend}</div>
+      ${stats}
+      <p><button type="button" class="linklike" id="lineProvenance">Where does this come from?</button></p>`);
+    document.getElementById("lineProvenance").addEventListener("click", () => B.openModal({
+      title: "Where main routes come from",
+      bodyHTML: `<p><strong>${B.esc(B.TIER_PLAIN[tier])}.</strong></p>
+        <p>${B.esc(B.TIER_INFO[tier])}</p>
+        <p>${B.esc((data.mainRoutes && data.mainRoutes.note) || "")}</p>
+        <p><a href="sources.html#src-main_routes">Full source details →</a></p>`,
+    }));
   }
 
   function showCamera(c) {
