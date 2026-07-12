@@ -47,3 +47,13 @@ def test_dedupes_within_source(tmp_path):
         {"matter_id": 1, "title": "a"}, {"matter_id": 1, "title": "dup"}]})
     records, _ = load_all_council_records(tmp_path)
     assert len(records) == 1
+
+
+def test_same_id_across_sources_not_deduped(tmp_path):
+    _write(tmp_path / "council_records.json", {"records": [
+        {"matter_id": 1, "title": "legistar one"}]})
+    _write(tmp_path / "councilmatic_records.json", {"source": "councilmatic", "records": [
+        {"matter_id": 1, "title": "councilmatic one", "source": "councilmatic"}]})
+    records, _ = load_all_council_records(tmp_path)
+    assert len(records) == 2
+    assert {r["source"] for r in records} == {"legistar", "councilmatic"}

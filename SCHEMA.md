@@ -1,4 +1,4 @@
-# SCHEMA.md — published data contracts (v1.4)
+# SCHEMA.md — published data contracts (v1.5)
 
 Everything the site consumes lives in `site/data/` and is produced by
 `pipeline/aggregate.py` (plus `make_mock_obstructions.py`). These files ARE the
@@ -176,7 +176,9 @@ the two sources is keyed on `(source, matter_id)`. `recorded_votes` is present
 only on bills with an actual contested roll-call split (at least one "no"
 vote) — sourced from Councilmatic, since Legistar's pull doesn't fetch vote
 detail. It is absent (not `null`) on records with no contested vote, including
-all Legistar records. **Coverage:** Legistar data is frozen at
+all Legistar records. `recorded_votes.result` is a free-text string as
+reported by Councilmatic's vote event (e.g. `"pass"` / `"fail"`) — not a
+constrained enum, and passed through as-is. **Coverage:** Legistar data is frozen at
 `LEGISTAR_DATA_FROZEN_AT` (2023-06-21) — Chicago's council migrated to a new
 system (eLMS) after that date with no confirmed public API (see
 DECISIONS.md). Chicago Councilmatic covers the gap: it mirrors the council's

@@ -125,7 +125,7 @@ def bills_sql(keywords, frozen):
         "from bill b join billaction a on a.bill_id = b.id "
         f"where ({like}) "
         "group by b.id "
-        f"having max(a.date) > '{frozen}' "
+        f"having date(max(a.date)) > '{frozen}' "
         "order by last_action desc"
     )
 

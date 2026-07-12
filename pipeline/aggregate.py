@@ -17,7 +17,7 @@ from shapely.geometry import Point, shape
 
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
-                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, LEGISTAR_DATA_FROZEN_AT)
+                    INJURY_SEVERITY_MAP, CONTRACT_VERSION)
 from council_merge import load_all_council_records
 from socrata import write_json
 from spatial_join import _first_key
@@ -531,8 +531,8 @@ def empty_council_records():
         "data_tier": "real",
         "topic_tag_tier": "derived",
         "note": ("Council legislative records were not pulled this run "
-                 "(pull_council_records.py didn't run, or the Legistar Web API was "
-                 "unreachable). See CONTRIBUTING.md."),
+                 "(neither pull_council_records.py / Legistar nor pull_councilmatic.py / "
+                 "Councilmatic ran, or both sources were unreachable). See CONTRIBUTING.md."),
         "records": [],
     }
 
