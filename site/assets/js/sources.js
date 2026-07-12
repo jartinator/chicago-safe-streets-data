@@ -46,6 +46,20 @@
       metaId: "bike_routes"
     },
     {
+      id: "street_centerlines",
+      name: "Street Center Lines (surface-street grid)",
+      short: "Street centerlines",
+      origin: "Chicago Data Portal (Socrata)",
+      tier: "real",
+      cadence: "weekly pipeline run",
+      description: "The city's surface-street centerline grid, filtered to classes 2/3/4 (arterial/collector/local) and status N (in service) — expressways, ramps, alleys, and river channels excluded. Used as the surface-street denominator for the ward coverage metrics (% of streets with bikeways).",
+      limitations: "The underlying layer was last updated by the city in June 2021 — new streets built since then aren't reflected. No install-date field; this is a snapshot of current-state geometry, not a historical record.",
+      links: [
+        { text: "Street Center Lines", url: "https://data.cityofchicago.org/d/pr57-gg9e" }
+      ],
+      metaId: "street_centerlines"
+    },
+    {
       id: "sr311",
       name: "311 Service Requests (bike-related)",
       short: "311 requests",
