@@ -1,18 +1,20 @@
-"""Pull upcoming Transportation / Pedestrian & Traffic Safety committee hearings.
+"""Pull upcoming Transportation / Pedestrian & Traffic Safety committee meetings.
 
 Chicago's live meeting calendar moved to eLMS (chicityclerkelms.chicago.gov)
-when the city retired Legistar in 2023. The Meetings page renders a real
-calendar, but no public JSON/RSS endpoint could be found during research
-(direct guesses at /api/meetings, /api/Events, swagger.json all 404'd — see
-DECISIONS.md). Legistar's own API is not a substitute here: its data is frozen
-at 2023-06-21, so it cannot answer "what's upcoming."
+when the city retired Legistar in 2023. Earlier research could not find a
+public JSON endpoint (guesses at /api/meetings, /api/Events, swagger.json all
+404'd — see DECISIONS.md #14), so this module used to link out to the calendar
+page instead of showing structured data.
 
-This module tries a same-page JSON content-negotiation request (a common
-ASP.NET pattern) as a best-effort attempt, refreshed every pipeline run. If
-that doesn't return structured rows, it writes an honest "link out" fallback
-listing the committees of interest and the live official calendar URL, rather
-than fabricating or silently going stale. Non-fatal either way — this module
-never raises the pipeline.
+CORRECTED 2026-07-12: the eLMS public API exists at singular-noun endpoints on
+the API root (GET api.chicityclerkelms.chicago.gov/meeting with OData-ish
+filter/sort/limit params; rows arrive under the "data" key). This module now
+pulls real meetings per committee of interest, keeping only future,
+non-cancelled ones. The API is undocumented and unversioned, so it is treated
+as best-effort: if every committee's fetch fails, the honest "link out"
+fallback (committee name + live official calendar URL) is written instead of
+fabricated or stale hearing dates. Non-fatal either way — this module never
+raises the pipeline.
 
 Idempotent: re-running overwrites cleanly.
 """
@@ -21,60 +23,100 @@ from datetime import datetime, timezone
 
 import requests
 
-from config import RAW_DIR, ELMS_MEETINGS_URL, ELMS_COMMITTEES_OF_INTEREST
+from config import RAW_DIR, ELMS_API_URL, ELMS_MEETINGS_URL, ELMS_COMMITTEES_OF_INTEREST
 from socrata import write_json
 
+VALID_STATUSES = {"Scheduled", "Scheduled & Published"}
 
-def try_fetch_structured(committee):
+
+def fetch_committee_meetings(committee):
+    """One filtered call to the eLMS public API; returns raw rows or None on any failure."""
     try:
         resp = requests.get(
-            ELMS_MEETINGS_URL,
-            params={"body": committee},
+            f"{ELMS_API_URL}/meeting",
+            params={"filter": f"body eq '{committee}'", "sort": "date desc", "limit": 50},
             headers={"Accept": "application/json"},
             timeout=30,
         )
-        if resp.status_code == 200 and "application/json" in resp.headers.get("Content-Type", ""):
-            return resp.json()
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        # The live API wraps rows in a {"facets": [...], "data": [...], "meta": {...}}
+        # envelope (verified 2026-07-12); accept a bare list too in case that changes.
+        rows = data if isinstance(data, list) else data.get("data") or data.get("items")
+        return rows if isinstance(rows, list) else None
     except (requests.RequestException, ValueError):
-        # ValueError covers resp.json()'s JSONDecodeError — a 200 with an
-        # application/json header but a malformed body is a real ASP.NET
-        # failure mode, not just a network error.
-        pass
+        return None
+
+
+def _file_url(files, kind):
+    for f in files or []:
+        if (f.get("attachmentType") or "").lower() == kind:
+            return f.get("path") or None
     return None
+
+
+def normalize_meetings(rows, today):
+    """Future, non-cancelled meetings with a parseable ISO date, oldest first."""
+    out = []
+    for r in rows or []:
+        if r.get("status") not in VALID_STATUSES:
+            continue
+        d = str(r.get("date") or "")
+        if len(d) < 10 or d[:10] < today or d[4] != "-":
+            continue
+        out.append({
+            "date": d,
+            "status": r["status"],
+            "location": r.get("location") or None,
+            "agenda_url": _file_url(r.get("files"), "agenda"),
+            "notice_url": _file_url(r.get("files"), "notice"),
+            "comment": r.get("comment") or None,
+        })
+    return sorted(out, key=lambda m: m["date"])
 
 
 def main():
     argparse.ArgumentParser(
-        description="Pull upcoming bike/traffic-safety committee hearings (best-effort)."
+        description="Pull upcoming bike/traffic-safety committee meetings from the eLMS API."
     ).parse_args()
 
     as_of = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    today = datetime.now(timezone.utc).date().isoformat()
     committees_out = []
     any_structured = False
     for committee in ELMS_COMMITTEES_OF_INTEREST:
-        rows = try_fetch_structured(committee)
-        if rows:
+        rows = fetch_committee_meetings(committee)
+        if rows is not None:
+            # An empty list of *validated* future meetings still counts as structured
+            # data — "no meetings scheduled" is honest data, not a fetch failure.
             any_structured = True
         committees_out.append({
             "committee": committee,
-            "meetings": rows or [],
+            "meetings": normalize_meetings(rows, today) if rows is not None else [],
             "calendar_url": f"{ELMS_MEETINGS_URL}?body={committee.replace(' ', '+')}",
         })
 
     output_path = RAW_DIR / "hearings.json"
-    write_json(output_path, {
+    payload = {
         "as_of": as_of,
         "structured_data_available": any_structured,
         "note": (
-            "No public JSON/RSS endpoint for the eLMS meeting calendar was confirmed; "
-            "this links to the live official calendar per committee rather than showing "
-            "unverified or stale hearing dates. See DECISIONS.md."
-            if not any_structured else
-            "Structured meeting data fetched directly from eLMS."
+            "Meetings from the City Clerk eLMS public API "
+            "(api.chicityclerkelms.chicago.gov), refreshed each pipeline run; "
+            "best-effort — verify against the official calendar before attending."
+            if any_structured else
+            "The eLMS public API was unreachable this run; this links to the live "
+            "official calendar per committee rather than showing unverified or "
+            "stale hearing dates. See DECISIONS.md."
         ),
         "committees": committees_out,
-    })
-    print(f"hearings: {len(committees_out)} committees tracked, "
+    }
+    if any_structured:
+        payload["source"] = "elms_api"
+    write_json(output_path, payload)
+    total = sum(len(c["meetings"]) for c in committees_out)
+    print(f"hearings: {len(committees_out)} committees tracked, {total} upcoming meetings, "
           f"structured_data_available={any_structured} (as_of {as_of})")
 
 

@@ -96,9 +96,16 @@ LEGISTAR_DATA_FROZEN_AT = "2023-06-21"
 # chicago_council.db.zip at github.com/datamade/chicago-council-scrapers/releases.
 COUNCILMATIC_DATASETTE_URL = "https://puddle.datamade.us/chicago_council"
 
-# City Clerk eLMS (successor to Legistar). Meetings page confirmed to exist and
-# render a real meeting calendar/table, but it appears to be JS-rendered with no
-# discovered public JSON endpoint — used only as a link-out target for now.
+# City Clerk eLMS (successor to Legistar). The Meetings page below stays the
+# human-facing link-out target; the API root powers structured pulls.
+#
+# eLMS public API — CONFIRMED WORKING 2026-07-12 (earlier research guessed plural/
+# prefixed paths; the real endpoints are singular nouns at the API root, e.g.
+# GET https://api.chicityclerkelms.chicago.gov/meeting?filter=body eq '<committee>'
+# &sort=date desc&limit=50, rows under the "data" key of the response envelope).
+# Undocumented and unversioned — treat as best-effort; pull_hearings.py keeps the
+# link-out fallback shape on any failure.
+ELMS_API_URL = "https://api.chicityclerkelms.chicago.gov"
 ELMS_MEETINGS_URL = "https://chicityclerkelms.chicago.gov/Meetings"
 ELMS_COMMITTEES_OF_INTEREST = [
     "Committee on Pedestrian and Traffic Safety",
