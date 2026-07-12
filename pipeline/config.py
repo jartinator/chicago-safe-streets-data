@@ -9,6 +9,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "pipeline" / "raw"
 SITE_DATA_DIR = REPO_ROOT / "site" / "data"
 SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots"
+# Committed one-time snapshots of frozen upstream data that never changes (e.g. the
+# pre-2023 Legistar council records — see restore_frozen.py). Unlike RAW_DIR (gitignored,
+# rebuilt each run), these are versioned so we don't re-pull immutable history every week.
+FROZEN_DIR = REPO_ROOT / "pipeline" / "frozen"
 
 SOCRATA_DOMAIN = "https://data.cityofchicago.org"
 
@@ -91,6 +95,13 @@ CRASH_START_DATE = "2017-09-01"
 
 # Batched $where ... in(...) lookups: ids per request.
 ID_BATCH_SIZE = 50
+
+# Concurrency for id-batch lookups. The crash/vehicle pulls issue hundreds of small
+# sequential requests (one per ID_BATCH_SIZE chunk), which dominated pipeline runtime;
+# fetching batches in a small thread pool cuts that wall-clock roughly proportionally.
+# Kept modest to stay polite to Socrata's throttling (the retry/backoff in socrata._get
+# still absorbs the occasional 429). Same magnitude as Legistar's SPONSOR_FETCH_WORKERS.
+ID_FETCH_WORKERS = 8
 
 # Socrata paging size.
 PAGE_SIZE = 50000

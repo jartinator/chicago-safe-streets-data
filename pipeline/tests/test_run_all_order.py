@@ -6,9 +6,11 @@ def _flat(stages):
 
 
 def test_councilmatic_runs_after_council_records():
+    # Pre-2023 (frozen) council records are restored from a committed snapshot rather than
+    # pulled live; post-2023 Councilmatic must still run after they're in place.
     live = _flat(run_all.LIVE_STAGES)
     assert "pull_councilmatic.py" in live
-    assert live.index("pull_councilmatic.py") > live.index("pull_council_records.py")
+    assert live.index("pull_councilmatic.py") > live.index("restore_frozen.py")
 
 
 def test_councilmatic_pulls_before_classify():
