@@ -173,3 +173,13 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
   .table-stack tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: .5rem 0; }
   .table-stack td { display: block; border: none; }
 }
+
+/* Sources page — one-column source cards with deep-link anchors */
+.chip-toc { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 1.4rem; }
+.source-card { scroll-margin-top: 4.5rem; }
+.source-facts { display: grid; grid-template-columns: 1fr; gap: .2rem 1rem; margin: .6rem 0 0; }
+.source-facts dt { font-weight: 700; }
+.source-facts dd { margin: 0; }
+@media (min-width: 760px) {
+  .source-facts { grid-template-columns: max-content 1fr; }
+}
