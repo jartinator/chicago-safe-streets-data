@@ -96,9 +96,12 @@ def test_build_findings_core_ids_and_order():
     ]
     ward_counts = {"1": 50, "2": 30, "3": 10, "4": 5, "5": 3, "6": 2}
     by_cat = {"protected": 10.0, "painted": 30.0, "trail": 99.0}
-    findings = build_findings_core(TUPLES, by_cat, corridors, ward_counts, "2026-07-12")
+    road_coverage = {"road_miles": 2000.0, "onstreet_bikeway_miles": 240.0,
+                     "pct_with_bike_infra": 12.0}
+    findings = build_findings_core(TUPLES, by_cat, corridors, ward_counts, "2026-07-12",
+                                   road_coverage=road_coverage)
     assert [f["id"] for f in findings] == [
-        "ksi-trend", "protected-share", "top-corridors",
+        "ksi-trend", "protected-share", "street-coverage", "top-corridors",
         "hit-and-run", "ward-concentration", "dooring-undercount"]
     by_id = {f["id"]: f for f in findings}
     assert by_id["dooring-undercount"]["title"] == "Dooring: structurally undercounted"
@@ -107,4 +110,14 @@ def test_build_findings_core_ids_and_order():
     assert "since Sept 2017" in by_id["ward-concentration"]["description"]
     assert "on-street bikeway miles" in by_id["protected-share"]["description"]
     assert "Kinzie" in by_id["top-corridors"]["caveat"]
+    assert by_id["street-coverage"]["stat"] == "12%"
     assert all(f["data_tier"] == "real" for f in findings)
+
+
+def test_build_findings_core_omits_street_coverage_without_road_data():
+    corridors = [{"street": "MILWAUKEE AVE", "crashes_per_km": 12.0}]
+    ward_counts = {"1": 50, "2": 30, "3": 10, "4": 5, "5": 3}
+    by_cat = {"protected": 10.0, "painted": 30.0, "trail": 99.0}
+    findings = build_findings_core(TUPLES, by_cat, corridors, ward_counts, "2026-07-12",
+                                   road_coverage=None)
+    assert "street-coverage" not in [f["id"] for f in findings]
