@@ -21,8 +21,28 @@ import sys
 import geopandas as gpd
 from shapely.geometry import Point
 
-from config import RAW_DIR, METRIC_CRS, OUTPUT_CRS, NEAREST_SEGMENT_MAX_DISTANCE_M
+from config import (RAW_DIR, METRIC_CRS, OUTPUT_CRS, NEAREST_SEGMENT_MAX_DISTANCE_M,
+                    CHICAGO_BBOX)
 from socrata import write_json
+
+
+def _valid_coord(c):
+    """True if a crash carries a real Chicago lat/lon (not null, not (0, 0), in-region).
+
+    Socrata sometimes returns a geocoding failure as the literal string "0" for
+    latitude/longitude rather than omitting the field, so a truthiness check
+    (`c.get("latitude") and c.get("longitude")`) lets a (0, 0) "null island"
+    point through. Validate the parsed value against CHICAGO_BBOX instead.
+    """
+    lat, lon = c.get("latitude"), c.get("longitude")
+    if lat is None or lon is None:
+        return False
+    try:
+        lat, lon = float(lat), float(lon)
+    except (TypeError, ValueError):
+        return False
+    return (CHICAGO_BBOX["min_lat"] <= lat <= CHICAGO_BBOX["max_lat"]
+            and CHICAGO_BBOX["min_lon"] <= lon <= CHICAGO_BBOX["max_lon"])
 
 
 def _first_key(props, candidates):
@@ -59,7 +79,7 @@ def main():
 
     crashes = json.loads((RAW_DIR / "crashes_cyclist.json").read_text())
     total_in = len(crashes)
-    located = [c for c in crashes if c.get("latitude") and c.get("longitude")]
+    located = [c for c in crashes if _valid_coord(c)]
 
     pts = gpd.GeoDataFrame(
         located,
@@ -114,7 +134,7 @@ def main():
             by_ward[r["ward"]] = by_ward.get(r["ward"], 0) + 1
     top5 = sorted(by_ward.items(), key=lambda kv: -kv[1])[:5]
     print(f"spatial_join: {total_in} crashes in, {len(out)} located and joined "
-          f"({total_in - len(located)} missing coords)")
+          f"({total_in - len(located)} missing/invalid coords)")
     print(f"  unmatched ward: {no_ward} ({100 * no_ward / max(len(out), 1):.1f}%), "
           f"beyond {NEAREST_SEGMENT_MAX_DISTANCE_M}m of any bikeway: {no_seg} "
           f"({100 * no_seg / max(len(out), 1):.1f}%)")
