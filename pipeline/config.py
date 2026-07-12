@@ -26,6 +26,26 @@ SOCRATA_DOMAIN = "https://data.cityofchicago.org"
 # pull_mellow.py treats failures as non-fatal (falls back to the stub layer).
 MELLOW_API_URL = "https://mellowbikemap.com/api/routes/"
 
+# OpenStreetMap Overpass API — source for named off-street trails (Lakefront,
+# 312 RiverRun, North Shore Channel, North Branch, etc.) that CDOT's on-street
+# Bike Routes layer structurally omits. Crowdsourced tier. Non-fatal like Mellow.
+OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
+# (south, west, north, east) — Chicago plus the North Branch Trail's reach north
+# into the forest preserves. Trails are shown full-length, not clipped at the city line.
+OSM_TRAILS_BBOX = (41.60, -87.95, 42.20, -87.50)
+# Named off-street ways only. is_sidepath!=yes drops road-parallel cycle tracks
+# that duplicate CDOT on-street segments (see design doc). out geom returns inline
+# per-way coordinate arrays so no second node-resolution pass is needed.
+_OSM_BBOX_STR = ",".join(str(c) for c in OSM_TRAILS_BBOX)
+OSM_TRAILS_QUERY = f"""[out:json][timeout:90];
+(
+  way["highway"="cycleway"]["name"]["is_sidepath"!="yes"]({_OSM_BBOX_STR});
+  way["highway"="path"]["bicycle"="designated"]["name"]["is_sidepath"!="yes"]({_OSM_BBOX_STR});
+  way["highway"="footway"]["bicycle"="designated"]["name"]["is_sidepath"!="yes"]({_OSM_BBOX_STR});
+);
+out geom;
+"""
+
 # Socrata dataset IDs (Chicago Data Portal, open JSON endpoints, no auth for modest volumes)
 DATASETS = {
     "crashes": "85ca-t3if",        # Traffic Crashes - Crashes (one row per crash)
