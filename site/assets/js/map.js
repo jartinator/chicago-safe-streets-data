@@ -4,6 +4,7 @@
  *            &sev=incapacitating&from=2023-01-01&to=2026-01-01&dooring=1 */
 (function () {
   const B = window.BSD;
+  const BM = window.BSDMap;
   B.initPage("index.html");
 
   const map = L.map("map", { zoomSnap: 0.5 }).setView([41.87, -87.66], 11);
@@ -11,6 +12,13 @@
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: "abcd", maxZoom: 19,
   }).addTo(map);
+
+  // Zoom-adaptive density rendering: below DETAIL_ZOOM, crashes/obstructions
+  // render as tight, route-hugging density dots (small ~100m cells, capped
+  // radii) instead of thousands of individual markers merging into a blob.
+  // Purely zoom-derived — no URL/state changes. Cameras and wards untouched.
+  const DETAIL_ZOOM = 14;
+  const densityCanvas = L.canvas();
 
   const side = document.getElementById("side");
   const state = {
@@ -85,8 +93,11 @@
     return true;
   }
 
-  function buildLayers() {
-    groups.crashes = L.layerGroup(data.crashes.features.filter(f => crashVisible(f.properties)).map(f => {
+  // Individual crash markers for the filtered set. Shared by buildLayers()
+  // (initial load) and rebuildCrashes() (filter changes) so both stay in
+  // sync with severity/date/dooring styling.
+  function buildCrashGroup(filtered) {
+    return L.layerGroup(filtered.map(f => {
       const p = f.properties;
       const [lng, lat] = f.geometry.coordinates;
       return L.circleMarker([lat, lng], {
@@ -95,6 +106,30 @@
         weight: 1, fillOpacity: 0.55,
       }).on("click", () => showCrash(p));
     }));
+  }
+
+  // Density-mode layer group: grid-bin the given Point features via
+  // BSDMap.binPoints and render one small, capped-radius dot per cell on
+  // the shared canvas renderer. Clicking a cell "resolves into detail" by
+  // zooming to DETAIL_ZOOM at the cell center.
+  function buildDensityGroup(features, rampKey) {
+    const bins = BM.binPoints(features);
+    const maxCount = bins.reduce((m, b) => Math.max(m, b.count), 0);
+    const ramp = BM.DENSITY_RAMPS[rampKey];
+    return L.layerGroup(bins.map(b => {
+      const color = BM.rampColor(b.count, maxCount, ramp);
+      return L.circleMarker([b.lat, b.lng], {
+        renderer: densityCanvas,
+        radius: BM.densityRadius(b.count),
+        color, weight: 0, fillColor: color, fillOpacity: 0.55,
+      }).on("click", () => map.setView([b.lat, b.lng], DETAIL_ZOOM));
+    }));
+  }
+
+  function buildLayers() {
+    const filteredCrashes = data.crashes.features.filter(f => crashVisible(f.properties));
+    groups.crashes = buildCrashGroup(filteredCrashes);
+    groups.crashesDensity = buildDensityGroup(filteredCrashes, "crashes");
 
     groups.obstructions = L.layerGroup((data.obstructions.features || []).map(f => {
       const p = f.properties;
@@ -103,6 +138,7 @@
         radius: 4, color: "#b91c1c", weight: 1, dashArray: "2,2", fillOpacity: 0.35,
       }).on("click", () => showObstruction(p));
     }));
+    groups.obstructionsDensity = buildDensityGroup(data.obstructions.features || [], "obstructions");
 
     groups.infrastructure = L.layerGroup(data.routes.features.map(f => {
       const p = f.properties;
@@ -154,26 +190,65 @@
     if (had) groups.wards.addTo(map);
   }
 
+  // Extended to also rebuild the crash density group from the same filtered
+  // set, so density mode respects severity/date/dooring filters exactly
+  // like the individual-marker mode does. Which group (if either) is
+  // re-added to the map is decided by the syncDensityMode() call that every
+  // caller of rebuildCrashes() makes via syncLayers() immediately after.
   function rebuildCrashes() {
-    const had = map.hasLayer(groups.crashes);
-    if (had) map.removeLayer(groups.crashes);
-    groups.crashes = L.layerGroup(data.crashes.features.filter(f => crashVisible(f.properties)).map(f => {
-      const p = f.properties;
-      const [lng, lat] = f.geometry.coordinates;
-      return L.circleMarker([lat, lng], {
-        radius: p.injury_severity === "fatal" ? 7 : p.injury_severity === "incapacitating" ? 5 : 3.5,
-        color: B.SEVERITY_COLORS[p.injury_severity] || "#94a3b8",
-        weight: 1, fillOpacity: 0.55,
-      }).on("click", () => showCrash(p));
-    }));
-    if (had) groups.crashes.addTo(map);
+    if (map.hasLayer(groups.crashes)) map.removeLayer(groups.crashes);
+    if (map.hasLayer(groups.crashesDensity)) map.removeLayer(groups.crashesDensity);
+    const filtered = data.crashes.features.filter(f => crashVisible(f.properties));
+    groups.crashes = buildCrashGroup(filtered);
+    groups.crashesDensity = buildDensityGroup(filtered, "crashes");
+  }
+
+  // True when the map is zoomed out past DETAIL_ZOOM and crash/obstruction
+  // layers should render as density dots instead of individual markers.
+  function isDensityMode() {
+    return map.getZoom() < DETAIL_ZOOM;
+  }
+
+  // Decides, per layer, whether the individual-marker group or the
+  // density group is on the map — honoring state.layers (on/off) and the
+  // current zoom (density vs. detail). Called from syncLayers() (layer
+  // toggles, filter changes, shade changes) and on map "zoomend".
+  function syncDensityMode() {
+    // Guard against zoomend firing before the initial data load builds
+    // groups (e.g. a scroll-wheel zoom while the map is still loading).
+    if (!groups.crashes) return;
+    const density = isDensityMode();
+    [["crashes", groups.crashes, groups.crashesDensity],
+     ["obstructions", groups.obstructions, groups.obstructionsDensity]].forEach(([id, individual, densityGroup]) => {
+      const show = state.layers.has(id) ? (density ? densityGroup : individual) : null;
+      [individual, densityGroup].forEach(g => {
+        if (g !== show && map.hasLayer(g)) map.removeLayer(g);
+      });
+      if (show && !map.hasLayer(show)) show.addTo(map);
+    });
+    updateDensityHint();
+  }
+
+  // Muted hint shown under the layer control while in density mode with
+  // either crashes or obstructions on. Toggles an existing DOM node
+  // in-place (called from syncDensityMode on zoomend, no side-panel
+  // rebuild needed) and is also invoked at the end of renderSide() so a
+  // freshly-rendered panel starts in the correct state regardless of
+  // whether renderSide() or syncLayers() ran first.
+  function updateDensityHint() {
+    const hint = document.getElementById("densityHint");
+    if (!hint) return;
+    const show = isDensityMode() && (state.layers.has("crashes") || state.layers.has("obstructions"));
+    hint.style.display = show ? "" : "none";
   }
 
   function syncLayers() {
     for (const { id } of LAYERS) {
+      if (id === "crashes" || id === "obstructions") continue; // handled by syncDensityMode()
       if (state.layers.has(id)) { if (!map.hasLayer(groups[id])) groups[id].addTo(map); }
       else if (map.hasLayer(groups[id])) map.removeLayer(groups[id]);
     }
+    syncDensityMode();
     B.setParams({
       layers: [...state.layers].join(","), sev: state.sev, from: state.from,
       to: state.to, dooring: state.dooring, ward: state.ward, corridor: state.corridor,
@@ -210,6 +285,7 @@
       <h2>Infrastructure × policy × outcomes</h2>
       <p class="muted">Where crashes, bike infrastructure, and ward-level policy overlap. Click a ward or corridor to dig in.</p>
       <div class="layer-control">${layerRows}</div>
+      <div class="muted" id="densityHint" style="margin:0.4rem 0;display:none">Zoomed out: dots show density per ~100 m cell. Zoom in (or click a cell) to see individual, clickable records.</div>
       <div class="filter-row">
         <label style="display:inline-flex;gap:0.3rem;align-items:center">Ward shading:
           <select id="shade">
@@ -258,6 +334,9 @@
     const go = () => { const v = side.querySelector("#wardSearch").value.trim(); if (v) showWard(v, true); };
     side.querySelector("#wardGo").addEventListener("click", go);
     side.querySelector("#wardSearch").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    // Self-healing: whichever order renderSide()/syncLayers() ran in, the
+    // freshly-created #densityHint node ends up in the correct state.
+    updateDensityHint();
   }
 
   function setDetail(html) {
@@ -425,6 +504,10 @@
         <dt>Range</dt><dd>${B.esc(c.first_date || "?")} → ${B.esc(c.last_date || "?")}</dd>
       </dl>`);
   }
+
+  // Crossing DETAIL_ZOOM mid-session swaps crash/obstruction rendering
+  // between density dots and individual markers.
+  map.on("zoomend", syncDensityMode);
 
   // "What ward am I in": clicking bare map reports the containing ward.
   map.on("click", e => {
