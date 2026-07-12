@@ -32,6 +32,8 @@ import sys
 import time
 from pathlib import Path
 
+from config import RAW_DIR
+
 HERE = Path(__file__).resolve().parent
 
 LIVE_STAGES = [
@@ -49,6 +51,18 @@ COMMON_STAGES = [
     ["classify_safety_topic.py"],
     ["aggregate.py"],
 ]
+
+
+def write_live_provenance():
+    """Stamp raw/PROVENANCE = "socrata" for a live pull.
+
+    aggregate.py records this marker as meta.json's provenance (absent → "socrata").
+    make_fixtures.py writes "fixtures" here; without this, a live run performed after
+    a prior `--fixtures` run would inherit that stale marker and mislabel real data as
+    fixtures. Writing it makes the live path authoritative about its own build type.
+    """
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    (RAW_DIR / "PROVENANCE").write_text("socrata\n")
 
 
 def run(script_args, timings):
@@ -83,6 +97,7 @@ def main():
     if args.fixtures:
         run(["make_fixtures.py"], timings)
     else:
+        write_live_provenance()
         for stage in LIVE_STAGES:
             run(stage, timings)
     for stage in COMMON_STAGES:
