@@ -81,7 +81,7 @@
   }
 
   // Default overlay ids enabled when network.html has no ?overlays= param.
-  const DEFAULT_OVERLAYS = ["heat", "stations"];
+  const DEFAULT_OVERLAYS = ["heat", "stations", "trails"];
 
   // Sentinel for "explicitly no overlays": BSD.setParams deletes params
   // whose value is "", so an empty set serialized as "" would vanish from

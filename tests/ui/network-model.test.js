@@ -115,12 +115,12 @@ assert.ok(
 
 // ---- parseOverlays / serializeOverlays (network.html URL state) ----
 assert.deepStrictEqual(
-  [...N.parseOverlays(null)], ["heat", "stations"],
-  "parseOverlays: null (param absent) falls back to defaults heat+stations"
+  [...N.parseOverlays(null)], ["heat", "stations", "trails"],
+  "parseOverlays: null (param absent) falls back to defaults heat+stations+trails"
 );
 assert.deepStrictEqual(
-  [...N.parseOverlays(undefined)], ["heat", "stations"],
-  "parseOverlays: undefined falls back to defaults heat+stations"
+  [...N.parseOverlays(undefined)], ["heat", "stations", "trails"],
+  "parseOverlays: undefined falls back to defaults heat+stations+trails"
 );
 assert.strictEqual(
   N.parseOverlays("").size, 0,
@@ -141,8 +141,8 @@ assert.strictEqual(
 );
 assert.strictEqual(
   N.serializeOverlays(N.parseOverlays(null)),
-  "heat,stations",
-  "round-trip: absent param -> defaults -> 'heat,stations'"
+  "heat,stations,trails",
+  "round-trip: absent param -> defaults -> 'heat,stations,trails'"
 );
 
 // Empty set must survive the URL: BSD.setParams deletes empty-string params

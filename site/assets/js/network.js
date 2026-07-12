@@ -21,7 +21,7 @@
   // lines -> crash rings -> stations. Labels use Leaflet's own tooltipPane,
   // already above every overlay pane.
   const PANE_ORDER = [
-    "wardsPane", "mellowPane", "heatPane", "casingPane", "plannedCasingPane",
+    "wardsPane", "mellowPane", "trailsPane", "heatPane", "casingPane", "plannedCasingPane",
     "linesPane", "plannedPane", "crashesPane", "stationsPane",
   ];
   PANE_ORDER.forEach((name, i) => {
@@ -39,6 +39,7 @@
     mellow: L.layerGroup(),
     planned: L.layerGroup(),
     plannedCasing: L.layerGroup(),
+    trails: L.layerGroup(),
   };
 
   let routeFeatures = [];
@@ -58,11 +59,12 @@
   }
 
   // Load data
-  const [bikeRoutes, obstructionsData, mellowData, plannedData, wardsData, stations] = await Promise.all([
+  const [bikeRoutes, obstructionsData, mellowData, plannedData, osmTrailsData, wardsData, stations] = await Promise.all([
     BSD.loadJSON("data/bike_routes.geojson"),
     BSD.loadJSON("data/obstructions_mock.geojson"),
     BSD.loadJSON("data/mellow_routes.geojson"),
     BSD.loadJSON("data/planned_routes.geojson"),
+    BSD.loadJSON("data/osm_trails.geojson"),
     BSD.loadJSON("data/wards.geojson"),
     BSD.loadJSON("data/intersections.json"),
   ]);
@@ -179,6 +181,21 @@
     });
   }
 
+  if (osmTrailsData.features.length === 0) {
+    const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
+    noDataMarker._trailsStub = true;
+    layers.trails.addLayer(noDataMarker);
+  } else {
+    osmTrailsData.features.forEach((feature) => {
+      const line = L.polyline(
+        BSDNet.toLatLngs(feature.geometry),
+        { color: BSD.FACILITY_COLORS.trail, weight: 4, opacity: 0.9, lineCap: "round", pane: "trailsPane" }
+      );
+      line.on("click", () => showDetail({ ...feature, _trail: true }));
+      layers.trails.addLayer(line);
+    });
+  }
+
   // Planned overlay: metro "under construction" convention — dashed line in
   // the facility color with its own dashed white casing. Stub behavior is
   // unchanged: an empty planned_routes.geojson renders nothing but still
@@ -213,6 +230,7 @@
   if (state.overlays.has("heat")) layers.obstructions.addTo(map);
   if (state.overlays.has("crashes")) layers.crashes.addTo(map);
   if (state.overlays.has("mellow")) layers.mellow.addTo(map);
+  if (state.overlays.has("trails")) layers.trails.addTo(map);
   if (state.overlays.has("planned")) {
     layers.planned.addTo(map);
     layers.plannedCasing.addTo(map);
@@ -298,6 +316,10 @@
           <label for="mellow-toggle">Mellow streets ${BSD.badgeHTML("crowdsourced")}</label>
         </div>
         <div class="filter-row">
+          <input type="checkbox" id="trails-toggle" ${state.overlays.has("trails") ? "checked" : ""}>
+          <label for="trails-toggle">Off-street trails ${BSD.badgeHTML("crowdsourced")}</label>
+        </div>
+        <div class="filter-row">
           <input type="checkbox" id="planned-toggle" ${state.overlays.has("planned") ? "checked" : ""}>
           <label for="planned-toggle">Planned routes ${BSD.badgeHTML(plannedBadgeTier)}</label>
         </div>
@@ -339,6 +361,9 @@
   }
   if (state.overlays.has("planned") && plannedData.features.length === 0) {
     showDetail({ _plannedStub: true, properties: plannedData.properties });
+  }
+  if (state.overlays.has("trails") && osmTrailsData.features.length === 0) {
+    showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
   }
 
   // Toggle handlers: mutate state.overlays, sync the map layer, then push
@@ -383,6 +408,22 @@
     syncURL();
   });
 
+  document.getElementById("trails-toggle").addEventListener("change", (e) => {
+    if (e.target.checked) state.overlays.add("trails"); else state.overlays.delete("trails");
+    if (e.target.checked) {
+      layers.trails.addTo(map);
+      if (osmTrailsData.features.length === 0) {
+        showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
+      }
+    } else {
+      map.removeLayer(layers.trails);
+      if (osmTrailsData.features.length === 0) {
+        document.getElementById("detail").innerHTML = "";
+      }
+    }
+    syncURL();
+  });
+
   document.getElementById("planned-toggle").addEventListener("change", (e) => {
     if (e.target.checked) state.overlays.add("planned"); else state.overlays.delete("planned");
     if (e.target.checked) {
@@ -409,6 +450,31 @@
         <div>
           <strong>Mellow Bike Map</strong>
           <p class="muted">${BSD.esc(feature.properties.note)}</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (feature._trailsStub) {
+      detail.innerHTML = `
+        <div>
+          <strong>Off-street trails</strong>
+          <p class="muted">${BSD.esc(feature.properties.note)}</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (feature._trail) {
+      const props = feature.properties;
+      detail.innerHTML = `
+        <div>
+          <strong>${BSD.esc(props.name || "Off-street trail")}</strong> ${BSD.badgeHTML("crowdsourced")}
+          <dl>
+            <dt>Type</dt><dd>${BSD.esc(BSD.FACILITY_LABELS.trail)}</dd>
+            <dt>Length</dt><dd>${BSD.fmt(Math.round(props.length_m))} m</dd>
+          </dl>
+          <p class="muted">Trail geometry from OpenStreetMap — crowdsourced, coverage varies.</p>
         </div>
       `;
       return;
