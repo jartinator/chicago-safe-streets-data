@@ -15,6 +15,14 @@ Unlike the core Socrata pulls, this hits a third-party-hosted API outside our
 control, so a failure here is non-fatal: it warns and leaves
 raw/council_records.json absent, and aggregate.py falls back to a stub.
 
+NOT part of the weekly live run anymore. Because the source is frozen at
+LEGISTAR_DATA_FROZEN_AT and can never change, we snapshot it once into
+pipeline/frozen/council_records.json (committed) and restore_frozen.py copies that
+into raw/ each run instead — no pointless weekly re-pull. Run this script by hand
+ONLY to regenerate that snapshot (e.g. after editing SAFETY_TOPIC_KEYWORDS or if the
+Legistar schema changes), then copy raw/council_records.json into pipeline/frozen/
+and commit it.
+
 Idempotent: re-running overwrites cleanly.
 """
 import argparse
