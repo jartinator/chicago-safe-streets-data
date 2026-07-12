@@ -1,7 +1,8 @@
 (function () {
   // sourceId must match a card anchor on sources.html (id="src-{sourceId}");
   // sourceName is the short link text. `calc` (derived/proxy files) is a one-
-  // sentence plain-language formula shown in a modal.
+  // sentence plain-language formula shown in a modal. `href` replaces the
+  // site-relative download link for files that live outside site/ (repo configs).
   const FILES = [
     {
       name: "crashes_cyclist.geojson", tier: "real",
@@ -69,6 +70,20 @@
       name: "osm_trails.geojson", tier: "crowdsourced",
       title: "Off-street trails (OSM)", sourceId: "osm_trails", sourceName: "OSM trails",
       description: "Named off-street trails (Lakefront, 606, Major Taylor…) from OpenStreetMap — volunteer-mapped, unverified."
+    },
+    {
+      name: "main_routes.geojson", tier: "derived",
+      title: "Main routes", sourceId: "main_routes", sourceName: "Main routes",
+      description: "The ~18 marquee corridors — each named line's segments with a facility grade (off-street / protected / painted / none).",
+      calc: "Hand-curated roster in data/main_routes.json; each pipeline run assigns real CDOT/OSM segments to lines and computes grade mileage."
+    },
+    {
+      // The roster lives at the repo root (data/, not site/data/), so it isn't
+      // servable from the deployed site — link the GitHub blob like SCHEMA.md.
+      name: "data/main_routes.json", tier: "derived",
+      title: "Main routes roster (config)", sourceId: "main_routes", sourceName: "Main routes",
+      description: "The hand-curated list of named corridors, termini, and matching rules that defines the main routes.",
+      href: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/main_routes.json"
     },
     {
       name: "ward_safety_index.json", tier: "derived",
@@ -183,7 +198,9 @@
               <td>${f.sourceId
                 ? `<a href="sources.html#src-${BSD.esc(f.sourceId)}">${BSD.esc(f.sourceName)}</a>`
                 : "—"}</td>
-              <td><a href="data/${BSD.esc(f.name)}" download class="btn">Download</a><div><code>${BSD.esc(f.name)}</code></div></td>
+              <td>${f.href
+                ? `<a href="${BSD.esc(f.href)}" target="_blank" rel="noopener" class="btn">View on GitHub</a>`
+                : `<a href="data/${BSD.esc(f.name)}" download class="btn">Download</a>`}<div><code>${BSD.esc(f.name)}</code></div></td>
             </tr>
           `).join("")}
         </tbody>

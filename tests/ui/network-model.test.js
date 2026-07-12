@@ -165,4 +165,95 @@ assert.deepStrictEqual(
   "round-trip: serialize(empty) parses back to empty, not defaults"
 );
 
+// ---- main routes: GRADE_COLORS / gradeLineStyle (spec §4) ----
+assert.strictEqual(N.GRADE_COLORS.offstreet, "#0369a1", "GRADE_COLORS: offstreet");
+assert.strictEqual(N.GRADE_COLORS.protected, "#0b6e4f", "GRADE_COLORS: protected");
+assert.strictEqual(N.GRADE_COLORS.painted, "#f59e0b", "GRADE_COLORS: painted");
+assert.strictEqual(N.GRADE_COLORS.none, "#94a3b8", "GRADE_COLORS: none");
+
+assert.strictEqual(N.gradeLineStyle("protected").color, "#0b6e4f", "gradeLineStyle: protected color");
+assert.strictEqual(N.gradeLineStyle("protected").dashArray, undefined, "gradeLineStyle: protected is solid");
+assert.strictEqual(N.gradeLineStyle("offstreet").color, "#0369a1", "gradeLineStyle: offstreet color");
+assert.strictEqual(N.gradeLineStyle("painted").color, "#f59e0b", "gradeLineStyle: painted color");
+assert.strictEqual(N.gradeLineStyle("none").color, "#94a3b8", "gradeLineStyle: none color");
+assert.ok(N.gradeLineStyle("none").dashArray, "gradeLineStyle: none is dashed");
+assert.strictEqual(
+  N.gradeLineStyle("bogus").color, "#94a3b8",
+  "gradeLineStyle: unknown grade falls back to the none treatment"
+);
+assert.ok(N.gradeLineStyle("bogus").dashArray, "gradeLineStyle: unknown grade dashed like none");
+assert.ok(N.gradeLineStyle("protected").weight > N.LOCAL_STYLE.weight,
+  "gradeLineStyle: roster lines heavier than local network");
+
+// ---- main routes: LOCAL_STYLE (demoted "bus" network, spec §7) ----
+assert.strictEqual(N.LOCAL_STYLE.color, "#cbd5e1", "LOCAL_STYLE: muted slate color");
+assert.strictEqual(N.LOCAL_STYLE.weight, 1.5, "LOCAL_STYLE: 1.5px");
+
+// ---- main routes: buildRosterIndex / splitByRoster / membersOfLine ----
+const mainRouteFeatures = [
+  { properties: { segment_id: "7", line_id: "loop", grade: "protected" } },
+  { properties: { segment_id: "8", line_id: "loop", grade: "painted" } },
+  { properties: { segment_id: "42", line_id: "halsted", grade: "none" } },
+  { properties: { segment_id: "osm-trail-lakefront-trail", line_id: "lakefront", grade: "offstreet" } },
+];
+const rosterIdx = N.buildRosterIndex(mainRouteFeatures);
+assert.strictEqual(rosterIdx.size, 4, "buildRosterIndex: one entry per member");
+assert.deepStrictEqual(rosterIdx.get("7"), { lineId: "loop", grade: "protected" },
+  "buildRosterIndex: maps segment_id to line + grade");
+assert.deepStrictEqual(rosterIdx.get("42"), { lineId: "halsted", grade: "none" },
+  "buildRosterIndex: none-grade member indexed");
+assert.strictEqual(N.buildRosterIndex(undefined).size, 0,
+  "buildRosterIndex: missing features -> empty index");
+
+const networkFeatures = [
+  { properties: { segment_id: "7", street: "DEARBORN" } },
+  { properties: { segment_id: "42", street: "HALSTED" } },
+  { properties: { segment_id: "999", street: "MARQUETTE" } },
+];
+const split = N.splitByRoster(networkFeatures, rosterIdx);
+assert.strictEqual(split.roster.length, 2, "splitByRoster: 2 roster members");
+assert.strictEqual(split.local.length, 1, "splitByRoster: 1 local segment");
+assert.strictEqual(split.local[0].properties.segment_id, "999",
+  "splitByRoster: unmatched segment lands in local");
+
+assert.deepStrictEqual(
+  N.membersOfLine(networkFeatures, rosterIdx, "loop").map(f => f.properties.segment_id),
+  ["7"],
+  "membersOfLine: filters features to one line's members"
+);
+assert.deepStrictEqual(
+  N.membersOfLine(networkFeatures, rosterIdx, "no-such-line"), [],
+  "membersOfLine: unknown line -> empty"
+);
+
+// ---- main routes: linesById ----
+const linesMeta = N.linesById([
+  { id: "loop", name: "Downtown circulator", no_data: false },
+  { id: "lakefront", name: "Lakefront Trail", no_data: true },
+]);
+assert.strictEqual(linesMeta.get("loop").name, "Downtown circulator", "linesById: lookup by id");
+assert.strictEqual(linesMeta.get("lakefront").no_data, true, "linesById: no_data preserved");
+assert.strictEqual(N.linesById(undefined).size, 0, "linesById: missing lines array -> empty map");
+
+// ---- main routes: rosterStreets (corridor labels defer to line labels) ----
+const streets = N.rosterStreets(networkFeatures, rosterIdx);
+assert.ok(streets.has("DEARBORN"), "rosterStreets: roster member street included");
+assert.ok(streets.has("HALSTED"), "rosterStreets: second roster street included");
+assert.ok(!streets.has("MARQUETTE"), "rosterStreets: local-only street excluded");
+
+// ---- main routes: station split (no stations on the bus layer below LABEL_MIN_ZOOM) ----
+const rosterBBoxes = [N.getPaddedBBox(singleLine, 0.001)];
+const stations = [
+  { lat: 41.905, lng: -87.645, label: "on roster" },
+  { lat: 42.5, lng: -87.9, label: "far away" },
+];
+assert.ok(N.stationInAnyBBox(stations[0], rosterBBoxes), "stationInAnyBBox: near roster line");
+assert.ok(!N.stationInAnyBBox(stations[1], rosterBBoxes), "stationInAnyBBox: far from roster");
+const stationSplit = N.splitStations(stations, rosterBBoxes);
+assert.strictEqual(stationSplit.onRoster.length, 1, "splitStations: 1 station on roster");
+assert.strictEqual(stationSplit.onRoster[0].label, "on roster", "splitStations: right station kept");
+assert.strictEqual(stationSplit.offRoster.length, 1, "splitStations: 1 station off roster");
+assert.strictEqual(N.splitStations([], rosterBBoxes).onRoster.length, 0,
+  "splitStations: empty stations -> empty partitions");
+
 console.log("network-model OK");

@@ -104,10 +104,105 @@
     return overlaySet.size === 0 ? OVERLAYS_NONE : [...overlaySet].join(",");
   }
 
+  // ---- Main routes ("rail vs bus") helpers — spec §4/§7 of
+  // docs/superpowers/specs/2026-07-12-main-routes-design.md ----
+
+  // Grade colors, user-ranked offstreet > protected > painted > none.
+  // Duplicated from the grade taxonomy rather than imported from
+  // main-routes-model.js: network.html only loads this model file.
+  const GRADE_COLORS = {
+    offstreet: "#0369a1",
+    protected: "#0b6e4f",
+    painted: "#f59e0b",
+    none: "#94a3b8",
+  };
+
+  // Demoted local ("bus") network: thin, muted, no casing.
+  const LOCAL_STYLE = { color: "#cbd5e1", weight: 1.5, opacity: 0.9 };
+
+  // Heavy metro stroke for a roster line member. `none` grade (sharrows /
+  // unknown) renders dashed — the line exists on paper, not on the street.
+  function gradeLineStyle(grade) {
+    const known = Object.prototype.hasOwnProperty.call(GRADE_COLORS, grade);
+    const style = { color: known ? GRADE_COLORS[grade] : GRADE_COLORS.none, weight: 7 };
+    if (!known || grade === "none") style.dashArray = "6,9";
+    return style;
+  }
+
+  // Index main_routes.geojson member features: Map<segment_id, {lineId, grade}>.
+  function buildRosterIndex(mainRouteFeatures) {
+    const idx = new Map();
+    (mainRouteFeatures || []).forEach((f) => {
+      const p = f.properties || {};
+      if (p.segment_id != null && p.line_id) {
+        idx.set(String(p.segment_id), { lineId: p.line_id, grade: p.grade });
+      }
+    });
+    return idx;
+  }
+
+  // FC-level `lines` metadata array -> Map<line id, line>.
+  function linesById(lines) {
+    return new Map((lines || []).map((l) => [l.id, l]));
+  }
+
+  // Partition network features into roster members (heavy treatment) and
+  // the local background network (demoted).
+  function splitByRoster(features, rosterIndex) {
+    const roster = [];
+    const local = [];
+    (features || []).forEach((f) => {
+      (rosterIndex.has(String(f.properties.segment_id)) ? roster : local).push(f);
+    });
+    return { roster, local };
+  }
+
+  // Features belonging to one roster line, in input order.
+  function membersOfLine(features, rosterIndex, lineId) {
+    return (features || []).filter((f) => {
+      const entry = rosterIndex.get(String(f.properties.segment_id));
+      return entry != null && entry.lineId === lineId;
+    });
+  }
+
+  // Streets that have at least one roster member — those corridors get a
+  // line label instead of the generic corridor label.
+  function rosterStreets(features, rosterIndex) {
+    const streets = new Set();
+    (features || []).forEach((f) => {
+      if (rosterIndex.has(String(f.properties.segment_id)) && f.properties.street) {
+        streets.add(f.properties.street);
+      }
+    });
+    return streets;
+  }
+
+  // Station {lat, lng} vs a list of [[minLat,minLng],[maxLat,maxLng]] bboxes.
+  function stationInAnyBBox(station, bboxes) {
+    return bboxes.some((b) =>
+      station.lat >= b[0][0] && station.lat <= b[1][0] &&
+      station.lng >= b[0][1] && station.lng <= b[1][1]
+    );
+  }
+
+  // Partition stations: on/near a roster line (kept at metro prominence)
+  // vs off-roster (declutters with the labels, not before).
+  function splitStations(stations, rosterBBoxes) {
+    const onRoster = [];
+    const offRoster = [];
+    (stations || []).forEach((s) => {
+      (stationInAnyBBox(s, rosterBBoxes) ? onRoster : offRoster).push(s);
+    });
+    return { onRoster, offRoster };
+  }
+
   const api = {
     flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
     countObstructions, heatBucket, groupByCorridor,
     parseOverlays, serializeOverlays,
+    GRADE_COLORS, LOCAL_STYLE, gradeLineStyle,
+    buildRosterIndex, linesById, splitByRoster, membersOfLine,
+    rosterStreets, stationInAnyBBox, splitStations,
   };
 
   root.BSDNet = api;

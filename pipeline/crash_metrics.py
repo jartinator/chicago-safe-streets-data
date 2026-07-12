@@ -166,7 +166,7 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
             "caveat": (f"Share of current on-street network mileage as of {as_of_date}; "
                        "protected = barrier/curb-protected on-street lanes. Off-street trails "
                        "are excluded — they live in the separate OSM layer."),
-            "map_state": {"screen": "map", "layers": ["infrastructure"], "filters": {}},
+            "map_state": {"screen": "map", "layers": ["mainroutes"], "filters": {}},
             "data_tier": "real",
         })
 

@@ -224,3 +224,22 @@ environment forced a deviation. Newest last.
       mileage-history.md` and tracked in `docs/foia-log.md`; any returned
       historical data would live under `pipeline/frozen/` or `data/`, the same
       committed-immutable pattern as the frozen Legistar records.
+
+19. **Main routes are a hand-curated roster drawn "rail vs bus".** Both maps
+    rendered all 1,008 CDOT segments at equal weight and read as spaghetti, so
+    the maps now borrow the transit-agency distinction: ~18 named "rail" trunk
+    lines drawn heavy, everything else demoted to a thin, muted local ("bus")
+    network. A "line" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland)
+    whose color varies *along its length* by facility grade (ranked off-street >
+    protected > painted > none) — the accountability story is the point: "the
+    line exists; X% of it is unprotected." The roster is deliberately
+    **editorial and hand-curated** in the checked-in `data/main_routes.json`;
+    each pipeline run auto-fills every line with the real CDOT/OSM segments
+    that match it, so grades and mileage stay live, but there is no algorithmic
+    promotion/demotion between runs — new lines are added by a human, on the
+    record. True corridor gaps stay holes in the line: we **never fabricate
+    gap geometry** (provenance ethos); the per-line completion bar carries the
+    "incomplete" message instead. Provenance never blends within a line:
+    street lines are `derived` (computed from CDOT's `real` segments), trail
+    lines are `crowdsourced` (OSM) throughout, and crowdsourced trail mileage
+    never enters real/derived-tier statistics.

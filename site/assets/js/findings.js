@@ -119,7 +119,10 @@
         btn.href = exploreUrl;
         btn.className = "btn primary";
         btn.style.display = "inline-block";
-        btn.textContent = "Explore on map →";
+        // The protected-share story IS the main-routes report card — say so.
+        btn.textContent = finding.id === "protected-share"
+          ? "See the main routes →"
+          : "Explore on map →";
 
         // Assemble card
         card.appendChild(stat);

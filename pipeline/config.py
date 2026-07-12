@@ -185,6 +185,23 @@ FACILITY_CATEGORY_MAP = {
 
 FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow", "trail", "other"]
 
+# Main routes ("rail vs bus" hierarchy) — curated line roster, checked in like
+# other configs. See docs/superpowers/specs/2026-07-12-main-routes-design.md.
+MAIN_ROUTES_PATH = REPO_ROOT / "data" / "main_routes.json"
+
+# facility_category -> main-route grade (spec §4, user-locked 4-grade taxonomy).
+# Buffers and greenways are still just paint & signs -> "painted"; sharrows
+# count as nothing -> "none".
+MAIN_ROUTE_GRADE_MAP = {
+    "trail": "offstreet",
+    "protected": "protected",
+    "buffered": "painted",
+    "painted": "painted",
+    "greenway": "painted",
+    "sharrow": "none",
+    "other": "none",
+}
+
 # 311 is a biased proxy. Rather than hard-coding sr_type names (the city renames them),
 # match on substrings; pull_311.py also supports --list-types to inspect the live taxonomy.
 SR311_TYPE_SUBSTRINGS = ["BIKE", "BICYCLE"]
@@ -201,4 +218,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.7"
+CONTRACT_VERSION = "1.8"

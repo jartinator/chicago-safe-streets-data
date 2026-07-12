@@ -18,7 +18,8 @@ from shapely.geometry import Point, shape, LineString, MultiLineString
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
-                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE)
+                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE,
+                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -348,6 +349,168 @@ def build_osm_trails(raw):
             },
         })
     return {"type": "FeatureCollection", "features": feats}
+
+
+_STREET_TYPE_SUFFIXES = {"ST", "AVE", "BLVD", "RD", "DR", "WAY", "PKWY"}
+
+_MILES_PER_M = 1 / 1609.34
+
+
+def normalize_street(name):
+    """Uppercase and strip ONE trailing street-type suffix token.
+
+    The raw CDOT layer mixes suffix variants ("RANDOLPH" vs "RANDOLPH ST");
+    roster matching compares normalized names for exact equality — never
+    substring containment, so "EAST LAKE"/"LAKE SHORE" can't leak into "LAKE".
+    """
+    tokens = (name or "").upper().split()
+    if len(tokens) > 1 and tokens[-1] in _STREET_TYPE_SUFFIXES:
+        tokens = tokens[:-1]
+    return " ".join(tokens)
+
+
+def _geometry_midpoint(geometry):
+    """(lat, lon) of the middle vertex of the flattened coordinate list.
+
+    Deliberately the middle VERTEX, not a projected length-interpolated point:
+    it needs no CRS machinery, and on the real 1,008-segment CDOT layer it
+    selects the identical loop-bbox membership as true midpoint interpolation
+    (verified 2026-07-12). Open knob per spec §11, resolved as midpoint-in-bbox.
+    """
+    if geometry["type"] == "LineString":
+        coords = geometry["coordinates"]
+    elif geometry["type"] == "MultiLineString":
+        coords = [pt for part in geometry["coordinates"] for pt in part]
+    else:
+        return None
+    if not coords:
+        return None
+    lon, lat = coords[len(coords) // 2][:2]
+    return lat, lon
+
+
+def _in_bbox(latlon, bbox):
+    lat, lon = latlon
+    south, west, north, east = bbox
+    return south <= lat <= north and west <= lon <= east
+
+
+def load_main_routes_roster(path=MAIN_ROUTES_PATH):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def build_main_routes(routes_gj, osm_trails_gj, roster):
+    """Assign published segments to the curated main-route roster.
+
+    Pure function over already-published feature shapes (bike_routes.geojson +
+    osm_trails.geojson properties), so refresh_reporting.py can rebuild the
+    layer from committed site data with the exact same code path as the live
+    aggregate run. Roster lines match in order; first match wins; a segment
+    joins at most one line. Corridor gaps are holes — geometry is never
+    fabricated, and every share is computed over member miles only. Street
+    lines aggregate real CDOT segments (line stats: derived); trail lines are
+    OSM crowdsourced throughout; the two tiers never blend.
+    """
+    street_feats = routes_gj.get("features", [])
+    trail_feats = osm_trails_gj.get("features", [])
+    claimed = set()
+    out_feats = []
+    lines_out = []
+
+    for line in roster["lines"]:
+        is_street = line["source"] == "bike_routes"
+        members = []  # (feature, grade, length_m, crashes)
+        if is_street:
+            streets = set(line["streets"])
+            bbox = line.get("clip_bbox")
+            for f in street_feats:
+                p = f["properties"]
+                seg_id = p.get("segment_id")
+                if seg_id in claimed:
+                    continue
+                if normalize_street(p.get("street")) not in streets:
+                    continue
+                if bbox:
+                    mid = _geometry_midpoint(f["geometry"])
+                    if mid is None or not _in_bbox(mid, bbox):
+                        continue
+                claimed.add(seg_id)
+                grade = MAIN_ROUTE_GRADE_MAP.get(p.get("facility_category"), "none")
+                length_m = float(p.get("length_m") or 0.0)
+                crashes = int(p.get("crashes_within_30m") or 0)
+                members.append(({
+                    "type": "Feature",
+                    "geometry": f["geometry"],
+                    "properties": {
+                        "segment_id": seg_id,
+                        "line_id": line["id"],
+                        "grade": grade,
+                        "facility_category": p.get("facility_category"),
+                        "length_m": length_m,
+                        "crashes_within_30m": crashes,
+                        "data_tier": "real",
+                    },
+                }, grade, length_m, crashes))
+        else:  # osm_trails
+            tokens = [t.lower() for t in line["name_tokens"]]
+            for f in trail_feats:
+                p = f["properties"]
+                seg_id = p.get("segment_id")
+                if seg_id in claimed:
+                    continue
+                trail_name = (p.get("name") or "").lower()
+                if not any(tok in trail_name for tok in tokens):
+                    continue
+                claimed.add(seg_id)
+                length_m = float(p.get("length_m") or 0.0)
+                members.append(({
+                    "type": "Feature",
+                    "geometry": f["geometry"],
+                    "properties": {
+                        "segment_id": seg_id,
+                        "line_id": line["id"],
+                        "grade": "offstreet",
+                        "facility_category": "trail",
+                        "length_m": length_m,
+                        "data_tier": "crowdsourced",
+                    },
+                }, "offstreet", length_m, None))
+
+        miles_by_grade = defaultdict(float)
+        for _, grade, length_m, _ in members:
+            miles_by_grade[grade] += length_m * _MILES_PER_M
+        miles_total = sum(miles_by_grade.values())
+        entry = {
+            "id": line["id"],
+            "name": line["name"],
+            "termini": line["termini"],
+            "source": line["source"],
+            "data_tier": "derived" if is_street else "crowdsourced",
+            "miles_total": round(miles_total, 2),
+            "miles_by_grade": {g: round(m, 2) for g, m in miles_by_grade.items()},
+        }
+        if is_street:
+            entry["pct_protected"] = (round(100 * miles_by_grade["protected"] / miles_total, 1)
+                                      if miles_total > 0 else None)
+            entry["crashes_total"] = sum(c for _, _, _, c in members)
+        if not members:
+            entry["no_data"] = True
+        lines_out.append(entry)
+        out_feats.extend(f for f, _, _, _ in members)
+
+    return {
+        "type": "FeatureCollection",
+        "data_tier": "derived",
+        "note": ("Curated main-route lines assigned from published segments each run. "
+                 "The roster is editorial: we chose which corridors count as main routes; "
+                 "segment grades and mileage are computed from source data every run. "
+                 "Street lines aggregate real CDOT segments (stats: derived tier); trail "
+                 "lines come from OpenStreetMap (crowdsourced tier) and never blend into "
+                 "derived statistics. Corridor gaps are holes in the line — geometry is "
+                 "never fabricated — and grade shares are over existing member miles only."),
+        "lines": lines_out,
+        "features": out_feats,
+    }
 
 
 def stub_layer(status_note):
@@ -931,6 +1094,8 @@ def main():
             "Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py "
             "didn't run, or Overpass was unreachable). See CONTRIBUTING.md.")
 
+    main_routes_gj = build_main_routes(routes_gj, osm_trails_gj, load_main_routes_roster())
+
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -954,6 +1119,9 @@ def main():
             [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
               "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
              if osm_trails_gj["features"] else []) + [
+            {"id": "main_routes", "name": "Main Routes (curated line roster)",
+             "tier": "derived", "records": len(main_routes_gj["lines"]),
+             "date_range": None},
             {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
              "tier": "real", "records": len(citywide_trend["months"]),
              "date_range": ([CRASH_START_DATE, citywide_trend["window_end"]]
@@ -995,6 +1163,7 @@ def main():
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
     write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails_gj)
+    write_json(SITE_DATA_DIR / "main_routes.geojson", main_routes_gj)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
     write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
@@ -1017,7 +1186,8 @@ def main():
 
     print(f"aggregate: {len(crash_gj['features'])} crashes, {len(routes_gj['features'])} segments, "
           f"{len(wards_gj['features'])} wards, {len(corridors)} corridors, "
-          f"{len(intersections)} hotspots, {len(findings)} findings -> site/data "
+          f"{len(intersections)} hotspots, {len(findings)} findings, "
+          f"{len(main_routes_gj['lines'])} main-route lines -> site/data "
           f"(provenance={provenance})")
 
 

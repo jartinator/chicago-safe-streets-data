@@ -338,3 +338,73 @@ Amendments to sections above; the shapes below supersede where they overlap.
   upcoming meetings" (honest data); on API failure the pre-v1.7 link-out
   fallback shape is written instead (`structured_data_available: false`, no
   `source` key).
+
+## Contract v1.8 changes (main routes)
+
+### data/main_routes.json — checked-in roster config (pipeline INPUT)
+
+Curated "main routes" line roster (see
+`docs/superpowers/specs/2026-07-12-main-routes-design.md`). Not a published
+site file, but its format is contract because `aggregate.py` and
+`refresh_reporting.py` both consume it:
+
+```
+{ note,
+  lines: [{ id, name, termini,                  // termini is display copy, not computed
+            source: "bike_routes" | "osm_trails",
+            streets: ["HALSTED", …],             // bike_routes lines: normalized street names
+            clip_bbox: [south, west, north, east] | (absent),  // optional midpoint clip
+            name_tokens: ["lakefront", …] }] }   // osm_trails lines: lowercase contains-tokens
+```
+
+Lines match in roster order, **first match wins**, and a segment joins at most
+one line (`loop` is first so its bbox claims the downtown couplet segments).
+Street matching: the segment's `street` is uppercased and ONE trailing
+street-type suffix token (`ST|AVE|BLVD|RD|DR|WAY|PKWY`) is stripped, then
+compared for exact equality (never substring). `clip_bbox` keeps only segments
+whose geometry midpoint (middle vertex) falls inside. Trail matching: the
+`osm_trails.geojson` feature's lowercased `name` must contain any token in
+`name_tokens`. The roster is **editorial** — the line list is hand-curated;
+membership, grades, and mileage are recomputed from source data each run.
+
+### main_routes.geojson — tier derived (produced by `build_main_routes`)
+
+FeatureCollection of the roster lines' member segments, plus a top-level
+`lines` report-card list (same FC-level-metadata pattern as the stub notes):
+
+```
+{ type: "FeatureCollection", data_tier: "derived", note,
+  lines: [{ id, name, termini, source,
+            data_tier: "derived" (street lines) | "crowdsourced" (trail lines),
+            miles_total, miles_by_grade: { <grade>: miles },   // grades present only
+            pct_protected (street lines only; null when no members),
+            crashes_total (street lines only — sum of member crashes_within_30m),
+            no_data: true (only on lines with zero member segments) }],
+  features: [ member segments, geometry passthrough ] }
+```
+
+Member feature properties: `segment_id`, `line_id`, `grade`,
+`facility_category`, `length_m`, `crashes_within_30m` (street members only),
+`data_tier` (passthrough: `"real"` for CDOT street segments, `"crowdsourced"`
+for OSM trail features).
+
+Grades (4, user-locked order off-street > protected > painted > none), mapped
+from `facility_category` via `MAIN_ROUTE_GRADE_MAP` in `config.py`:
+
+| grade | from facility_category |
+|---|---|
+| `offstreet` | `trail` (osm_trails features) |
+| `protected` | `protected` |
+| `painted` | `buffered`, `painted`, `greenway` |
+| `none` | `sharrow`, `other` |
+
+Hard rules: corridor gaps are holes in the line (geometry is never
+fabricated); `pct_protected` is over existing member miles only; street-line
+stats are `derived` and trail lines `crowdsourced` — the two provenances never
+blend; `crashes_total` never appears on trail lines. When `osm_trails.geojson`
+is a stub (no live Overpass pull yet), trail lines appear with
+`no_data: true` and zero features — the UI greys them with the stub badge.
+
+- **`meta.json`** — `sources` gains
+  `{ id: "main_routes", name: "Main Routes (curated line roster)", tier: "derived",
+  records: <line count>, date_range: null }`.

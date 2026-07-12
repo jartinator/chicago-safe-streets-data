@@ -1,0 +1,132 @@
+{
+  "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-12-main-routes-design.md). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. Lines match in order, first match wins. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`, optionally clipped to `clip_bbox` [south, west, north, east] by the segment's geometry midpoint. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",
+  "lines": [
+    {
+      "id": "loop",
+      "name": "Downtown circulator",
+      "termini": "Loop",
+      "source": "bike_routes",
+      "streets": ["DEARBORN", "CLINTON", "DESPLAINES", "RANDOLPH", "WASHINGTON", "WABASH"],
+      "clip_bbox": [41.868, -87.647, 41.9, -87.615]
+    },
+    {
+      "id": "milwaukee",
+      "name": "Milwaukee Line",
+      "termini": "Downtown ⇄ Jefferson Park",
+      "source": "bike_routes",
+      "streets": ["MILWAUKEE"]
+    },
+    {
+      "id": "halsted",
+      "name": "Halsted Line",
+      "termini": "79th ⇄ Waveland",
+      "source": "bike_routes",
+      "streets": ["HALSTED"]
+    },
+    {
+      "id": "clark",
+      "name": "Clark Line",
+      "termini": "River North ⇄ Devon",
+      "source": "bike_routes",
+      "streets": ["CLARK"]
+    },
+    {
+      "id": "kedzie",
+      "name": "Kedzie Line",
+      "termini": "Brighton Park ⇄ Touhy",
+      "source": "bike_routes",
+      "streets": ["KEDZIE"]
+    },
+    {
+      "id": "damen",
+      "name": "Damen Line",
+      "termini": "81st ⇄ Bryn Mawr",
+      "source": "bike_routes",
+      "streets": ["DAMEN"]
+    },
+    {
+      "id": "state-indiana",
+      "name": "State–Indiana Line",
+      "termini": "South Loop ⇄ Roseland",
+      "source": "bike_routes",
+      "streets": ["STATE", "INDIANA"]
+    },
+    {
+      "id": "vincennes",
+      "name": "Vincennes Line",
+      "termini": "79th ⇄ Beverly",
+      "source": "bike_routes",
+      "streets": ["VINCENNES"]
+    },
+    {
+      "id": "elston",
+      "name": "Elston Line",
+      "termini": "Goose Island ⇄ Forest Glen",
+      "source": "bike_routes",
+      "streets": ["ELSTON"]
+    },
+    {
+      "id": "lake",
+      "name": "Lake Street Line",
+      "termini": "Austin ⇄ Fulton Market",
+      "source": "bike_routes",
+      "streets": ["LAKE"]
+    },
+    {
+      "id": "jackson-washington",
+      "name": "Jackson–Washington Line",
+      "termini": "Austin ⇄ Loop",
+      "source": "bike_routes",
+      "streets": ["JACKSON", "WASHINGTON"]
+    },
+    {
+      "id": "belmont",
+      "name": "Belmont Line",
+      "termini": "Avondale ⇄ Lakeview",
+      "source": "bike_routes",
+      "streets": ["BELMONT"]
+    },
+    {
+      "id": "31st",
+      "name": "31st Street Line",
+      "termini": "Bronzeville ⇄ Lakefront",
+      "source": "bike_routes",
+      "streets": ["31ST"]
+    },
+    {
+      "id": "lakefront",
+      "name": "Lakefront Trail",
+      "termini": "Ardmore ⇄ 71st",
+      "source": "osm_trails",
+      "name_tokens": ["lakefront"]
+    },
+    {
+      "id": "bloomingdale",
+      "name": "Bloomingdale Trail (606)",
+      "termini": "Ridgeway ⇄ Ashland",
+      "source": "osm_trails",
+      "name_tokens": ["bloomingdale", "606"]
+    },
+    {
+      "id": "major-taylor",
+      "name": "Major Taylor Trail",
+      "termini": "Dan Ryan Woods ⇄ Whistler Woods",
+      "source": "osm_trails",
+      "name_tokens": ["major taylor"]
+    },
+    {
+      "id": "north-shore-channel",
+      "name": "North Shore Channel Trail",
+      "termini": "Green Bay Rd ⇄ Lawrence",
+      "source": "osm_trails",
+      "name_tokens": ["north shore channel"]
+    },
+    {
+      "id": "north-branch",
+      "name": "North Branch Trail",
+      "termini": "Gompers Park ⇄ Botanic Garden",
+      "source": "osm_trails",
+      "name_tokens": ["north branch"]
+    }
+  ]
+}
