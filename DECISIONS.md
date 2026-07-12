@@ -132,3 +132,44 @@ environment forced a deviation. Newest last.
     it's a small third-party app with no uptime guarantee, a failed pull is
     non-fatal and falls back to the stub shape for that run, same treatment as
     the ward-dataset-id guard in #6.
+
+17. **Chicago Councilmatic closes the frozen-Legistar gap.** #14 recorded that
+    `council_records.json` goes dark after `LEGISTAR_DATA_FROZEN_AT`
+    (2023-06-21) because no eLMS API could be confirmed. DataMade's Chicago
+    Councilmatic (`chicago.councilmatic.org`, Datasette-backed) mirrors the
+    council's own post-migration data and is queryable live via its public SQL
+    endpoint — `pull_councilmatic.py` pulls it and `council_merge.py` unions it
+    with the Legistar pull, so `council_records.json` is now current to the
+    present rather than frozen.
+    - **Live SQL API over the 3.7 GB nightly dump.** Councilmatic also
+      publishes a full nightly SQLite dump, but this pipeline only needs a few
+      dozen keyword-filtered bills per run — a live, parameterized SQL query
+      against the Datasette JSON endpoint is orders of magnitude cheaper than
+      downloading and querying a 3.7 GB file. The dump path is documented in
+      `councilmatic.py` as a fallback if the live endpoint ever goes away, but
+      no code pulls it.
+    - **Two raw files, unioned, not merged at the source.** `pull_councilmatic.py`
+      writes its own raw file alongside `pull_council_records.py`'s (Legistar)
+      output; `council_merge.py` unions them by `(source, matter_id)` at read
+      time in `classify_safety_topic.py` and `aggregate.py`. Keeping the two
+      pulls independent means either can fail or be skipped without corrupting
+      the other's raw data — same non-fatal-failure posture as Mellow Bike Map
+      (#7/#16) and Ward Wise (#14).
+    - **Contested votes only; attendance deliberately dropped.** Of 12,302
+      post-2023 vote events pulled from Councilmatic, only ~1.4% had any
+      recorded "no" vote — the overwhelming majority of council business,
+      including street-safety legislation, passes on voice vote or unanimous
+      roll call. Councilmatic's raw `absent` flag conflates true absence with
+      not being a member of the committee casting the vote, so a naive
+      "attendance record" or "voting record" built from it would misrepresent
+      aldermen who simply don't sit on a given committee. Rather than publish
+      that misleading metric, `pull_councilmatic.py` surfaces only genuinely
+      contested votes (`recorded_votes`, present only when at least one "no"
+      was cast) and `aggregate.py` rolls up a `recorded_no_votes` count per
+      alderman — a small, honest signal instead of a large, misleading one.
+    - **Councilmatic's post-2023 scraper mechanism is unverified from the
+      outside.** How DataMade's scraper reaches Chicago's post-migration
+      (eLMS) source isn't pinned down by this project — only that Councilmatic
+      itself is live, public, and its data is current and internally
+      consistent when queried. `README.md` discloses this as a known
+      limitation of the source, same treatment as the eLMS-API dead end in #14.

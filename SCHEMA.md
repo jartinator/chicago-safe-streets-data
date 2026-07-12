@@ -1,4 +1,4 @@
-# SCHEMA.md — published data contracts (v1.4)
+# SCHEMA.md — published data contracts (v1.5)
 
 Everything the site consumes lives in `site/data/` and is produced by
 `pipeline/aggregate.py` (plus `make_mock_obstructions.py`). These files ARE the
@@ -159,33 +159,51 @@ pipeline run mid-year, when the current year's bucket is partial. `infra_growth_
 is `null` until at least two `data/snapshots/bike_routes_*.geojson` snapshots exist.
 
 ## council_records.json — tier real (topic_relevant tag: tier derived)
-Street/bike-safety-related City Council legislation pulled from the Legistar
-Web API, sorted by `intro_date` desc:
+Street/bike-safety-related City Council legislation, unioned from the Legistar
+Web API and Chicago Councilmatic (DataMade), sorted by `intro_date` desc:
 ```
 { data_tier: "real", topic_tag_tier: "derived", note,
   records: [{ matter_id, title, type, status, intro_date, sponsors: [name],
               sponsor_wards: [ward] (resolved only via exact aldermen.json name match),
-              url, topic_relevant (bool), topic_reason, topic_tagged_by: "llm"|"keyword_fallback",
+              url, source: "legistar"|"councilmatic",
+              recorded_votes: { date, yes, no, absent, no_voters: [name], result } | (absent),
+              topic_relevant (bool), topic_reason, topic_tagged_by: "llm"|"keyword_fallback",
               data_tier: "real", topic_tag_tier: "derived" }] }
 ```
-**Coverage gap:** Legistar data is current only through
+`source` distinguishes which pull produced the record; `matter_id` is an int
+for Legistar records and a string for Councilmatic records, and dedup between
+the two sources is keyed on `(source, matter_id)`. `recorded_votes` is present
+only on bills with an actual contested roll-call split (at least one "no"
+vote) — sourced from Councilmatic, since Legistar's pull doesn't fetch vote
+detail. It is absent (not `null`) on records with no contested vote, including
+all Legistar records. `recorded_votes.result` is a free-text string as
+reported by Councilmatic's vote event (e.g. `"pass"` / `"fail"`) — not a
+constrained enum, and passed through as-is. **Coverage:** Legistar data is frozen at
 `LEGISTAR_DATA_FROZEN_AT` (2023-06-21) — Chicago's council migrated to a new
 system (eLMS) after that date with no confirmed public API (see
-DECISIONS.md). This file cannot show anything more recent. `topic_relevant`
-is an automated tag (see `classify_safety_topic.py`) on a real, deterministically
-fetched record — it never fabricates the underlying matter/sponsor/date.
+DECISIONS.md). Chicago Councilmatic covers the gap: it mirrors the council's
+post-migration data and is current through the present, so the union is not
+frozen even though the Legistar half is. `topic_relevant` is an automated tag
+(see `classify_safety_topic.py`) on a real, deterministically fetched record —
+it never fabricates the underlying matter/sponsor/date/vote.
 
 ## aldermen_safety_record.json — tier derived
 Per-sponsor rollup of `council_records.json`, sorted by `safety_sponsorships` desc:
 ```
 { data_tier: "derived", note,
   aldermen: [{ sponsor_name, ward (nullable, exact-name-match only), safety_sponsorships,
-               total_matched_sponsorships, records: [{ matter_id, title, type, status,
+               total_matched_sponsorships, recorded_no_votes (int),
+               records: [{ matter_id, title, type, status,
                intro_date, topic_relevant, url }], data_tier: "derived" }] }
 ```
 A broad proxy record (sponsorships on tagged legislation), not a roll-call
 vote tally — most Chicago council street-safety actions pass by voice vote
-with no individual vote recorded.
+with no individual vote recorded. `recorded_no_votes` counts how many times
+that alderman is named in a `no_voters` list across tagged, contested
+`recorded_votes` — the rare cases where an actual "no" was cast and captured.
+Because that count comes from `no_voters` rather than from `sponsors`, an
+alderman can appear in `aldermen` solely as a recorded no-voter, with zero
+sponsorships.
 
 ## hearings.json — tier real (best-effort)
 ```

@@ -17,7 +17,8 @@ from shapely.geometry import Point, shape
 
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
-                    INJURY_SEVERITY_MAP, CONTRACT_VERSION, LEGISTAR_DATA_FROZEN_AT)
+                    INJURY_SEVERITY_MAP, CONTRACT_VERSION)
+from council_merge import load_all_council_records
 from socrata import write_json
 from spatial_join import _first_key
 
@@ -530,18 +531,17 @@ def empty_council_records():
         "data_tier": "real",
         "topic_tag_tier": "derived",
         "note": ("Council legislative records were not pulled this run "
-                 "(pull_council_records.py didn't run, or the Legistar Web API was "
-                 "unreachable). See CONTRIBUTING.md."),
+                 "(neither pull_council_records.py / Legistar nor pull_councilmatic.py / "
+                 "Councilmatic ran, or both sources were unreachable). See CONTRIBUTING.md."),
         "records": [],
     }
 
 
 def build_council_records(name_to_ward):
-    records_path = RAW_DIR / "council_records.json"
-    if not records_path.exists():
+    records, meta = load_all_council_records(RAW_DIR)
+    if not records:
         return empty_council_records(), []
 
-    raw = json.loads(records_path.read_text())
     tags = {t["matter_id"]: t for t in
             json.loads((RAW_DIR / "safety_topic_tags.json").read_text())} \
         if (RAW_DIR / "safety_topic_tags.json").exists() else {}
@@ -550,12 +550,8 @@ def build_council_records(name_to_ward):
         if (RAW_DIR / "safety_topic_corrections.json").exists() else {}
 
     out = []
-    for r in raw.get("records", []):
+    for r in records:
         mid = r["matter_id"]
-        # Resolve which source actually supplied the tag up front, rather than
-        # re-deriving provenance later from `mid in corrections` — a falsy-but-
-        # present correction (e.g. `{}`) would otherwise fall through to `tags`
-        # while still being labeled "manual_correction".
         if corrections.get(mid):
             tag, tag_source = corrections[mid], "manual_correction"
         elif tags.get(mid):
@@ -564,7 +560,7 @@ def build_council_records(name_to_ward):
             continue  # not yet classified this run
         sponsor_wards = sorted({name_to_ward[s.strip().lower()] for s in (r.get("sponsors") or [])
                                 if s.strip().lower() in name_to_ward})
-        out.append({
+        rec = {
             "matter_id": mid,
             "title": r.get("title"),
             "type": r.get("type"),
@@ -573,32 +569,57 @@ def build_council_records(name_to_ward):
             "sponsors": r.get("sponsors") or [],
             "sponsor_wards": sponsor_wards,
             "url": r.get("url"),
-            # Corrections is hand-edited (like aldermen.json); default missing
-            # fields rather than KeyError on a partial manual override.
+            "source": r.get("source", "legistar"),
             "topic_relevant": tag.get("topic_relevant", True),
             "topic_reason": tag.get("topic_reason", "(manual correction, no reason given)"),
             "topic_tagged_by": tag_source,
             "data_tier": "real",
             "topic_tag_tier": "derived",
-        })
+        }
+        if r.get("recorded_votes"):
+            rec["recorded_votes"] = r["recorded_votes"]
+        out.append(rec)
     out.sort(key=lambda r: r.get("intro_date") or "", reverse=True)
+
+    if meta["has_councilmatic"]:
+        note = (f"Merged from two sources: the Legistar Web API (historical, through "
+                f"{meta['legistar_frozen_at']}) and DataMade's Chicago Councilmatic mirror "
+                f"(current through {meta['councilmatic_latest']}), which covers the period "
+                f"after Chicago's council left Legistar. Each record carries a `source`. "
+                f"recorded_votes appears only on the rare bills with a recorded roll-call "
+                f"split — most council actions pass by voice vote. sponsor_wards resolves "
+                f"only when a sponsor's name exactly matches a manually-filled entry in "
+                f"aldermen.json; empty means unresolved, not 'no sponsors'. "
+                f"topic_relevant/topic_reason are automated tags (topic_tag_tier: derived) "
+                f"— see topic_tagged_by ('llm' vs 'keyword_fallback').")
+    else:
+        note = (f"Sourced from the Legistar Web API, which is only current through "
+                f"{meta['legistar_frozen_at']} (Chicago's council migrated to a new system "
+                f"after that date — see DECISIONS.md). Councilmatic data was not available "
+                f"this run, so records after that date are missing. sponsor_wards resolves "
+                f"only when a sponsor's name exactly matches a manually-filled entry in "
+                f"aldermen.json; empty means unresolved, not 'no sponsors'. "
+                f"topic_relevant/topic_reason are automated tags (topic_tag_tier: derived) "
+                f"— see topic_tagged_by ('llm' vs 'keyword_fallback').")
+
     return {
         "data_tier": "real",
         "topic_tag_tier": "derived",
-        "note": (f"Sourced from the Legistar Web API, which is only current through "
-                 f"{raw.get('data_frozen_at', LEGISTAR_DATA_FROZEN_AT)} (Chicago's council "
-                 f"migrated to a new system after that date — see DECISIONS.md). "
-                 f"sponsor_wards resolves only when a sponsor's name exactly matches a "
-                 f"manually-filled entry in aldermen.json; empty means unresolved, not "
-                 f"'no sponsors'. topic_relevant/topic_reason are automated tags "
-                 f"(topic_tag_tier: derived) layered on real fetched records — see "
-                 f"topic_tagged_by ('llm' vs 'keyword_fallback')."),
+        "note": note,
         "records": out,
     }, out
 
 
 def build_aldermen_safety_record(council_records, name_to_ward):
     by_sponsor = defaultdict(lambda: {"relevant_count": 0, "total_count": 0, "records": []})
+
+    # Count recorded 'no' votes on topic-relevant matters, per alderman name.
+    no_votes_by_name = defaultdict(int)
+    for r in council_records:
+        if r.get("topic_relevant") and r.get("recorded_votes"):
+            for name in r["recorded_votes"].get("no_voters", []):
+                no_votes_by_name[name] += 1
+
     for r in council_records:
         for sponsor in r["sponsors"]:
             d = by_sponsor[sponsor]
@@ -610,24 +631,35 @@ def build_aldermen_safety_record(council_records, name_to_ward):
                 "status": r["status"], "intro_date": r["intro_date"],
                 "topic_relevant": r["topic_relevant"], "url": r["url"],
             })
+
+    # Aldermen who only ever appear as a recorded 'no' voter (never sponsored)
+    # must still be listed — otherwise the honest signal we added is invisible.
+    for name in no_votes_by_name:
+        by_sponsor[name]
+
     out = []
-    for sponsor, d in sorted(by_sponsor.items(), key=lambda kv: -kv[1]["relevant_count"]):
+    for sponsor, d in sorted(by_sponsor.items(),
+                             key=lambda kv: (-kv[1]["relevant_count"],
+                                             -no_votes_by_name.get(kv[0], 0))):
         out.append({
             "sponsor_name": sponsor,
             "ward": name_to_ward.get(sponsor.strip().lower()),
             "safety_sponsorships": d["relevant_count"],
             "total_matched_sponsorships": d["total_count"],
+            "recorded_no_votes": no_votes_by_name.get(sponsor, 0),
             "records": d["records"],
             "data_tier": "derived",
         })
     return {
         "data_tier": "derived",
-        "note": ("Aggregate count of Legistar-recorded sponsorships on matters tagged "
-                 "topic_relevant (see council_records.json). This is a broad proxy, not a "
-                 "record of roll-call votes: most Chicago council street-safety actions pass by "
-                 "voice vote at committee, with no individual vote recorded. ward is null until "
-                 "sponsor_name has an exact match in the manually-filled aldermen.json (see "
-                 "DECISIONS.md #8) — never auto-matched by fuzzy name similarity."),
+        "note": ("Aggregate of Chicago City Council sponsorships on matters tagged "
+                 "topic_relevant (see council_records.json), plus recorded_no_votes: the "
+                 "count of the rare recorded roll-call votes where this member voted 'no' "
+                 "on a topic-relevant matter. Most council street-safety actions pass by "
+                 "voice vote with no individual vote recorded, so recorded_no_votes is "
+                 "near-zero for nearly everyone by design, not omission. ward is null until "
+                 "sponsor_name exactly matches the manually-filled aldermen.json "
+                 "(DECISIONS.md #8) — never auto-matched by fuzzy name similarity."),
         "aldermen": out,
     }
 

@@ -8,7 +8,7 @@ Stages:
   1. pull_people          (cyclist filter lives in the People dataset)
   2. pull_crashes, pull_vehicles   (batched CRASH_RECORD_ID lookups)
   3. pull_bike_routes, pull_wards, pull_311, pull_cameras, pull_mellow
-  4. pull_ward_demographics, pull_council_records, pull_menu_spending, pull_hearings
+  4. pull_ward_demographics, pull_council_records, pull_councilmatic (post-2023 council data via Councilmatic — see DECISIONS.md), pull_menu_spending, pull_hearings
      (ward-accountability layer — see DECISIONS.md; each is non-fatal on failure)
   5. snapshot_bike_routes (dated copy — builds install-date history over time)
   6. make_mock_obstructions
@@ -30,7 +30,7 @@ LIVE_STAGES = [
     ["pull_crashes.py"], ["pull_vehicles.py"],
     ["pull_bike_routes.py"], ["pull_wards.py"], ["pull_311.py"], ["pull_cameras.py"],
     ["pull_mellow.py"],
-    ["pull_ward_demographics.py"], ["pull_council_records.py"],
+    ["pull_ward_demographics.py"], ["pull_council_records.py"], ["pull_councilmatic.py"],
     ["pull_menu_spending.py"], ["pull_hearings.py"],
 ]
 COMMON_STAGES = [
