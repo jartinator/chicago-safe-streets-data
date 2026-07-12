@@ -44,6 +44,10 @@ environment forced a deviation. Newest last.
 8. **Alderman names are never generated.** `aldermen.json` ships with all 50
    wards and `null` names plus the official lookup URL. Filling it is a manual,
    verifiable step — a wrong auto-filled alderman name would be worse than none.
+   - *2026-07-12:* the never-auto-generate rule was about *guessing* names. The
+     city's own Ward Offices dataset (`htai-wnw4`) is the authoritative roster
+     and is now ingested by `pull_aldermen.py`; exact-match-only sponsor
+     resolution unchanged; failed pulls keep the previous file.
 
 9. **No geocoder.** Address search would need an external geocoding API (not
    free-tier-safe, and a new data dependency). Ward search is by number, and
@@ -91,6 +95,13 @@ environment forced a deviation. Newest last.
       (in case an endpoint appears later) and otherwise honestly falls back to
       a link-out (committee name + live calendar URL) rather than showing
       stale or fabricated hearing dates.
+      - *2026-07-12 correction:* the eLMS public API **does** exist — the
+        original research guessed plural/prefixed paths (`/api/matters`,
+        `/api/Events`), but the real endpoints are singular nouns at the API
+        root (`GET api.chicityclerkelms.chicago.gov/meeting`, rows under the
+        response envelope's `data` key; confirmed live). `pull_hearings.py`
+        now pulls real meetings per committee from it, keeping the link-out
+        fallback for runs where the (undocumented, unversioned) API fails.
     - **Menu-fund spending** uses Ward Wise (`wardwisechicago.org`, a Chi Hack
       Night volunteer project) since the city only publishes PDF reports.
       Every Ward Wise API endpoint returned HTTP 500 during verification
@@ -135,7 +146,10 @@ environment forced a deviation. Newest last.
 
 17. **Chicago Councilmatic closes the frozen-Legistar gap.** #14 recorded that
     `council_records.json` goes dark after `LEGISTAR_DATA_FROZEN_AT`
-    (2023-06-21) because no eLMS API could be confirmed. DataMade's Chicago
+    (2023-06-21) because no eLMS API could be confirmed. (*2026-07-12:* an eLMS
+    public API has since been confirmed at singular-noun endpoints — see the
+    correction under #14 — and now powers `hearings.json`; Councilmatic remains
+    the source for post-2023 legislative records.) DataMade's Chicago
     Councilmatic (`chicago.councilmatic.org`, Datasette-backed) mirrors the
     council's own post-migration data and is queryable live via its public SQL
     endpoint — `pull_councilmatic.py` pulls it and `council_merge.py` unions it

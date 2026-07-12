@@ -39,6 +39,14 @@ def test_live_provenance_creates_marker_when_absent(tmp_path, monkeypatch):
     assert (raw / "PROVENANCE").read_text().strip() == "socrata"
 
 
+def test_aldermen_pull_is_a_live_stage_after_wards():
+    # The current-alderperson roster (Ward Offices dataset) writes site/data/aldermen.json
+    # directly, so it runs with the other live pulls, right after the ward boundaries.
+    live = _flat(run_all.LIVE_STAGES)
+    assert "pull_aldermen.py" in live
+    assert live.index("pull_aldermen.py") == live.index("pull_wards.py") + 1
+
+
 def test_osm_trails_pull_is_a_live_stage():
     # Off-street trails come from OSM, pulled alongside the other non-fatal
     # third-party layer (Mellow), before the COMMON aggregate stage.

@@ -266,3 +266,75 @@ Sourced from Ward Wise (Chi Hack Night), the only structured alternative to
 the city's PDF-only Aldermanic Menu Program reports; not independently
 verified against source PDFs. Empty `wards` if Ward Wise was unreachable this
 run (see CONTRIBUTING.md).
+
+## Severity definitions (injury / KSI)
+
+Used by `citywide_trend.json`, `ward_safety_index.json`'s `windows`/`monthly`,
+and the `ksi-trend` finding:
+
+- **injury crashes** = crashes whose most-severe injury is `fatal`,
+  `incapacitating`, or `non_incapacitating`.
+- **KSI** ("killed or seriously injured") = `fatal` + `incapacitating` only.
+
+Computed by `pipeline/crash_metrics.py` (pure module, shared by the live
+`aggregate.py` path and the offline `refresh_reporting.py` so the two can
+never drift).
+
+## citywide_trend.json — tier real
+
+Monthly counts of police-reported cyclist crashes citywide since Sept 2017
+(`CRASH_START_DATE`), one contiguous bucket per calendar month (months with no
+crashes appear with zeros):
+```
+{ data_tier: "real", window_end: "YYYY-MM-DD", note,
+  months: [{ month: "YYYY-MM", crashes, injury_crashes, ksi, fatal }] }
+```
+`window_end` is the latest crash date in the underlying pull. Recent months
+are provisional — crash records get amended upstream.
+
+## Contract v1.7 changes (data-reporting clarity)
+
+Amendments to sections above; the shapes below supersede where they overlap.
+
+- **`ward_safety_index.json`** — each ward record gains two fields:
+  - `windows`: same shape as `crash_metrics.window_counts` output —
+    `{ recent_12mo: { crashes, injury_crashes, ksi, fatal },
+    prior_12mo: { …same keys… }, window_end: "YYYY-MM-DD" }`. Unlike
+    `crash_trend` (anchored per-ward), `windows` is anchored at the **global**
+    latest crash date so wards are directly comparable.
+  - `monthly`: the same contiguous `[{ month, crashes, injury_crashes, ksi,
+    fatal }]` series as `citywide_trend.json`, for that ward's located crashes
+    (zeros-only for a ward with none).
+- **`findings.json`** — full swap of the findings set. Removed ids:
+  `painted-vs-protected`, `vehicle-types`. Current ids, in order: `ksi-trend`,
+  `protected-share`, `top-corridors`, `hit-and-run`, `ward-concentration`,
+  `dooring-undercount` (retitled "Dooring: structurally undercounted").
+  `ward-concentration` gains a `wards: [ward, …]` key (the five wards named in
+  its stat, for UI drill-down links). The `protected-share` finding counts
+  **on-street** bikeway miles only — the `trail` facility category is excluded
+  from both numerator and denominator (off-street trails live in
+  `osm_trails.geojson` at crowdsourced tier and never enter real-tier
+  statistics).
+- **`aldermen.json`** — no longer hand-maintained on the live path:
+  `pull_aldermen.py` fills it each run from the city's Ward Offices dataset
+  (`htai-wnw4`). New shape:
+  ```
+  { as_of, source, data_tier: "real", note, lookup_url,
+    wards: [{ ward, alderman: "Last, First"|null, email, phone, website }] }
+  ```
+  All 50 wards always present; vacant seats appear as `null` (never invented).
+  A failed or sparse pull (< 40 named wards) keeps the previous file. The
+  null-filled hand-maintained shape remains the fixtures/offline fallback.
+- **`hearings.json`** — meetings are now real, pulled from the City Clerk eLMS
+  public API (`api.chicityclerkelms.chicago.gov`). When structured data was
+  fetched, the top level carries `source: "elms_api"` and each committee's
+  `meetings` contains future, non-cancelled meetings, oldest first:
+  ```
+  meetings: [{ date (ISO datetime), status: "Scheduled"|"Scheduled & Published",
+               location|null, agenda_url|null, notice_url|null, comment|null }]
+  ```
+  `comment` typically carries the written-public-comment deadline/address. An
+  empty `meetings` list with `structured_data_available: true` means "no
+  upcoming meetings" (honest data); on API failure the pre-v1.7 link-out
+  fallback shape is written instead (`structured_data_available: false`, no
+  `source` key).

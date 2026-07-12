@@ -13,6 +13,17 @@
       + "topic tag) rather than sourced directly — read as an analytical signal, not a raw fact.",
   };
 
+  // One-line plain-language versions of the tiers, used by the tier-explainer
+  // modal that opens when any badge is tapped.
+  const TIER_PLAIN = {
+    real: "from official records",
+    proxy: "a related signal, not a direct measure",
+    derived: "calculated by us from real data",
+    mock: "fake demo data — not real reports",
+    crowdsourced: "volunteer-reported, unverified",
+    stub: "no data yet — a placeholder for a future source",
+  };
+
   const DISCLAIMERS = {
     dooring: "Dooring undercount: dooring crashes are structurally excluded from official " +
       "“reportable” crash records unless damage/injury thresholds are met. Any crash density " +
@@ -28,10 +39,10 @@
     ["index.html", "Map"],
     ["network.html", "Network"],
     ["findings.html", "Findings"],
-    ["table.html", "Data Table"],
+    ["table.html", "Explore Data"],
     ["sources.html", "Sources"],
     ["action.html", "Take Action"],
-    ["contributing.html", "Open Data"],
+    ["contributing.html", "Downloads & Docs"],
   ];
 
   const FACILITY_COLORS = {
@@ -66,16 +77,43 @@
       c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  // Badges are tappable, never hover-only: a <button> with data-tier that the
+  // delegated document click handler (wired in initPage) opens the explainer for.
   function badgeHTML(tier) {
     const t = TIER_INFO[tier] ? tier : "stub";
-    return `<span class="badge tier-${t}" title="${esc(TIER_INFO[t])}">${t === "stub" ? "no data yet" : t}</span>`;
+    return `<button type="button" class="badge tier-${t}" data-tier="${t}">` +
+      `${t === "stub" ? "no data yet" : t}</button>`;
   }
   function badge(tier) {
-    const el = document.createElement("span");
-    el.outerHTML = badgeHTML(tier);
     const tmp = document.createElement("div");
     tmp.innerHTML = badgeHTML(tier);
     return tmp.firstChild;
+  }
+
+  // Shared modal: one lazily-created <dialog class="modal"> reused by every
+  // caller. Focus returns to the invoking element on close.
+  let _modal = null;
+  function openModal({ title, bodyHTML }) {
+    const opener = document.activeElement;
+    if (!_modal) {
+      _modal = document.createElement("dialog");
+      _modal.className = "modal";
+      document.body.appendChild(_modal);
+    }
+    _modal.innerHTML =
+      `<div class="modal-head"><strong>${esc(title)}</strong>` +
+      `<button type="button" class="btn modal-close" aria-label="Close">×</button></div>` +
+      `<div class="modal-body">${bodyHTML}</div>`;
+    _modal.querySelector(".modal-close").addEventListener("click", () => _modal.close());
+    _modal.addEventListener("close", function onClose() {
+      _modal.removeEventListener("close", onClose);
+      if (opener && opener.focus) opener.focus();
+    });
+    // Re-entrancy guard: opening from inside an open modal (e.g. a badge in a
+    // modal body) must swap content, not throw InvalidStateError.
+    if (_modal.open) _modal.close();
+    _modal.showModal();
+    return _modal;
   }
 
   function noticeHTML(kind) {
@@ -167,6 +205,96 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---- trend chart + trailing-window helpers (pure, Node-testable) ---- */
+
+  // Trailing-`window` sums of `key` over [{month, crashes, injury_crashes, ksi,
+  // fatal}] month buckets. Entries before a full window are omitted.
+  function rollingSums(months, key, window) {
+    const out = [];
+    if (!months || months.length < window) return out;
+    let sum = 0;
+    for (let i = 0; i < months.length; i++) {
+      sum += months[i][key] || 0;
+      if (i >= window) sum -= months[i - window][key] || 0;
+      if (i >= window - 1) out.push({ month: months[i].month, value: sum });
+    }
+    return out;
+  }
+
+  // Sparkline-plus: polyline, first/last month labels, current-value dot+label,
+  // optional dashed "city median" line, optional baseline dots for fatal/KSI
+  // months. No axes/gridlines by design.
+  function trendChartSVG(points, opts) {
+    const o = Object.assign({ width: 560, height: 120, label: "", median: null, dots: [] }, opts || {});
+    if (!points || points.length < 2) return "";
+    const pad = { l: 8, r: 46, t: 14, b: 18 };
+    const w = o.width - pad.l - pad.r, h = o.height - pad.t - pad.b;
+    const vals = points.map(p => p.value);
+    const max = Math.max(...vals, o.median || 0) || 1;
+    const x = i => pad.l + (i / (points.length - 1)) * w;
+    const y = v => pad.t + h - (v / max) * h;
+    const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+    const last = points[points.length - 1];
+    let svg = `<svg viewBox="0 0 ${o.width} ${o.height}" role="img" aria-label="${esc(o.label)}" xmlns="http://www.w3.org/2000/svg">`;
+    if (o.median != null) {
+      svg += `<line x1="${pad.l}" x2="${pad.l + w}" y1="${y(o.median)}" y2="${y(o.median)}" stroke="var(--ink-soft)" stroke-dasharray="4 3" stroke-width="1"/>` +
+        `<text x="${pad.l + w}" y="${y(o.median) - 4}" text-anchor="end" font-size="10" fill="var(--ink-soft)">city median</text>`;
+    }
+    svg += `<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+    (o.dots || []).forEach(d => {
+      const i = points.findIndex(p => p.month === d.month);
+      if (i === -1) return;
+      svg += `<circle cx="${x(i)}" cy="${pad.t + h}" r="3" fill="var(--sev-incap)"><title>${esc(String(d.count))} ${esc(d.kind)}</title></circle>`;
+    });
+    svg += `<circle cx="${x(points.length - 1)}" cy="${y(last.value)}" r="3" fill="var(--accent)"/>` +
+      `<text x="${x(points.length - 1) + 6}" y="${y(last.value) + 4}" font-size="12" font-weight="700" fill="var(--accent)">${esc(String(last.value))}</text>` +
+      `<text x="${pad.l}" y="${o.height - 4}" font-size="10" fill="var(--ink-soft)">${esc(points[0].month)}</text>` +
+      `<text x="${pad.l + w}" y="${o.height - 4}" text-anchor="end" font-size="10" fill="var(--ink-soft)">${esc(last.month)}</text></svg>`;
+    return svg;
+  }
+
+  /* ---- calendar (.ics) helpers ---- */
+
+  // RFC-5545 text escaping: backslash, semicolon, comma, newline.
+  function _icsText(s) {
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r\n|\r|\n/g, "\\n");
+  }
+
+  // Minimal VCALENDAR/VEVENT. DTSTART is floating local time (YYYYMMDDTHHMMSS)
+  // — committee meetings are Chicago-local wall-clock times. UID is a stable
+  // hash of title+start so re-downloads update rather than duplicate.
+  function icsForEvent({ title, startISO, location, url, description }) {
+    const dtstart = String(startISO || "").replace(/[-:]/g, "").slice(0, 15);
+    const key = `${title}|${startISO}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//On Your Left!//EN",
+      "BEGIN:VEVENT",
+      `UID:${hash.toString(16)}@onyourleft`,
+      `DTSTART:${dtstart}`,
+      `SUMMARY:${_icsText(title)}`,
+    ];
+    if (location) lines.push(`LOCATION:${_icsText(location)}`);
+    if (url) lines.push(`URL:${_icsText(url)}`);
+    if (description) lines.push(`DESCRIPTION:${_icsText(description)}`);
+    lines.push("END:VEVENT", "END:VCALENDAR");
+    // LF-normalize then join with CRLF so no bare LF survives.
+    return lines.join("\r\n").replace(/\r?\n/g, "\r\n") + "\r\n";
+  }
+
+  function downloadICS(filename, icsString) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([icsString], { type: "text/calendar" }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   function initPage(activeHref) {
     if (!document.querySelector("link[rel='icon']")) {
       const icon = document.createElement("link");
@@ -178,7 +306,7 @@
     const header = document.createElement("header");
     header.className = "site-header";
     header.innerHTML =
-      `<a class="brand" href="index.html">Chicago Bike Safety<small>correlation dashboard — evidence layer, not a collection layer</small></a>` +
+      `<a class="brand" href="index.html">On Your Left!<small>Chicago bike safety, on the record</small></a>` +
       `<nav class="site-nav">` +
       NAV.map(([href, label]) =>
         `<a href="${href}"${href === activeHref ? ' class="active"' : ""}>${label}</a>`).join("") +
@@ -191,8 +319,22 @@
       `Directional signals, not statistical analysis. This tool does not collect reports — ` +
       `use <a href="${LINKS.threeOneOne}" target="_blank" rel="noopener">311</a> or ` +
       `<a href="${LINKS.blu}" target="_blank" rel="noopener">Bike Lane Uprising</a>. ` +
-      `Open source & open data — see the <a href="contributing.html">Open Data page</a>.`;
+      `Open source & open data — see the <a href="contributing.html">Downloads & Docs page</a>. ` +
+      `Every number is labeled — real · proxy · derived · mock · crowdsourced — ` +
+      `tap any label to see what it means.`;
     document.body.append(footer);
+
+    // Delegated handler: tapping any tier badge anywhere opens the explainer.
+    document.addEventListener("click", e => {
+      const b = e.target.closest && e.target.closest(".badge[data-tier]");
+      if (!b) return;
+      const t = b.dataset.tier;
+      openModal({
+        title: `Data quality: ${t === "stub" ? "no data yet" : t}`,
+        bodyHTML: `<p><strong>${esc(TIER_PLAIN[t])}.</strong></p><p>${esc(TIER_INFO[t])}</p>` +
+          `<p><a href="sources.html">See where every dataset comes from →</a></p>`,
+      });
+    });
 
     // Provenance banner: fixture builds must never pass as real data.
     loadJSON("data/meta.json").then(meta => {
@@ -207,14 +349,20 @@
   }
 
   window.BSD = {
-    TIER_INFO, DISCLAIMERS, LINKS, FACILITY_COLORS, FACILITY_LABELS,
+    TIER_INFO, TIER_PLAIN, DISCLAIMERS, LINKS, FACILITY_COLORS, FACILITY_LABELS,
     SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_COLORS,
     TREND_LABELS, TREND_ARROWS,
-    esc, badge, badgeHTML, noticeHTML, loadJSON, fmt, qs, setParams,
+    esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
     downloadCSV, initPage, trendHTML, scoreColor, money,
+    rollingSums, trendChartSVG, icsForEvent, downloadICS,
   };
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { trendHTML, scoreColor, money, esc, fmt };
+    // Node-facing exports: pure helpers plus downloadICS (DOM-bound, exported
+    // for surface parity — call it only in a browser).
+    module.exports = {
+      trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN,
+      rollingSums, trendChartSVG, icsForEvent, downloadICS,
+    };
   }
 })();

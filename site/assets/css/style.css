@@ -1,4 +1,4 @@
-/* Chicago Bike Safety Correlation Dashboard — shared styles */
+/* On Your Left! (OYL) — shared styles */
 :root {
   --ink: #1a2330;
   --ink-soft: #4a5568;
@@ -55,11 +55,15 @@ code { background: #eef2f6; padding: 0.1em 0.35em; border-radius: 4px; font-size
 .notice.dooring { border-left-color: var(--sev-incap); background: #fef2f2; color: #6b1f1f; }
 
 /* ---- data-quality badges ---- */
+/* Badges are now <button>s (tappable tier explainer) — border/font resets keep
+ * the button rendering identical to the old <span>. */
 .badge {
   display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; padding: 0.1rem 0.45rem; border-radius: 999px;
-  color: #fff; vertical-align: middle; cursor: help;
+  color: #fff; vertical-align: middle; cursor: pointer;
+  border: none; font-family: inherit; line-height: 1.55;
 }
+button.badge { cursor: pointer; }
 .badge.tier-real { background: var(--tier-real); }
 .badge.tier-proxy { background: var(--tier-proxy); }
 .badge.tier-mock {
@@ -146,3 +150,36 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
 .line-label::before { display: none; }
+
+/* ---- shared layout primitives (modal, cards, reports) ---- */
+.card-heading { margin-top: 0; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.fine-print { color: var(--ink-soft); font-size: .8rem; margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.kv-list { line-height: 1.8; }
+.section-gap { margin-top: 2rem; }
+.card-link { text-decoration: none; color: inherit; display: block; }
+.linklike { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
+dialog.modal { border: 1px solid var(--line); border-radius: 12px; padding: 0; max-width: 560px; width: calc(100vw - 2rem); }
+dialog.modal::backdrop { background: rgba(16,32,43,.55); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 1.2rem; border-bottom: 1px solid var(--line); }
+.modal-body { padding: 1rem 1.2rem; max-height: 70vh; overflow: auto; }
+.report { background: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 1rem 0; }
+.report-head { background: #10202b; color: #fff; padding: .9rem 1.2rem; }
+.report-kicker { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; opacity: .8; display: block; }
+.report-meta { font-size: .82rem; opacity: .85; margin: .2rem 0 0; }
+.report-section { padding: 1rem 1.2rem; border-top: 1px solid var(--line); }
+.report-foot { padding: .7rem 1.2rem; border-top: 1px solid var(--line); background: #f3f6f9; font-size: .85rem; }
+@media (max-width: 600px) {
+  .table-stack thead { display: none; }
+  .table-stack tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: .5rem 0; }
+  .table-stack td { display: block; border: none; }
+}
+
+/* Sources page — one-column source cards with deep-link anchors */
+.chip-toc { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 1.4rem; }
+.source-card { scroll-margin-top: 4.5rem; }
+.source-facts { display: grid; grid-template-columns: 1fr; gap: .2rem 1rem; margin: .6rem 0 0; }
+.source-facts dt { font-weight: 700; }
+.source-facts dd { margin: 0; }
+@media (min-width: 760px) {
+  .source-facts { grid-template-columns: max-content 1fr; }
+}

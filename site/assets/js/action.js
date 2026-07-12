@@ -1,8 +1,9 @@
-/* Take Action screen: report links, per-ward talking points, and the ward
- * accountability report (safety scorecard, alderman record, menu spending,
- * upcoming hearings). Pure functions are Node-testable (no BSD dependency —
- * they take data as arguments); DOM code is guarded and only runs in the
- * browser, same pattern as common.js/network-model.js. */
+/* Take Action screen: the unified per-ward performance report (crash trends,
+ * what's coming up at City Hall, safety scorecard, alderperson record, menu
+ * spending, provenance modal), plus report-it-directly links and the citywide
+ * hearings card. Pure functions are Node-testable (no BSD dependency — they
+ * take data as arguments); DOM code is guarded and only runs in the browser,
+ * same pattern as common.js/network-model.js. */
 (function () {
   // ---- Pure functions (Node + browser) ----
 
@@ -59,8 +60,66 @@
     };
   }
 
+  // ISO date `days` before `today` ("YYYY-MM-DD"); null when today is unusable.
+  function _isoDaysBefore(today, days) {
+    if (!today) return null;
+    const t = new Date(String(today).slice(0, 10) + "T00:00:00Z");
+    if (isNaN(t.getTime())) return null;
+    return new Date(t.getTime() - days * 86400000).toISOString().slice(0, 10);
+  }
+
+  // What's coming up for a ward: upcoming committee meetings (flattened from
+  // hearings.json with committee/calendar_url attached, past dates dropped)
+  // plus council records recently introduced by this ward's alderperson.
+  // Sponsor matching is by pipeline-resolved sponsor_wards OR an EXACT
+  // sponsors[] name match against aldermanName — never fuzzy (a wrong match
+  // misattributes a real person's record).
+  function getUpcomingForWard(hearingsData, councilData, aldermanName, ward, today) {
+    const wardStr = String(ward);
+    const todayStr = today ? String(today).slice(0, 10) : null;
+
+    const meetings = [];
+    if (hearingsData && hearingsData.structured_data_available !== false &&
+        Array.isArray(hearingsData.committees)) {
+      hearingsData.committees.forEach(c => {
+        (Array.isArray(c.meetings) ? c.meetings : []).forEach(m => {
+          if (!m || !m.date) return;
+          if (todayStr && String(m.date).slice(0, 10) < todayStr) return;
+          meetings.push(Object.assign({}, m, {
+            committee: c.committee,
+            calendar_url: c.calendar_url || null,
+          }));
+        });
+      });
+      meetings.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    }
+
+    let introduced = [];
+    if (councilData && Array.isArray(councilData.records)) {
+      const cutoff = _isoDaysBefore(todayStr, 180);
+      introduced = councilData.records
+        .filter(r => {
+          if (!r || !r.intro_date) return false;
+          if (r.status !== "Introduced" && r.status !== "Referred") return false;
+          if (cutoff && String(r.intro_date).slice(0, 10) < cutoff) return false;
+          const byWard = Array.isArray(r.sponsor_wards) &&
+            r.sponsor_wards.some(w => String(w) === wardStr);
+          const byName = !!aldermanName && Array.isArray(r.sponsors) &&
+            r.sponsors.indexOf(aldermanName) !== -1;
+          return byWard || byName;
+        })
+        .sort((a, b) => String(b.intro_date).localeCompare(String(a.intro_date)))
+        .slice(0, 5);
+    }
+
+    return { meetings, introduced };
+  }
+
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { getSafetyIndexForWard, getSponsorRecordsForWard, getMenuSpendingForWard };
+    module.exports = {
+      getSafetyIndexForWard, getSponsorRecordsForWard, getMenuSpendingForWard,
+      getUpcomingForWard,
+    };
   }
 
   // ---- DOM code (browser only) ----
@@ -68,40 +127,39 @@
 
   const COVERAGE_NOTICE = "Legistar records end 2023-06-21 (system migration); Chicago " +
     "Councilmatic covers the council from then to the present.";
+  const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let wardsData = null;
   let aldemenData = null;
-  let corridorsData = null;
   let ward311Data = null;
   let safetyIndexData = null;
   let aldermenSafetyData = null;
   let menuSpendingData = null;
   let hearingsData = null;
-  let isLoading = false;
+  let councilData = null;
+  let metaData = null;
 
   async function loadAllData() {
     try {
       [
-        wardsData, aldemenData, corridorsData, ward311Data,
+        wardsData, aldemenData, ward311Data,
         safetyIndexData, aldermenSafetyData, menuSpendingData, hearingsData,
+        councilData, metaData,
       ] = await Promise.all([
         BSD.loadJSON("data/wards.geojson"),
         BSD.loadJSON("data/aldermen.json"),
-        BSD.loadJSON("data/corridors.json"),
         BSD.loadJSON("data/ward_311.json"),
         BSD.loadJSON("data/ward_safety_index.json").catch(() => null),
         BSD.loadJSON("data/aldermen_safety_record.json").catch(() => null),
         BSD.loadJSON("data/menu_spending.json").catch(() => null),
         BSD.loadJSON("data/hearings.json").catch(() => null),
+        BSD.loadJSON("data/council_records.json").catch(() => null),
+        BSD.loadJSON("data/meta.json").catch(() => null),
       ]);
     } catch (err) {
       throw new Error(`Failed to load data: ${err.message}`);
     }
-  }
-
-  function findWorstCorridor() {
-    if (!corridorsData || corridorsData.length === 0) return null;
-    return corridorsData[0];
   }
 
   function getWardData(ward) {
@@ -134,34 +192,216 @@
     return 0;
   }
 
-  function cardHeadingHTML(text, tier) {
-    return `<h3 style="margin-top: 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">${BSD.esc(text)} ${BSD.badgeHTML(tier)}</h3>`;
+  // "2026-07-10" (or a full ISO timestamp) -> "Jul 10, 2026". String-sliced,
+  // never Date-parsed, so timezone offsets can't shift the printed day.
+  function fmtDate(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    if (!m) return String(iso || "—");
+    return `${MONTH_ABBR[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
   }
 
-  // ---- Ward safety scorecard (derived) ----
-  function buildSafetyScorecardCard(ward) {
-    const result = getSafetyIndexForWard(safetyIndexData, ward);
-    const card = document.createElement("div");
-    card.className = "card ward-safety-card";
+  // "2026-07-14T13:00:00" -> "Jul 14"
+  function fmtMonthDay(iso) {
+    const m = /^\d{4}-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    if (!m) return String(iso || "—");
+    return `${MONTH_ABBR[Number(m[1]) - 1]} ${Number(m[2])}`;
+  }
 
-    let html = cardHeadingHTML(`Ward ${ward} safety scorecard`, "derived");
+  function sectionHeadingHTML(text, tier) {
+    return `<h3 class="card-heading">${BSD.esc(text)} ${BSD.badgeHTML(tier)}</h3>`;
+  }
+
+  function todayISO() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // Crash-data end date: meta.json crashes source range, falling back to the
+  // safety index window end, falling back to "present".
+  function crashDataEndLabel(entry) {
+    const src = metaData && Array.isArray(metaData.sources)
+      ? metaData.sources.find(s => s.id === "crashes") : null;
+    if (src && Array.isArray(src.date_range) && src.date_range[1]) {
+      return fmtDate(src.date_range[1]);
+    }
+    if (entry && entry.windows && entry.windows.window_end) {
+      return fmtDate(entry.windows.window_end);
+    }
+    return "present";
+  }
+
+  // ---- Report header ----
+  function reportHeadHTML(ward, entry) {
+    const alderman = getAldermanForWard(ward);
+    let who;
+    if (alderman && alderman.alderman) {
+      who = `Current alderperson: <strong>${BSD.esc(alderman.alderman)}</strong>`;
+      if (alderman.email) {
+        who += ` · <a href="mailto:${BSD.esc(alderman.email)}" style="color: inherit;">${BSD.esc(alderman.email)}</a>`;
+      }
+    } else {
+      const lookup = (aldemenData && aldemenData.lookup_url) || BSD.LINKS.aldermanLookup;
+      who = `<a href="${BSD.esc(lookup)}" target="_blank" rel="noopener" style="color: inherit;">Find your alderperson →</a>`;
+    }
+    let meta = `${who} · Crash data Sep 2017 – ${BSD.esc(crashDataEndLabel(entry))}`;
+    if (metaData && metaData.generated_at) {
+      meta += ` · report built ${BSD.esc(fmtDate(metaData.generated_at))}`;
+    }
+    return `<header class="report-head">` +
+      `<span class="report-kicker">Performance report</span>` +
+      `<h2 style="margin: .1rem 0;">Ward ${BSD.esc(String(ward))}</h2>` +
+      `<p class="report-meta">${meta}</p>` +
+      `</header>`;
+  }
+
+  // ---- Crashes & complaints section ----
+
+  // City median of the wards' latest trailing-12-month crash counts.
+  function cityMedianRecentCrashes() {
+    if (!safetyIndexData || !Array.isArray(safetyIndexData.wards)) return null;
+    const vals = safetyIndexData.wards
+      .filter(w => w.windows && w.windows.recent_12mo && w.windows.recent_12mo.crashes != null)
+      .map(w => w.windows.recent_12mo.crashes)
+      .sort((a, b) => a - b);
+    if (!vals.length) return null;
+    const mid = Math.floor(vals.length / 2);
+    return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  }
+
+  function crashSectionHTML(ward, entry) {
+    const wardData = getWardData(ward);
+    let html = sectionHeadingHTML("Crashes & complaints", "real");
+
+    // Chart first: trailing-12-month crashes vs the city median, with
+    // serious/fatal months dotted on the baseline.
+    if (entry && Array.isArray(entry.monthly) && entry.monthly.length >= 13) {
+      const points = BSD.rollingSums(entry.monthly, "crashes", 12);
+      const dots = entry.monthly
+        .filter(m => (m.ksi || 0) > 0 || (m.fatal || 0) > 0)
+        .map(m => ({ month: m.month, count: m.ksi || m.fatal || 0, kind: "serious/fatal" }));
+      const svg = BSD.trendChartSVG(points, {
+        label: `Ward ${ward} cyclist crashes, trailing 12 months`,
+        median: cityMedianRecentCrashes(),
+        dots,
+      });
+      if (svg) {
+        html += `<div style="max-width: 560px;">${svg}</div>` +
+          `<div class="muted" style="font-size: .8rem; margin-bottom: .6rem;">` +
+          `Cyclist crashes per trailing 12 months · dots mark months with a death or serious injury</div>`;
+      }
+    }
+
+    const win = entry && entry.windows;
+    const totalAllTime = (entry && entry.cyclist_crashes != null)
+      ? entry.cyclist_crashes
+      : (wardData ? wardData.cyclist_crashes : null);
+
+    html += `<div class="kv-list">`;
+    if (win && win.recent_12mo) {
+      const trend = entry.crash_trend ? ` ${BSD.trendHTML(entry.crash_trend)}` : "";
+      html += `<div>Cyclist crashes: <span class="stat" style="font-size: 1.4rem;">${BSD.fmt(win.recent_12mo.crashes)}</span> in the last 12 months${trend}</div>`;
+      if (totalAllTime != null) {
+        html += `<div class="muted">${BSD.fmt(totalAllTime)} total since Sept 2017</div>`;
+      }
+      html += `<div>Serious injuries (12 mo): ${BSD.fmt(win.recent_12mo.ksi)} · Deaths (12 mo): ${BSD.fmt(win.recent_12mo.fatal)}</div>`;
+    } else if (wardData) {
+      // Old data files carry only all-time totals — label the window, never
+      // show an unlabeled number.
+      html += `<div>Cyclist crashes: <span class="stat" style="font-size: 1.4rem;">${BSD.fmt(wardData.cyclist_crashes)}</span> since Sept 2017</div>`;
+      html += `<div>Injury crashes: ${BSD.fmt(wardData.injuries)} · Deaths: ${BSD.fmt(wardData.fatalities)} (both since Sept 2017)</div>`;
+    } else {
+      html += `<div class="muted">No crash data for this ward in the current pull.</div>`;
+    }
+
+    const complaints311 = get311ComplaintsForWard(ward) || 0;
+    html += `<div>311 bike complaints: ${BSD.fmt(complaints311)} <span class="muted">(all requests on record)</span> ${BSD.badgeHTML("proxy")}</div>`;
+    html += `</div>`;
+    return html;
+  }
+
+  // ---- Coming up in Ward {N} section ----
+  function upcomingSectionHTML(ward, aldermanName, upcoming) {
+    let html = sectionHeadingHTML(`Coming up in Ward ${ward}`, "real");
+
+    // Legacy pulls have no structured meetings — link out, never fabricate.
+    if (hearingsData && hearingsData.structured_data_available === false) {
+      const committees = Array.isArray(hearingsData.committees) ? hearingsData.committees : [];
+      html += `<div class="kv-list">`;
+      committees.forEach(c => {
+        html += `<div><a href="${BSD.esc(c.calendar_url)}" target="_blank" rel="noopener">${BSD.esc(c.committee)}</a>` +
+          `<div class="muted" style="font-size: .85rem;">Live calendar — no structured feed available yet.</div></div>`;
+      });
+      if (!committees.length) {
+        html += `<div class="muted">No committee hearing data in the current pull.</div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    const meetings = upcoming.meetings;
+    const introduced = upcoming.introduced;
+
+    if (!meetings.length && !introduced.length) {
+      const fallbackCal = (hearingsData && Array.isArray(hearingsData.committees) &&
+        hearingsData.committees[0] && hearingsData.committees[0].calendar_url) ||
+        "https://chicityclerkelms.chicago.gov/Meetings";
+      html += `<p class="muted">Nothing scheduled for the safety committees right now — ` +
+        `<a href="${BSD.esc(fallbackCal)}" target="_blank" rel="noopener">check the official calendar</a>.</p>`;
+      return html;
+    }
+
+    if (meetings.length) {
+      html += `<div class="kv-list">`;
+      meetings.forEach((m, i) => {
+        const shortName = String(m.committee || "").replace(/^Committee on /, "");
+        html += `<div>${BSD.esc(fmtMonthDay(m.date))} · ${BSD.esc(shortName)}`;
+        if (m.agenda_url) {
+          html += ` · <a href="${BSD.esc(m.agenda_url)}" target="_blank" rel="noopener">Agenda (PDF)</a>`;
+        }
+        html += ` · <button type="button" class="btn" data-ics="${i}">Add to calendar</button></div>`;
+        if (m.comment) {
+          html += `<div class="fine-print">${BSD.esc(m.comment)}</div>`;
+        }
+      });
+      html += `</div>`;
+    }
+
+    if (introduced.length) {
+      const byWhom = aldermanName ? `by ${aldermanName}` : `for Ward ${ward}`;
+      html += `<div class="muted" style="margin-top: .8rem; font-weight: 600;">Recently introduced ${BSD.esc(byWhom)}</div>`;
+      html += `<div class="kv-list">`;
+      introduced.forEach(rec => {
+        const date = rec.intro_date ? fmtDate(rec.intro_date) : "—";
+        const title = rec.url
+          ? `<a href="${BSD.esc(rec.url)}" target="_blank" rel="noopener">${BSD.esc(rec.title)}</a>`
+          : BSD.esc(rec.title);
+        html += `<div>${BSD.esc(date)} · ${title} · ${BSD.esc(rec.status)}</div>`;
+      });
+      html += `</div>`;
+    }
+
+    return html;
+  }
+
+  // ---- Safety scorecard section ----
+  function scorecardSectionHTML(ward) {
+    const result = getSafetyIndexForWard(safetyIndexData, ward);
+    let html = sectionHeadingHTML("Safety scorecard", "derived");
 
     if (!result) {
       html += `<p class="muted">No safety index data for this ward in the current pull.</p>`;
-      card.innerHTML = html;
-      return card;
+      return html;
     }
 
     const { entry, rank, total } = result;
     const score = entry.comparable_danger_score;
     const scoreDisplay = score == null ? "—" : `${BSD.esc(score)} / 100`;
-    html += `<div class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</div>`;
-    html += `<div class="muted" style="margin-bottom: 0.6rem;">Rank ${BSD.fmt(rank)} of ${BSD.fmt(total)} wards</div>`;
+    html += `<div>Danger score: <span class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</span> <span class="muted">(vs other wards — higher is worse)</span></div>`;
+    html += `<div class="muted" style="margin-bottom: .6rem;">Rank ${BSD.fmt(rank)} of ${BSD.fmt(total)} wards</div>`;
 
-    html += `<div style="line-height: 1.8;">`;
-    html += `<div><strong>Crashes per 10k population:</strong> ${BSD.fmt(entry.crashes_per_10k_pop)}</div>`;
-    html += `<div><strong>Crashes per bikeway mile:</strong> ${BSD.fmt(entry.crashes_per_bikeway_mile)}</div>`;
-    html += `<div><strong>Bikeway miles:</strong> ${BSD.fmt(entry.bikeway_miles)}</div>`;
+    html += `<div class="kv-list">`;
+    html += `<div><strong>Crashes per 10k population:</strong> ${BSD.fmt(entry.crashes_per_10k_pop)} <span class="muted">(since Sept 2017)</span></div>`;
+    html += `<div><strong>Crashes per bikeway mile:</strong> ${BSD.fmt(entry.crashes_per_bikeway_mile)} <span class="muted">(since Sept 2017)</span></div>`;
+    html += `<div><strong>Bikeway miles:</strong> ${BSD.fmt(entry.bikeway_miles)} <span class="muted">(current network)</span></div>`;
     html += `<div><strong>Population:</strong> ${BSD.fmt(entry.population)}</div>`;
     if (entry.crash_trend) {
       html += `<div><strong>Crash trend:</strong> ${BSD.trendHTML(entry.crash_trend)}</div>`;
@@ -169,47 +409,35 @@
     html += `</div>`;
 
     if (!entry.infra_growth_trend) {
-      html += `<div class="muted" style="margin-top: 0.6rem;">Infrastructure growth: needs two pipeline snapshots — check back after the next refresh.</div>`;
+      html += `<div class="muted" style="margin-top: .6rem;">Infrastructure growth: needs two pipeline snapshots — check back after the next refresh.</div>`;
     } else {
       const g = entry.infra_growth_trend;
       const pctStr = g.pct_growth == null ? "—" : `${g.pct_growth > 0 ? "+" : ""}${g.pct_growth}%`;
-      html += `<div class="muted" style="margin-top: 0.6rem;">Infrastructure growth: +${BSD.fmt(g.miles_added)} mi (${pctStr}) since ${BSD.esc(g.since)}.</div>`;
+      html += `<div class="muted" style="margin-top: .6rem;">Infrastructure growth: +${BSD.fmt(g.miles_added)} mi (${pctStr}) since ${BSD.esc(g.since)}.</div>`;
     }
 
-    if (safetyIndexData && safetyIndexData.note) {
-      html += `<div class="muted" style="margin-top: 0.6rem; font-size: 0.8rem;">${BSD.esc(safetyIndexData.note)}</div>`;
-    }
-
-    card.innerHTML = html;
-    return card;
+    return html;
   }
 
-  // ---- Alderman record (derived) ----
-  function buildAldermanRecordCard(ward) {
+  // ---- Alderperson record section ----
+  function aldermanRecordSectionHTML(ward) {
     const { matched, aldermanName } = getSponsorRecordsForWard(aldermenSafetyData, aldemenData, ward);
-    const card = document.createElement("div");
-    card.className = "card alderman-record-card";
-
-    let html = cardHeadingHTML("Alderman record", "derived");
-    if (aldermanName) {
-      html += `<div class="muted" style="margin-bottom: 0.4rem;">${BSD.esc(aldermanName)}</div>`;
-    }
+    let html = sectionHeadingHTML("Alderperson record", "derived");
 
     if (matched) {
-      html += `<div class="stat">${BSD.fmt(matched.safety_sponsorships)}</div>`;
-      html += `<div class="muted" style="margin-bottom: 0.6rem;">tagged bike/traffic-safety sponsorships</div>`;
+      html += `<div><span class="stat">${BSD.fmt(matched.safety_sponsorships)}</span> <span class="muted">tagged bike/traffic-safety sponsorships (all records on file)</span></div>`;
 
       const noVotes = matched.recorded_no_votes ?? 0;
       if (noVotes > 0) {
         html += `<div>Recorded "no" votes on tagged measures: ` +
-          `<strong style="color: var(--sev-incap);" title="Times this alderman appears in a contested roll-call's no_voters list — rare; most measures pass by voice vote">${BSD.fmt(noVotes)}</strong></div>`;
+          `<strong style="color: var(--sev-incap);" title="Times this alderperson appears in a contested roll-call's no_voters list — rare; most measures pass by voice vote">${BSD.fmt(noVotes)}</strong></div>`;
       } else {
         html += `<div>Recorded "no" votes on tagged measures: ${BSD.fmt(noVotes)}</div>`;
       }
 
       const records = Array.isArray(matched.records) ? matched.records.slice(0, 5) : [];
       if (records.length) {
-        html += `<div style="margin-top: 0.6rem; line-height: 1.8;">`;
+        html += `<div class="kv-list" style="margin-top: .6rem;">`;
         records.forEach(rec => {
           const date = rec.intro_date ? String(rec.intro_date).slice(0, 10) : "—";
           const title = rec.url
@@ -220,68 +448,170 @@
         html += `</div>`;
       }
     } else {
-      html += `<p>Sponsorship records can't be tied to this ward yet — alderman names in aldermen.json are filled manually, never guessed.</p>`;
-      html += `<p><a href="${BSD.esc(BSD.LINKS.aldermanLookup)}" target="_blank" rel="noopener">Official alderman lookup →</a></p>`;
+      html += `<p>No sponsorship records match this ward's alderperson yet — sponsor names are matched exactly, never guessed.</p>`;
+      if (!aldermanName) {
+        const lookup = (aldemenData && aldemenData.lookup_url) || BSD.LINKS.aldermanLookup;
+        html += `<p><a href="${BSD.esc(lookup)}" target="_blank" rel="noopener">Official alderperson lookup →</a></p>`;
+      }
     }
 
-    html += `<div class="muted" style="margin-top: 0.6rem; font-size: 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--line);">${BSD.esc(COVERAGE_NOTICE)}</div>`;
-
-    card.innerHTML = html;
-    return card;
+    return html;
   }
 
-  // ---- Menu-fund spending (proxy) ----
-  function buildMenuSpendingCard(ward) {
+  // ---- Menu-fund spending section ----
+  function menuSpendingSectionHTML(ward) {
     const spend = getMenuSpendingForWard(menuSpendingData, ward);
-    const card = document.createElement("div");
-    card.className = "card menu-spending-card";
-
-    let html = cardHeadingHTML("Menu-fund spending", "proxy");
+    let html = sectionHeadingHTML("Menu-fund spending", "proxy");
 
     if (!spend) {
       html += `<p class="muted">No menu-spending data for this ward in the current pull.</p>`;
     } else {
-      html += `<div class="stat">${BSD.esc(BSD.money(spend.bike_safety_spent))}</div>`;
-      html += `<div class="muted">of ${BSD.esc(BSD.money(spend.total_spent))} total menu spending (${BSD.fmt(spend.items)} items)</div>`;
+      html += `<div><span class="stat">${BSD.esc(BSD.money(spend.bike_safety_spent))}</span> <span class="muted">on bike/traffic-calming items</span></div>`;
+      html += `<div class="muted">of ${BSD.esc(BSD.money(spend.total_spent))} total menu spending (${BSD.fmt(spend.items)} items, all years on record)</div>`;
     }
 
-    if (menuSpendingData && menuSpendingData.note) {
-      html += `<div class="muted" style="margin-top: 0.6rem; font-size: 0.8rem;">${BSD.esc(menuSpendingData.note)}</div>`;
-    }
-
-    card.innerHTML = html;
-    return card;
+    return html;
   }
 
-  // ---- Upcoming hearings (real) — ward-independent, rendered once ----
+  // ---- Provenance modal ----
+  function provenanceBodyHTML(ward) {
+    const result = getSafetyIndexForWard(safetyIndexData, ward);
+    const entry = result ? result.entry : null;
+    const win = entry && entry.windows;
+    const crashWindow = win && win.window_end
+      ? `Window: 12 months ending ${fmtDate(win.window_end)}.`
+      : "Window: since Sept 2017.";
+    const per10k = entry ? BSD.fmt(entry.crashes_per_10k_pop) : "—";
+    const perMile = entry ? BSD.fmt(entry.crashes_per_bikeway_mile) : "—";
+    const rosterAsOf = aldemenData && aldemenData.as_of
+      ? ` as of ${fmtDate(aldemenData.as_of)}` : "";
+
+    const dd = (text, srcId) =>
+      `<dd style="margin: 0 0 .7rem;">${text} ` +
+      `<a href="sources.html#src-${srcId}">Source detail →</a></dd>`;
+
+    let html = `<dl style="margin: 0;">`;
+    html += `<dt><strong>Cyclist crashes / injuries / deaths</strong> — real · from official records</dt>`;
+    html += dd(`Chicago Police crash reports via the Chicago Data Portal. Recent months are provisional; dooring is structurally undercounted. ${BSD.esc(crashWindow)}`, "crashes");
+
+    html += `<dt><strong>Danger score</strong> — derived · calculated by us</dt>`;
+    html += dd(`Formula: average of this ward's percentile ranks on crashes per 10k residents (${per10k}) and crashes per bikeway mile (${perMile}). A relative ranking across wards, not absolute risk.`, "ward_safety_index");
+
+    html += `<dt><strong>311 bike complaints</strong> — proxy · a related signal</dt>`;
+    html += dd(`Counts who complains, not conditions; biased toward wards with engaged 311 users.`, "sr311");
+
+    html += `<dt><strong>Coming up / meetings</strong> — real · City Clerk eLMS public API</dt>`;
+    html += dd(`Best-effort weekly pull from an undocumented API; verify against the official calendar before attending.`, "hearings");
+
+    html += `<dt><strong>Current alderperson</strong> — real · city Ward Offices roster</dt>`;
+    html += dd(`The city's own roster${BSD.esc(rosterAsOf)}; vacant seats appear as a lookup link, never a guessed name.`, "aldermen");
+
+    html += `<dt><strong>Alderperson record</strong> — derived · calculated by us</dt>`;
+    html += dd(`Counts council records whose sponsor name exactly matches this ward's alderperson. Coverage: ${BSD.esc(COVERAGE_NOTICE)}`, "aldermen_safety_record");
+
+    html += `<dt><strong>Menu-fund spending</strong> — proxy · a related signal</dt>`;
+    html += dd(`Ward Wise volunteer project structuring the city's PDF reports; not independently verified.`, "menu_spending");
+    html += `</dl>`;
+
+    html += `<p class="fine-print">Check the math yourself: ` +
+      `<a href="data/ward_safety_index.json" download>download ward_safety_index.json</a> — ` +
+      `every input above is in this ward's row.</p>`;
+    return html;
+  }
+
+  // ---- Report assembly ----
+  function buildWardReport(ward) {
+    const result = getSafetyIndexForWard(safetyIndexData, ward);
+    const entry = result ? result.entry : null;
+    const alderman = getAldermanForWard(ward);
+    const aldermanName = alderman && alderman.alderman ? alderman.alderman : null;
+    const upcoming = getUpcomingForWard(hearingsData, councilData, aldermanName, ward, todayISO());
+
+    const section = document.createElement("section");
+    section.className = "report";
+    section.id = "ward-report";
+    section.innerHTML =
+      reportHeadHTML(ward, entry) +
+      `<div class="report-section">${crashSectionHTML(ward, entry)}</div>` +
+      `<div class="report-section">${upcomingSectionHTML(ward, aldermanName, upcoming)}</div>` +
+      `<div class="report-section">${scorecardSectionHTML(ward)}</div>` +
+      `<div class="report-section">${aldermanRecordSectionHTML(ward)}</div>` +
+      `<div class="report-section">${menuSpendingSectionHTML(ward)}</div>` +
+      `<footer class="report-foot">` +
+      `<button type="button" class="linklike" id="ward-provenance">Where does this data come from?</button>` +
+      `</footer>`;
+
+    // Add-to-calendar buttons (delegating per-report keeps indices aligned
+    // with the upcoming.meetings array this report was built from).
+    section.querySelectorAll("button[data-ics]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const m = upcoming.meetings[Number(btn.dataset.ics)];
+        if (!m) return;
+        const shortName = String(m.committee || "meeting").replace(/^Committee on /, "");
+        const filename = `${shortName.replace(/[^A-Za-z0-9]+/g, "-")}-${String(m.date).slice(0, 10)}.ics`;
+        BSD.downloadICS(filename, BSD.icsForEvent({
+          title: `${m.committee} — City Council`,
+          startISO: m.date,
+          location: m.location || "",
+          url: m.agenda_url || m.calendar_url || "",
+          description: m.comment || "",
+        }));
+      });
+    });
+
+    section.querySelector("#ward-provenance").addEventListener("click", () => {
+      BSD.openModal({
+        title: `Ward ${ward} report — where the data comes from`,
+        bodyHTML: provenanceBodyHTML(ward),
+      });
+    });
+
+    return section;
+  }
+
+  function renderWardReport(ward, slot) {
+    const existing = document.getElementById("ward-report");
+    const report = buildWardReport(ward);
+    if (existing) existing.replaceWith(report);
+    else slot.appendChild(report);
+  }
+
+  function clearWardReport() {
+    const existing = document.getElementById("ward-report");
+    if (existing) existing.remove();
+  }
+
+  // ---- Citywide hearings card (ward-independent) ----
   function buildHearingsCard() {
     const card = document.createElement("div");
     card.className = "card hearings-card";
 
-    let html = cardHeadingHTML("Upcoming hearings", "real");
+    let html = sectionHeadingHTML("Upcoming committee hearings (citywide)", "real");
 
     const committees = (hearingsData && Array.isArray(hearingsData.committees)) ? hearingsData.committees : [];
     if (!committees.length) {
       html += `<p class="muted">No committee hearing data in the current pull.</p>`;
     } else if (hearingsData.structured_data_available === false) {
-      html += `<div style="line-height: 1.8;">`;
+      html += `<div class="kv-list">`;
       committees.forEach(c => {
         html += `<div><a href="${BSD.esc(c.calendar_url)}" target="_blank" rel="noopener">${BSD.esc(c.committee)}</a>`;
         html += `<div class="muted" style="font-size: 0.85rem;">Live calendar — no structured feed available yet.</div></div>`;
       });
       html += `</div>`;
     } else {
-      html += `<div style="line-height: 1.8;">`;
+      html += `<div class="kv-list">`;
       committees.forEach(c => {
         html += `<div><strong>${BSD.esc(c.committee)}</strong>`;
         const meetings = Array.isArray(c.meetings) ? c.meetings : [];
         if (!meetings.length) {
-          html += `<div class="muted" style="font-size: 0.85rem;">No meetings currently scheduled.</div>`;
+          html += `<div class="muted" style="font-size: 0.85rem;">No meetings currently scheduled — ` +
+            `<a href="${BSD.esc(c.calendar_url)}" target="_blank" rel="noopener">official calendar</a>.</div>`;
         } else {
           meetings.forEach(m => {
-            const when = m.date || m.datetime || "—";
-            const what = m.title || m.description || "";
-            html += `<div>${BSD.esc(when)}${what ? " · " + BSD.esc(what) : ""}</div>`;
+            html += `<div>${BSD.esc(fmtMonthDay(m.date))}`;
+            if (m.location) html += ` · ${BSD.esc(m.location)}`;
+            if (m.agenda_url) html += ` · <a href="${BSD.esc(m.agenda_url)}" target="_blank" rel="noopener">Agenda (PDF)</a>`;
+            html += `</div>`;
           });
         }
         html += `</div>`;
@@ -290,78 +620,11 @@
     }
 
     if (hearingsData && hearingsData.note) {
-      html += `<div class="muted" style="margin-top: 0.6rem; font-size: 0.8rem;">${BSD.esc(hearingsData.note)}</div>`;
+      html += `<div class="fine-print">${BSD.esc(hearingsData.note)}</div>`;
     }
 
     card.innerHTML = html;
     return card;
-  }
-
-  function removeWardScopedCards(app) {
-    ["talking-points-card", "ward-safety-card", "alderman-record-card", "menu-spending-card"].forEach(cls => {
-      const el = app.querySelector(`.${cls}`);
-      if (el) el.remove();
-    });
-  }
-
-  function renderTalkingPoints(ward) {
-    const app = document.getElementById("app");
-    removeWardScopedCards(app);
-
-    const wardData = getWardData(ward);
-    if (!wardData) {
-      return;
-    }
-
-    const card = document.createElement("div");
-    card.className = "card talking-points-card";
-
-    let html = `<h3>Ward ${BSD.esc(wardData.ward)} — Talking Points</h3>`;
-    html += `<div style="margin: 0.8rem 0; line-height: 1.8;">`;
-
-    html += `<div><strong>Cyclist crashes:</strong> <span class="stat" style="font-size: 1.4rem;">${BSD.fmt(wardData.cyclist_crashes)}</span></div>`;
-    html += `<div><strong>Injury crashes:</strong> ${BSD.fmt(wardData.injuries)}</div>`;
-    html += `<div><strong>Fatalities:</strong> ${BSD.fmt(wardData.fatalities)}</div>`;
-
-    const complaints311 = get311ComplaintsForWard(ward) || 0;
-    html += `<div><strong>311 bike complaints:</strong> ${BSD.fmt(complaints311)} ${BSD.badgeHTML("proxy")}</div>`;
-
-    html += `<div><strong>Density band:</strong> ${BSD.esc(wardData.density_band)}</div>`;
-
-    html += `</div>`;
-
-    const worstCorridor = findWorstCorridor();
-    if (worstCorridor) {
-      html += `<div class="muted" style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line);">`;
-      html += `<strong>Citywide context:</strong> ${BSD.esc(worstCorridor.street)} has ${BSD.fmt(worstCorridor.crashes_per_km)} crashes/km.`;
-      html += `</div>`;
-    }
-
-    const alderman = getAldermanForWard(ward);
-    html += `<div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line);">`;
-    if (alderman && alderman.alderman) {
-      html += `<strong>${BSD.esc(alderman.alderman)}</strong>`;
-      if (alderman.email) {
-        html += ` — <a href="mailto:${BSD.esc(alderman.email)}">${BSD.esc(alderman.email)}</a>`;
-      }
-    } else {
-      html += `<a href="${BSD.esc(BSD.LINKS.aldermanLookup)}" target="_blank" rel="noopener">Find your alderman →</a>`;
-    }
-    html += `</div>`;
-
-    if (aldemenData && aldemenData.note) {
-      html += `<div class="muted" style="margin-top: 0.6rem; font-size: 0.8rem;">`;
-      html += BSD.esc(aldemenData.note);
-      html += `</div>`;
-    }
-
-    card.innerHTML = html;
-    app.appendChild(card);
-
-    // Ward-scoped accountability cards, re-rendered every time the ward changes.
-    app.appendChild(buildSafetyScorecardCard(ward));
-    app.appendChild(buildAldermanRecordCard(ward));
-    app.appendChild(buildMenuSpendingCard(ward));
   }
 
   async function render() {
@@ -372,54 +635,15 @@
       await loadAllData();
 
       const heading = document.createElement("div");
-      heading.innerHTML = `<h1>Take Action</h1>`;
+      heading.innerHTML = `<h1>Take Action</h1>` +
+        `<p style="color: var(--ink-soft);">Evidence for your next email, public comment, or ward-night question.</p>`;
       app.appendChild(heading);
 
-      const reportSection = document.createElement("section");
-      reportSection.innerHTML = `<h2>See a problem? Report it directly</h2><p style="color: var(--ink-soft);">This dashboard is an evidence layer, not a collection layer. Submit your report to the systems that actually investigate and act:</p>`;
-      app.appendChild(reportSection);
-
-      const reportCards = document.createElement("div");
-      reportCards.className = "cards-grid";
-
-      const card311 = document.createElement("a");
-      card311.href = BSD.LINKS.threeOneOne;
-      card311.target = "_blank";
-      card311.rel = "noopener";
-      card311.className = "card";
-      card311.style.textDecoration = "none";
-      card311.style.color = "inherit";
-      card311.innerHTML = `
-        <h3 style="margin-top: 0; color: var(--accent);">311 — City Service Requests</h3>
-        <p>Physical hazards, signals, debris, pothole repair requests. Report infrastructure problems directly to the city.</p>
-      `;
-      reportCards.appendChild(card311);
-
-      const cardBLU = document.createElement("a");
-      cardBLU.href = BSD.LINKS.blu;
-      cardBLU.target = "_blank";
-      cardBLU.rel = "noopener";
-      cardBLU.className = "card";
-      cardBLU.style.textDecoration = "none";
-      cardBLU.style.color = "inherit";
-      cardBLU.innerHTML = `
-        <h3 style="margin-top: 0; color: var(--accent);">Bike Lane Uprising</h3>
-        <p>Report blocked bike lanes and obstructions with a photo. Build the evidence base for advocacy.</p>
-      `;
-      reportCards.appendChild(cardBLU);
-
-      app.appendChild(reportCards);
-
-      const hearingsSection = document.createElement("section");
-      hearingsSection.style.marginTop = "2rem";
-      hearingsSection.innerHTML = `<h2>Upcoming committee hearings</h2>`;
-      app.appendChild(hearingsSection);
-      app.appendChild(buildHearingsCard());
-
-      const advocacySection = document.createElement("section");
-      advocacySection.style.marginTop = "2rem";
-      advocacySection.innerHTML = `<h2>Want to advocate?</h2><p style="color: var(--ink-soft);">Pick your ward to see local crash trends, its safety scorecard, alderman record, and menu-fund spending.</p>`;
-      app.appendChild(advocacySection);
+      // (2) Ward picker for the performance report.
+      const pickerSection = document.createElement("section");
+      pickerSection.innerHTML = `<h2>Get your ward's performance report</h2>` +
+        `<p style="color: var(--ink-soft);">Pick your ward for local crash trends, what's coming up at City Hall, and your alderperson's record.</p>`;
+      app.appendChild(pickerSection);
 
       const selectContainer = document.createElement("div");
       selectContainer.className = "filter-row";
@@ -451,24 +675,66 @@
         select.value = initialWard;
       }
 
+      selectContainer.appendChild(select);
+      app.appendChild(selectContainer);
+
+      // (3) The report renders directly below the picker, swapped in place.
+      const reportSlot = document.createElement("div");
+      reportSlot.id = "ward-report-slot";
+      app.appendChild(reportSlot);
+
       select.addEventListener("change", function () {
         const ward = this.value;
         if (ward) {
           BSD.setParams({ ward: ward });
-          renderTalkingPoints(ward);
+          renderWardReport(ward, reportSlot);
         } else {
           BSD.setParams({ ward: null });
-          removeWardScopedCards(app);
+          clearWardReport();
         }
       });
 
-      selectContainer.appendChild(select);
-      app.appendChild(selectContainer);
-
       if (initialWard) {
-        renderTalkingPoints(initialWard);
+        renderWardReport(initialWard, reportSlot);
       }
 
+      // (4) Report-it-directly links.
+      const reportSection = document.createElement("section");
+      reportSection.className = "section-gap";
+      reportSection.innerHTML = `<h2>See a problem? Report it directly</h2>` +
+        `<p style="color: var(--ink-soft);">This dashboard is an evidence layer, not a collection layer — submit to the systems that investigate and act.</p>`;
+      app.appendChild(reportSection);
+
+      const reportCards = document.createElement("div");
+      reportCards.className = "cards-grid";
+
+      const card311 = document.createElement("a");
+      card311.href = BSD.LINKS.threeOneOne;
+      card311.target = "_blank";
+      card311.rel = "noopener";
+      card311.className = "card card-link";
+      card311.innerHTML = `<h3 style="margin-top: 0; color: var(--accent);">311 — City Service Requests</h3>` +
+        `<p>Hazards, broken signals, debris, potholes — report infrastructure problems to the city.</p>`;
+      reportCards.appendChild(card311);
+
+      const cardBLU = document.createElement("a");
+      cardBLU.href = BSD.LINKS.blu;
+      cardBLU.target = "_blank";
+      cardBLU.rel = "noopener";
+      cardBLU.className = "card card-link";
+      cardBLU.innerHTML = `<h3 style="margin-top: 0; color: var(--accent);">Bike Lane Uprising</h3>` +
+        `<p>Photo-report blocked bike lanes and build the advocacy evidence base.</p>`;
+      reportCards.appendChild(cardBLU);
+
+      app.appendChild(reportCards);
+
+      // (5) Citywide hearings card last.
+      const hearingsSection = document.createElement("section");
+      hearingsSection.className = "section-gap";
+      app.appendChild(hearingsSection);
+      app.appendChild(buildHearingsCard());
+
+      // (6) Closing line.
       const closingLine = document.createElement("div");
       closingLine.className = "muted";
       closingLine.style.marginTop = "2rem";

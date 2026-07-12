@@ -141,4 +141,87 @@ assert.strictEqual(
   "getMenuSpendingForWard: null data returns null"
 );
 
+// ---- getUpcomingForWard: meetings + recently-introduced records ----
+const hearingsStructured = {
+  structured_data_available: true,
+  committees: [
+    { committee: "Committee on Pedestrian and Traffic Safety", calendar_url: "https://x/ped", meetings: [] },
+    {
+      committee: "Committee on Transportation and Public Way", calendar_url: "https://x/tpw",
+      meetings: [
+        { date: "2026-07-14T13:00:00", status: "Scheduled & Published", location: "Room 201-A",
+          agenda_url: "https://x/agenda.pdf", notice_url: null, comment: "Written Public Comment deadline…" },
+        { date: "2026-07-01T10:00:00", status: "Scheduled", location: null,
+          agenda_url: null, notice_url: null, comment: null }, // already past `today` -> excluded
+      ],
+    },
+  ],
+};
+const councilRecords = {
+  records: [
+    { title: "By ward", status: "Introduced", intro_date: "2026-07-01", sponsors: ["Someone Else"], sponsor_wards: ["22"], url: "u1" },
+    { title: "By exact name", status: "Referred", intro_date: "2026-06-15", sponsors: ["Jane Doe"], sponsor_wards: [], url: "u2" },
+    { title: "Too old", status: "Introduced", intro_date: "2025-09-01", sponsors: ["Jane Doe"], sponsor_wards: ["22"], url: "u3" },
+    { title: "Already passed", status: "Passed", intro_date: "2026-07-01", sponsors: ["Jane Doe"], sponsor_wards: ["22"], url: "u4" },
+    { title: "Fuzzy name must not match", status: "Introduced", intro_date: "2026-07-02", sponsors: [" jane doe "], sponsor_wards: [], url: "u5" },
+    { title: "Other ward", status: "Introduced", intro_date: "2026-07-03", sponsors: ["X"], sponsor_wards: ["7"], url: "u6" },
+  ],
+};
+
+const up = A.getUpcomingForWard(hearingsStructured, councilRecords, "Jane Doe", "22", "2026-07-12");
+assert.strictEqual(up.meetings.length, 1, "getUpcomingForWard: past meetings excluded, future kept");
+assert.strictEqual(up.meetings[0].date, "2026-07-14T13:00:00", "getUpcomingForWard: meeting date passed through");
+assert.strictEqual(up.meetings[0].committee, "Committee on Transportation and Public Way",
+  "getUpcomingForWard: committee name attached to each flattened meeting");
+assert.strictEqual(up.meetings[0].calendar_url, "https://x/tpw",
+  "getUpcomingForWard: committee calendar_url attached to each meeting");
+assert.deepStrictEqual(
+  up.introduced.map(r => r.title), ["By ward", "By exact name"],
+  "getUpcomingForWard: matches sponsor_wards OR exact sponsor name, newest first; excludes old/passed/fuzzy/other-ward"
+);
+
+// A meeting exactly on `today` is still upcoming.
+const sameDay = A.getUpcomingForWard(
+  { structured_data_available: true, committees: [{ committee: "C", calendar_url: "https://x/c",
+    meetings: [{ date: "2026-07-12T09:00:00", status: "Scheduled", agenda_url: null, notice_url: null, comment: null }] }] },
+  null, null, "1", "2026-07-12"
+);
+assert.strictEqual(sameDay.meetings.length, 1, "getUpcomingForWard: same-day meeting counts as upcoming");
+
+// Numeric ward argument coerces; sponsor_wards entries compared as strings.
+const numericWard = A.getUpcomingForWard(null, councilRecords, null, 22, "2026-07-12");
+assert.deepStrictEqual(numericWard.introduced.map(r => r.title), ["By ward"],
+  "getUpcomingForWard: numeric ward matches string sponsor_wards; no name -> ward-only matching");
+
+// Caps at 5, newest first.
+const manyRecords = {
+  records: Array.from({ length: 7 }, (_, i) => ({
+    title: `Rec ${i}`, status: "Introduced", intro_date: `2026-06-${String(i + 10).padStart(2, "0")}`,
+    sponsors: [], sponsor_wards: ["3"], url: `u${i}`,
+  })),
+};
+const capped = A.getUpcomingForWard(null, manyRecords, null, "3", "2026-07-12");
+assert.strictEqual(capped.introduced.length, 5, "getUpcomingForWard: introduced capped at 5");
+assert.strictEqual(capped.introduced[0].title, "Rec 6", "getUpcomingForWard: newest first after cap");
+assert.strictEqual(capped.introduced[4].title, "Rec 2", "getUpcomingForWard: oldest of the kept 5 is 5th-newest");
+
+// Legacy link-out hearings shape (structured_data_available: false) -> no meetings.
+const legacy = A.getUpcomingForWard(
+  { structured_data_available: false, committees: [{ committee: "C", calendar_url: "https://x/c" }] },
+  null, null, "1", "2026-07-12"
+);
+assert.deepStrictEqual(legacy.meetings, [], "getUpcomingForWard: link-out-only hearings shape yields no meetings");
+
+// Empty-safe on null/missing data.
+assert.deepStrictEqual(
+  A.getUpcomingForWard(null, null, null, "1", "2026-07-12"),
+  { meetings: [], introduced: [] },
+  "getUpcomingForWard: null data returns empty lists"
+);
+assert.deepStrictEqual(
+  A.getUpcomingForWard({}, {}, "Jane Doe", "1", "2026-07-12"),
+  { meetings: [], introduced: [] },
+  "getUpcomingForWard: shapeless data returns empty lists"
+);
+
 console.log("action-model OK");

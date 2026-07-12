@@ -1,8 +1,12 @@
 (function () {
+  // Every card renders with id="src-{id}" — other pages deep-link these anchors
+  // (downloads table, explore-data explainers, ward-report provenance modal).
+  // `short` is the chip-TOC label.
   const SOURCES = [
     {
       id: "crashes",
       name: "Traffic Crashes — Crashes / People / Vehicles",
+      short: "Crashes",
       origin: "Chicago Data Portal (Socrata)",
       tier: "real",
       cadence: "weekly pipeline run; portal updates daily",
@@ -13,12 +17,24 @@
         { text: "People dataset", url: "https://data.cityofchicago.org/d/u6pd-qa9d" },
         { text: "Vehicles dataset", url: "https://data.cityofchicago.org/d/68nd-jvt3" }
       ],
-      metaId: "crashes",
-      showDooringNotice: true
+      metaId: "crashes"
+    },
+    {
+      id: "citywide_trend",
+      name: "Citywide Crash Trend (monthly)",
+      short: "Crash trend",
+      origin: "Computed from Traffic Crashes",
+      tier: "real",
+      cadence: "weekly pipeline run",
+      description: "Monthly citywide counts of cyclist crashes, injuries, and killed-or-seriously-injured, Sept 2017 to present — the series behind the trend charts.",
+      limitations: "Counts, not rates; recent months provisional.",
+      links: [],
+      metaId: "citywide_trend"
     },
     {
       id: "bike_routes",
       name: "CDOT Bike Routes",
+      short: "Bike routes",
       origin: "Chicago Data Portal (Socrata)",
       tier: "real",
       cadence: "weekly + dated snapshots",
@@ -32,6 +48,7 @@
     {
       id: "sr311",
       name: "311 Service Requests (bike-related)",
+      short: "311 requests",
       origin: "Chicago Data Portal (Socrata)",
       tier: "proxy",
       cadence: "weekly",
@@ -45,6 +62,7 @@
     {
       id: "cameras",
       name: "Speed & Red-Light Camera Violations",
+      short: "Cameras",
       origin: "Chicago Data Portal (Socrata)",
       tier: "proxy",
       cadence: "weekly",
@@ -59,6 +77,7 @@
     {
       id: "obstructions",
       name: "Bike Lane Obstructions",
+      short: "Obstructions (demo)",
       origin: "MOCK demonstration data (schema mirrors Bike Lane Uprising's public submission fields)",
       tier: "mock",
       cadence: "regenerated each pipeline run",
@@ -72,6 +91,7 @@
     {
       id: "wards",
       name: "Ward Boundaries (2023 remap)",
+      short: "Wards",
       origin: "Chicago Data Portal",
       tier: "real",
       cadence: "static until redistricting",
@@ -83,6 +103,7 @@
     {
       id: "planned_routes",
       name: "Planned bike routes",
+      short: "Planned routes",
       origin: "Chicago Department of Transportation",
       tier: "stub",
       cadence: "N/A",
@@ -94,6 +115,7 @@
     {
       id: "mellow_map",
       name: "Mellow Bike Map",
+      short: "Mellow map",
       origin: "mellowbikemap.com (jeancochrane/mellow-bike-map, MIT licensed)",
       tier: "crowdsourced",
       cadence: "weekly pipeline run, best-effort (small third-party app, no uptime SLA)",
@@ -108,6 +130,7 @@
     {
       id: "osm_trails",
       name: "OpenStreetMap Off-street Trails",
+      short: "OSM trails",
       origin: "OpenStreetMap via the Overpass API",
       tier: "crowdsourced",
       cadence: "weekly pipeline run, best-effort (public Overpass instance, no uptime SLA)",
@@ -122,6 +145,7 @@
     {
       id: "ward_safety_index",
       name: "Ward Safety Index (comparable danger score)",
+      short: "Danger score",
       origin: "Computed from crash data + ACS 5-Year by Ward population + CDOT Bike Routes",
       tier: "derived",
       cadence: "weekly pipeline run",
@@ -135,6 +159,7 @@
     {
       id: "council_records",
       name: "Council Records (street/bike-safety legislation)",
+      short: "Council records",
       origin: "Legistar Web API (webapi.legistar.com) through 2023-06-21, plus Chicago Councilmatic (chicago.councilmatic.org, DataMade) from then to the present",
       tier: "real",
       cadence: "weekly pipeline run",
@@ -147,24 +172,40 @@
       metaId: "council_records"
     },
     {
+      id: "aldermen",
+      name: "Current Alderpersons (Ward Offices)",
+      short: "Alderpersons",
+      origin: "Chicago Data Portal (Socrata)",
+      tier: "real",
+      cadence: "weekly pipeline run",
+      description: "Official roster of current alderpersons — name, email, phone, and website per ward.",
+      limitations: "Vacant seats appear as null; the roster is the city's own and may lag a resignation by days.",
+      links: [
+        { text: "Ward Offices dataset", url: "https://data.cityofchicago.org/d/htai-wnw4" }
+      ],
+      metaId: null
+    },
+    {
       id: "aldermen_safety_record",
-      name: "Alderman Safety Voting Record",
+      name: "Alderperson Safety Voting Record",
+      short: "Alderperson records",
       origin: "Derived from council_records.json",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "Per-alderman rollup of sponsorships on safety-tagged legislation — an aggregate score and the individual record list behind it.",
-      limitations: "A broad proxy — primarily sponsorships; the only roll-call signal is recorded_no_votes from rare contested votes. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
+      description: "Per-alderperson rollup of sponsorships on safety-tagged legislation — an aggregate score and the individual record list behind it.",
+      limitations: "A broad proxy — primarily sponsorships; the only roll-call signal is recorded_no_votes from rare contested votes. ward resolves only when a sponsor name exactly matches the ward's aldermen.json entry — null otherwise, by design (never auto-matched).",
       links: [],
       metaId: "aldermen_safety_record"
     },
     {
       id: "hearings",
       name: "Upcoming Bike/Traffic-Safety Committee Hearings",
-      origin: "City Clerk eLMS meeting calendar (chicityclerkelms.chicago.gov)",
+      short: "Hearings",
+      origin: "City Clerk eLMS public API (api.chicityclerkelms.chicago.gov)",
       tier: "real",
       cadence: "weekly pipeline run, best-effort",
-      description: "Tracks the Committee on Pedestrian and Traffic Safety and Committee on Transportation and Public Way. Attempts a structured pull every run; links directly to the live official calendar when no structured data is available.",
-      limitations: "No public JSON/RSS endpoint for the eLMS calendar has been confirmed — this most often shows a link-out, not a parsed meeting list. Never shows stale or fabricated dates.",
+      description: "Tracks the Committee on Pedestrian and Traffic Safety and Committee on Transportation and Public Way. Pulls structured meetings — date, location, agenda, and written-public-comment instructions — from the City Clerk's eLMS public API every run; if the pull fails, the page links directly to the live official calendar instead.",
+      limitations: "The eLMS API is undocumented and unversioned, so we treat it as best-effort — verify against the official calendar before attending. When the API breaks we show a link-out, not a parsed list. Never shows stale or fabricated dates.",
       links: [
         { text: "eLMS meeting calendar", url: "https://chicityclerkelms.chicago.gov/Meetings" }
       ],
@@ -173,6 +214,7 @@
     {
       id: "menu_spending",
       name: "Aldermanic Menu Program Spending",
+      short: "Menu spending",
       origin: "Ward Wise (wardwisechicago.org, Chi Hack Night volunteer project)",
       tier: "proxy",
       cadence: "weekly pipeline run, best-effort",
@@ -211,64 +253,52 @@
       `;
       app.appendChild(heading);
 
-      // Directional notice
-      const noticeContainer = document.createElement("div");
-      noticeContainer.innerHTML = BSD.noticeHTML("directional");
-      app.appendChild(noticeContainer);
+      // Chip TOC — one jump link per source card
+      const toc = document.createElement("nav");
+      toc.className = "chip-toc";
+      toc.setAttribute("aria-label", "Jump to a data source");
+      toc.innerHTML = SOURCES.map(s =>
+        `<a class="btn" href="#src-${s.id}">${BSD.esc(s.short)}</a>`
+      ).join("");
+      app.appendChild(toc);
 
-      // Cards grid
-      const grid = document.createElement("div");
-      grid.className = "cards-grid";
-
+      // One full-width card per source
       for (const source of SOURCES) {
-        const card = document.createElement("div");
-        card.className = "card";
+        const card = document.createElement("section");
+        card.className = "card source-card";
+        card.id = `src-${source.id}`;
 
-        // Title and origin
-        let titleHtml = `<h2>${BSD.esc(source.name)}</h2>`;
-        titleHtml += `<p class="muted"><strong>Origin:</strong> ${BSD.esc(source.origin)}</p>`;
+        let html = `<h2 class="card-heading">${BSD.esc(source.name)} ${BSD.badgeHTML(source.tier)}</h2>`;
 
-        // Record count if available
-        if (source.metaId && recordCounts[source.metaId]) {
-          titleHtml += `<p class="muted"><strong>Records:</strong> ${BSD.fmt(recordCounts[source.metaId])}</p>`;
-        }
-
-        // Tier badge and cadence
-        let badgeHtml = `<div style="margin: 0.6rem 0;">`;
-        badgeHtml += BSD.badgeHTML(source.tier);
-        badgeHtml += `<span class="muted" style="margin-left: 0.5rem;">Updated ${BSD.esc(source.cadence)}</span>`;
-        badgeHtml += `</div>`;
+        // One-line fact row: origin · cadence · record count
+        const records = source.metaId ? recordCounts[source.metaId] : null;
+        html += `<p class="muted">${BSD.esc(source.origin)} · updated ${BSD.esc(source.cadence)}` +
+          `${records ? ` · ${BSD.fmt(records)} records` : ""}</p>`;
 
         // Description
-        let descHtml = `<p>${BSD.esc(source.description)}</p>`;
+        html += `<p>${BSD.esc(source.description)}</p>`;
 
-        // Limitations
-        let limitHtml = `<div><strong>Known limitations:</strong> <p>${BSD.esc(source.limitations)}</p></div>`;
-
-        // Links to raw data
-        let linksHtml = "";
+        // Raw dataset links
         if (source.links && source.links.length > 0) {
-          linksHtml = `<div><strong>Raw dataset:</strong>`;
-          for (const link of source.links) {
-            linksHtml += ` <a href="${BSD.esc(link.url)}" target="_blank" rel="noopener">${BSD.esc(link.text)}</a>`;
-            if (link !== source.links[source.links.length - 1]) {
-              linksHtml += `, `;
-            }
-          }
-          linksHtml += `</div>`;
+          const linkHtml = source.links.map(l =>
+            `<a href="${BSD.esc(l.url)}" target="_blank" rel="noopener">${BSD.esc(l.text)}</a>`
+          ).join(", ");
+          html += `<dl class="source-facts"><dt>Raw dataset:</dt><dd>${linkHtml}</dd></dl>`;
         }
 
-        card.innerHTML = titleHtml + badgeHtml + descHtml + limitHtml + linksHtml;
+        // Limitations as a visual callout
+        html += `<div class="notice"><strong>Known limitations:</strong> ${BSD.esc(source.limitations)}</div>`;
 
-        // Add dooring notice for crashes
-        if (source.showDooringNotice) {
-          card.innerHTML += BSD.noticeHTML("dooring");
-        }
-
-        grid.appendChild(card);
+        card.innerHTML = html;
+        app.appendChild(card);
       }
 
-      app.appendChild(grid);
+      // Content renders async, so the browser's native anchor scroll already
+      // fired against an empty page — replay the deep link now.
+      if (location.hash) {
+        const target = document.getElementById(location.hash.slice(1));
+        if (target) target.scrollIntoView();
+      }
 
     } catch (err) {
       app.innerHTML = `<div class="card" style="color: red;">Error loading sources: ${BSD.esc(err.message)}</div>`;

@@ -61,6 +61,13 @@ DATASETS = {
                                    # pre-aggregated to wards by the city; confirmed live 2026-07-11)
 }
 
+# Ward Offices — the city's official roster of current alderpersons (name, email,
+# phone, website per ward). Same Socrata portal as crashes. Ingesting the official
+# roster is NOT the "never auto-generate" guessing DECISIONS.md #8 forbids — that
+# rule was about inferring names. Verified live 2026-07-12.
+WARD_OFFICES_DATASET = "htai-wnw4"
+ALDERMAN_LOOKUP_URL = "https://www.chicago.gov/city/en/about/wards.html"
+
 # Legistar Web API (webapi.legistar.com) — the standard hosted API used by ~100+
 # municipalities, including Chicago's pre-2023 council records. Confirmed live,
 # no auth required, OData-style query params ($filter, $top, $orderby).
@@ -89,9 +96,16 @@ LEGISTAR_DATA_FROZEN_AT = "2023-06-21"
 # chicago_council.db.zip at github.com/datamade/chicago-council-scrapers/releases.
 COUNCILMATIC_DATASETTE_URL = "https://puddle.datamade.us/chicago_council"
 
-# City Clerk eLMS (successor to Legistar). Meetings page confirmed to exist and
-# render a real meeting calendar/table, but it appears to be JS-rendered with no
-# discovered public JSON endpoint — used only as a link-out target for now.
+# City Clerk eLMS (successor to Legistar). The Meetings page below stays the
+# human-facing link-out target; the API root powers structured pulls.
+#
+# eLMS public API — CONFIRMED WORKING 2026-07-12 (earlier research guessed plural/
+# prefixed paths; the real endpoints are singular nouns at the API root, e.g.
+# GET https://api.chicityclerkelms.chicago.gov/meeting?filter=body eq '<committee>'
+# &sort=date desc&limit=50, rows under the "data" key of the response envelope).
+# Undocumented and unversioned — treat as best-effort; pull_hearings.py keeps the
+# link-out fallback shape on any failure.
+ELMS_API_URL = "https://api.chicityclerkelms.chicago.gov"
 ELMS_MEETINGS_URL = "https://chicityclerkelms.chicago.gov/Meetings"
 ELMS_COMMITTEES_OF_INTEREST = [
     "Committee on Pedestrian and Traffic Safety",

@@ -1,22 +1,113 @@
 (function () {
+  // sourceId must match a card anchor on sources.html (id="src-{sourceId}");
+  // sourceName is the short link text. `calc` (derived/proxy files) is a one-
+  // sentence plain-language formula shown in a modal.
   const FILES = [
-    { name: "crashes_cyclist.geojson", tier: "real" },
-    { name: "bike_routes.geojson", tier: "real" },
-    { name: "wards.geojson", tier: "real" },
-    { name: "corridors.json", tier: "real" },
-    { name: "intersections.json", tier: "real" },
-    { name: "findings.json", tier: "real" },
-    { name: "meta.json", tier: "real" },
-    { name: "ward_311.json", tier: "proxy" },
-    { name: "cameras.json", tier: "proxy" },
-    { name: "obstructions_mock.geojson", tier: "mock" },
-    { name: "planned_routes.geojson", tier: "stub" },
-    { name: "mellow_routes.geojson", tier: "crowdsourced" },
-    { name: "ward_safety_index.json", tier: "derived" },
-    { name: "council_records.json", tier: "real" },
-    { name: "aldermen_safety_record.json", tier: "derived" },
-    { name: "hearings.json", tier: "real" },
-    { name: "menu_spending.json", tier: "proxy" }
+    {
+      name: "crashes_cyclist.geojson", tier: "real",
+      title: "Cyclist crashes", sourceId: "crashes", sourceName: "Crashes",
+      description: "Every police-reported crash involving a cyclist since Sept 2017, with location, severity, and dooring/hit-and-run flags."
+    },
+    {
+      name: "bike_routes.geojson", tier: "real",
+      title: "Bike lane inventory", sourceId: "bike_routes", sourceName: "Bike routes",
+      description: "The city's current bike infrastructure: protected, buffered, and painted lanes, greenways, trails."
+    },
+    {
+      name: "wards.geojson", tier: "real",
+      title: "Ward boundaries & crash totals", sourceId: "wards", sourceName: "Wards",
+      description: "Official 2023 ward boundaries with each ward's crash counts attached."
+    },
+    {
+      name: "corridors.json", tier: "real",
+      title: "Most dangerous streets", sourceId: "crashes", sourceName: "Crashes",
+      description: "Streets ranked by cyclist crashes per kilometer of bikeway."
+    },
+    {
+      name: "intersections.json", tier: "real",
+      title: "Crash hotspot intersections", sourceId: "crashes", sourceName: "Crashes",
+      description: "The intersections where the most cyclist crashes cluster."
+    },
+    {
+      name: "findings.json", tier: "real",
+      title: "Headline findings", sourceId: "crashes", sourceName: "Crashes",
+      description: "The stats behind the Findings page, each with its caveat and map link."
+    },
+    {
+      name: "meta.json", tier: "real",
+      title: "Build info", sourceId: null, sourceName: null,
+      description: "When this data was generated, from where, and how many records per source."
+    },
+    {
+      name: "ward_311.json", tier: "proxy",
+      title: "311 bike complaints by ward", sourceId: "sr311", sourceName: "311 requests",
+      description: "Bike-related service requests residents filed with the city, totaled per ward.",
+      calc: "Counts self-reported bike-related 311 requests per ward — a signal of who complains, biased toward wards with engaged 311 users, not ground truth of street conditions."
+    },
+    {
+      name: "cameras.json", tier: "proxy",
+      title: "Camera violations", sourceId: "cameras", sourceName: "Cameras",
+      description: "Speed and red-light violations at fixed cameras — a rough signal of aggressive driving.",
+      calc: "Totals violations at fixed camera locations — a proxy for aggressive driving that exists only where cameras are installed, not where violations actually occur."
+    },
+    {
+      name: "obstructions_mock.geojson", tier: "mock",
+      title: "Blocked-lane reports (demo only)", sourceId: "obstructions", sourceName: "Obstructions (demo)",
+      description: "Fake sample data showing what real obstruction reports would look like — not real reports."
+    },
+    {
+      name: "planned_routes.geojson", tier: "stub",
+      title: "Planned bike routes (empty)", sourceId: "planned_routes", sourceName: "Planned routes",
+      description: "Placeholder for future CDOT planned-route data; no structured feed exists yet."
+    },
+    {
+      name: "mellow_routes.geojson", tier: "crowdsourced",
+      title: "Community low-stress routes", sourceId: "mellow_map", sourceName: "Mellow map",
+      description: "Quiet streets tagged by riders on the volunteer-run Mellow Bike Map."
+    },
+    {
+      name: "osm_trails.geojson", tier: "crowdsourced",
+      title: "Off-street trails (OSM)", sourceId: "osm_trails", sourceName: "OSM trails",
+      description: "Named off-street trails (Lakefront, 606, Major Taylor…) from OpenStreetMap — volunteer-mapped, unverified."
+    },
+    {
+      name: "ward_safety_index.json", tier: "derived",
+      title: "Ward danger scores", sourceId: "ward_safety_index", sourceName: "Danger score",
+      description: "Each ward's 0–100 danger score (relative to other wards), with the rates behind it and 12-month trend.",
+      calc: "Average of the ward's percentile ranks on crashes per 10k residents and crashes per bikeway mile — every input is in this file's row."
+    },
+    {
+      name: "council_records.json", tier: "real",
+      title: "City Council legislation", sourceId: "council_records", sourceName: "Council records",
+      description: "Street- and bike-safety ordinances and resolutions, with sponsors and status."
+    },
+    {
+      name: "aldermen_safety_record.json", tier: "derived",
+      title: "Alderperson safety records", sourceId: "aldermen_safety_record", sourceName: "Alderperson records",
+      description: "How often each alderperson sponsored bike/traffic-safety legislation.",
+      calc: "Counts council records whose sponsor name exactly matches the ward's alderperson."
+    },
+    {
+      name: "aldermen.json", tier: "real",
+      title: "Current alderpersons", sourceId: "aldermen", sourceName: "Alderpersons",
+      description: "Name and contact info for each ward's current alderperson, from the city's official roster."
+    },
+    {
+      name: "hearings.json", tier: "real",
+      title: "Committee hearing calendar", sourceId: "hearings", sourceName: "Hearings",
+      description: "Upcoming transportation-committee meetings, or a link to the official calendar."
+    },
+    {
+      name: "menu_spending.json", tier: "proxy",
+      title: "Ward discretionary spending", sourceId: "menu_spending", sourceName: "Menu spending",
+      description: "What each ward spent its infrastructure \"menu\" money on, with a bike/traffic-calming subtotal.",
+      calc: "Community-structured by the volunteer Ward Wise project from the city's quarterly PDF reports — not independently verified against those PDFs by this pipeline."
+    },
+    {
+      name: "citywide_trend.json", tier: "real",
+      title: "Citywide crash trend", sourceId: "citywide_trend", sourceName: "Crash trend",
+      description: "Monthly citywide cyclist crash, injury, and KSI counts since Sept 2017."
+    }
   ];
 
   const OBSTRUCTION_FIELDS = [
@@ -46,7 +137,7 @@
       // ---- Section 1: Download the processed data ----
       const downloadSection = document.createElement("div");
       downloadSection.innerHTML = `
-        <h1>Open Data & Contributing</h1>
+        <h1>Downloads & Docs</h1>
         <p>This project is open source and open data. Our processed dataset is versioned, documented, and designed to be extended or replaced — swap in new data sources, add analysis layers, or fork for another city.</p>
       `;
       app.appendChild(downloadSection);
@@ -70,25 +161,44 @@
       const tableContainer = document.createElement("div");
       tableContainer.className = "table-scroll";
       const table = document.createElement("table");
-      table.className = "data";
+      table.className = "data table-stack";
       table.innerHTML = `
         <thead>
           <tr>
-            <th>File</th>
+            <th>Dataset</th>
             <th>Tier</th>
+            <th>Source</th>
             <th>Download</th>
           </tr>
         </thead>
         <tbody>
-          ${FILES.map(f => `
+          ${FILES.map((f, i) => `
             <tr>
-              <td><code>${BSD.esc(f.name)}</code></td>
+              <td>
+                <strong>${BSD.esc(f.title)}</strong>
+                <div class="muted">${BSD.esc(f.description)}</div>
+                ${f.calc ? `<button type="button" class="linklike" data-calc="${i}">How it's calculated</button>` : ""}
+              </td>
               <td>${BSD.badgeHTML(f.tier)}</td>
-              <td><a href="data/${BSD.esc(f.name)}" download class="btn">Download</a></td>
+              <td>${f.sourceId
+                ? `<a href="sources.html#src-${BSD.esc(f.sourceId)}">${BSD.esc(f.sourceName)}</a>`
+                : "—"}</td>
+              <td><a href="data/${BSD.esc(f.name)}" download class="btn">Download</a><div><code>${BSD.esc(f.name)}</code></div></td>
             </tr>
           `).join("")}
         </tbody>
       `;
+      // "How it's calculated" modals for derived/proxy files
+      table.querySelectorAll("button[data-calc]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const f = FILES[Number(btn.dataset.calc)];
+          BSD.openModal({
+            title: f.title,
+            bodyHTML: `<p>${BSD.esc(f.calc)}</p>` +
+              `<p><a href="sources.html#src-${BSD.esc(f.sourceId)}">Full source detail →</a></p>`
+          });
+        });
+      });
       tableContainer.appendChild(table);
       app.appendChild(tableContainer);
 

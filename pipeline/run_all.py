@@ -7,7 +7,8 @@
 Stages:
   1. pull_people          (cyclist filter lives in the People dataset)
   2. pull_crashes, pull_vehicles   (batched CRASH_RECORD_ID lookups)
-  3. pull_bike_routes, pull_wards, pull_311, pull_cameras, pull_mellow, pull_osm_trails
+  3. pull_bike_routes, pull_wards, pull_aldermen (current alderperson roster ->
+     site/data/aldermen.json directly), pull_311, pull_cameras, pull_mellow, pull_osm_trails
   4. pull_ward_demographics, restore_frozen (frozen pre-2023 Legistar council records —
      see note below), pull_councilmatic (post-2023 council data — see DECISIONS.md),
      pull_menu_spending, pull_hearings
@@ -39,7 +40,8 @@ HERE = Path(__file__).resolve().parent
 LIVE_STAGES = [
     ["pull_people.py"],
     ["pull_crashes.py"], ["pull_vehicles.py"],
-    ["pull_bike_routes.py"], ["pull_wards.py"], ["pull_311.py"], ["pull_cameras.py"],
+    ["pull_bike_routes.py"], ["pull_wards.py"], ["pull_aldermen.py"],
+    ["pull_311.py"], ["pull_cameras.py"],
     ["pull_mellow.py"], ["pull_osm_trails.py"],
     ["pull_ward_demographics.py"], ["restore_frozen.py"], ["pull_councilmatic.py"],
     ["pull_menu_spending.py"], ["pull_hearings.py"],
