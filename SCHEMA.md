@@ -415,6 +415,10 @@ is a stub (no live Overpass pull yet), trail lines appear with
 
 ## Contract v1.9 changes (road-network coverage)
 
+Adds the `road_network.json` file below and three per-ward fields in
+`ward_safety_index.json` (`bikeway_pct_protected`, `road_miles`,
+`bikeway_pct_of_roads` — documented in that section above).
+
 ## road_network.json — tier real
 
 Surface-street centerline miles citywide and per ward, plus the citywide share
