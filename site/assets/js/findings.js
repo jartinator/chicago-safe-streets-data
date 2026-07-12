@@ -5,23 +5,31 @@
     const app = document.getElementById("app");
 
     try {
-      const [findings, meta] = await Promise.all([
+      const [findings, meta, trend] = await Promise.all([
         BSD.loadJSON("data/findings.json"),
         BSD.loadJSON("data/meta.json"),
+        BSD.loadJSON("data/citywide_trend.json").catch(() => null),
       ]);
 
       // Page heading and intro
       const heading = document.createElement("div");
       heading.innerHTML = `
-        <h1>Dashboard: Top-Level Findings</h1>
-        <p>Headline numbers and patterns worth exploring. Each finding links directly to the relevant map view — click to dig in.</p>
+        <h1>What the data shows</h1>
+        <p>Headline numbers and patterns worth exploring — each links to the view behind it.</p>
       `;
       app.appendChild(heading);
 
-      // Notices
-      const noticeContainer = document.createElement("div");
-      noticeContainer.innerHTML = BSD.noticeHTML("directional") + BSD.noticeHTML("normalization");
-      app.appendChild(noticeContainer);
+      // One collapsed reading guide (replaces the old directional +
+      // normalization notices) in plainer voice.
+      const guide = document.createElement("details");
+      guide.className = "fine-print";
+      guide.style.marginBottom = "1rem";
+      guide.innerHTML =
+        `<summary>How to read these numbers</summary>` +
+        `<p>These are patterns worth investigating, not statistical proof. Counts are raw — ` +
+        `busy corridors look worse than dangerous quiet ones because no public ridership ` +
+        `data exists to divide by.</p>`;
+      app.appendChild(guide);
 
       // Findings grid
       const grid = document.createElement("div");
@@ -69,6 +77,22 @@
         stat.className = "stat";
         stat.textContent = finding.stat;
 
+        // KSI finding gets the citywide trailing-12-month trend chart between
+        // stat and description; skipped silently when trend data is absent.
+        let chart = null;
+        if (finding.id === "ksi-trend" && trend && Array.isArray(trend.months)) {
+          const points = BSD.rollingSums(trend.months, "ksi", 12);
+          const svg = BSD.trendChartSVG(points, {
+            label: "Cyclists killed or seriously injured, trailing 12 months",
+            width: 560,
+            height: 140,
+          });
+          if (svg) {
+            chart = document.createElement("div");
+            chart.innerHTML = svg;
+          }
+        }
+
         // Description
         const desc = document.createElement("p");
         desc.textContent = finding.description;
@@ -78,6 +102,17 @@
         caveat.className = "muted";
         caveat.style.fontSize = "0.86rem";
         caveat.textContent = finding.caveat;
+
+        // Per-ward report links (ward-concentration carries a `wards` array;
+        // older data files without it just skip this line).
+        let wardLinks = null;
+        if (Array.isArray(finding.wards) && finding.wards.length) {
+          wardLinks = document.createElement("p");
+          wardLinks.style.fontSize = "0.86rem";
+          wardLinks.innerHTML = finding.wards.map(w =>
+            `<a href="action.html?ward=${encodeURIComponent(w)}">Ward ${BSD.esc(w)} report →</a>`
+          ).join(" · ");
+        }
 
         // Explore button
         const btn = document.createElement("a");
@@ -89,8 +124,10 @@
         // Assemble card
         card.appendChild(stat);
         card.appendChild(titleWithBadge);
+        if (chart) card.appendChild(chart);
         card.appendChild(desc);
         card.appendChild(caveat);
+        if (wardLinks) card.appendChild(wardLinks);
         card.appendChild(btn);
 
         grid.appendChild(card);
@@ -102,9 +139,9 @@
       const footer = document.createElement("div");
       footer.style.marginTop = "2rem";
       footer.style.paddingTop = "1rem";
-      footer.style.borderTop = "1px solid #dde4ec";
+      footer.style.borderTop = "1px solid var(--line)";
       footer.style.fontSize = "0.8rem";
-      footer.style.color = "#4a5568";
+      footer.style.color = "var(--ink-soft)";
 
       const date = new Date(meta.generated_at).toLocaleDateString("en-US", {
         year: "numeric",
