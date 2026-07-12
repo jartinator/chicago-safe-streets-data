@@ -6,8 +6,11 @@ Fetches the tabular Socrata copy (pr57-gg9e, "transportation") — the canonical
 them as a GeoJSON FeatureCollection at raw/street_centerlines.geojson.
 Class/status filtering is mapped downstream (aggregate.py); this module only
 fetches and archives.
+
+Idempotent: re-running overwrites cleanly. Exit code 1 if no rows fetched.
 """
 import argparse
+import sys
 from collections import Counter
 
 from config import DATASETS, RAW_DIR
@@ -24,13 +27,19 @@ def main():
 
     feats = []
     classes = Counter()
-    for row in fetch_all(DATASETS["street_centerlines"], select=SELECT, order=":id"):
+    dataset_id = DATASETS["street_centerlines"]
+    print(f"Fetching street_centerlines: {dataset_id}", file=sys.stderr)
+    for row in fetch_all(dataset_id, select=SELECT, order=":id"):
         geom = row.get("the_geom")
         if not geom:
             continue
         props = {k: v for k, v in row.items() if k != "the_geom"}
         feats.append({"type": "Feature", "geometry": geom, "properties": props})
         classes[row.get("class") or "(blank)"] += 1
+
+    if not feats:
+        print("street_centerlines: 0 features")
+        sys.exit(1)
 
     write_json(RAW_DIR / "street_centerlines.geojson",
                {"type": "FeatureCollection", "features": feats})
