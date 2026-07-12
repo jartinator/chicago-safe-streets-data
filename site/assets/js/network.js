@@ -353,20 +353,21 @@
           <dd>${BSD.fmt(Math.round(props.length_m))} m</dd>
 
           <dt>Segment crashes within 30m</dt>
-          <dd>${BSD.fmt(props.crashes_within_30m)}</dd>
+          <dd>${BSD.fmt(props.crashes_within_30m)} ${BSD.badgeHTML("real")}</dd>
 
           <dt>Obstruction count</dt>
           <dd>${BSD.fmt(obCount)} ${BSD.badgeHTML("mock")}</dd>
 
           <dt>Corridor total length</dt>
-          <dd>${BSD.fmt(Math.round(corridorLength))} m across ${corridorFeats.length} segment${corridorFeats.length === 1 ? "" : "s"}</dd>
+          <dd>${BSD.fmt(Math.round(corridorLength))} m across ${corridorFeats.length} segment${corridorFeats.length === 1 ? "" : "s"} ${BSD.badgeHTML("real")}</dd>
 
           <dt>Corridor crashes within 30m</dt>
-          <dd>${BSD.fmt(corridorCrashes)}</dd>
+          <dd>${BSD.fmt(corridorCrashes)} ${BSD.badgeHTML("real")}</dd>
 
           <dt></dt>
           <dd><a href="${link}">Density view →</a></dd>
         </dl>
+        ${BSD.noticeHTML("dooring")}
       </div>
     `;
 
