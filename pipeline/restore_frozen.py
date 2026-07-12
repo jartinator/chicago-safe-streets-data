@@ -19,7 +19,7 @@ import sys
 
 from config import FROZEN_DIR, RAW_DIR
 
-# Frozen files to restore: (filename in FROZEN_DIR, same filename in RAW_DIR).
+# Filenames to restore; each is copied from FROZEN_DIR to the same name in RAW_DIR.
 FROZEN_FILES = ["council_records.json"]
 
 
