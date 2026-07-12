@@ -2,14 +2,6 @@
   "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-12-main-routes-design.md). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. Lines match in order, first match wins. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`, optionally clipped to `clip_bbox` [south, west, north, east] by the segment's geometry midpoint. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",
   "lines": [
     {
-      "id": "loop",
-      "name": "Downtown circulator",
-      "termini": "Loop",
-      "source": "bike_routes",
-      "streets": ["DEARBORN", "CLINTON", "DESPLAINES", "RANDOLPH", "WASHINGTON", "WABASH"],
-      "clip_bbox": [41.868, -87.647, 41.9, -87.615]
-    },
-    {
       "id": "milwaukee",
       "name": "Milwaukee Line",
       "termini": "Downtown ⇄ Jefferson Park",
@@ -80,18 +72,46 @@
       "streets": ["JACKSON", "WASHINGTON"]
     },
     {
-      "id": "belmont",
-      "name": "Belmont Line",
-      "termini": "Avondale ⇄ Lakeview",
+      "id": "california",
+      "name": "California Line",
+      "termini": "Little Village ⇄ West Ridge",
       "source": "bike_routes",
-      "streets": ["BELMONT"]
+      "streets": ["CALIFORNIA"]
     },
     {
-      "id": "31st",
-      "name": "31st Street Line",
-      "termini": "Bronzeville ⇄ Lakefront",
+      "id": "mlk-drive",
+      "name": "King Drive Line",
+      "termini": "Bronzeville ⇄ Chatham",
       "source": "bike_routes",
-      "streets": ["31ST"]
+      "streets": ["MARTIN LUTHER KING JR"]
+    },
+    {
+      "id": "lawrence",
+      "name": "Lawrence Line",
+      "termini": "Jefferson Park ⇄ Uptown",
+      "source": "bike_routes",
+      "streets": ["LAWRENCE"]
+    },
+    {
+      "id": "roosevelt",
+      "name": "Roosevelt Line",
+      "termini": "Lawndale ⇄ Museum Campus",
+      "source": "bike_routes",
+      "streets": ["ROOSEVELT"]
+    },
+    {
+      "id": "marquette",
+      "name": "Marquette Line",
+      "termini": "West Lawn ⇄ Jackson Park",
+      "source": "bike_routes",
+      "streets": ["MARQUETTE"]
+    },
+    {
+      "id": "83rd",
+      "name": "83rd Street Line",
+      "termini": "Scottsdale ⇄ South Chicago",
+      "source": "bike_routes",
+      "streets": ["83RD"]
     },
     {
       "id": "lakefront",

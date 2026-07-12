@@ -189,6 +189,16 @@ FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow"
 # other configs. See docs/superpowers/specs/2026-07-12-main-routes-design.md.
 MAIN_ROUTES_PATH = REPO_ROOT / "data" / "main_routes.json"
 
+# Hand-traced fallback geometry for the roster's off-street trails, used when
+# neither a live Overpass pull (raw/osm_trails.json) nor its committed output
+# exists in this run's environment. See docs/superpowers/specs/
+# 2026-07-12-network-map-distinction.md §8. Tier crowdsourced, like mellow routes.
+CURATED_TRAILS_PATH = REPO_ROOT / "data" / "curated_trails.geojson"
+
+# Hand-picked major-road crossings on roster lines, for network-map wayfinding —
+# see docs/superpowers/specs/2026-07-12-network-map-distinction.md §7.
+ORIENTATION_POINTS_PATH = REPO_ROOT / "data" / "orientation_points.json"
+
 # facility_category -> main-route grade (spec §4, user-locked 4-grade taxonomy).
 # Buffers and greenways are still just paint & signs -> "painted"; sharrows
 # count as nothing -> "none".
