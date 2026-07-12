@@ -329,6 +329,18 @@
     </div>
   `;
 
+  // Mirror the toggle handlers' stub-note logic for overlays restored from
+  // the URL (e.g. ?overlays=mellow or ?overlays=planned): the toggle
+  // handlers only show the no_data_yet note in response to a checkbox
+  // "change" event, so a layer mounted directly from state.overlays above
+  // needs the same check applied here, now that #detail exists.
+  if (state.overlays.has("mellow") && mellowData.features.length === 0) {
+    showDetail({ _mellowStub: true, properties: mellowData.properties });
+  }
+  if (state.overlays.has("planned") && plannedData.features.length === 0) {
+    showDetail({ _plannedStub: true, properties: plannedData.properties });
+  }
+
   // Toggle handlers: mutate state.overlays, sync the map layer, then push
   // the new state to the URL so every toggle is deep-linkable.
   document.getElementById("station-toggle").addEventListener("change", (e) => {
@@ -429,6 +441,10 @@
 
     const props = feature.properties;
     const streetLabel = props.street || "(unnamed)";
+    // Keep state.corridor in sync with the visible corridor so a later
+    // toggle-driven syncURL() call doesn't write a stale/empty corridor
+    // param while this street's detail is still on screen.
+    state.corridor = streetLabel;
     const obCount = obstructionCounts.get(props.segment_id) || 0;
 
     // Corridor context: aggregate every segment sharing this street name.

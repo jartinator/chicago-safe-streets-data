@@ -154,8 +154,8 @@
 
     const { entry, rank, total } = result;
     const score = entry.comparable_danger_score;
-    const scoreDisplay = score == null ? "—" : score;
-    html += `<div class="stat" style="color: ${BSD.scoreColor(score)};">${BSD.esc(scoreDisplay)} / 100</div>`;
+    const scoreDisplay = score == null ? "—" : `${BSD.esc(score)} / 100`;
+    html += `<div class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</div>`;
     html += `<div class="muted" style="margin-bottom: 0.6rem;">Rank ${BSD.fmt(rank)} of ${BSD.fmt(total)} wards</div>`;
 
     html += `<div style="line-height: 1.8;">`;

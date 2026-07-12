@@ -139,7 +139,7 @@
       tier: "derived",
       cadence: "weekly pipeline run",
       description: "Per-alderman rollup of sponsorships on safety-tagged legislation — an aggregate score and the individual record list behind it.",
-      limitations: "A broad proxy (sponsorships), not roll-call vote counts. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
+      limitations: "A broad proxy — primarily sponsorships; the only roll-call signal is recorded_no_votes from rare contested votes. ward resolves only when a Legistar sponsor name exactly matches a manually-filled aldermen.json entry — null otherwise, by design (never auto-matched).",
       links: [],
       metaId: "aldermen_safety_record"
     },

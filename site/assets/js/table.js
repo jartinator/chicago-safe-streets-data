@@ -725,12 +725,16 @@ if (typeof document !== "undefined") {
           tr.appendChild(introTd);
 
           const titleTd = document.createElement("td");
-          const link = document.createElement("a");
-          link.href = row.url || "#";
-          link.target = "_blank";
-          link.rel = "noopener";
-          link.textContent = row.title || "—";
-          titleTd.appendChild(link);
+          if (row.url) {
+            const link = document.createElement("a");
+            link.href = row.url;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.textContent = row.title || "—";
+            titleTd.appendChild(link);
+          } else {
+            titleTd.textContent = row.title || "—";
+          }
           tr.appendChild(titleTd);
 
           const typeTd = document.createElement("td");

@@ -21,6 +21,28 @@
   const densityCanvas = L.canvas();
 
   const side = document.getElementById("side");
+
+  // Delegated click handler for drill-down links inside the side panel.
+  // showWard()/showCorridor() re-render #detail's innerHTML on every
+  // layer-checkbox or shade-select change (via renderSide()), which would
+  // silently drop any listeners attached directly to the [data-corridor]/
+  // [data-spot] anchors. Binding once on the stable #side container (which
+  // is never replaced, only its innerHTML) survives every re-render.
+  side.addEventListener("click", e => {
+    const corridorLink = e.target.closest("[data-corridor]");
+    if (corridorLink) {
+      e.preventDefault();
+      showCorridor(corridorLink.dataset.corridor, true);
+      return;
+    }
+    const spotLink = e.target.closest("[data-spot]");
+    if (spotLink) {
+      e.preventDefault();
+      const [lat, lng] = spotLink.dataset.spot.split(",").map(Number);
+      map.setView([lat, lng], 17);
+    }
+  });
+
   const state = {
     layers: new Set((B.qs().get("layers") || "crashes,infrastructure").split(",").filter(Boolean)),
     sev: B.qs().get("sev") || "",
@@ -390,7 +412,7 @@
     const s = data.safetyByWard[String(w)];
     const rank = s ? data.safetyRank[String(w)] : null;
     const score = s ? s.comparable_danger_score : null;
-    const scoreRow = score == null ? "—" : `${score} / 100 — rank ${rank} of ${data.safetyCount} wards`;
+    const scoreRow = score == null ? "—" : `${B.fmt(score)} / 100 — rank ${rank} of ${data.safetyCount} wards`;
     const trendRow = s && s.crash_trend ? B.trendHTML(s.crash_trend) : "—";
     const bikewayMilesRow = s && s.bikeway_miles != null ? B.esc(String(s.bikeway_miles)) : "—";
     const m = data.menuByWard[String(w)];
@@ -416,8 +438,6 @@
         <span class="muted">${B.fmt(v.crashes)} crashes near ${(v.length / 1000).toFixed(1)} km</span></div>`).join("") || '<p class="muted">No bikeways intersect this ward.</p>'}
       <p style="margin-top:0.6rem"><a class="btn" href="table.html?ward=${encodeURIComponent(w)}">Ward data table</a>
       <a class="btn primary" href="action.html?ward=${encodeURIComponent(w)}">Ward report &amp; take action</a></p>`);
-    document.querySelectorAll("[data-corridor]").forEach(a =>
-      a.addEventListener("click", e => { e.preventDefault(); showCorridor(a.dataset.corridor, true); }));
     syncLayers();
   }
 
@@ -443,11 +463,6 @@
       ${spots.map(s => `<div><a href="#" data-spot="${s.lat},${s.lng}">${B.esc(s.label)}</a> <span class="muted">${s.crashes} crashes</span></div>`).join("") || '<p class="muted">No clustered hotspots here.</p>'}
       ${B.noticeHTML("normalization")}
       <p><a class="btn" href="network.html?corridor=${encodeURIComponent(street)}">Plan a route here →</a></p>`);
-    document.querySelectorAll("[data-spot]").forEach(a => a.addEventListener("click", e => {
-      e.preventDefault();
-      const [lat, lng] = a.dataset.spot.split(",").map(Number);
-      map.setView([lat, lng], 17);
-    }));
     syncLayers();
   }
 
