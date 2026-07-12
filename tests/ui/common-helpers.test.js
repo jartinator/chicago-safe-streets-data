@@ -47,4 +47,56 @@ for (const tier of ["real", "proxy", "derived", "mock", "crowdsourced", "stub"])
     `TIER_PLAIN has plain wording for '${tier}'`);
 }
 
+// Trend chart + trailing-window + .ics helpers (pure, Node-testable).
+const months = [];
+for (let i = 0; i < 24; i++) {
+  months.push({
+    month: `20${24 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`,
+    crashes: 10, injury_crashes: 3, ksi: 1, fatal: 0,
+  });
+}
+
+// rollingSums: 24 input months, window 12 -> 13 points, each value 120;
+// entries before a full window are omitted.
+const rolled = B.rollingSums(months, "crashes", 12);
+assert.strictEqual(rolled.length, 13, "24 months / window 12 -> 13 points");
+assert.strictEqual(rolled[0].month, "2024-12", "first point ends the first full window");
+assert.strictEqual(rolled[rolled.length - 1].month, "2025-12");
+for (const p of rolled) assert.strictEqual(p.value, 120, "each trailing-12 sum is 120");
+const rolledKsi = B.rollingSums(months, "ksi", 12);
+assert.strictEqual(rolledKsi[0].value, 12);
+assert.deepStrictEqual(B.rollingSums(months.slice(0, 5), "crashes", 12), [],
+  "fewer months than the window -> no points");
+
+// trendChartSVG: sparkline-plus SVG string.
+const svg = B.trendChartSVG(rolled, { label: "Crashes, trailing 12 months", median: 100 });
+assert.ok(svg.startsWith("<svg"), "returns an <svg> string");
+assert.ok(svg.includes("polyline"), "renders a polyline");
+assert.ok(svg.includes("2024-12"), "labels the first month");
+assert.ok(svg.includes("2025-12"), "labels the last month");
+assert.ok(svg.includes(">120<"), "labels the current value");
+assert.ok(svg.includes("city median"), "labels the median line when given");
+assert.strictEqual(B.trendChartSVG([{ month: "2024-01", value: 1 }], {}), "",
+  "fewer than 2 points -> empty string");
+
+// icsForEvent: RFC-5545 VEVENT with floating local DTSTART and CRLF endings.
+const ics = B.icsForEvent({
+  title: "Committee on Transportation and Public Way",
+  startISO: "2026-07-14T13:00:00",
+  location: "City Hall, Room 201-A",
+  url: "https://example.org/agenda.pdf",
+  description: "Agenda:\nPublic comment",
+});
+assert.ok(ics.includes("BEGIN:VCALENDAR"));
+assert.ok(ics.includes("BEGIN:VEVENT"));
+assert.ok(ics.includes("DTSTART:20260714T130000"), "DTSTART is floating local time");
+assert.ok(ics.includes("LOCATION:City Hall\\, Room 201-A"), "commas escaped in text fields");
+assert.ok(ics.includes("DESCRIPTION:Agenda:\\nPublic comment"), "newlines escaped as \\n");
+assert.ok(ics.includes("UID:"), "event carries a UID");
+assert.ok(!/[^\r]\n/.test(ics), "every LF is part of a CRLF");
+assert.ok(ics.includes("\r\n"), "uses CRLF line endings");
+
+// downloadICS is DOM-bound but must be exported alongside the pure helpers.
+assert.strictEqual(typeof B.downloadICS, "function");
+
 console.log("common-helpers OK");

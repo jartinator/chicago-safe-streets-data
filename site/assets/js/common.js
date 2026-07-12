@@ -202,6 +202,96 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---- trend chart + trailing-window helpers (pure, Node-testable) ---- */
+
+  // Trailing-`window` sums of `key` over [{month, crashes, injury_crashes, ksi,
+  // fatal}] month buckets. Entries before a full window are omitted.
+  function rollingSums(months, key, window) {
+    const out = [];
+    if (!months || months.length < window) return out;
+    let sum = 0;
+    for (let i = 0; i < months.length; i++) {
+      sum += months[i][key] || 0;
+      if (i >= window) sum -= months[i - window][key] || 0;
+      if (i >= window - 1) out.push({ month: months[i].month, value: sum });
+    }
+    return out;
+  }
+
+  // Sparkline-plus: polyline, first/last month labels, current-value dot+label,
+  // optional dashed "city median" line, optional baseline dots for fatal/KSI
+  // months. No axes/gridlines by design.
+  function trendChartSVG(points, opts) {
+    const o = Object.assign({ width: 560, height: 120, label: "", median: null, dots: [] }, opts || {});
+    if (!points || points.length < 2) return "";
+    const pad = { l: 8, r: 46, t: 14, b: 18 };
+    const w = o.width - pad.l - pad.r, h = o.height - pad.t - pad.b;
+    const vals = points.map(p => p.value);
+    const max = Math.max(...vals, o.median || 0) || 1;
+    const x = i => pad.l + (i / (points.length - 1)) * w;
+    const y = v => pad.t + h - (v / max) * h;
+    const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+    const last = points[points.length - 1];
+    let svg = `<svg viewBox="0 0 ${o.width} ${o.height}" role="img" aria-label="${esc(o.label)}" xmlns="http://www.w3.org/2000/svg">`;
+    if (o.median != null) {
+      svg += `<line x1="${pad.l}" x2="${pad.l + w}" y1="${y(o.median)}" y2="${y(o.median)}" stroke="var(--ink-soft)" stroke-dasharray="4 3" stroke-width="1"/>` +
+        `<text x="${pad.l + w}" y="${y(o.median) - 4}" text-anchor="end" font-size="10" fill="var(--ink-soft)">city median</text>`;
+    }
+    svg += `<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+    (o.dots || []).forEach(d => {
+      const i = points.findIndex(p => p.month === d.month);
+      if (i === -1) return;
+      svg += `<circle cx="${x(i)}" cy="${pad.t + h}" r="3" fill="var(--sev-incap)"><title>${esc(String(d.count))} ${esc(d.kind)}</title></circle>`;
+    });
+    svg += `<circle cx="${x(points.length - 1)}" cy="${y(last.value)}" r="3" fill="var(--accent)"/>` +
+      `<text x="${x(points.length - 1) + 6}" y="${y(last.value) + 4}" font-size="12" font-weight="700" fill="var(--accent)">${esc(String(last.value))}</text>` +
+      `<text x="${pad.l}" y="${o.height - 4}" font-size="10" fill="var(--ink-soft)">${esc(points[0].month)}</text>` +
+      `<text x="${pad.l + w}" y="${o.height - 4}" text-anchor="end" font-size="10" fill="var(--ink-soft)">${esc(last.month)}</text></svg>`;
+    return svg;
+  }
+
+  /* ---- calendar (.ics) helpers ---- */
+
+  // RFC-5545 text escaping: backslash, semicolon, comma, newline.
+  function _icsText(s) {
+    return String(s == null ? "" : s)
+      .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+      .replace(/\r\n|\r|\n/g, "\\n");
+  }
+
+  // Minimal VCALENDAR/VEVENT. DTSTART is floating local time (YYYYMMDDTHHMMSS)
+  // — committee meetings are Chicago-local wall-clock times. UID is a stable
+  // hash of title+start so re-downloads update rather than duplicate.
+  function icsForEvent({ title, startISO, location, url, description }) {
+    const dtstart = String(startISO || "").replace(/[-:]/g, "").slice(0, 15);
+    const key = `${title}|${startISO}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//On Your Left!//EN",
+      "BEGIN:VEVENT",
+      `UID:${hash.toString(16)}@onyourleft`,
+      `DTSTART:${dtstart}`,
+      `SUMMARY:${_icsText(title)}`,
+    ];
+    if (location) lines.push(`LOCATION:${_icsText(location)}`);
+    if (url) lines.push(`URL:${_icsText(url)}`);
+    if (description) lines.push(`DESCRIPTION:${_icsText(description)}`);
+    lines.push("END:VEVENT", "END:VCALENDAR");
+    // LF-normalize then join with CRLF so no bare LF survives.
+    return lines.join("\r\n").replace(/\r?\n/g, "\r\n") + "\r\n";
+  }
+
+  function downloadICS(filename, icsString) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([icsString], { type: "text/calendar" }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   function initPage(activeHref) {
     if (!document.querySelector("link[rel='icon']")) {
       const icon = document.createElement("link");
@@ -261,10 +351,15 @@
     TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
     downloadCSV, initPage, trendHTML, scoreColor, money,
+    rollingSums, trendChartSVG, icsForEvent, downloadICS,
   };
 
   if (typeof module !== "undefined" && module.exports) {
-    // Pure (DOM-free) helpers only — openModal/badge/initPage are browser-bound.
-    module.exports = { trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN };
+    // Node-facing exports: pure helpers plus downloadICS (DOM-bound, exported
+    // for surface parity — call it only in a browser).
+    module.exports = {
+      trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN,
+      rollingSums, trendChartSVG, icsForEvent, downloadICS,
+    };
   }
 })();
