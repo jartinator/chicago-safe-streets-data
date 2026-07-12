@@ -43,9 +43,22 @@ DATASETS = {
 # endpoint could be found by direct guessing during research; see DECISIONS.md.
 # Legistar therefore covers historical council activity (pre-2023-06-21) well but
 # CANNOT answer "what's happening now" — pull_hearings.py degrades honestly for that.
+# Councilmatic (COUNCILMATIC_DATASETTE_URL, below) now covers the far side of this boundary.
 LEGISTAR_CLIENT = "chicago"
 LEGISTAR_API_URL = f"https://webapi.legistar.com/v1/{LEGISTAR_CLIENT}"
 LEGISTAR_DATA_FROZEN_AT = "2023-06-21"
+
+# Chicago Councilmatic (DataMade, MIT-licensed) — official Chicago City Council
+# data republished as a public Datasette (SQL-over-HTTP JSON API), updated
+# nightly and CURRENT to the present day. This is how we cross the
+# LEGISTAR_DATA_FROZEN_AT gap above. Confirmed live 2026-07-11 (data through
+# 2026-07-09). Use the UN-hashed base URL: Datasette serves the DB under a
+# content-hashed route (e.g. /chicago_council-464e17d) that changes on each
+# nightly rebuild, and 302-redirects the un-hashed path to it (requests follows
+# the redirect and preserves the ?sql= query string).
+# Robust fallback if this host ever disappears: the nightly full-DB dump
+# chicago_council.db.zip at github.com/datamade/chicago-council-scrapers/releases.
+COUNCILMATIC_DATASETTE_URL = "https://puddle.datamade.us/chicago_council"
 
 # City Clerk eLMS (successor to Legistar). Meetings page confirmed to exist and
 # render a real meeting calendar/table, but it appears to be JS-rendered with no
