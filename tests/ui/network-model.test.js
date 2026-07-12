@@ -145,4 +145,24 @@ assert.strictEqual(
   "round-trip: absent param -> defaults -> 'heat,stations'"
 );
 
+// Empty set must survive the URL: BSD.setParams deletes empty-string params
+// (so "" would fall back to defaults on reload). An empty set therefore
+// serializes to the sentinel "none" instead of "".
+assert.strictEqual(
+  N.serializeOverlays(new Set()), "none",
+  "serializeOverlays: empty set -> 'none' sentinel (not '')"
+);
+assert.strictEqual(
+  N.parseOverlays("none").size, 0,
+  "parseOverlays: 'none' sentinel -> empty set"
+);
+assert.strictEqual(
+  N.serializeOverlays(N.parseOverlays("none")), "none",
+  "round-trip: 'none' -> empty set -> 'none'"
+);
+assert.deepStrictEqual(
+  [...N.parseOverlays(N.serializeOverlays(new Set()))], [],
+  "round-trip: serialize(empty) parses back to empty, not defaults"
+);
+
 console.log("network-model OK");

@@ -83,18 +83,25 @@
   // Default overlay ids enabled when network.html has no ?overlays= param.
   const DEFAULT_OVERLAYS = ["heat", "stations"];
 
+  // Sentinel for "explicitly no overlays": BSD.setParams deletes params
+  // whose value is "", so an empty set serialized as "" would vanish from
+  // the URL and reload back as the defaults. "none" survives the round-trip.
+  const OVERLAYS_NONE = "none";
+
   // Parse the `overlays` URL param into a Set of overlay ids. `str` is
   // whatever BSD.qs().get("overlays") returns: null when the param is
-  // absent (fall back to defaults) or a comma-joined string (including ""
-  // for "explicitly no overlays").
+  // absent (fall back to defaults), the "none" sentinel (empty set), or a
+  // comma-joined string ("" also yields an empty set).
   function parseOverlays(str) {
     if (str == null) return new Set(DEFAULT_OVERLAYS);
+    if (str === OVERLAYS_NONE) return new Set();
     return new Set(str.split(",").filter(Boolean));
   }
 
-  // Serialize an overlay Set back into the comma-joined URL param value.
+  // Serialize an overlay Set back into the URL param value: comma-joined
+  // ids, or the "none" sentinel when the set is empty.
   function serializeOverlays(overlaySet) {
-    return [...overlaySet].join(",");
+    return overlaySet.size === 0 ? OVERLAYS_NONE : [...overlaySet].join(",");
   }
 
   const api = {
