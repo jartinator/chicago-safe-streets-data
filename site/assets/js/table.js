@@ -116,7 +116,7 @@ if (typeof document !== "undefined") {
     heading.style.alignItems = "center";
     heading.style.gap = "0.5rem";
     heading.style.marginBottom = "1rem";
-    heading.innerHTML = "<h1 style='margin: 0;'>Non-Map Data Table</h1>";
+    heading.innerHTML = "<h1 style='margin: 0;'>Explore the data</h1>";
     app.appendChild(heading);
 
     // ---- Dataset switcher ----
@@ -135,14 +135,20 @@ if (typeof document !== "undefined") {
     tabRow.style.marginBottom = "1rem";
     const tabButtons = {};
     DATASETS.forEach(ds => {
+      // Tier badges are themselves <button>s (tap opens the explainer modal),
+      // so they must be siblings of the tab button — never nested inside it
+      // (nested buttons are invalid HTML and break keyboard/screen-reader use).
+      const tab = document.createElement("span");
+      tab.style.display = "inline-flex";
+      tab.style.alignItems = "center";
+      tab.style.gap = "0.35rem";
       const btn = document.createElement("button");
       btn.className = "btn";
-      btn.style.display = "inline-flex";
-      btn.style.alignItems = "center";
-      btn.style.gap = "0.35rem";
-      btn.innerHTML = `<span>${BSD.esc(ds.label)}</span>` + ds.tiers.map(t => BSD.badgeHTML(t)).join("");
+      btn.textContent = ds.label;
       btn.addEventListener("click", () => switchDataset(ds.key));
-      tabRow.appendChild(btn);
+      tab.appendChild(btn);
+      tab.insertAdjacentHTML("beforeend", ds.tiers.map(t => BSD.badgeHTML(t)).join(""));
+      tabRow.appendChild(tab);
       tabButtons[ds.key] = btn;
     });
     app.appendChild(tabRow);
@@ -203,11 +209,6 @@ if (typeof document !== "undefined") {
       badgeWrap.style.marginBottom = "0.5rem";
       badgeWrap.innerHTML = BSD.badgeHTML("real");
       container.appendChild(badgeWrap);
-
-      // Add notices
-      const notices = document.createElement("div");
-      notices.innerHTML = BSD.noticeHTML("directional") + BSD.noticeHTML("dooring");
-      container.appendChild(notices);
 
       // Extract unique values for filters
       const uniqueWards = [...new Set(crashes.map(c => c.properties.ward).filter(w => w))].sort((a, b) => {
@@ -368,6 +369,21 @@ if (typeof document !== "undefined") {
       countDiv.style.marginBottom = "1rem";
       container.appendChild(countDiv);
 
+      // Collapsed explainer directly above the table (replaces the old
+      // floating directional/dooring notices).
+      const explainer = document.createElement("details");
+      explainer.className = "fine-print";
+      explainer.style.marginBottom = "0.75rem";
+      explainer.innerHTML =
+        `<summary>How to read this table</summary>` +
+        `<p><strong>Dooring†</strong>: structurally undercounted — dooring is excluded from ` +
+        `"reportable" crash records unless damage/injury thresholds are met; treat "yes" ` +
+        `counts as a floor.</p>` +
+        `<p><strong>Severity</strong>: as recorded by responding officers; recent months are provisional.</p>` +
+        `<p>Counts are raw — not adjusted for how many people ride each street, so busy corridors ` +
+        `look worse than dangerous quiet ones.</p>`;
+      container.appendChild(explainer);
+
       // Table wrapper
       const tableWrapper = document.createElement("div");
       tableWrapper.className = "table-scroll";
@@ -471,7 +487,7 @@ if (typeof document !== "undefined") {
           date: "Date",
           severity: "Severity",
           crash_type: "Crash Type",
-          dooring: "Dooring",
+          dooring: "Dooring†",
           hit_and_run: "Hit & Run",
           street: "Street",
           ward: "Ward",
@@ -544,10 +560,17 @@ if (typeof document !== "undefined") {
       badgeWrap.innerHTML = BSD.badgeHTML("derived");
       container.appendChild(badgeWrap);
 
-      const notice = document.createElement("div");
-      notice.className = "notice";
-      notice.textContent = data.note || "";
-      container.appendChild(notice);
+      // Collapsed explainer replacing the raw data.note dump.
+      const explainer = document.createElement("details");
+      explainer.className = "fine-print";
+      explainer.style.marginBottom = "0.75rem";
+      explainer.innerHTML =
+        `<summary>About this score</summary>` +
+        `<p>The danger score is the average of each ward's percentile ranks on crashes per 10k ` +
+        `residents and crashes per bikeway mile — 0–100, higher = more dangerous relative to ` +
+        `other wards. It compares wards to each other; it is not an absolute risk measure. ` +
+        `<a href="sources.html#src-ward_safety_index">Full source detail →</a></p>`;
+      container.appendChild(explainer);
 
       const countDiv = document.createElement("div");
       countDiv.style.margin = "1rem 0";
@@ -573,7 +596,8 @@ if (typeof document !== "undefined") {
       const COLS = [
         { key: "rank", label: "Rank" },
         { key: "ward", label: "Ward" },
-        { key: "comparable_danger_score", label: "Danger score" },
+        { key: "comparable_danger_score", label: "Danger score",
+          title: "0–100 vs other wards — see 'About this score'" },
         { key: "cyclist_crashes", label: "Crashes" },
         { key: "crashes_per_10k_pop", label: "Per 10k pop" },
         { key: "crashes_per_bikeway_mile", label: "Per bikeway mile" },
@@ -600,6 +624,7 @@ if (typeof document !== "undefined") {
         COLS.forEach(col => {
           const th = document.createElement("th");
           th.textContent = col.label;
+          if (col.title) th.title = col.title;
           if (sortCol === col.key) th.className = sortAsc ? "sorted-asc" : "sorted-desc";
           th.addEventListener("click", () => {
             if (sortCol === col.key) sortAsc = !sortAsc;
@@ -654,10 +679,17 @@ if (typeof document !== "undefined") {
 
       container.innerHTML = "";
 
-      const notice = document.createElement("div");
-      notice.className = "notice";
-      notice.textContent = data.note || "";
-      container.appendChild(notice);
+      // Collapsed explainer replacing the raw data.note dump; also carries the
+      // Source-column explanation that used to hide in a hover-only tooltip.
+      const explainer = document.createElement("details");
+      explainer.className = "fine-print";
+      explainer.style.marginBottom = "0.75rem";
+      explainer.innerHTML =
+        `<summary>About these records</summary>` +
+        (data.note ? `<p>${BSD.esc(data.note)}</p>` : "") +
+        `<p><strong>Source</strong>: which pull produced the record — legistar rows end ` +
+        `2023-06-21 (system migration); councilmatic rows are current.</p>`;
+      container.appendChild(explainer);
 
       const countDiv = document.createElement("div");
       countDiv.style.margin = "1rem 0";
@@ -677,8 +709,6 @@ if (typeof document !== "undefined") {
         BSD.downloadCSV("council_records.csv", rows, cols);
       });
       container.appendChild(csvBtn);
-
-      const SOURCE_TITLE = "Which pull produced this record — Legistar is frozen at 2023-06-21; Councilmatic is current";
 
       const COLS = [
         { key: "intro_date", label: "Introduced" },
@@ -751,13 +781,20 @@ if (typeof document !== "undefined") {
 
           const sourceTd = document.createElement("td");
           sourceTd.textContent = row.source;
-          sourceTd.title = SOURCE_TITLE;
           tr.appendChild(sourceTd);
 
           const voteTd = document.createElement("td");
           if (row.vote) {
             voteTd.textContent = row.vote;
-            voteTd.title = (row.no_voters || []).join(", ");
+            // "No" voters render visibly — a title tooltip alone is invisible
+            // on touch devices.
+            if (row.no_voters && row.no_voters.length) {
+              const noLine = document.createElement("div");
+              noLine.className = "muted";
+              noLine.style.fontSize = "0.8rem";
+              noLine.textContent = "no: " + row.no_voters.join(", ");
+              voteTd.appendChild(noLine);
+            }
           } else {
             voteTd.textContent = "";
           }
