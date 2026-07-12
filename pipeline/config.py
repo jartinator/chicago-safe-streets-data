@@ -85,6 +85,15 @@ PAGE_SIZE = 50000
 # Spatial join: crashes farther than this from any bikeway get segment_id = null.
 NEAREST_SEGMENT_MAX_DISTANCE_M = 30
 
+# Valid coordinate bounds for Chicago. Socrata occasionally returns a geocoding
+# failure as a present-but-invalid lat/lon (e.g. the string "0", which lands at
+# (0, 0) "null island") rather than omitting the field, so a truthiness check
+# alone lets it through. spatial_join.py drops crashes whose parsed lat/lon fall
+# outside this box. Generous enough to keep every real Chicago crash (observed
+# extents ~41.64..42.02 lat, -87.91..-87.52 lon); tight enough to exclude (0, 0)
+# and other out-of-region errors.
+CHICAGO_BBOX = {"min_lat": 41.6, "max_lat": 42.1, "min_lon": -88.0, "max_lon": -87.5}
+
 # CRS: project to UTM 16N for distance ops; publish EPSG:4326.
 METRIC_CRS = "EPSG:26916"
 OUTPUT_CRS = "EPSG:4326"
