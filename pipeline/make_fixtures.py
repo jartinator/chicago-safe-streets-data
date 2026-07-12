@@ -126,6 +126,39 @@ def build_wards():
     return {"type": "FeatureCollection", "features": features}
 
 
+def build_street_centerlines():
+    """Synthetic surface-street grid covering the fixture wards, plus a few
+    excluded-class/status rows so aggregate's denominator filter is exercised."""
+    s, w, n, e = BBOX
+    feats = []
+    tid = 0
+
+    def seg(coords, klass, status):
+        nonlocal tid
+        tid += 1
+        feats.append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": coords},
+            "properties": {"trans_id": str(tid), "class": klass, "status": status,
+                           "street_nam": f"FIXTURE {tid}", "street_typ": "ST",
+                           "pre_dir": "N", "length": "0"},
+        })
+
+    lat = s
+    while lat <= n:                       # E-W locals every ~2.2 km
+        seg([[w, lat], [e, lat]], "4", "N")
+        lat = round(lat + 0.02, 6)
+    lng = w
+    while lng <= e:                       # N-S locals every ~2.5 km
+        seg([[lng, s], [lng, n]], "4", "N")
+        lng = round(lng + 0.03, 6)
+    # Excluded rows — must NOT count as road miles downstream:
+    seg([[w, s], [e, n]], "1", "N")                        # expressway
+    seg([[w, (s + n) / 2], [e, (s + n) / 2]], "9", "N")    # ramp
+    seg([[(w + e) / 2, s], [(w + e) / 2, n]], "4", "P")    # proposed local
+    return {"type": "FeatureCollection", "features": feats}
+
+
 def jitter_point(rng, lat, lng, sigma_m):
     return (lat + rng.gauss(0, sigma_m) / M_PER_DEG_LAT,
             lng + rng.gauss(0, sigma_m) / m_per_deg_lng(lat))
@@ -386,6 +419,7 @@ def main():
 
     write_json(RAW_DIR / "bike_routes.geojson", routes)
     write_json(RAW_DIR / "wards.geojson", wards)
+    write_json(RAW_DIR / "street_centerlines.geojson", build_street_centerlines())
     write_json(RAW_DIR / "crashes_cyclist.json", crashes)
     write_json(RAW_DIR / "people_bicycle.json", people)
     write_json(RAW_DIR / "vehicles_cyclist.json", vehicles)
