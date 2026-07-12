@@ -173,3 +173,40 @@ environment forced a deviation. Newest last.
       itself is live, public, and its data is current and internally
       consistent when queried. `README.md` discloses this as a known
       limitation of the source, same treatment as the eLMS-API dead end in #14.
+
+18. **Bikeway mileage over time is built forward from snapshots, not ingested.**
+    The user asked whether CDOT's quarterly Bike Lane Mileage Tracker could
+    supplement the data for correlations over time. Two findings shaped the
+    build: (a) the tracker is a *rendered chart* on chicago.gov, not a
+    downloadable historical series — no CSV, no install-date field, no Wayback
+    archive — and its figures are just a summary of the already-integrated Bike
+    Routes layer (`hvv9-38ut`), reproducible from Socrata (confirmed: protected
+    ~69 mi, buffered ~106 mi, etc.). There is nothing new to *ingest*. (b) The
+    over-time signal is therefore built forward from `data/snapshots/` (the Bike
+    Routes layer is current-state only), surfaced two ways: a citywide
+    `bikeway_mileage_series.json` (one point per snapshot, by facility type) and
+    a per-ward `infra_growth_trend.by_category` in `ward_safety_index.json`. The
+    per-category split is the point — protected-lane growth is what should track
+    injury reduction, and a flat total mile count hides a painted→protected
+    upgrade.
+    - **Snapshot-only quarterly workflow, a deliberate narrowing of #12.** #12
+      keeps the full data refresh a manual local run. A snapshot, though, is
+      worthless if taken only when someone remembers, so `.github/workflows/
+      snapshot.yml` automates *only* the Bike Routes pull + snapshot on a
+      quarterly cron. Snapshots live under `data/` (not `site/`), so committing
+      one does not trigger the Pages deploy; the accumulated history is picked
+      up by the next manual `run_all.py`. The full refresh stays manual.
+    - **Fixtures get their own snapshot dir.** Two real snapshots now exist and
+      are byte-identical (a same-day re-pull), so real growth reads flat until
+      the network actually changes. To keep the offline `--fixtures` build
+      coherent and demonstrable, `make_fixtures.py` writes two synthetic dated
+      snapshots to a gitignored `data/snapshots_fixtures/`, and `aggregate.py`
+      selects the snapshot dir by provenance — real runs never read synthetic
+      snapshots and vice versa.
+    - **Historical backfill is a FOIA question, not a code one.** Because CDOT
+      publishes nothing dated, the only route to a *retroactive* series is a
+      records request for archived tracker versions or a GIS layer carrying
+      install dates. Those requests are drafted in `docs/foia-cdot-bikeway-
+      mileage-history.md` and tracked in `docs/foia-log.md`; any returned
+      historical data would live under `pipeline/frozen/` or `data/`, the same
+      committed-immutable pattern as the frozen Legistar records.

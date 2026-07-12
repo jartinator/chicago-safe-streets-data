@@ -13,7 +13,7 @@ import math
 import random
 from datetime import datetime, timedelta
 
-from config import RAW_DIR
+from config import RAW_DIR, FIXTURE_SNAPSHOT_DIR
 from socrata import write_json
 
 # Approximate Chicago corridors: (street, [(lat, lng) endpoints], raw facility label)
@@ -55,10 +55,10 @@ def interpolate(points, step_m=250):
     return out
 
 
-def build_bike_routes():
+def build_bike_routes(corridors=CORRIDORS):
     features = []
     seg_num = 0
-    for street, pts, ftype in CORRIDORS:
+    for street, pts, ftype in corridors:
         dense = interpolate(pts)
         # ~2 vertices per segment -> ~500 m segments
         for i in range(0, len(dense) - 1, 2):
@@ -73,6 +73,37 @@ def build_bike_routes():
                 "properties": {"objectid": seg_num, "st_name": street, "displayroute": ftype},
             })
     return {"type": "FeatureCollection", "features": features}
+
+
+# Two dated fixture snapshots so an offline run exercises the over-time series/growth
+# (infra_growth_trend needs >=2 snapshots; real snapshots start flat). The "older"
+# network drops a few corridors and holds two corridors at a lesser facility type, so
+# the newer network shows positive total AND positive protected-lane growth.
+FIXTURE_SNAPSHOT_DATES = ("2025-01-15", "2026-07-12")
+
+
+def older_corridors():
+    older = []
+    for street, pts, ftype in CORRIDORS[:-3]:  # fewer corridors than today -> total grows
+        if street in ("KINZIE ST", "STONY ISLAND AVE") and ftype == "PROTECTED BIKE LANE":
+            ftype = "BIKE LANE"  # upgraded to protected later -> protected grows
+        older.append((street, pts, ftype))
+    return older
+
+
+def write_fixture_snapshots():
+    """Write the older/newer synthetic snapshots into the fixtures-only snapshot dir.
+
+    The newer snapshot mirrors build_bike_routes() (== the fixture raw/bike_routes.geojson),
+    so ward_safety_index's current-state miles and the newest series point agree.
+    """
+    FIXTURE_SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    for stale in FIXTURE_SNAPSHOT_DIR.glob("bike_routes_*.geojson"):
+        stale.unlink()  # rebuild cleanly each run so dates/content stay deterministic
+    old_date, new_date = FIXTURE_SNAPSHOT_DATES
+    write_json(FIXTURE_SNAPSHOT_DIR / f"bike_routes_{old_date}.geojson",
+               build_bike_routes(older_corridors()))
+    write_json(FIXTURE_SNAPSHOT_DIR / f"bike_routes_{new_date}.geojson", build_bike_routes())
 
 
 def build_wards():
@@ -352,6 +383,7 @@ def main():
     write_json(RAW_DIR / "menu_spending.json", menu_spending)
     write_json(RAW_DIR / "hearings.json", hearings)
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
+    write_fixture_snapshots()
 
     print(f"fixtures: {len(routes['features'])} route segments, {len(wards['features'])} wards, "
           f"{len(crashes)} crashes, {len(sr311)} 311 rows, {len(cameras)} cameras, "

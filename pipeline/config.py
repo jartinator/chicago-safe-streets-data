@@ -9,6 +9,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "pipeline" / "raw"
 SITE_DATA_DIR = REPO_ROOT / "site" / "data"
 SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots"
+# Fixtures write their own synthetic dated snapshots here (gitignored) so an offline
+# --fixtures run computes a coherent bikeway-mileage series/growth against fixture wards,
+# instead of overlaying the real SNAPSHOT_DIR geometry onto synthetic ward polygons.
+# aggregate.py selects between the two by provenance ("fixtures" vs "socrata").
+FIXTURE_SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots_fixtures"
 # Committed one-time snapshots of frozen upstream data that never changes (e.g. the
 # pre-2023 Legistar council records — see restore_frozen.py). Unlike RAW_DIR (gitignored,
 # rebuilt each run), these are versioned so we don't re-pull immutable history every week.
@@ -162,4 +167,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.5"
+CONTRACT_VERSION = "1.6"

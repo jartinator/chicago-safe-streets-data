@@ -1,0 +1,50 @@
+# Quarterly snapshot of the CDOT Bike Routes layer.
+#
+# The Bike Routes dataset is current-state only (no install-date field), so the only way
+# to build a bikeway-mileage time series is to snapshot it on a cadence and diff snapshots
+# (see snapshot_bike_routes.py, aggregate.infra_growth_trend, bikeway_mileage_series.json).
+# A snapshot is worthless if taken only when someone remembers, so this automates ONLY the
+# snapshot — not the full data refresh, which stays a deliberate manual local run (see
+# DECISIONS.md and deploy.yml). Snapshots land under data/ (not site/), so committing one
+# does NOT trigger the Pages deploy; the accumulated history is picked up by the next manual
+# run_all.py that rebuilds site/data.
+name: Quarterly bike-routes snapshot
+
+on:
+  schedule:
+    - cron: "0 9 1 1,4,7,10 *"  # 09:00 UTC on the 1st of Jan, Apr, Jul, Oct
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pipeline dependencies
+        run: pip install -r pipeline/requirements.txt
+      - name: Pull and snapshot the Bike Routes layer
+        working-directory: pipeline
+        run: |
+          python pull_bike_routes.py
+          python snapshot_bike_routes.py
+      - name: Commit new snapshot if one was added
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/snapshots/
+          if git diff --cached --quiet; then
+            echo "No new snapshot to commit (layer unchanged or same-day rerun)."
+          else
+            git commit -m "data: quarterly bike-routes snapshot ($(date -u +%Y-%m-%d))"
+            git push
+          fi

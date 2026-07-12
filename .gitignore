@@ -3,3 +3,6 @@ __pycache__/
 .venv/
 pipeline/raw/*
 !pipeline/raw/.gitkeep
+# Synthetic snapshots written by make_fixtures.py for offline --fixtures runs only;
+# the real snapshot history under data/snapshots/ is versioned.
+data/snapshots_fixtures/

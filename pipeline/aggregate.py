@@ -15,7 +15,8 @@ from datetime import datetime, timedelta, timezone
 import geopandas as gpd
 from shapely.geometry import Point, shape
 
-from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, METRIC_CRS, OUTPUT_CRS,
+from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
+                    METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
                     INJURY_SEVERITY_MAP, CONTRACT_VERSION)
 from council_merge import load_all_council_records
@@ -378,6 +379,68 @@ def ward_bikeway_miles(routes_gj, wards_gdf):
     return dict(miles)
 
 
+def ward_bikeway_miles_by_category(routes_gj, wards_gdf):
+    """Bikeway miles per ward split by facility category: {ward: {category: miles}}.
+
+    Same clipped-overlay method as ward_bikeway_miles, but carries each segment's
+    facility category (resolved from the raw CDOT label via FACILITY_CATEGORY_MAP)
+    through the overlay so growth can be read per type — protected-lane growth is
+    the signal that should track injury reduction, which a total-miles number hides.
+    Reads raw snapshot props, so it resolves the type key the same tolerant way
+    build_routes() does.
+    """
+    feats = routes_gj["features"]
+    if not feats:
+        return {}
+    type_key = _first_key(feats[0]["properties"],
+                          ["displayroute", "displayrou", "bikeroute", "type", "facility"])
+    unmatched = Counter()
+    recs = [{"facility_category": facility_category(
+                 str(f["properties"].get(type_key)) if type_key else "", unmatched),
+             "geometry": shape(f["geometry"])}
+            for f in feats]
+    routes_gdf = gpd.GeoDataFrame(recs, crs=OUTPUT_CRS).to_crs(METRIC_CRS)
+    wards_m = wards_gdf.to_crs(METRIC_CRS)[["ward", "geometry"]]
+    overlaid = gpd.overlay(routes_gdf[["facility_category", "geometry"]], wards_m, how="intersection")
+    out = defaultdict(lambda: defaultdict(float))
+    for _, row in overlaid.iterrows():
+        if row.geometry is not None:
+            out[row["ward"]][row["facility_category"]] += row.geometry.length / 1609.34
+    return {w: dict(cats) for w, cats in out.items()}
+
+
+def citywide_miles_by_category(routes_gj):
+    """Citywide bikeway miles by facility category for one snapshot: {category: miles}.
+
+    Prefers the CDOT-provided per-segment centerline miles (mi_ctrline) when present —
+    this reproduces the published Bike Lane Mileage Tracker's own methodology — and
+    falls back to projected geometry length (e.g. for fixtures, which carry no
+    mi_ctrline field).
+    """
+    feats = routes_gj["features"]
+    if not feats:
+        return {}
+    props0 = feats[0]["properties"]
+    type_key = _first_key(props0, ["displayroute", "displayrou", "bikeroute", "type", "facility"])
+    mi_key = _first_key(props0, ["mi_ctrline", "miles", "length_mi"])
+    unmatched = Counter()
+    out = defaultdict(float)
+    if mi_key:
+        for f in feats:
+            p = f["properties"]
+            cat = facility_category(str(p.get(type_key)) if type_key else "", unmatched)
+            try:
+                out[cat] += float(p.get(mi_key) or 0.0)
+            except (TypeError, ValueError):
+                continue
+        return dict(out)
+    lengths = gpd.GeoDataFrame.from_features(feats, crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+    for i, f in enumerate(feats):
+        cat = facility_category(str(f["properties"].get(type_key)) if type_key else "", unmatched)
+        out[cat] += float(lengths.iloc[i]) / 1609.34
+    return dict(out)
+
+
 def percentile_rank(values_by_key):
     """0-100 rank of each key's value among all keys with a non-null value (higher = worse)."""
     present = {k: v for k, v in values_by_key.items() if v is not None}
@@ -434,9 +497,26 @@ def crash_trend(dates):
             "recent_12mo": recent, "prior_12mo": prior, "pct_change": pct_change}
 
 
-def infra_growth_trend(wards_gdf):
-    """Bikeway-mile growth per ward between the oldest and newest route snapshot."""
-    snapshots = sorted(SNAPSHOT_DIR.glob("bike_routes_*.geojson")) if SNAPSHOT_DIR.exists() else []
+def _category_deltas(old_cats, new_cats):
+    """Per-facility-category {miles_added, pct_growth} for one ward, omitting types
+    absent from both snapshots (keeps the payload to types that actually exist there)."""
+    by_category = {}
+    for cat in FACILITY_CATEGORIES:
+        old_c, new_c = old_cats.get(cat, 0.0), new_cats.get(cat, 0.0)
+        if old_c == 0.0 and new_c == 0.0:
+            continue
+        cpct = round(100 * (new_c - old_c) / old_c, 1) if old_c > 0 else None
+        by_category[cat] = {"miles_added": round(new_c - old_c, 2), "pct_growth": cpct}
+    return by_category
+
+
+def infra_growth_trend(wards_gdf, snapshot_dir=SNAPSHOT_DIR):
+    """Bikeway-mile growth per ward between the oldest and newest route snapshot.
+
+    Each ward record carries the total delta plus a by_category breakdown (protected,
+    buffered, painted, ...), since protected-lane growth is the correlate of interest.
+    """
+    snapshots = sorted(snapshot_dir.glob("bike_routes_*.geojson")) if snapshot_dir.exists() else []
     if len(snapshots) < 2:
         return {}, ("Only one bike-route snapshot exists so far — infrastructure growth trend "
                      "needs at least two pipeline runs over time to compare. Check back after "
@@ -445,22 +525,52 @@ def infra_growth_trend(wards_gdf):
     newest_gj = json.loads(snapshots[-1].read_text())
     oldest_miles = ward_bikeway_miles({"features": oldest_gj["features"]}, wards_gdf)
     newest_miles = ward_bikeway_miles({"features": newest_gj["features"]}, wards_gdf)
+    oldest_cats = ward_bikeway_miles_by_category({"features": oldest_gj["features"]}, wards_gdf)
+    newest_cats = ward_bikeway_miles_by_category({"features": newest_gj["features"]}, wards_gdf)
+    since = snapshots[0].stem.replace("bike_routes_", "")
     out = {}
     for w in wards_gdf["ward"]:
         old_m, new_m = oldest_miles.get(w, 0.0), newest_miles.get(w, 0.0)
         pct = round(100 * (new_m - old_m) / old_m, 1) if old_m > 0 else None
-        out[w] = {"miles_added": round(new_m - old_m, 2), "pct_growth": pct,
-                  "since": snapshots[0].stem.replace("bike_routes_", "")}
-    note = (f"Compared {snapshots[0].stem.replace('bike_routes_', '')} to "
-            f"{snapshots[-1].stem.replace('bike_routes_', '')} ({len(snapshots)} snapshots total).")
+        out[w] = {"miles_added": round(new_m - old_m, 2), "pct_growth": pct, "since": since,
+                  "by_category": _category_deltas(oldest_cats.get(w, {}), newest_cats.get(w, {}))}
+    note = (f"Compared {since} to {snapshots[-1].stem.replace('bike_routes_', '')} "
+            f"({len(snapshots)} snapshots total).")
     return out, note
 
 
-def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf):
+def build_bikeway_mileage_series(snapshot_dir=SNAPSHOT_DIR):
+    """Citywide bikeway miles by facility category per snapshot date — a machine-readable
+    equivalent of CDOT's quarterly Bike Lane Mileage Tracker, built from accumulated
+    snapshots so it can be correlated against crash trends over time.
+    """
+    snapshots = sorted(snapshot_dir.glob("bike_routes_*.geojson")) if snapshot_dir.exists() else []
+    series = []
+    for snap in snapshots:
+        by_cat = citywide_miles_by_category(json.loads(snap.read_text()))
+        series.append({
+            "date": snap.stem.replace("bike_routes_", ""),
+            "by_category": {c: round(by_cat.get(c, 0.0), 2) for c in FACILITY_CATEGORIES},
+            "total": round(sum(by_cat.values()), 2),
+        })
+    if len(series) < 2:
+        note = ("Citywide bikeway miles by facility type. Only one snapshot exists so far — the "
+                "over-time series fills in as the pipeline runs on a quarterly cadence (the CDOT "
+                "Bike Routes layer has no install-date field, so history is built forward from "
+                "snapshots, not backfillable). Miles use CDOT centerline mileage where available.")
+    else:
+        note = (f"Citywide bikeway miles by facility type across {len(series)} snapshots "
+                f"({series[0]['date']} to {series[-1]['date']}). Miles use CDOT centerline "
+                f"mileage where available, else projected geometry length. The CDOT Bike Routes "
+                f"layer has no install-date field, so this series is built forward from snapshots.")
+    return {"data_tier": "derived", "note": note, "series": series}
+
+
+def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir=SNAPSHOT_DIR):
     pop = ward_population()
     miles = ward_bikeway_miles(routes_gj, wards_gdf)
     ward_dates = crash_ward_dates(crashes)
-    infra_trend, infra_note = infra_growth_trend(wards_gdf)
+    infra_trend, infra_note = infra_growth_trend(wards_gdf, snapshot_dir)
 
     per_capita, per_mile = {}, {}
     for f in wards_gj["features"]:
@@ -715,6 +825,10 @@ def main():
     provenance = ((RAW_DIR / "PROVENANCE").read_text().strip()
                   if (RAW_DIR / "PROVENANCE").exists() else "socrata")
 
+    # Fixtures write synthetic snapshots to their own dir so the offline series/growth
+    # is coherent against fixture wards; real runs read the committed snapshot history.
+    snapshot_dir = FIXTURE_SNAPSHOT_DIR if provenance == "fixtures" else SNAPSHOT_DIR
+
     crash_gj = build_crash_geojson(crashes)
     routes_gj = build_routes(crashes)
 
@@ -730,7 +844,8 @@ def main():
     intersections = build_intersections(crashes)
     findings = build_findings(crashes, routes_gj, corridors, wards_gj)
 
-    ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf)
+    ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir)
+    bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir)
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
     aldermen_safety_record = build_aldermen_safety_record(council_records_list, name_to_ward)
@@ -788,6 +903,11 @@ def main():
              if mellow_gj["features"] else []) + [
             {"id": "ward_safety_index", "name": "Ward Safety Index (comparable danger score)",
              "tier": "derived", "records": len(ward_safety_index["wards"]), "date_range": None},
+            {"id": "bikeway_mileage_series", "name": "Bikeway Mileage Series (by facility type, over time)",
+             "tier": "derived", "records": len(bikeway_mileage_series["series"]),
+             "date_range": ([bikeway_mileage_series["series"][0]["date"],
+                             bikeway_mileage_series["series"][-1]["date"]]
+                            if bikeway_mileage_series["series"] else None)},
             {"id": "council_records", "name": "Council Records (street/bike-safety legislation)",
              "tier": council_records_out["data_tier"], "records": len(council_records_list),
              "date_range": None},
@@ -817,6 +937,7 @@ def main():
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
+    write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
     write_json(SITE_DATA_DIR / "aldermen_safety_record.json", aldermen_safety_record)
     write_json(SITE_DATA_DIR / "hearings.json", hearings_out)
