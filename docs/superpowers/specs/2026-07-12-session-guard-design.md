@@ -77,11 +77,20 @@ Committed `.claude/settings.json` (so every chat in this repo gets it):
 |--------------------|----------------------------------------------------|
 | `SessionStart`     | `session_guard.py --event write` — register + warn |
 | `UserPromptSubmit` | `session_guard.py --event write` — refresh + warn  |
-| `Stop`             | `session_guard.py --event clear` — deregister      |
 | `SessionEnd`       | `session_guard.py --event clear` — deregister      |
 
-Hooks invoke Python explicitly (`python .claude/hooks/session_guard.py ...`) for
-Windows compatibility.
+Hooks invoke Python explicitly (`python "$CLAUDE_PROJECT_DIR/.claude/hooks/session_guard.py" ...`)
+for Windows compatibility.
+
+**Not `Stop`:** `Stop` fires at the end of every response turn, not at session
+end. Clearing there would make an active chat look dead between messages, so the
+heartbeat is cleared only on `SessionEnd` (and otherwise expires via the 15-min
+staleness window).
+
+**Windows/UTF-8:** the warning contains a `⚠️` emoji. Windows consoles default to
+cp1252, where printing that raises `UnicodeEncodeError`; under fail-open the whole
+warning would be silently dropped. The guard therefore writes the warning as
+UTF-8 bytes to `stdout.buffer` rather than via `print()`.
 
 ### Component 4: CLAUDE.md rule
 
