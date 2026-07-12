@@ -34,6 +34,7 @@ import sys
 from datetime import datetime, timezone
 
 from config import RAW_DIR
+from council_merge import load_all_council_records
 from socrata import write_json
 
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
@@ -102,13 +103,11 @@ def main():
     ap.add_argument("--model", default=DEFAULT_MODEL)
     args = ap.parse_args()
 
-    records_path = RAW_DIR / "council_records.json"
-    if not records_path.exists():
-        print("classify_safety_topic: no council_records.json (pull stage produced "
+    records, _ = load_all_council_records(RAW_DIR)
+    if not records:
+        print("classify_safety_topic: no council records (pull stage produced "
               "nothing or failed) — nothing to classify", file=sys.stderr)
         return
-
-    records = json.loads(records_path.read_text()).get("records", [])
     cache_path = RAW_DIR / "safety_topic_tags.json"
     corrections_path = RAW_DIR / "safety_topic_corrections.json"
     cache = load_cache(cache_path)
