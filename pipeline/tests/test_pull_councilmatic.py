@@ -100,3 +100,7 @@ def test_bills_sql_contains_keywords_and_frozen_boundary():
     assert "like '%bike%'" in sql
     assert "like '%vision zero%'" in sql
     assert "2023-06-21" in sql
+
+
+def test_quote_ids():
+    assert pc._quote_ids(["ocd-bill/a", "ocd-bill/b"]) == "'ocd-bill/a','ocd-bill/b'"

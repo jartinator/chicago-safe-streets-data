@@ -128,3 +128,96 @@ def bills_sql(keywords, frozen):
         f"having max(a.date) > '{frozen}' "
         "order by last_action desc"
     )
+
+
+def _quote_ids(ids):
+    return ",".join("'" + str(i).replace("'", "''") + "'" for i in ids)
+
+
+def fetch_sponsors_and_votes(bill_ids):
+    """Return (sponsors_by_bill, votes_by_bill) for the given internal bill ids.
+
+    sponsors_by_bill: {bill_id: [names]}; votes_by_bill: {bill_id: recorded_votes}.
+    Bills with no sponsors/votes simply won't appear as keys.
+    """
+    if not bill_ids:
+        return {}, {}
+    id_list = _quote_ids(bill_ids)
+
+    sponsor_rows = query(
+        'select bs.bill_id, bs.name, bs."primary" from billsponsorship bs '
+        f"where bs.bill_id in ({id_list})"
+    )
+    sponsors_by_bill = group_sponsors(sponsor_rows)
+
+    vote_rows = query(
+        "select ve.id, ve.bill_id, ve.start_date, ve.result from voteevent ve "
+        f"where ve.bill_id in ({id_list})"
+    )
+    votes_by_bill = {}
+    if vote_rows:
+        event_ids = [v["id"] for v in vote_rows]
+        pv_rows = query(
+            "select pv.vote_event_id, pv.voter_name, pv.option from personvote pv "
+            f"where pv.vote_event_id in ({_quote_ids(event_ids)})"
+        )
+        pv_by_event = defaultdict(list)
+        for pv in pv_rows:
+            pv_by_event[pv["vote_event_id"]].append(pv)
+        events_by_bill = defaultdict(list)
+        for v in vote_rows:
+            events_by_bill[v["bill_id"]].append(v)
+        for bid, events in events_by_bill.items():
+            rv = choose_recorded_votes(events, pv_by_event)
+            if rv:
+                votes_by_bill[bid] = rv
+    return sponsors_by_bill, votes_by_bill
+
+
+def main():
+    argparse.ArgumentParser(
+        description="Pull current safety-related council legislation from Chicago Councilmatic."
+    ).parse_args()
+
+    frozen = LEGISTAR_DATA_FROZEN_AT
+    try:
+        print("Fetching councilmatic_records from the Councilmatic Datasette...",
+              file=sys.stderr)
+        bills = query(bills_sql(SAFETY_TOPIC_KEYWORDS, frozen))
+    except requests.RequestException as exc:
+        print(f"WARNING: councilmatic pull failed ({exc}) — councilmatic_records.json "
+              f"will be absent this run; aggregate.py falls back to Legistar-only. "
+              f"See DECISIONS.md.", file=sys.stderr)
+        return
+
+    if not bills:
+        print(f"councilmatic: no safety bills with activity after {frozen} "
+              f"(nothing to write this run).", file=sys.stderr)
+        return
+
+    try:
+        sponsors_by_bill, votes_by_bill = fetch_sponsors_and_votes([b["id"] for b in bills])
+    except requests.RequestException as exc:
+        print(f"WARNING: councilmatic sponsors/votes fetch failed ({exc}) — writing bills "
+              f"without sponsors/votes this run.", file=sys.stderr)
+        sponsors_by_bill, votes_by_bill = {}, {}
+
+    records = [build_record(b, sponsors_by_bill.get(b["id"], []), votes_by_bill.get(b["id"]))
+               for b in bills]
+
+    output_path = RAW_DIR / "councilmatic_records.json"
+    write_json(output_path, {
+        "source": "councilmatic",
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "covers_from": frozen,
+        "latest_action_date": max_action_date(bills),
+        "keywords": SAFETY_TOPIC_KEYWORDS,
+        "records": records,
+    })
+    contested = sum(1 for r in records if r.get("recorded_votes"))
+    print(f"councilmatic_records: {len(records)} bills after {frozen} "
+          f"(through {max_action_date(bills)}), {contested} with a recorded contested vote")
+
+
+if __name__ == "__main__":
+    main()
