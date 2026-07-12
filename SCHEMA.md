@@ -145,7 +145,8 @@ Comparable, density-normalized danger score per ward, sorted by
             crash_trend: { direction: "improving"|"worsening"|"flat"|"insufficient_data",
                            window_end (nullable), recent_12mo (nullable), prior_12mo (nullable),
                            pct_change (nullable) },
-            infra_growth_trend: { miles_added, pct_growth (nullable), since } | null }] }
+            infra_growth_trend: { miles_added, pct_growth (nullable), since,
+                                  by_category: { <category>: { miles_added, pct_growth (nullable) } } } | null }] }
 ```
 `comparable_danger_score` is a 0-100 blend of each ward's percentile rank on
 crashes-per-10k-population and crashes-per-bikeway-mile — a relative ranking
@@ -156,7 +157,25 @@ ward with a real score, including a real score of 0). `population` comes from
 365 days to the prior 365 days (anchored to the ward's latest crash date), not
 calendar years — a calendar-year comparison would bias "improving" for any
 pipeline run mid-year, when the current year's bucket is partial. `infra_growth_trend`
-is `null` until at least two `data/snapshots/bike_routes_*.geojson` snapshots exist.
+is `null` until at least two `data/snapshots/bike_routes_*.geojson` snapshots exist;
+its `by_category` breaks the delta down by facility type (protected, buffered, painted,
+greenway, sharrow, trail, other), omitting types absent from both snapshots — a flat total
+can still hide a painted→protected upgrade, which the per-category split surfaces.
+
+## bikeway_mileage_series.json — tier derived
+Citywide bikeway miles by facility type per snapshot date — a machine-readable equivalent
+of CDOT's quarterly Bike Lane Mileage Tracker, built from accumulated snapshots so it can
+be correlated against crash trends over time:
+```
+{ data_tier: "derived", note,
+  series: [{ date: "YYYY-MM-DD",
+             by_category: { protected, buffered, painted, greenway, sharrow, trail, other },
+             total }] }
+```
+One entry per `bike_routes_*.geojson` snapshot, sorted by date ascending. Miles use the
+CDOT-provided centerline mileage (`mi_ctrline`) where present, else projected geometry
+length. The Bike Routes layer has no install-date field, so the series is built **forward**
+from snapshots — it is not backfillable from the current portal data (see DECISIONS.md).
 
 ## council_records.json — tier real (topic_relevant tag: tier derived)
 Street/bike-safety-related City Council legislation, unioned from the Legistar
