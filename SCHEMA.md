@@ -168,7 +168,9 @@ Comparable, density-normalized danger score per ward, sorted by
                            window_end (nullable), recent_12mo (nullable), prior_12mo (nullable),
                            pct_change (nullable) },
             infra_growth_trend: { miles_added, pct_growth (nullable), since,
-                                  by_category: { <category>: { miles_added, pct_growth (nullable) } } } | null }] }
+                                  by_category: { <category>: { miles_added, pct_growth (nullable) } } } | null,
+            bikeway_pct_protected (nullable), road_miles (nullable),
+            bikeway_pct_of_roads (nullable) }] }
 ```
 `comparable_danger_score` is a 0-100 blend of each ward's percentile rank on
 crashes-per-10k-population and crashes-per-bikeway-mile — a relative ranking
@@ -183,6 +185,8 @@ is `null` until at least two `data/snapshots/bike_routes_*.geojson` snapshots ex
 its `by_category` breaks the delta down by facility type (protected, buffered, painted,
 greenway, sharrow, trail, other), omitting types absent from both snapshots — a flat total
 can still hide a painted→protected upgrade, which the per-category split surfaces.
+`bikeway_pct_protected`, `road_miles`, and `bikeway_pct_of_roads` are documented under
+Contract v1.9 below (all nullable).
 
 ## bikeway_mileage_series.json — tier derived
 Citywide bikeway miles by facility type per snapshot date — a machine-readable equivalent
@@ -408,3 +412,49 @@ is a stub (no live Overpass pull yet), trail lines appear with
 - **`meta.json`** — `sources` gains
   `{ id: "main_routes", name: "Main Routes (curated line roster)", tier: "derived",
   records: <line count>, date_range: null }`.
+
+## Contract v1.9 changes (road-network coverage)
+
+## road_network.json — tier real
+
+Surface-street centerline miles citywide and per ward, plus the citywide share
+of street miles carrying any on-street bike infrastructure:
+
+```
+{ data_tier: "real", as_of: "YYYY-MM-DD" | null, note,
+  citywide: { road_miles, onstreet_bikeway_miles, pct_with_bike_infra } | null,
+  wards: [{ ward, road_miles }] }
+```
+
+`as_of` and `citywide` are `null` — and `wards` is `[]` — when
+`street_centerlines.geojson` wasn't pulled this run (`pull_street_centerlines.py`
+didn't run); the `note` explains why. `road_miles` is the Street Center Lines
+layer (dataset `pr57-gg9e`) filtered to `STREET_CLASSES_INCLUDED` (classes
+2/3/4 = arterial/collector/local) x `STREET_STATUS_INCLUDED` (status N, in
+service) — expressways, ramps, alleys, and river channels are excluded (see
+DECISIONS.md). `onstreet_bikeway_miles` is `bike_routes.geojson` mileage
+excluding the `trail` facility category (off-street trails aren't roads).
+Both sides of `pct_with_bike_infra` are projected centerline lengths
+(`METRIC_CRS`), so the ratio is method-consistent. `wards` is sorted by ward
+number ascending.
+
+- **`ward_safety_index.json`** — each ward record gains three nullable fields
+  (documented inline in that section's shape above):
+  - `bikeway_pct_protected` — the protected share of the ward's on-street
+    (non-trail) bikeway miles; `null` when the ward has no on-street bikeway
+    miles.
+  - `road_miles` — the ward's surface-street centerline miles from
+    `road_network.json`; `null` when street centerlines weren't pulled this run.
+  - `bikeway_pct_of_roads` — the share of the ward's surface-street miles with
+    any on-street bike infrastructure; `null` when `road_miles` is missing or
+    zero.
+- **`findings.json`** — gains a new `street-coverage` finding, inserted
+  immediately after `protected-share`. Current order: `ksi-trend`,
+  `protected-share`, `street-coverage`, `top-corridors`, `hit-and-run`,
+  `ward-concentration`, `dooring-undercount`. Present only when
+  `road_network.json`'s `citywide.road_miles` is available (i.e. street
+  centerlines were pulled).
+- **`meta.json`** — `sources` gains
+  `{ id: "street_centerlines", name: "Street Center Lines (surface-street grid)",
+  tier: "real", records: <feature count> | null, date_range: null }`, placed
+  directly after the `bike_routes` entry.

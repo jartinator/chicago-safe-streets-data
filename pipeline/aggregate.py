@@ -19,7 +19,8 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
                     INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE,
-                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP)
+                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP,
+                    STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -247,7 +248,7 @@ def build_intersections(crashes, cell_m=100):
     return out[:25]
 
 
-def build_findings(tuples, corridors, wards_gj, as_of_date):
+def build_findings(tuples, corridors, wards_gj, as_of_date, road_coverage=None):
     """Thin live-path wrapper over crash_metrics.build_findings_core.
 
     The assembly itself lives in crash_metrics so refresh_reporting.py can rebuild
@@ -261,7 +262,8 @@ def build_findings(tuples, corridors, wards_gj, as_of_date):
     by_category_miles = citywide_miles_by_category(raw_routes)
     ward_counts = {f["properties"]["ward"]: f["properties"]["cyclist_crashes"]
                    for f in wards_gj["features"]}
-    return build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date)
+    return build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date,
+                               road_coverage=road_coverage)
 
 
 def build_mellow(raw_gj):
@@ -534,6 +536,91 @@ def ward_population():
             if r.get("total_population") is not None}
 
 
+def load_street_centerlines():
+    """Filtered surface-street GeoDataFrame from raw/street_centerlines.geojson,
+    or None when the pull didn't run. Applies the coverage-denominator filter
+    (STREET_CLASSES_INCLUDED x STREET_STATUS_INCLUDED); see DECISIONS.md."""
+    path = RAW_DIR / "street_centerlines.geojson"
+    if not path.exists():
+        print("  WARNING street_centerlines.geojson missing — road coverage metrics "
+              "will be null this run (pull_street_centerlines.py did not run)")
+        return None
+    gj = json.loads(path.read_text())
+    feats = [f for f in gj["features"]
+             if (f["properties"].get("class") or "") in STREET_CLASSES_INCLUDED
+             and (f["properties"].get("status") or "") in STREET_STATUS_INCLUDED
+             and f.get("geometry")]
+    if not feats:
+        return None
+    return gpd.GeoDataFrame.from_features(feats, crs=OUTPUT_CRS)
+
+
+def street_miles_by_ward(streets_gdf, wards_gdf):
+    """{ward: surface-street centerline miles} — same clipped-overlay method as
+    ward_bikeway_miles, so ratios over the two are method-consistent."""
+    streets_m = streets_gdf.to_crs(METRIC_CRS)
+    wards_m = wards_gdf.to_crs(METRIC_CRS)[["ward", "geometry"]]
+    overlaid = gpd.overlay(streets_m[["geometry"]], wards_m, how="intersection")
+    miles = defaultdict(float)
+    for _, row in overlaid.iterrows():
+        if row.geometry is not None:
+            miles[row["ward"]] += row.geometry.length * _MILES_PER_M
+    return dict(miles)
+
+
+def build_road_network(streets_gdf, wards_gdf, routes_gj, as_of_date):
+    """road_network.json payload: surface-street miles citywide + per ward, and
+    the citywide share of street miles carrying any on-street bike infrastructure.
+
+    routes_gj is the PUBLISHED bike_routes shape (features carry
+    facility_category). The numerator excludes the `trail` category — off-street
+    trails aren't roads. Both sides of the ratio are projected centerline miles
+    (METRIC_CRS), method-consistent even though the citywide mileage series
+    prefers CDOT's mi_ctrline field.
+    """
+    onstreet = [f for f in routes_gj["features"]
+                if f["properties"].get("facility_category") != "trail"]
+    onstreet_mi = 0.0
+    if onstreet:
+        g = gpd.GeoDataFrame.from_features(onstreet, crs=OUTPUT_CRS).to_crs(METRIC_CRS)
+        onstreet_mi = float(g.geometry.length.sum()) * _MILES_PER_M
+    road_mi = float(streets_gdf.to_crs(METRIC_CRS).geometry.length.sum()) * _MILES_PER_M
+    ward_road_miles = street_miles_by_ward(streets_gdf, wards_gdf)
+    return {
+        "data_tier": "real",
+        "as_of": as_of_date,
+        "note": ("Surface-street centerline miles (Street Center Lines layer, classes "
+                 "2/3/4 = arterial/collector/local, status N; expressways, ramps, "
+                 "alleys, and river channels excluded) vs on-street bikeway centerline "
+                 "miles (trail category excluded). Both sides are projected geometry "
+                 "lengths, so the ratio is method-consistent. The city's street "
+                 "centerline layer was last updated 2021-06 — the grid changes slowly."),
+        "citywide": {
+            "road_miles": round(road_mi, 1),
+            "onstreet_bikeway_miles": round(onstreet_mi, 1),
+            "pct_with_bike_infra": (round(100 * onstreet_mi / road_mi, 1)
+                                    if road_mi else None),
+        },
+        "wards": [{"ward": w, "road_miles": round(m, 2)}
+                  for w, m in sorted(ward_road_miles.items(), key=lambda kv: int(kv[0]))],
+    }
+
+
+def ward_coverage_fields(cats, road_miles):
+    """The three per-ward coverage fields, from that ward's facility-category miles
+    and surface-street miles. Shared by build_ward_safety_index (live) and
+    refresh_coverage.py (offline merge) so the two paths cannot drift.
+    `trail` is excluded from on-street miles throughout."""
+    onstreet = sum(m for c, m in cats.items() if c != "trail")
+    rm = road_miles if road_miles and road_miles > 0 else None
+    return {
+        "bikeway_pct_protected": (round(100 * cats.get("protected", 0.0) / onstreet, 1)
+                                  if onstreet > 0 else None),
+        "road_miles": round(road_miles, 2) if road_miles is not None else None,
+        "bikeway_pct_of_roads": round(100 * onstreet / rm, 1) if rm else None,
+    }
+
+
 def ward_bikeway_miles(routes_gj, wards_gdf):
     """Total bikeway length per ward, in miles (lines clipped to ward polygons)."""
     if not routes_gj["features"]:
@@ -556,7 +643,9 @@ def ward_bikeway_miles_by_category(routes_gj, wards_gdf):
     through the overlay so growth can be read per type — protected-lane growth is
     the signal that should track injury reduction, which a total-miles number hides.
     Reads raw snapshot props, so it resolves the type key the same tolerant way
-    build_routes() does.
+    build_routes() does. Also accepts the PUBLISHED bike_routes.geojson shape
+    (features already carrying a resolved `facility_category` property) — those
+    are used directly, with no re-resolution through FACILITY_CATEGORY_MAP.
     """
     feats = routes_gj["features"]
     if not feats:
@@ -564,9 +653,14 @@ def ward_bikeway_miles_by_category(routes_gj, wards_gdf):
     type_key = _first_key(feats[0]["properties"],
                           ["displayroute", "displayrou", "bikeroute", "type", "facility"])
     unmatched = Counter()
-    recs = [{"facility_category": facility_category(
-                 str(f["properties"].get(type_key)) if type_key else "", unmatched),
-             "geometry": shape(f["geometry"])}
+
+    def _cat(f):
+        p = f["properties"]
+        if p.get("facility_category"):
+            return p["facility_category"]
+        return facility_category(str(p.get(type_key)) if type_key else "", unmatched)
+
+    recs = [{"facility_category": _cat(f), "geometry": shape(f["geometry"])}
             for f in feats]
     routes_gdf = gpd.GeoDataFrame(recs, crs=OUTPUT_CRS).to_crs(METRIC_CRS)
     wards_m = wards_gdf.to_crs(METRIC_CRS)[["ward", "geometry"]]
@@ -736,9 +830,10 @@ def build_bikeway_mileage_series(snapshot_dir=SNAPSHOT_DIR):
 
 
 def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_dir=SNAPSHOT_DIR,
-                            tuples=None):
+                            tuples=None, road_miles_by_ward=None):
     pop = ward_population()
     miles = ward_bikeway_miles(routes_gj, wards_gdf)
+    cats_by_ward = ward_bikeway_miles_by_category(routes_gj, wards_gdf)
     ward_dates = crash_ward_dates(crashes)
     infra_trend, infra_note = infra_growth_trend(wards_gdf, snapshot_dir)
 
@@ -772,7 +867,7 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
         w = f["properties"]["ward"]
         ranks = [r for r in (capita_rank.get(w), mile_rank.get(w)) if r is not None]
         blended = round(sum(ranks) / len(ranks), 1) if ranks else None
-        records.append({
+        rec = {
             "ward": w,
             "cyclist_crashes": f["properties"]["cyclist_crashes"],
             "population": pop.get(w),
@@ -786,7 +881,11 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
                         if anchor else None),
             "monthly": ward_monthly.get(w) or monthly_counts([], start_month, end_month),
             "data_tier": "derived",
-        })
+        }
+        rec.update(ward_coverage_fields(
+            cats_by_ward.get(w, {}),
+            road_miles_by_ward.get(w) if road_miles_by_ward else None))
+        records.append(rec)
     # None (no score computable) sorts after every real score, including a real 0.
     records.sort(key=lambda r: (r["comparable_danger_score"] is None,
                                 -(r["comparable_danger_score"] or 0)))
@@ -797,7 +896,12 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
                  "dangerous relative to other wards). Population is missing for wards not "
                  "present in ward_demographics.json; bikeway_miles is 0 for wards with no "
                  "mapped bike infrastructure, which lowers crashes_per_bikeway_mile's "
-                 "denominator and is a meaningful signal, not a data gap. " + infra_note),
+                 "denominator and is a meaningful signal, not a data gap. " + infra_note +
+                 " bikeway_pct_protected is the protected share of the ward's on-street "
+                 "(non-trail) bikeway miles; bikeway_pct_of_roads is the share of the "
+                 "ward's surface-street miles (see road_network.json) with any on-street "
+                 "bike infrastructure; both are null when the denominator is missing or "
+                 "zero."),
         "wards": records,
     }
 
@@ -1027,12 +1131,24 @@ def main():
     sr311_by_ward, sr311_tagged = point_in_ward_counts(sr311, wards_tmp[["ward", "geometry"]])
 
     wards_gj, wards_gdf = build_wards(crashes, sr311_by_ward)
+
+    streets_gdf = load_street_centerlines()
+    as_of_date = datetime.now(timezone.utc).date().isoformat()
+    if streets_gdf is not None:
+        road_network = build_road_network(streets_gdf, wards_gdf, routes_gj, as_of_date)
+    else:
+        road_network = {"data_tier": "real", "as_of": None,
+                        "note": ("Street centerlines were not pulled this run — road "
+                                 "coverage metrics are unavailable. Run "
+                                 "pull_street_centerlines.py."),
+                        "citywide": None, "wards": []}
+    road_miles_by_ward = {r["ward"]: r["road_miles"] for r in road_network["wards"]} or None
+
     corridors = build_corridors(routes_gj, crashes)
     intersections = build_intersections(crashes)
 
     tuples = crash_tuples(crashes)
-    as_of_date = datetime.now(timezone.utc).date().isoformat()
-    findings = build_findings(tuples, corridors, wards_gj, as_of_date)
+    findings = build_findings(tuples, corridors, wards_gj, as_of_date, road_coverage=road_network["citywide"])
 
     # Citywide monthly trend since CRASH_START_DATE, from the same crash tuples.
     trend_anchor = max((t["date"] for t in tuples), default=None)
@@ -1048,7 +1164,8 @@ def main():
     }
 
     ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf,
-                                                snapshot_dir, tuples=tuples)
+                                                snapshot_dir, tuples=tuples,
+                                                road_miles_by_ward=road_miles_by_ward)
     bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir)
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
@@ -1107,6 +1224,10 @@ def main():
              "date_range": [dates[0][:10], dates[-1][:10]] if dates else None},
             {"id": "bike_routes", "name": "CDOT Bike Routes", "tier": "real",
              "records": len(routes_gj["features"]), "date_range": None},
+            {"id": "street_centerlines", "name": "Street Center Lines (surface-street grid)",
+             "tier": "real",
+             "records": int(len(streets_gdf)) if streets_gdf is not None else None,
+             "date_range": None},
             {"id": "sr311", "name": "311 Service Requests (bike-related)", "tier": "proxy",
              "records": len(sr311), "date_range": None},
             {"id": "cameras", "name": "Speed/Red-light Camera Violations", "tier": "proxy",
@@ -1170,6 +1291,7 @@ def main():
     write_json(SITE_DATA_DIR / "aldermen_safety_record.json", aldermen_safety_record)
     write_json(SITE_DATA_DIR / "hearings.json", hearings_out)
     write_json(SITE_DATA_DIR / "menu_spending.json", menu_spending_out)
+    write_json(SITE_DATA_DIR / "road_network.json", road_network)
 
     # Fixtures/offline fallback only: live runs fill aldermen.json from the city's
     # Ward Offices dataset via pull_aldermen.py (which fails soft, preserving the
@@ -1188,7 +1310,9 @@ def main():
           f"{len(wards_gj['features'])} wards, {len(corridors)} corridors, "
           f"{len(intersections)} hotspots, {len(findings)} findings, "
           f"{len(main_routes_gj['lines'])} main-route lines -> site/data "
-          f"(provenance={provenance})")
+          f"(provenance={provenance})"
+          + (f", street coverage: {road_network['citywide']['pct_with_bike_infra']}%"
+             if road_network["citywide"] is not None else ""))
 
 
 if __name__ == "__main__":

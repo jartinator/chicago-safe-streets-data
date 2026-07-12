@@ -85,13 +85,18 @@ def main():
     by_category_miles = series[-1]["by_category"]
     as_of_date = series[-1]["date"]
 
+    road_path = SITE_DATA_DIR / "road_network.json"
+    road_coverage = None
+    if road_path.exists():
+        road_coverage = (json.loads(road_path.read_text()) or {}).get("citywide")
+
     corridors = _load("corridors.json")
     ward_counts = {f["properties"]["ward"]: f["properties"]["cyclist_crashes"]
                    for f in _load("wards.geojson")["features"]}
 
     old_ids = [f["id"] for f in _load("findings.json")]
     findings = build_findings_core(tuples, by_category_miles, corridors, ward_counts,
-                                   as_of_date)
+                                   as_of_date, road_coverage=road_coverage)
     write_json(SITE_DATA_DIR / "findings.json", findings)
 
     # Citywide monthly trend — identical assembly to aggregate.main().

@@ -243,3 +243,25 @@ environment forced a deviation. Newest last.
     street lines are `derived` (computed from CDOT's `real` segments), trail
     lines are `crowdsourced` (OSM) throughout, and crowdsourced trail mileage
     never enters real/derived-tier statistics.
+
+20. **Road-network coverage denominator: `pr57-gg9e`, classes 2/3/4 + status
+    N.** "What share of the street grid has any bike infrastructure" needs a
+    denominator — total surface-street miles — which the bikeway layers alone
+    can't supply. The canonical-looking Street Center Lines map view
+    (`6imu-meau`) turned out to be broken: its SODA rows come back empty and
+    its geospatial export is server-side truncated (verified 2026-07-12). The
+    tabular SODA copy (`pr57-gg9e`, "transportation") is the same underlying
+    layer and works. Its `class`/`status` codes needed filtering down to what
+    actually counts as "the street grid a bike could plausibly use":
+    `STREET_CLASSES_INCLUDED = {"2", "3", "4"}` (arterial/collector/local; class
+    1 is expressway, cycling-prohibited; 5/7 are alley-type stubs; 9 is ramp;
+    99/E/S are system artifacts; RIV is river channel — all excluded) and
+    `STREET_STATUS_INCLUDED = {"N"}` (in service; excludes proposed/vacated/
+    not-usable-roadway rows). That filter sums to ~3,945 centerline miles,
+    matching the city's oft-cited "~4,000 street miles" figure closely enough
+    to trust the denominator (verified live 2026-07-12). Both sides of every
+    coverage ratio (`road_network.json`'s `pct_with_bike_infra`, each ward's
+    `bikeway_pct_of_roads`) are projected centerline lengths (`METRIC_CRS`),
+    and the `trail` facility category is excluded from every numerator — the
+    same off-street-trails-are-not-roads rule used elsewhere in this project
+    (protected-share, main routes) applies here too.
