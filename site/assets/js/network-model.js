@@ -80,9 +80,27 @@
     return groups;
   }
 
+  // Default overlay ids enabled when network.html has no ?overlays= param.
+  const DEFAULT_OVERLAYS = ["heat", "stations"];
+
+  // Parse the `overlays` URL param into a Set of overlay ids. `str` is
+  // whatever BSD.qs().get("overlays") returns: null when the param is
+  // absent (fall back to defaults) or a comma-joined string (including ""
+  // for "explicitly no overlays").
+  function parseOverlays(str) {
+    if (str == null) return new Set(DEFAULT_OVERLAYS);
+    return new Set(str.split(",").filter(Boolean));
+  }
+
+  // Serialize an overlay Set back into the comma-joined URL param value.
+  function serializeOverlays(overlaySet) {
+    return [...overlaySet].join(",");
+  }
+
   const api = {
     flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
     countObstructions, heatBucket, groupByCorridor,
+    parseOverlays, serializeOverlays,
   };
 
   root.BSDNet = api;

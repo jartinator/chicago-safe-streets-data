@@ -113,4 +113,36 @@ assert.ok(
   "pointInBBox: point outside bbox"
 );
 
+// ---- parseOverlays / serializeOverlays (network.html URL state) ----
+assert.deepStrictEqual(
+  [...N.parseOverlays(null)], ["heat", "stations"],
+  "parseOverlays: null (param absent) falls back to defaults heat+stations"
+);
+assert.deepStrictEqual(
+  [...N.parseOverlays(undefined)], ["heat", "stations"],
+  "parseOverlays: undefined falls back to defaults heat+stations"
+);
+assert.strictEqual(
+  N.parseOverlays("").size, 0,
+  "parseOverlays: explicit empty string means no overlays enabled"
+);
+assert.deepStrictEqual(
+  [...N.parseOverlays("heat,crashes")], ["heat", "crashes"],
+  "parseOverlays: comma list parses in order"
+);
+assert.strictEqual(
+  N.serializeOverlays(new Set(["heat", "crashes"])), "heat,crashes",
+  "serializeOverlays: joins a Set with commas"
+);
+assert.strictEqual(
+  N.serializeOverlays(N.parseOverlays("heat,crashes,stations")),
+  "heat,crashes,stations",
+  "round-trip: parseOverlays -> serializeOverlays preserves content"
+);
+assert.strictEqual(
+  N.serializeOverlays(N.parseOverlays(null)),
+  "heat,stations",
+  "round-trip: absent param -> defaults -> 'heat,stations'"
+);
+
 console.log("network-model OK");
