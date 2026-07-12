@@ -612,6 +612,14 @@ def build_council_records(name_to_ward):
 
 def build_aldermen_safety_record(council_records, name_to_ward):
     by_sponsor = defaultdict(lambda: {"relevant_count": 0, "total_count": 0, "records": []})
+
+    # Count recorded 'no' votes on topic-relevant matters, per alderman name.
+    no_votes_by_name = defaultdict(int)
+    for r in council_records:
+        if r.get("topic_relevant") and r.get("recorded_votes"):
+            for name in r["recorded_votes"].get("no_voters", []):
+                no_votes_by_name[name] += 1
+
     for r in council_records:
         for sponsor in r["sponsors"]:
             d = by_sponsor[sponsor]
@@ -623,24 +631,35 @@ def build_aldermen_safety_record(council_records, name_to_ward):
                 "status": r["status"], "intro_date": r["intro_date"],
                 "topic_relevant": r["topic_relevant"], "url": r["url"],
             })
+
+    # Aldermen who only ever appear as a recorded 'no' voter (never sponsored)
+    # must still be listed — otherwise the honest signal we added is invisible.
+    for name in no_votes_by_name:
+        by_sponsor[name]
+
     out = []
-    for sponsor, d in sorted(by_sponsor.items(), key=lambda kv: -kv[1]["relevant_count"]):
+    for sponsor, d in sorted(by_sponsor.items(),
+                             key=lambda kv: (-kv[1]["relevant_count"],
+                                             -no_votes_by_name.get(kv[0], 0))):
         out.append({
             "sponsor_name": sponsor,
             "ward": name_to_ward.get(sponsor.strip().lower()),
             "safety_sponsorships": d["relevant_count"],
             "total_matched_sponsorships": d["total_count"],
+            "recorded_no_votes": no_votes_by_name.get(sponsor, 0),
             "records": d["records"],
             "data_tier": "derived",
         })
     return {
         "data_tier": "derived",
-        "note": ("Aggregate count of Legistar-recorded sponsorships on matters tagged "
-                 "topic_relevant (see council_records.json). This is a broad proxy, not a "
-                 "record of roll-call votes: most Chicago council street-safety actions pass by "
-                 "voice vote at committee, with no individual vote recorded. ward is null until "
-                 "sponsor_name has an exact match in the manually-filled aldermen.json (see "
-                 "DECISIONS.md #8) — never auto-matched by fuzzy name similarity."),
+        "note": ("Aggregate of Chicago City Council sponsorships on matters tagged "
+                 "topic_relevant (see council_records.json), plus recorded_no_votes: the "
+                 "count of the rare recorded roll-call votes where this member voted 'no' "
+                 "on a topic-relevant matter. Most council street-safety actions pass by "
+                 "voice vote with no individual vote recorded, so recorded_no_votes is "
+                 "near-zero for nearly everyone by design, not omission. ward is null until "
+                 "sponsor_name exactly matches the manually-filled aldermen.json "
+                 "(DECISIONS.md #8) — never auto-matched by fuzzy name similarity."),
         "aldermen": out,
     }
 
