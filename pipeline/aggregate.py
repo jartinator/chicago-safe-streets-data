@@ -940,6 +940,15 @@ def main():
             "(pull_mellow.py didn't run, or the source was unreachable). "
             "See CONTRIBUTING.md.")
 
+    osm_trails_raw_path = RAW_DIR / "osm_trails.json"
+    if osm_trails_raw_path.exists():
+        osm_trails_gj = build_osm_trails(json.loads(osm_trails_raw_path.read_text()))
+    else:
+        osm_trails_gj = stub_layer(
+            "OpenStreetMap off-street trails (Lakefront, 312 RiverRun, North Shore "
+            "Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py "
+            "didn't run, or Overpass was unreachable). See CONTRIBUTING.md.")
+
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -959,7 +968,10 @@ def main():
              "records": None, "date_range": None},
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
-             if mellow_gj["features"] else []) + [
+             if mellow_gj["features"] else []) + (
+            [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
+              "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
+             if osm_trails_gj["features"] else []) + [
             {"id": "ward_safety_index", "name": "Ward Safety Index (comparable danger score)",
              "tier": "derived", "records": len(ward_safety_index["wards"]), "date_range": None},
             {"id": "bikeway_mileage_series", "name": "Bikeway Mileage Series (by facility type, over time)",
@@ -995,6 +1007,7 @@ def main():
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
+    write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails_gj)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
     write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
