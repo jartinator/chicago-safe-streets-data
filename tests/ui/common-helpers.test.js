@@ -14,6 +14,15 @@ assert.strictEqual(B.money(null), "—");
 assert.ok(B.trendHTML({ direction: "worsening", pct_change: 25.0 }).includes("▲"));
 assert.ok(B.trendHTML({ direction: "insufficient_data" }).includes("Insufficient"));
 
+// Rebrand regression: the brand render is DOM-only, but the Node-facing exports
+// must keep working exactly as before.
+assert.strictEqual(typeof B.esc, "function");
+assert.strictEqual(B.esc('<a href="x">& \'y\'</a>'),
+  "&lt;a href=&quot;x&quot;&gt;&amp; &#39;y&#39;&lt;/a&gt;");
+assert.strictEqual(B.esc(null), "");
+assert.strictEqual(B.fmt(19416), "19,416");
+assert.strictEqual(B.fmt(null), "—");
+
 // Regression: improving trends carry NEGATIVE pct_change from the pipeline;
 // the sign must render as-is, not be flipped to "+".
 const improving = B.trendHTML({ direction: "improving", pct_change: -30.0 });

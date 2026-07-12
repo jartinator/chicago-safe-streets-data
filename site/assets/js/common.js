@@ -178,7 +178,7 @@
     const header = document.createElement("header");
     header.className = "site-header";
     header.innerHTML =
-      `<a class="brand" href="index.html">Chicago Bike Safety<small>correlation dashboard — evidence layer, not a collection layer</small></a>` +
+      `<a class="brand" href="index.html">On Your Left!<small>Chicago bike safety, on the record</small></a>` +
       `<nav class="site-nav">` +
       NAV.map(([href, label]) =>
         `<a href="${href}"${href === activeHref ? ' class="active"' : ""}>${label}</a>`).join("") +
