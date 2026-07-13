@@ -121,6 +121,16 @@ def test_build_citywide_empty_series_omits_protected_share():
     assert out["bikeway_mileage"]["series"] == []
 
 
+def test_build_citywide_zero_total_omits_protected_share():
+    # total == 0 must be treated like the empty-series case (omit), never a
+    # ZeroDivisionError or a null-laden block.
+    zero_total = [{"date": "2026-07-01", "by_category": {"protected": 0.0},
+                  "total": 0.0}]
+    out = build_citywide(_meta(), _citywide_trend(), _findings(),
+                         _mileage_series(series=zero_total))
+    assert "protected_share" not in out
+
+
 def test_build_citywide_envelope_is_mixed_with_tier_note():
     out = build_citywide(_meta(), _citywide_trend(), _findings(), _mileage_series())
     assert out["_meta"]["data_tier"] == "mixed"
@@ -247,8 +257,15 @@ def test_emit_all_budget_violation_raises_system_exit(tmp_path, monkeypatch):
     monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
     monkeypatch.setattr(emit_api, "API_SIZE_BUDGET_BYTES", 10)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as excinfo:
         emit_all()
+    # The exit message must name the offending file, its actual byte size,
+    # and the budget it blew through.
+    message = str(excinfo.value)
+    assert "citywide.json" in message
+    actual_size = (api_dir / "citywide.json").stat().st_size
+    assert f"{actual_size:,}" in message
+    assert "10" in message
 
 
 def test_emit_all_prunes_stale_files_but_preserves_schemas(tmp_path, monkeypatch):

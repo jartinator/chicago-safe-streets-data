@@ -1,5 +1,7 @@
-"""Generates the agent-first static API (site/api/v1/) from the already-committed
-site/data/* contract files — no network, no pipeline/raw/, no recomputation.
+"""Generate the agent-first static API (site/api/v1/) from committed site/data/ files.
+
+No network, no pipeline/raw/, no recomputation — this module reads only the
+already-committed site/data/* contract files.
 
 This is Phase 1 of a small, separate namespace of JSON files sized for LLM
 agents: fewer, smaller, more self-describing files than the human site's
@@ -97,8 +99,10 @@ def build_citywide(meta, citywide_trend, findings, mileage_series):
         "bikeway_mileage": mileage_series,
     }
 
+    # Guard: omit protected_share entirely (never emit nulls or divide by
+    # zero) when there's no usable latest snapshot — empty series or total 0.
     series = mileage_series.get("series") or []
-    if series:
+    if series and series[-1]["total"]:
         latest = series[-1]
         total = latest["total"]
         protected = latest["by_category"].get("protected", 0)
@@ -263,7 +267,7 @@ def _prune_stale(written_paths):
 
 def emit_all():
     """Load committed site/data/*, build the three Phase-1 API files, write
-    them into SITE_API_DIR, enforce the size budget, print a size table, and
+    them into SITE_API_DIR, print a size table, enforce the size budget, and
     prune stale output. Returns {relative path: byte size} for the files
     written this run.
     """
@@ -288,8 +292,10 @@ def emit_all():
     write_json(SITE_API_DIR / "index.json", index)
     written["index.json"] = (SITE_API_DIR / "index.json").stat().st_size
 
-    _enforce_budget(written)
+    # Size table first: on a budget trip the developer still sees the full
+    # picture of what was written before the hard fail.
     _print_size_table(written)
+    _enforce_budget(written)
     _prune_stale(set(written))
 
     return written
