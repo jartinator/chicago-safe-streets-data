@@ -3,11 +3,14 @@
 No network, no pipeline/raw/, no recomputation — this module reads only the
 already-committed site/data/* contract files.
 
-This is Phase 1 of a small, separate namespace of JSON files sized for LLM
-agents: fewer, smaller, more self-describing files than the human site's
-site/data/ contract, each fetchable and citable on its own. The design goal is
-a cold agent going from "never seen this site" to a cited answer in <=3
-fetches of <API_SIZE_BUDGET_BYTES each — see index.json's fetch_recipes.
+This is a small, separate namespace of JSON files sized for LLM agents: fewer,
+smaller, more self-describing files than the human site's site/data/
+contract, each fetchable and citable on its own. The design goal is a cold
+agent going from "never seen this site" to a cited answer in <=3 fetches of
+<API_SIZE_BUDGET_BYTES each — see index.json's fetch_recipes. Phase 1 (index/
+citywide/corridors) and Phase 2 (the per-ward layer: wards/index.json +
+wards/ward-NN.json) are built here; see
+docs/superpowers/plans/2026-07-13-agent-api-layer.md for the full phasing.
 
 Every emitted file opens with an `_meta` envelope (see `_envelope`) carrying
 generated_at/provenance copied verbatim from site/data/meta.json (never a
@@ -37,10 +40,19 @@ LICENSE = ("City of Chicago Data Portal Terms of Use (data.cityofchicago.org); "
 ATTRIBUTION = ("On Your Left! — Chicago bike safety, on the record "
               "(https://github.com/jartinator/chicago-safe-streets-data)")
 
-# Phase 1 publishes exactly these two data endpoints (plus index.json itself,
-# which isn't self-listed). Hand-maintained: description/example_questions
-# are editorial, not derivable from the source data.
-_PHASE1_ENDPOINTS = [
+# The canonical description of comparable_danger_score, verbatim wherever the
+# API describes that field (wards/index.json's note, each ward file's
+# score_note, and index.json's ward fetch recipe) — see
+# docs/superpowers/plans/2026-07-13-agent-api-layer.md §1 "Naming". The field
+# name itself is contract and stays; only this description string is shared.
+COMPARABLE_DANGER_SCORE_DESC = "relative concern rank among wards, higher = worse — not absolute risk"
+
+# Concrete, always-present data endpoints (plus index.json itself, which
+# isn't self-listed). Hand-maintained: description/example_questions are
+# editorial, not derivable from the source data. Distinct from the *family*
+# entries in build_index (wards/ward-NN.json etc.) — a family is 50 files
+# sharing one template, too many to hand-list here.
+_ENDPOINTS = [
     {
         "path": "citywide.json",
         "description": ("Citywide monthly cyclist crash trend, headline findings, "
@@ -58,6 +70,16 @@ _PHASE1_ENDPOINTS = [
         "example_questions": [
             "Which Chicago streets have the highest cyclist crash rate per km?",
             "Where are Chicago's worst cyclist crash hotspot intersections?",
+        ],
+    },
+    {
+        "path": "wards/index.json",
+        "description": ("All 50 Chicago wards' comparable danger scores, crash "
+                        "counts, and bikeway stats in one file, ranked, with "
+                        "links to each ward's full detail file."),
+        "example_questions": [
+            "Which Chicago ward is most dangerous for cyclists?",
+            "How does my ward's bikeway mileage compare to other wards?",
         ],
     },
 ]
@@ -135,13 +157,124 @@ def build_corridors_api(meta, corridors, intersections):
            "hotspot_intersections": intersections}
 
 
-def build_index(meta, endpoint_bytes):
-    """index.json: the discovery entry point. Hand-assembled manifest listing
-    only the endpoints that actually exist in Phase 1.
+def build_wards_index(meta, ward_safety_index):
+    """wards/index.json: all 50 ward_safety_index records verbatim, minus
+    their `monthly` series (107 months each — too big for an index; an agent
+    that wants a ward's month-by-month history fetches wards/ward-NN.json via
+    the detail_url added here). Everything else (windows, trends,
+    comparable_danger_score, ...) is kept as-is. Source order is already a
+    meaningful ranking (see the source file's own note) and is preserved,
+    never re-sorted here.
+    """
+    wards = []
+    for w in ward_safety_index["wards"]:
+        padded = w["ward"].zfill(2)
+        entry = {k: v for k, v in w.items() if k != "monthly"}
+        entry["detail_url"] = f"{API_BASE_URL}/wards/ward-{padded}.json"
+        entry["crashes_url"] = f"{API_BASE_URL}/crashes/ward-{padded}.json"
+        wards.append(entry)
 
-    endpoint_bytes: {path: actual on-disk byte size}, supplied by emit_all
-    after writing citywide.json/corridors.json (index.json is written last so
-    its bytes_approx values are real, not estimated).
+    note = (f"{ward_safety_index['note']} comparable_danger_score is a "
+           f"{COMPARABLE_DANGER_SCORE_DESC}.")
+
+    envelope = _envelope(meta, data_tier="derived",
+                         human_page=f"{SITE_BASE_URL}/table.html")
+
+    return {
+        "_meta": envelope,
+        "data_tier": ward_safety_index["data_tier"],
+        "note": note,
+        "wards": wards,
+    }
+
+
+def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, sr311):
+    """wards/ward-NN.json: one ward's full safety record (including
+    `monthly`), alderman contact info, council safety-sponsorship record, and
+    311/menu-spending proxies, plus link-outs. `aldermen`, `safety_record`,
+    `menu_spending`, `sr311` are the whole loaded site/data/*.json dicts (not
+    pre-filtered per ward) — this function does its own per-ward lookup so
+    emit_all's loop just calls it once per ward_safety_index record.
+
+    Deliberate plan deviation (see task brief / DECISIONS.md): no "top
+    corridors for this ward" section. corridors.json carries no ward id or
+    geometry, so computing that here would mean inventing a linkage the
+    source data doesn't have. `see_also.corridors` points agents at the
+    citywide corridors endpoint instead.
+    """
+    ward = ward_record["ward"]
+    padded = ward.zfill(2)
+
+    alderman_entry = next((a for a in aldermen["wards"] if a["ward"] == ward), None)
+    alderman_note = None
+    if alderman_entry is not None:
+        alderman = {**alderman_entry, "as_of": aldermen["as_of"], "source": aldermen["source"],
+                   "data_tier": aldermen["data_tier"], "lookup_url": aldermen["lookup_url"]}
+    else:
+        alderman = None
+        alderman_note = f"No aldermen.json roster entry found for ward {ward}."
+
+    safety_record_entries = [a for a in safety_record["aldermen"] if a["ward"] == ward]
+
+    if ward in menu_spending["wards"]:
+        menu = {**menu_spending["wards"][ward], "data_tier": menu_spending["data_tier"],
+               "note": menu_spending["note"]}
+    else:
+        # Never fabricate zeros: absence is a data gap, not "no spending".
+        menu = {"available": False, "data_tier": menu_spending["data_tier"],
+               "note": menu_spending["note"]}
+
+    sr311_entry = next((w for w in sr311["wards"] if w["ward"] == ward), None)
+    if sr311_entry is not None:
+        sr311_out = {**sr311_entry, "data_tier": sr311["data_tier"], "note": sr311["note"]}
+    else:
+        sr311_out = {"available": False, "data_tier": sr311["data_tier"], "note": sr311["note"]}
+
+    one_pager_url = f"{SITE_BASE_URL}/ward.html?ward={ward}"
+
+    payload = {
+        "ward": ward,
+        "ward_padded": padded,
+        "safety": {**ward_record,
+                  "score_note": f"comparable_danger_score is a {COMPARABLE_DANGER_SCORE_DESC}."},
+        "alderman": alderman,
+        "safety_record": {"data_tier": safety_record["data_tier"], "note": safety_record["note"],
+                          "entries": safety_record_entries},
+        "menu_spending": menu,
+        "sr311": sr311_out,
+        "crashes_url": f"{API_BASE_URL}/crashes/ward-{padded}.json",
+        "one_pager_url": one_pager_url,
+        "see_also": {"corridors": f"{API_BASE_URL}/corridors.json",
+                    "wards_index": f"{API_BASE_URL}/wards/index.json"},
+    }
+    if alderman_note is not None:
+        payload["alderman_note"] = alderman_note
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("safety is derived; alderman is real; safety_record is derived "
+                  "(council sponsorship aggregation); sr311 is proxy (self-reported "
+                  "bias); menu_spending is proxy."),
+        human_page=one_pager_url)
+
+    return {"_meta": envelope, **payload}
+
+
+def build_index(meta, endpoint_bytes, ward_files_bytes=None):
+    """index.json: the discovery entry point. Hand-assembled manifest listing
+    the endpoints and endpoint *families* that actually exist so far.
+
+    endpoint_bytes: {path: actual on-disk byte size} for concrete endpoints
+    (_ENDPOINTS), supplied by emit_all after writing them — index.json is
+    written last so its bytes_approx values are real, not estimated.
+
+    ward_files_bytes: {"wards/ward-NN.json": actual on-disk byte size} for
+    all 50 ward files, or None/empty before they exist. A *family* entry
+    (path_template + count + one example URL + bytes_approx_max, rather than
+    50 individually hand-listed endpoints) is added only when files were
+    actually written — this is the seam the next task's crashes/ward-NN.json
+    family reuses via the same ward_files_bytes-shaped argument convention,
+    so it stays in `planned` until it does the same.
     """
     endpoints = [
         {
@@ -151,8 +284,26 @@ def build_index(meta, endpoint_bytes):
             "description": ep["description"],
             "example_questions": ep["example_questions"],
         }
-        for ep in _PHASE1_ENDPOINTS
+        for ep in _ENDPOINTS
     ]
+
+    families = []
+    if ward_files_bytes:
+        families.append({
+            "path_template": "wards/ward-{NN}.json",
+            "url_template": f"{API_BASE_URL}/wards/ward-{{NN}}.json",
+            "count": len(ward_files_bytes),
+            "example": f"{API_BASE_URL}/wards/ward-01.json",
+            "bytes_approx_max": max(ward_files_bytes.values()),
+            "description": ("Per-ward detail: full safety index (incl. the "
+                            "107-month crash series), alderman contact, council "
+                            "safety-sponsorship record, and 311/menu-spending "
+                            "proxies for one ward. NN is zero-padded 01-50."),
+            "example_questions": [
+                "How dangerous is ward 40 for cyclists?",
+                "Who is my alderman and what's their bike-safety record?",
+            ],
+        })
 
     envelope = _envelope(
         meta, data_tier="mixed",
@@ -180,6 +331,12 @@ def build_index(meta, endpoint_bytes):
             "then": ("Take protected_share from citywide.json and "
                     "hotspot_intersections from corridors.json."),
         },
+        {
+            "question": "How dangerous is ward 40 for cyclists?",
+            "fetch": [f"{API_BASE_URL}/wards/ward-40.json"],
+            "then": (f"Read safety.comparable_danger_score ({COMPARABLE_DANGER_SCORE_DESC}), "
+                    "safety.windows for recent counts, and alderman for who to contact."),
+        },
     ]
 
     return {
@@ -190,6 +347,7 @@ def build_index(meta, endpoint_bytes):
             "City Council accountability for Chicago, rebuilt weekly from the "
             "Chicago Data Portal and other public sources."),
         "endpoints": endpoints,
+        "families": families,
         "fetch_recipes": fetch_recipes,
         "coverage_note": (
             f"Crash data is citywide-reliable only from {CRASH_START_DATE}; counts "
@@ -201,7 +359,6 @@ def build_index(meta, endpoint_bytes):
             "purposes only, has no api/v1 endpoint, and must never be cited as "
             "real."),
         "planned": [
-            "wards/ — per-ward danger scores and crash breakdowns (not yet published)",
             "crashes/ — individual crash records (not yet published)",
             "routes/ — main-route and network-map detail (not yet published)",
             "council/ — City Council safety-legislation tracking (not yet published)",
@@ -227,11 +384,28 @@ def _enforce_budget(written):
 
 
 def _print_size_table(written):
-    """One line per emitted file, aligned — mirrors run_all.print_timings."""
+    """One line per emitted file, aligned — mirrors run_all.print_timings.
+    Followed by a one-line min/median/max rollup per subdirectory (e.g.
+    `wards/`) so the table stays scannable once a single directory holds 50+
+    files, instead of drowning the top-level files in per-ward noise.
+    """
     width = max(len(path) for path in written)
     print("\n=== site/api/v1 sizes ===")
     for path, size in written.items():
         print(f"  {path:<{width}}  {size:7,d} bytes")
+
+    by_dir = {}
+    for path, size in written.items():
+        if "/" in path:
+            by_dir.setdefault(path.split("/", 1)[0], []).append(size)
+    if by_dir:
+        print()
+        for directory, sizes in sorted(by_dir.items()):
+            sizes = sorted(sizes)
+            n = len(sizes)
+            median = sizes[n // 2] if n % 2 else (sizes[n // 2 - 1] + sizes[n // 2]) / 2
+            print(f"  {directory}/ ({n} files)  min={sizes[0]:,}  "
+                 f"median={median:,.0f}  max={sizes[-1]:,} bytes")
 
 
 def _prune_stale(written_paths):
@@ -266,10 +440,10 @@ def _prune_stale(written_paths):
 
 
 def emit_all():
-    """Load committed site/data/*, build the three Phase-1 API files, write
-    them into SITE_API_DIR, print a size table, enforce the size budget, and
-    prune stale output. Returns {relative path: byte size} for the files
-    written this run.
+    """Load committed site/data/*, build every API file (Phase 1's three
+    top-level files plus the wards layer), write them into SITE_API_DIR,
+    print a size table, enforce the size budget, and prune stale output.
+    Returns {relative path: byte size} for the files written this run.
     """
     meta = _load("meta.json")
     citywide_trend = _load("citywide_trend.json")
@@ -277,6 +451,11 @@ def emit_all():
     mileage_series = _load("bikeway_mileage_series.json")
     corridors = _load("corridors.json")
     intersections = _load("intersections.json")
+    ward_safety_index = _load("ward_safety_index.json")
+    aldermen = _load("aldermen.json")
+    aldermen_safety_record = _load("aldermen_safety_record.json")
+    menu_spending = _load("menu_spending.json")
+    ward_311 = _load("ward_311.json")
 
     written = {}
 
@@ -288,7 +467,25 @@ def emit_all():
     write_json(SITE_API_DIR / "corridors.json", corridors_api)
     written["corridors.json"] = (SITE_API_DIR / "corridors.json").stat().st_size
 
-    index = build_index(meta, written)
+    wards_index = build_wards_index(meta, ward_safety_index)
+    write_json(SITE_API_DIR / "wards" / "index.json", wards_index)
+    written["wards/index.json"] = (SITE_API_DIR / "wards" / "index.json").stat().st_size
+
+    # Driven from ward_safety_index — all 50 wards are guaranteed present
+    # there; other sources (aldermen, safety_record, menu_spending, sr311)
+    # may be missing a given ward, which build_ward_file handles honestly.
+    ward_files_bytes = {}
+    for ward_record in ward_safety_index["wards"]:
+        padded = ward_record["ward"].zfill(2)
+        ward_file = build_ward_file(meta, ward_record, aldermen, aldermen_safety_record,
+                                    menu_spending, ward_311)
+        path = SITE_API_DIR / "wards" / f"ward-{padded}.json"
+        write_json(path, ward_file)
+        rel = f"wards/ward-{padded}.json"
+        written[rel] = path.stat().st_size
+        ward_files_bytes[rel] = written[rel]
+
+    index = build_index(meta, written, ward_files_bytes)
     write_json(SITE_API_DIR / "index.json", index)
     written["index.json"] = (SITE_API_DIR / "index.json").stat().st_size
 

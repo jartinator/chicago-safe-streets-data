@@ -204,7 +204,26 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
         ]}))
     (site_data_dir / "findings.json").write_text(json.dumps([]))
     (site_data_dir / "ward_safety_index.json").write_text(json.dumps({
+        "data_tier": "derived", "note": "test ward safety index note.",
         "wards": [{"ward": "1"}],
+    }))
+    # emit_api's wards layer additionally reads these four files (not
+    # touched by refresh_reporting.main() itself — DECISIONS.md #8 keeps
+    # alderman matching manual/live-pulled, not offline-computed here).
+    (site_data_dir / "aldermen.json").write_text(json.dumps({
+        "as_of": "2020-01-15T00:00:00+00:00", "source": "test", "data_tier": "real",
+        "note": "test aldermen note.", "lookup_url": "https://example.org",
+        "wards": [{"ward": "1", "alderman": "Test Alder", "email": "a@x.gov",
+                  "phone": "111", "website": "https://x.example"}],
+    }))
+    (site_data_dir / "aldermen_safety_record.json").write_text(json.dumps({
+        "data_tier": "derived", "note": "test safety record note.", "aldermen": [],
+    }))
+    (site_data_dir / "menu_spending.json").write_text(json.dumps({
+        "data_tier": "proxy", "note": "test menu spending note.", "wards": {},
+    }))
+    (site_data_dir / "ward_311.json").write_text(json.dumps({
+        "data_tier": "proxy", "note": "test 311 note.", "wards": [],
     }))
     (site_data_dir / "bike_routes.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [],
