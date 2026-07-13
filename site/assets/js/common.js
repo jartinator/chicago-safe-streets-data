@@ -177,6 +177,14 @@
     return "$" + rounded.toLocaleString("en-US");
   }
 
+  // Badge tier for anything with a data_tier + no_data (roster lines, stub
+  // layers, etc.): its own tier unless there's no data this run, in which
+  // case it downgrades to the "stub" badge. Shared by main-routes-model.js
+  // (report cards) and network.js (line legend) so the rule lives once.
+  function lineBadgeTier(line) {
+    return line.no_data ? "stub" : line.data_tier;
+  }
+
   function qs() {
     return new URLSearchParams(location.search);
   }
@@ -353,7 +361,7 @@
     SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_COLORS,
     TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
-    downloadCSV, initPage, trendHTML, scoreColor, money,
+    downloadCSV, initPage, trendHTML, scoreColor, money, lineBadgeTier,
     rollingSums, trendChartSVG, icsForEvent, downloadICS,
   };
 
@@ -361,7 +369,7 @@
     // Node-facing exports: pure helpers plus downloadICS (DOM-bound, exported
     // for surface parity — call it only in a browser).
     module.exports = {
-      trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN,
+      trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN, lineBadgeTier,
       rollingSums, trendChartSVG, icsForEvent, downloadICS,
     };
   }
