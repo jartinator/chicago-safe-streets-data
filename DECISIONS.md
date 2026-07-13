@@ -481,7 +481,48 @@ environment forced a deviation. Newest last.
     continuity. Connectors default off on the network map; the toggle brings
     the mesh back.
 
-29. **PeopleForBikes BNA ships as a citywide scorecard only (B1) — the trend
+29. **News coverage ships as links-only, matched conservatively, with every
+    match auditable.** The "In the news" layer (`pull_news.py` →
+    `news_items.json`) publishes verbatim headline + link + date + outlet
+    from public RSS feeds (Streetsblog Chicago, Block Club Chicago's
+    transportation category, a Google News search) and never article text —
+    the licensing-safe subset confirmed in
+    docs/research/news-layer/evidence-feeds.md. Three calls made against the
+    obvious alternatives: (a) entity matching favors precision over recall
+    (publisher tags first, honorific+surname or full-name for alderpersons,
+    street-type suffix required for street names) because the validation
+    study found one wrong match costs more trust than many misses — every
+    match therefore publishes a `via` string recording the exact rule that
+    made it; (b) item↔meeting and item↔record-number linkage is permanently
+    killed, not deferred — record numbers appeared in zero of ~50 sampled
+    headlines, and all four study personas rejected date-proximity guessing
+    outright; (c) the pull identifies itself as OnYourLeftNewsBot (both
+    outlets' robots.txt disallow AI-branded crawlers by name) and treats any
+    403/429 as the outlet opting out — skip the feed, never work around it.
+
+30. **Proposed routes ship as a curated roster with auto-attached news
+    coverage — no geometry, no derived statuses, no bare-token matching.**
+    `data/proposed_projects.json` + `proposed_projects.json` answer "what's
+    proposed here and what's its status" for the 606/Bloomingdale extension
+    class of question. Three calls: (a) statuses are hand-curated with a
+    visible last-reviewed date and citation, because news text cannot settle
+    them deterministically — the Archer saga had outlets describing the same
+    facts as "installed" and "ripped out" in the same month, and Streetsblog
+    published a piece disputing CBS's characterization of the same project;
+    (b) project matching uses curated multi-word phrases only ("Bloomingdale
+    Trail extension"), never bare corridor names — Streetsblog's own the-606
+    tag feed is ~1/12 on-topic for the extension; (c) no map lines: CDOT
+    publishes planned bikeways as a spreadsheet plus static maps (a
+    volunteer had to hand-geocode it to map it), and CMAP's Bikeway
+    Inventory System, probed directly at its ArcGIS REST endpoint
+    (2026-07-13), is an archive of 2012-era municipal plan documents — so
+    honest geometry does not exist, and `planned_routes.geojson` stays a
+    stub while this feature renders cards. Roster selection criteria are
+    published (official record + unresolved outcome + geographic spread;
+    news volume explicitly not a criterion) after the validation study
+    flagged coverage-volume drift as imported inequity.
+
+31. **PeopleForBikes BNA ships as a citywide scorecard only (B1) — the trend
     compares like with like, and last-place gets said out loud.** The
     validated integration proposal (docs/projects/pfb-bna-proposal.md;
     six-persona verdict under docs/research/user-needs/validation/pfb-bna/)

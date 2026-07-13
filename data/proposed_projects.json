@@ -1,0 +1,192 @@
+{
+  "note": "Hand-curated editorial roster of active Chicago bikeway/trail proposals and projects (the main_routes.json pattern). Selection criteria: an official record exists, the outcome is unresolved (or was resolved amid live controversy), and the set keeps geographic spread — under-covered South and West Side projects are deliberately included; news-coverage volume is NOT a criterion. Statuses are volunteer-reviewed judgments backed by the citations listed per project — status_as_of is the date the status was last reviewed, and the official page is always authoritative. news_phrases match on their own (project-specific wording); news_phrases_ctx are corridor names that only match when the headline also contains a bike/street-safety keyword — a corridor name alone says nothing about the project. Suggest additions or corrections via a GitHub issue. Evidence basis: docs/research/proposed-routes-news/evidence-proposals.md.",
+  "status_vocabulary": [
+    "proposed",
+    "in design",
+    "funded in part",
+    "funded",
+    "under construction",
+    "installed, being modified",
+    "complete",
+    "blocked"
+  ],
+  "projects": [
+    {
+      "id": "bloomingdale-extension",
+      "name": "Bloomingdale Trail (606) Extension",
+      "status": "in design",
+      "status_as_of": "2026-07-13",
+      "status_note": "Funded in part: a federal earmark secured by Rep. Quigley (~$1.4M reported toward Phase II) against an estimated $30–40M total, with state/local sources still being assembled. Preliminary engineering wrapping up; construction expected to start around late 2026, completion late 2027 (timeline per Block Club, Jan 2025).",
+      "description": "Extend the elevated 606/Bloomingdale Trail east from its current end at Ashland Avenue, under the Kennedy Expressway, to Elston Avenue, coordinated with the Lincoln Yards site.",
+      "wards": [],
+      "official_links": [
+        {
+          "text": "CDOT: Bloomingdale Trail Extension",
+          "url": "https://www.chicago.gov/city/en/depts/cdot/supp_info/bloomingdale_trail.html"
+        }
+      ],
+      "news_phrases": [
+        "Bloomingdale Trail extension",
+        "606 extension",
+        "606 Trail extension"
+      ],
+      "citations": [
+        {
+          "title": "The 606's Bloomingdale Trail Extension Delayed, With Completion Now Expected By Late 2027",
+          "url": "https://blockclubchicago.org/2025/01/21/the-606s-bloomingdale-trail-extension-delayed-with-completion-now-expected-by-late-2027/",
+          "source": "Block Club Chicago",
+          "published": "2025-01-21"
+        },
+        {
+          "title": "The planned Bloomingdale Trail extension is short, but it would get you past the Kennedy and Ashland car-free",
+          "url": "https://chi.streetsblog.org/2023/08/08/the-planned-bloomingdale-trail-extension-is-short-but-it-would-get-you-past-the-kennedy-and-ashland-car-free",
+          "source": "Streetsblog Chicago",
+          "published": "2023-08-08"
+        }
+      ],
+      "news_phrases_ctx": []
+    },
+    {
+      "id": "archer-avenue",
+      "name": "Archer Avenue Traffic Safety Project",
+      "status": "installed, being modified",
+      "status_as_of": "2026-07-13",
+      "status_note": "Protected bike lanes with concrete curbs, pedestrian refuge islands, and curb extensions were installed in Brighton Park; after sustained resident protests, the city restored 17 parking spaces across three sub-segments in April 2026 while keeping the concrete-protected lanes — CDOT says there are no plans to remove the project's core safety features.",
+      "description": "Complete Streets safety redesign of Archer Avenue in Brighton Park (12th Ward), on a corridor CDOT tied to a majority of the area's serious pedestrian/cyclist injuries.",
+      "wards": [
+        "12"
+      ],
+      "official_links": [],
+      "news_phrases": [
+        "Archer Avenue Traffic Safety",
+        "Archer Traffic Safety"
+      ],
+      "citations": [
+        {
+          "title": "City Bringing Back 17 Parking Spots On Brighton Park's Archer Ave After Protests",
+          "url": "https://blockclubchicago.org/2026/04/30/city-removes-brand-new-concrete-bike-lanes-pedestrian-islands-in-brighton-park-amid-protests/",
+          "source": "Block Club Chicago",
+          "published": "2026-04-30"
+        }
+      ],
+      "news_phrases_ctx": [
+        "Archer Avenue",
+        "Archer Ave"
+      ]
+    },
+    {
+      "id": "grand-avenue",
+      "name": "Grand Avenue Protected Bike Lanes (Phase 2)",
+      "status": "under construction",
+      "status_as_of": "2026-07-13",
+      "status_note": "Phase 1 (36th Ward stretch) was built in 2023; Phase 2 toward Ogden slipped to a 2026 start and is now being built amid weekly protests and counter-rallies. CDOT and Ald. La Spata (1st) cite fewer severe crashes and less speeding on the completed segments.",
+      "description": "Multi-phase Complete Streets project adding protected bike lanes along Grand Avenue through West Town (1st/27th/36th wards).",
+      "wards": [
+        "1",
+        "27",
+        "36"
+      ],
+      "official_links": [],
+      "news_phrases": [],
+      "citations": [
+        {
+          "title": "Second Phase Of Grand Avenue Bike Lane, Street Upgrades Now Expected In 2026",
+          "url": "https://blockclubchicago.org/2025/08/18/second-phase-of-grand-avenue-bike-lane-street-upgrades-now-expected-in-2026/",
+          "source": "Block Club Chicago",
+          "published": "2025-08-18"
+        },
+        {
+          "title": "This is Grand: Scenes from Chicago's newest weekly dueling rallies against and for a Complete Streets project",
+          "url": "https://chi.streetsblog.org/2026/04/22/this-is-grand-scenes-from-chicagos-newest-weekly-dueling-rallies-against-and-for-a-complete-streets-project",
+          "source": "Streetsblog Chicago",
+          "published": "2026-04-22"
+        }
+      ],
+      "news_phrases_ctx": [
+        "Grand Avenue",
+        "Grand Ave"
+      ]
+    },
+    {
+      "id": "dusable-lsd-redesign",
+      "name": "DuSable Lake Shore Drive Redesign (Redefine the Drive)",
+      "status": "proposed",
+      "status_as_of": "2026-07-13",
+      "status_note": "Joint CDOT/IDOT/CMAP reconstruction study; as of a May 2026 CMAP meeting the alternatives analysis was still being revised with no preferred alternative finalized. Proposed bike/ped pieces include a separated overpass at Addison and an expanded shared-use underpass at Hawthorne; advocates are pressing against a car-centric 8-lane option.",
+      "description": "Reconstruction of the North DuSable Lake Shore Drive corridor, including its bike and pedestrian crossings and the Lakefront Trail interface.",
+      "wards": [],
+      "official_links": [
+        {
+          "text": "Redefine the Drive (official project site)",
+          "url": "https://northdusablelsd.org/"
+        }
+      ],
+      "news_phrases": [
+        "Redefine the Drive",
+        "Lake Shore Drive redesign"
+      ],
+      "citations": [
+        {
+          "title": "Public opposition to plan to reconstruct DLSD as a car-centric 8-lane road intensifies at CMAP meeting",
+          "url": "https://chi.streetsblog.org/2026/04/29/public-opposition-to-plan-to-reconstruct-dlsd-as-a-car-centric-8-lane-road-intensifies-at-cmap-meeting-as-agency-weighs-climate-funding-risks",
+          "source": "Streetsblog Chicago",
+          "published": "2026-04-29"
+        },
+        {
+          "title": "Chicago's lakefront highway debate enters a new phase as public pressure mounts",
+          "url": "https://chi.streetsblog.org/2026/05/27/chicagos-lakefront-highway-debate-enters-a-new-phase-as-public-pressure-mounts",
+          "source": "Streetsblog Chicago",
+          "published": "2026-05-27"
+        }
+      ],
+      "news_phrases_ctx": [
+        "DuSable Lake Shore Drive"
+      ]
+    },
+    {
+      "id": "englewood-nature-trail",
+      "name": "Englewood Nature Trail",
+      "status": "funded in part",
+      "status_as_of": "2026-07-13",
+      "status_note": "$20M in grants secured against an $80M estimate. The site is in a clearing and viaduct-repair phase; construction has been pushed to 2027 with completion expected in 2029 (timeline per Chicago YIMBY/Hoodline, May 2026).",
+      "description": "Rails-to-trails conversion of a former Norfolk Southern elevated line: 1.8 miles from Damen to Halsted in Englewood, led by Grow Greater Englewood with the city.",
+      "wards": [],
+      "official_links": [],
+      "news_phrases": [
+        "Englewood Nature Trail",
+        "Englewood Trail"
+      ],
+      "citations": [
+        {
+          "title": "Updated Timeline Revealed For Englewood Nature Trail",
+          "url": "https://chicagoyimby.com/2026/05/updated-timeline-revealed-for-englewood-nature-trail.html",
+          "source": "Chicago YIMBY",
+          "published": "2026-05"
+        }
+      ],
+      "news_phrases_ctx": []
+    },
+    {
+      "id": "weber-spur",
+      "name": "Weber Spur Trail",
+      "status": "funded in part",
+      "status_as_of": "2026-07-13",
+      "status_note": "Secured $850,000 in federal funding (Rep. Quigley community project, Feb 2026) against a ~$70M estimate; land acquisition from Union Pacific remains unresolved after roughly two decades. Construction target is 2029.",
+      "description": "1.7-mile trail on a former Union Pacific right-of-way through LaBagh Woods on the Northwest Side, connecting toward the North Branch Trail.",
+      "wards": [],
+      "official_links": [],
+      "news_phrases": [
+        "Weber Spur"
+      ],
+      "citations": [
+        {
+          "title": "Weber Spur Bike Trail Secures Federal Funding",
+          "url": "https://blockclubchicago.org/2026/02/24/weber-spur-bike-trail-secures-federal-funding/",
+          "source": "Block Club Chicago",
+          "published": "2026-02-24"
+        }
+      ],
+      "news_phrases_ctx": []
+    }
+  ]
+}

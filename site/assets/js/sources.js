@@ -296,6 +296,36 @@
         { text: "Ward Wise", url: "https://www.wardwisechicago.org" }
       ],
       metaId: "menu_spending"
+    },
+    {
+      id: "news_items",
+      name: "News Coverage (public RSS headlines)",
+      short: "News coverage",
+      origin: "Streetsblog Chicago, Block Club Chicago (transportation category), and a Google News search — public RSS feeds only",
+      tier: "real",
+      cadence: "weekly pipeline run, best-effort; 90-day window",
+      description: "Recent news coverage of Chicago bike/street safety, shown on ward and action pages: verbatim headline, link, date, and outlet name — never article text or images. Items are matched to wards, alderpersons, and main routes by conservative name rules (publisher tags first; street names need a type suffix; bare surnames never match), and every match records exactly which rule made it.",
+      limitations: "These are independent editorial outlets — listing coverage is not an endorsement, and outlets cover some neighborhoods far more than others, so absence of coverage never means nothing happened. Matching is computed and errs toward missing items rather than mislabeling them, but a wrong match is still possible — the linked article is always authoritative. Feeds that block or rate-limit our fetcher are skipped, never worked around. There is deliberately no story-to-meeting or story-to-ordinance matching: news text almost never carries the identifiers that would make that reliable.",
+      links: [
+        { text: "Streetsblog Chicago", url: "https://chi.streetsblog.org/" },
+        { text: "Block Club Chicago", url: "https://blockclubchicago.org/" }
+      ],
+      metaId: "news_items"
+    },
+    {
+      id: "proposed_projects",
+      name: "Proposed & In-Progress Bikeway Projects (curated roster)",
+      short: "Proposed projects",
+      origin: "Hand-curated roster (data/proposed_projects.json) + news coverage auto-attached from the news_items dataset",
+      tier: "derived",
+      cadence: "roster: volunteer-reviewed as news breaks; coverage: weekly pipeline run",
+      description: "A short editorial roster of active Chicago bikeway/trail proposals — the 606/Bloomingdale extension, Archer Avenue, Grand Avenue phase 2, the DuSable Lake Shore Drive redesign, the Englewood Nature Trail, the Weber Spur. Each entry carries a volunteer-written status with the date it was last reviewed and the citation backing it, links to the official record, and recent news headlines matched by curated project phrases. Selection criteria: an official record exists, the outcome is unresolved, and the list keeps geographic spread — under-covered South and West Side projects are deliberately included. News-coverage volume is NOT a selection criterion.",
+      limitations: "Statuses are volunteer judgments, not city statements — they can lag reality between reviews (the last-reviewed date is always shown, and the official project page is authoritative). No map geometry is drawn: CDOT publishes planned bikeways only as a spreadsheet plus static maps, and CMAP's regional inventory is 2012-era plan archaeology (verified 2026-07), so honest line geometry does not exist to draw. An empty coverage list measures press attention, not project activity. Roster picks are editorial; propose additions or corrections via a GitHub issue.",
+      links: [
+        { text: "CDOT: planned bike projects", url: "https://www.chicago.gov/city/en/depts/cdot/supp_info/bike-program/planned-bike-projects.html" },
+        { text: "Suggest a roster change (GitHub)", url: "https://github.com/jartinator/chicago-safe-streets-data/issues" }
+      ],
+      metaId: "proposed_projects"
     }
   ];
 

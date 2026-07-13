@@ -36,7 +36,9 @@ import json
 import emit_api
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
-                       build_mellow_connectors, mellow_connector_records, build_bna)
+                       build_mellow_connectors, mellow_connector_records, build_bna,
+                       build_news_items, build_proposed_projects,
+                       load_proposed_projects_roster)
 from bna_metrics import build_bna_finding
 from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
@@ -80,7 +82,7 @@ def _load(name):
     return json.loads((SITE_DATA_DIR / name).read_text())
 
 
-def apply_bna(findings):
+def apply_bna(findings, raw_is_fixture=False):
     """Append the PFB BNA finding, rewriting bna_scores.json only from a raw pull.
 
     findings.json is fully rebuilt by this script, so the BNA card must be
@@ -88,10 +90,12 @@ def apply_bna(findings):
     chain (raw/bna.json > committed site/data/bna_scores.json > None). But the
     committed file itself follows the osm_trails invariant (never mutate data
     this run can't rebuild at least as well): only a real raw pull rewrites it.
-    Returns (bna_scores_or_None, rebuilt_from_raw).
+    raw_is_fixture (a --fixtures run's raw/bna.json) is treated as absent, same
+    as osm_trails/news elsewhere in this script. Returns
+    (bna_scores_or_None, rebuilt_from_raw).
     """
-    rebuilt = (RAW_DIR / "bna.json").exists()
-    bna = build_bna()
+    rebuilt = (RAW_DIR / "bna.json").exists() and not raw_is_fixture
+    bna = build_bna(ignore_raw=raw_is_fixture)
     if bna:
         findings.append(build_bna_finding(bna))
         if rebuilt:
@@ -101,12 +105,15 @@ def apply_bna(findings):
 
 def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
                         network_nodes, upsert_osm_trails=True,
-                        bna_scores=None, upsert_bna=False):
+                        bna_scores=None, upsert_bna=False,
+                        news_items=None, proposed_projects=None):
     """Register/update the citywide_trend, main_routes, mellow_connectors,
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
     mellow_connectors, osm_trails, main_routes, network_nodes, citywide_trend,
-    ward_safety_index, ...
+    ward_safety_index, ... (plus a sixth, order-independent block at the end
+    of this function: news_items, appended last, only when this run rebuilt
+    the news layer from a real raw pull).
 
     The order these five blocks RUN in matters, not just each entry's target
     position, because later blocks anchor on ids inserted by earlier ones:
@@ -215,6 +222,27 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
                 "date_range": None}
     _upsert("network_nodes", nn_entry, anchor_ids=["citywide_trend"])
 
+    # news_items: register/update only when this run actually rebuilt the
+    # layer from a real raw pull (news_items=None otherwise — same
+    # rebuilt-this-run posture as osm_trails above). aggregate.py places it
+    # last in the sources list, so no anchor: insert at the end.
+    if news_items is not None:
+        news_entry = {"id": "news_items", "name": "News Coverage (public RSS headlines)",
+                      "tier": "real", "records": len(news_items["items"]),
+                      "date_range": None}
+        _upsert("news_items", news_entry, anchor_ids=[])
+
+    # proposed_projects: rebuilt together with news_items (it joins the
+    # roster to the fresh news matches), so it upserts under the same
+    # rebuilt-this-run condition. Appended last, after news_items.
+    if proposed_projects is not None:
+        pp_entry = {"id": "proposed_projects",
+                    "name": "Proposed & In-Progress Bikeway Projects (curated roster)",
+                    "tier": "derived",
+                    "records": len(proposed_projects["projects"]),
+                    "date_range": None}
+        _upsert("proposed_projects", pp_entry, anchor_ids=[])
+
 
 def main():
     argparse.ArgumentParser(
@@ -223,6 +251,14 @@ def main():
 
     meta = _load("meta.json")
     guard_provenance(meta)
+
+    # Raw files left by a --fixtures run (raw/PROVENANCE says "fixtures") are
+    # synthetic — treat them as absent everywhere below, or fixture geometry/
+    # headlines/scores get re-stamped over committed real data. Computed early
+    # so every rebuild-from-raw check (osm_trails, news, bna) can use it.
+    raw_provenance_path = RAW_DIR / "PROVENANCE"
+    raw_is_fixture = (raw_provenance_path.exists()
+                      and raw_provenance_path.read_text().strip() == "fixtures")
 
     tuples = tuples_from_geojson(_load("crashes_cyclist.geojson"))
     if not tuples:
@@ -250,7 +286,7 @@ def main():
                                    as_of_date, road_coverage=road_coverage)
     # PFB BNA scorecard card (B1) — re-appended from raw pull or committed
     # bna_scores.json so the full findings rebuild doesn't drop it.
-    bna_scores_out, bna_rebuilt = apply_bna(findings)
+    bna_scores_out, bna_rebuilt = apply_bna(findings, raw_is_fixture=raw_is_fixture)
     write_json(SITE_DATA_DIR / "findings.json", findings)
 
     # Citywide monthly trend — identical assembly to aggregate.main().
@@ -291,9 +327,13 @@ def main():
     # exists (a curated_trails.geojson edit then does take effect, same as
     # before); otherwise read the committed file back as-is and feed it into
     # build_main_routes/build_network_nodes unchanged — this is what the
-    # pre-v2 script did.
+    # pre-v2 script did. raw_is_fixture (computed above) applies the same
+    # fixtures-are-absent rule here as everywhere else.
     osm_raw_path = RAW_DIR / "osm_trails.json"
-    rebuild_osm_trails = osm_raw_path.exists()
+    rebuild_osm_trails = osm_raw_path.exists() and not raw_is_fixture
+    if osm_raw_path.exists() and raw_is_fixture:
+        print(f"  osm_trails: {osm_raw_path} is from a --fixtures run — left "
+              f"committed site/data/osm_trails.geojson untouched")
     if rebuild_osm_trails:
         osm_trails = build_osm_trails_layer()
         write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails)
@@ -327,6 +367,31 @@ def main():
                                                 _load("bike_routes.geojson"))
     write_json(SITE_DATA_DIR / "mellow_connectors.geojson", mellow_connectors)
 
+    # News items: only rebuild when a real feed pull (pipeline/raw/news.json,
+    # gitignored) is present — same never-downgrade invariant as osm_trails
+    # above (build_news_items with no raw file would replace a committed real
+    # list with an honest-but-empty one).
+    news_raw_path = RAW_DIR / "news.json"
+    news_items = None
+    proposed = None
+    if news_raw_path.exists() and raw_is_fixture:
+        print(f"  news_items: {news_raw_path} is from a --fixtures run — left "
+              f"committed site/data/news_items.json untouched")
+    elif news_raw_path.exists():
+        projects_roster = load_proposed_projects_roster()
+        news_items = build_news_items(load_main_routes_roster(), projects_roster)
+        write_json(SITE_DATA_DIR / "news_items.json", news_items)
+        # The proposed-projects file is a pure function of the checked-in
+        # roster + the news items just rebuilt, so it refreshes with them.
+        proposed = build_proposed_projects(projects_roster, news_items)
+        write_json(SITE_DATA_DIR / "proposed_projects.json", proposed)
+        print(f"  news_items: rebuilt from {news_raw_path} "
+              f"({len(news_items['items'])} items); proposed_projects: "
+              f"{len(proposed['projects'])} projects")
+    else:
+        print(f"  news_items: {news_raw_path} absent — left committed "
+              f"site/data/news_items.json and proposed_projects.json untouched")
+
     # meta.json: stamp the (possibly newer) contract version and register the
     # citywide_trend / main_routes / mellow_connectors / osm_trails /
     # network_nodes sources if this meta predates them (see upsert_meta_sources
@@ -335,7 +400,8 @@ def main():
     meta["contract_version"] = CONTRACT_VERSION
     upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
                         network_nodes, upsert_osm_trails=rebuild_osm_trails,
-                        bna_scores=bna_scores_out, upsert_bna=bna_rebuilt)
+                        bna_scores=bna_scores_out, upsert_bna=bna_rebuilt,
+                        news_items=news_items, proposed_projects=proposed)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")
