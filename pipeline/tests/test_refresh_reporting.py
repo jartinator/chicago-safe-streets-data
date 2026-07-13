@@ -230,6 +230,19 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     (site_data_dir / "ward_311.json").write_text(json.dumps({
         "data_tier": "proxy", "note": "test 311 note.", "wards": [],
     }))
+    # Like aldermen.json above: emit_api's council/ layer (Phase 3) loads
+    # these two unconditionally, but refresh_reporting.main() itself never
+    # builds them (they're live-pulled elsewhere, same DECISIONS.md #8
+    # rationale) — seed minimal fixtures here too.
+    (site_data_dir / "council_records.json").write_text(json.dumps({
+        "data_tier": "real", "topic_tag_tier": "derived",
+        "note": "test council records note.", "records": [],
+    }))
+    (site_data_dir / "hearings.json").write_text(json.dumps({
+        "as_of": "2020-01-15T00:00:00+00:00", "structured_data_available": True,
+        "note": "test hearings note.", "committees": [], "source": "test",
+        "data_tier": "real",
+    }))
     # emit_api (run at the end of refresh_reporting.main) loads these two
     # unconditionally, same as every other site/data file — mirror them here.
     (site_data_dir / "news_items.json").write_text(json.dumps({

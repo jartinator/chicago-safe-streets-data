@@ -111,6 +111,48 @@ _ENDPOINTS = [
             "What is the current status of the 606 / Bloomingdale Trail extension?",
         ],
     },
+    {
+        "path": "routes/index.json",
+        "description": ("All 21 Chicago main bike routes' mileage-by-grade "
+                        "breakdown, crash totals, and protected-lane share, plus "
+                        "network interchange points, with links to each route's "
+                        "full segment-level detail file."),
+        "example_questions": [
+            "Which Chicago main bike routes are the most protected?",
+            "How many miles of the 606 / Bloomingdale Trail are off-street?",
+        ],
+    },
+    {
+        "path": "council/index.json",
+        "description": ("City Council committee hearings relevant to bike/street "
+                        "safety and a derived summary of tagged legislative "
+                        "activity, with links to the full records and aldermen "
+                        "files."),
+        "example_questions": [
+            "Has Chicago City Council held any recent hearings on bike safety?",
+            "How much bike-safety legislation has City Council introduced?",
+        ],
+    },
+    {
+        "path": "council/records.json",
+        "description": ("Chicago City Council matters (ordinances, resolutions) "
+                        "matched to bike/street-safety topics, with sponsors, "
+                        "wards, status, and a link to the official record."),
+        "example_questions": [
+            "What bike-safety ordinances has City Council introduced recently?",
+            "Which alderman sponsored the most bike-safety legislation?",
+        ],
+    },
+    {
+        "path": "council/aldermen.json",
+        "description": ("Current 50-ward alderman roster with contact info, each "
+                        "one's council bike-safety sponsorship record (where an "
+                        "exact match exists) and ward menu-spending proxy."),
+        "example_questions": [
+            "Who is my alderman and what's their bike-safety record?",
+            "Has my alderman sponsored any bike-safety legislation?",
+        ],
+    },
 ]
 
 
@@ -455,7 +497,262 @@ def build_proposed_api(meta, proposed_projects):
     }
 
 
-def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=None):
+GRADE_LEGEND = {
+    "protected": "physically separated (post/curb-protected lane or barrier)",
+    "paint": "painted or buffered lane — paint & signs only, no separation",
+    "mellow": "low-stress neighborhood greenway / traffic-calmed street",
+    "offstreet": "off-street trail, fully separated from traffic",
+    "none": "no bike facility (shared lane / sharrow / gap)",
+}
+
+
+def build_routes_index(meta, main_routes, network_nodes):
+    """routes/index.json: the 21 main-route report cards verbatim (source
+    order preserved — never re-sorted) plus a detail_url per line, plus the
+    network's interchange nodes (point wayfinding markers, not line
+    geometry — allowed in this API). `network_nodes`' per-node data_tier is
+    dropped since the whole file already carries one in `_meta`.
+    """
+    lines = [{**line, "detail_url": f"{API_BASE_URL}/routes/line-{line['id']}.json"}
+             for line in main_routes["lines"]]
+
+    interchanges = [
+        {"id": n["id"], "kind": n["kind"], "lat": n["lat"], "lng": n["lng"],
+         "label": n["label"], "lines": n["lines"]}
+        for n in network_nodes["nodes"]
+    ]
+
+    envelope = _envelope(
+        meta, data_tier="derived",
+        tier_note=("line stats are derived from real CDOT segments (street lines) "
+                  "and crowdsourced OSM trail geometry (trail lines); interchanges "
+                  "are derived."),
+        human_page=f"{SITE_BASE_URL}/network.html")
+
+    return {
+        "_meta": envelope,
+        "note": main_routes["note"],
+        "grade_legend": GRADE_LEGEND,
+        "lines": lines,
+        "interchanges": interchanges,
+        "count": len(lines),
+    }
+
+
+def build_line_file(meta, line, features, network_nodes):
+    """routes/line-<id>.json: one main route's report card plus its member
+    segments, aggregated by (label, grade) where label is the street name
+    for CDOT bike-route segments or the segment_id slug for OSM trail
+    segments (which carry no street name). length_m is summed per group and
+    rounded to 1 decimal place; crashes is summed cyclist-crash-within-30m
+    counts for street segments, or `null` for trail segments — those carry
+    no crash join at all, a data gap rather than a true zero. Members are
+    sorted by length_m descending (source feature order isn't meaningful
+    once aggregated). Interchanges are filtered to nodes whose `lines` list
+    includes this line's id; a line with none gets `[]`, not an omitted key.
+    """
+    line_id = line["id"]
+    members = [f["properties"] for f in features if f["properties"]["line_id"] == line_id]
+
+    agg = {}
+    order = []
+    for props in members:
+        label = props.get("street") or props["segment_id"]
+        grade = props["grade"]
+        key = (label, grade)
+        if key not in agg:
+            has_crashes = "crashes_within_30m" in props
+            agg[key] = {"length_m": 0.0, "crashes": 0 if has_crashes else None}
+            order.append(key)
+        agg[key]["length_m"] += props["length_m"]
+        if "crashes_within_30m" in props:
+            agg[key]["crashes"] += props["crashes_within_30m"]
+
+    member_segments = [
+        {"label": label, "grade": grade, "length_m": round(vals["length_m"], 1),
+         "crashes": vals["crashes"]}
+        for (label, grade), vals in ((k, agg[k]) for k in order)
+    ]
+    member_segments.sort(key=lambda m: m["length_m"], reverse=True)
+
+    interchanges = [
+        {"id": n["id"], "label": n["label"], "lines": n["lines"]}
+        for n in network_nodes["nodes"] if line_id in n["lines"]
+    ]
+
+    envelope = _envelope(
+        meta, data_tier="derived",
+        tier_note=("line and member-segment stats are derived from real CDOT "
+                  "bike-route segments (street lines) or crowdsourced OSM trail "
+                  "geometry (trail lines)."),
+        human_page=f"{SITE_BASE_URL}/network.html")
+
+    return {
+        "_meta": envelope,
+        "id": line["id"], "name": line["name"], "termini": line["termini"],
+        "source": line["source"], "miles_total": line["miles_total"],
+        "miles_by_grade": line["miles_by_grade"],
+        # Trail lines (source=="osm_trails") carry no pct_protected/
+        # crashes_total at all in main_routes.geojson — those stats are
+        # street-only. .get(...) surfaces that honestly as null rather than
+        # KeyError-ing or fabricating a 0/None-that-looks-computed.
+        "pct_protected": line.get("pct_protected"), "crashes_total": line.get("crashes_total"),
+        "member_segments": member_segments,
+        "interchanges": interchanges,
+        "note": ("member_segments aggregate this line's published CDOT bike-route "
+                "segments (or OSM trail ways) by street and grade; crashes counts "
+                "police-reported cyclist crashes within 30 m of the segment (null "
+                "for off-street trail geometry, which carries no crash join)."),
+        "see_also": {"routes_index": f"{API_BASE_URL}/routes/index.json"},
+    }
+
+
+def build_council_index(meta, hearings, council_records):
+    """council/index.json: committee hearings (real, City Clerk eLMS) plus a
+    derived activity summary computed only over topic_relevant council
+    records — status/type breakdowns and the most recent intro date.
+    """
+    topic_records = [r for r in council_records["records"] if r["topic_relevant"]]
+
+    committees = [
+        {"committee": c["committee"], "calendar_url": c["calendar_url"],
+         "meeting_count": len(c["meetings"]), "meetings": c["meetings"]}
+        for c in hearings["committees"]
+    ]
+
+    by_status = dict(Counter(r["status"] for r in topic_records))
+    by_type = dict(Counter(r["type"] for r in topic_records))
+    most_recent_intro_date = max((r["intro_date"] for r in topic_records), default=None)
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("hearings/meetings are real (City Clerk eLMS); the activity "
+                  "summary is derived (counts over the topic-tagged council "
+                  "records, whose topic tagging is a derived best-effort "
+                  "classification)."),
+        human_page=f"{SITE_BASE_URL}/action.html")
+
+    return {
+        "_meta": envelope,
+        "hearings": {
+            "as_of": hearings["as_of"], "note": hearings["note"],
+            "structured_data_available": hearings["structured_data_available"],
+            "source": hearings["source"], "committees": committees,
+        },
+        "activity_summary": {
+            "topic_relevant_matters": len(topic_records),
+            "by_status": by_status,
+            "by_type": by_type,
+            "most_recent_intro_date": most_recent_intro_date,
+            "note": council_records["note"],
+        },
+        "records_url": f"{API_BASE_URL}/council/records.json",
+        "aldermen_url": f"{API_BASE_URL}/council/aldermen.json",
+    }
+
+
+_COUNCIL_RECORD_FIELDS = ("matter_id", "title", "type", "status", "intro_date",
+                          "sponsors", "sponsor_wards", "url", "source")
+
+
+def build_council_records_api(meta, council_records):
+    """council/records.json: every topic_relevant record, source order
+    preserved, trimmed to the 9 agent-useful fields. Drops
+    topic_relevant/topic_reason/topic_tagged_by/data_tier/topic_tag_tier —
+    that tier information lives in the envelope + note instead.
+    """
+    records = [{k: r[k] for k in _COUNCIL_RECORD_FIELDS}
+              for r in council_records["records"] if r["topic_relevant"]]
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("matter records (title/status/sponsors/dates) are real "
+                  "(Legistar + Councilmatic); topic-relevance tagging is derived "
+                  "(keyword net + classifier, best-effort)."),
+        human_page=f"{SITE_BASE_URL}/action.html")
+
+    return {
+        "_meta": envelope,
+        "as_of": meta["generated_at"],
+        "note": council_records["note"],
+        "count": len(records),
+        "records": records,
+    }
+
+
+_SAFETY_AGGREGATE_FIELDS = ("safety_sponsorships", "total_matched_sponsorships",
+                           "recorded_no_votes")
+_UNMATCHED_SPONSOR_FIELDS = ("sponsor_name", "ward") + _SAFETY_AGGREGATE_FIELDS
+
+
+def build_aldermen_api(meta, aldermen, safety_record, menu_spending):
+    """council/aldermen.json: the current 50-ward roster as the spine (order
+    preserved), each enriched with an EXACT (ward, name) safety-sponsorship
+    aggregate and a menu-spending proxy. No fuzzy matching (DECISIONS.md #8):
+    a safety_record entry whose (ward, sponsor_name) doesn't exactly match a
+    current roster (ward, alderman) pair goes to `unmatched_sponsors`
+    (which keeps sponsor_name/ward since it isn't nested under a ward
+    entry) instead of being force-attached to a ward. Each entry's
+    per-sponsor `records` list is dropped everywhere — huge, and
+    council/records.json lets an agent cross-reference by sponsor name
+    instead.
+    """
+    roster_keys = {(w["ward"], w["alderman"]) for w in aldermen["wards"]}
+
+    safety_by_key = {}
+    unmatched_sponsors = []
+    for entry in safety_record["aldermen"]:
+        key = (entry["ward"], entry["sponsor_name"])
+        if key in roster_keys:
+            safety_by_key[key] = {k: entry[k] for k in _SAFETY_AGGREGATE_FIELDS}
+        else:
+            unmatched_sponsors.append({k: entry[k] for k in _UNMATCHED_SPONSOR_FIELDS})
+
+    aldermen_out = []
+    for w in aldermen["wards"]:
+        ward = w["ward"]
+        safety = safety_by_key.get((ward, w["alderman"]))
+
+        if ward in menu_spending["wards"]:
+            menu = {**menu_spending["wards"][ward], "data_tier": menu_spending["data_tier"]}
+        else:
+            # Never fabricate zeros: absence is a data gap, not "no spending".
+            menu = {"available": False}
+
+        aldermen_out.append({
+            "ward": ward, "alderman": w["alderman"], "email": w["email"],
+            "phone": w["phone"], "website": w["website"],
+            "safety_record": safety,
+            "menu_spending": menu,
+            "detail_url": f"{API_BASE_URL}/wards/ward-{ward.zfill(2)}.json",
+        })
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("roster + contact info are real (city Ward Offices dataset); "
+                  "safety_record aggregates are derived (council sponsorship "
+                  "counts); menu_spending is a proxy."),
+        human_page=f"{SITE_BASE_URL}/action.html")
+
+    return {
+        "_meta": envelope,
+        "as_of": aldermen["as_of"],
+        "roster_note": aldermen["note"],
+        "menu_note": menu_spending["note"],
+        "safety_record_note": safety_record["note"],
+        "aldermen": aldermen_out,
+        "unmatched_sponsors": unmatched_sponsors,
+        "unmatched_note": ("Sponsors from the council safety-sponsorship aggregate "
+                          "whose (ward, name) does not exactly match the current "
+                          "Ward Offices roster — mostly former alderpeople. Listed "
+                          "verbatim, never fuzzy-matched to a current ward (see "
+                          "DECISIONS.md #8). Drop the per-sponsor matter list; "
+                          "cross-reference council/records.json by sponsor name."),
+    }
+
+
+def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=None,
+                line_files_bytes=None):
     """index.json: the discovery entry point. Hand-assembled manifest listing
     the endpoints and endpoint *families* that actually exist so far.
 
@@ -515,6 +812,23 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
                 "How many dooring crashes happened in ward 27?",
             ],
         })
+    if line_files_bytes:
+        families.append({
+            "path_template": "routes/line-{id}.json",
+            "url_template": f"{API_BASE_URL}/routes/line-{{id}}.json",
+            "count": len(line_files_bytes),
+            "example": f"{API_BASE_URL}/routes/line-milwaukee.json",
+            "bytes_approx_max": max(line_files_bytes.values()),
+            "description": ("Per-route detail: member street/trail segments "
+                            "aggregated by street and grade with length and crash "
+                            "counts, plus network interchanges on that route. id "
+                            "is the route's kebab-case slug (see routes/index.json "
+                            "for the full list)."),
+            "example_questions": [
+                "How protected is the Milwaukee Ave bike route?",
+                "Which Chicago main bike routes are the most protected?",
+            ],
+        })
 
     envelope = _envelope(
         meta, data_tier="mixed",
@@ -569,6 +883,23 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
                     "status_as_of, and status_note; coverage carries recent "
                     "news headlines about it."),
         },
+        {
+            "question": "Is the Milwaukee Avenue bike route protected?",
+            "fetch": [f"{API_BASE_URL}/routes/line-milwaukee.json"],
+            "then": ("Read pct_protected and miles_by_grade for the route-wide "
+                    "mix, or member_segments for street-by-street detail."),
+        },
+        {
+            "question": "What has the City Council done on bike safety, and who "
+                        "sponsors it?",
+            "fetch": [f"{API_BASE_URL}/council/index.json",
+                     f"{API_BASE_URL}/council/records.json",
+                     f"{API_BASE_URL}/council/aldermen.json"],
+            "then": ("Start at council/index.json for hearings and the activity "
+                    "summary, then fetch council/records.json for individual "
+                    "matters or council/aldermen.json for a given alderman's "
+                    "sponsorship record."),
+        },
     ]
 
     return {
@@ -591,8 +922,6 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
             "purposes only, has no api/v1 endpoint, and must never be cited as "
             "real."),
         "planned": [
-            "routes/ — main-route and network-map detail (not yet published)",
-            "council/ — City Council safety-legislation tracking (not yet published)",
             "schemas/ — machine-readable JSON Schemas for these endpoints (not yet published)",
         ],
     }
@@ -698,6 +1027,10 @@ def emit_all():
     crashes = _load("crashes_cyclist.geojson")
     news_items = _load("news_items.json")
     proposed = _load("proposed_projects.json")
+    main_routes = _load("main_routes.geojson")
+    network_nodes = _load("network_nodes.json")
+    council_records = _load("council_records.json")
+    hearings = _load("hearings.json")
 
     written = {}
 
@@ -768,7 +1101,34 @@ def emit_all():
     write_json(SITE_API_DIR / "proposed.json", proposed_api)
     written["proposed.json"] = (SITE_API_DIR / "proposed.json").stat().st_size
 
-    index = build_index(meta, written, ward_files_bytes, crash_files_bytes)
+    routes_index = build_routes_index(meta, main_routes, network_nodes)
+    write_json(SITE_API_DIR / "routes" / "index.json", routes_index)
+    written["routes/index.json"] = (SITE_API_DIR / "routes" / "index.json").stat().st_size
+
+    # One file per main route (21 today); every line in main_routes["lines"]
+    # gets a file, in source order (never re-sorted).
+    line_files_bytes = {}
+    for line in main_routes["lines"]:
+        line_file = build_line_file(meta, line, main_routes["features"], network_nodes)
+        path = SITE_API_DIR / "routes" / f"line-{line['id']}.json"
+        write_json(path, line_file)
+        rel = f"routes/line-{line['id']}.json"
+        written[rel] = path.stat().st_size
+        line_files_bytes[rel] = written[rel]
+
+    council_index = build_council_index(meta, hearings, council_records)
+    write_json(SITE_API_DIR / "council" / "index.json", council_index)
+    written["council/index.json"] = (SITE_API_DIR / "council" / "index.json").stat().st_size
+
+    council_records_api = build_council_records_api(meta, council_records)
+    write_json(SITE_API_DIR / "council" / "records.json", council_records_api)
+    written["council/records.json"] = (SITE_API_DIR / "council" / "records.json").stat().st_size
+
+    aldermen_api = build_aldermen_api(meta, aldermen, aldermen_safety_record, menu_spending)
+    write_json(SITE_API_DIR / "council" / "aldermen.json", aldermen_api)
+    written["council/aldermen.json"] = (SITE_API_DIR / "council" / "aldermen.json").stat().st_size
+
+    index = build_index(meta, written, ward_files_bytes, crash_files_bytes, line_files_bytes)
     write_json(SITE_API_DIR / "index.json", index)
     written["index.json"] = (SITE_API_DIR / "index.json").stat().st_size
 
