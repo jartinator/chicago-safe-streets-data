@@ -13,12 +13,14 @@ const wards = [
     ward: "42", cyclist_crashes: 1092, population: 72572, bikeway_miles: 8.18,
     crashes_per_10k_pop: 150.47, crashes_per_bikeway_mile: 133.56, comparable_danger_score: 96.0,
     crash_trend: { direction: "worsening", pct_change: 17.6 },
+    bikeway_pct_protected: 24.6, road_miles: 71.3, bikeway_pct_of_roads: 11.5,
   },
   {
     // stale/edge shape: nulls throughout (ward absent from ward_demographics.json etc.)
     ward: "10", cyclist_crashes: 87, population: null, bikeway_miles: 16.21,
     crashes_per_10k_pop: null, crashes_per_bikeway_mile: 5.37, comparable_danger_score: null,
     crash_trend: { direction: "insufficient_data", pct_change: null },
+    bikeway_pct_protected: null, road_miles: null, bikeway_pct_of_roads: null,
   },
 ];
 
@@ -43,6 +45,12 @@ assert.strictEqual(siRows[1].comparable_danger_score, null, "buildSafetyIndexRow
 assert.strictEqual(siRows[1].crashes_per_10k_pop, null, "buildSafetyIndexRows: null per-10k passes through");
 assert.strictEqual(siRows[1].trend_direction, "insufficient_data", "buildSafetyIndexRows: insufficient_data trend direction");
 assert.strictEqual(siRows[1].trend_pct_change, null, "buildSafetyIndexRows: null trend pct_change passes through");
+
+assert.strictEqual(siRows[0].bikeway_pct_protected, 24.6, "coverage: pct protected passes through");
+assert.strictEqual(siRows[0].road_miles, 71.3, "coverage: road miles passes through");
+assert.strictEqual(siRows[0].bikeway_pct_of_roads, 11.5, "coverage: pct of roads passes through");
+assert.strictEqual(siRows[1].bikeway_pct_protected, null, "coverage: null preserved (not 0)");
+assert.strictEqual(siRows[1].bikeway_pct_of_roads, null, "coverage: null preserved (not 0)");
 
 // ---- buildCouncilRows ----
 

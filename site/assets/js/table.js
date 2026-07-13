@@ -62,6 +62,9 @@ function buildSafetyIndexRows(wards) {
       population: w.population,
       trend_direction: trend.direction != null ? trend.direction : null,
       trend_pct_change: trend.pct_change != null ? trend.pct_change : null,
+      bikeway_pct_protected: w.bikeway_pct_protected != null ? w.bikeway_pct_protected : null,
+      road_miles: w.road_miles != null ? w.road_miles : null,
+      bikeway_pct_of_roads: w.bikeway_pct_of_roads != null ? w.bikeway_pct_of_roads : null,
     };
   });
 }
@@ -569,6 +572,8 @@ if (typeof document !== "undefined") {
         `<p>The danger score is the average of each ward's percentile ranks on crashes per 10k ` +
         `residents and crashes per bikeway mile — 0–100, higher = more dangerous relative to ` +
         `other wards. It compares wards to each other; it is not an absolute risk measure. ` +
+        `% protected is the protected share of the ward's on-street bikeway miles; % streets ` +
+        `w/ bikeways is the share of the ward's surface-street miles with any bike infrastructure. ` +
         `<a href="sources.html#src-ward_safety_index">Full source detail →</a></p>`;
       container.appendChild(explainer);
 
@@ -587,7 +592,8 @@ if (typeof document !== "undefined") {
       csvBtn.style.marginTop = "1rem";
       csvBtn.addEventListener("click", () => {
         const cols = ["rank", "ward", "comparable_danger_score", "cyclist_crashes",
-          "crashes_per_10k_pop", "crashes_per_bikeway_mile", "bikeway_miles", "population",
+          "crashes_per_10k_pop", "crashes_per_bikeway_mile", "bikeway_miles",
+          "bikeway_pct_protected", "road_miles", "bikeway_pct_of_roads", "population",
           "trend_direction", "trend_pct_change"];
         BSD.downloadCSV("ward_safety_index.csv", rows, cols);
       });
@@ -602,6 +608,10 @@ if (typeof document !== "undefined") {
         { key: "crashes_per_10k_pop", label: "Per 10k pop" },
         { key: "crashes_per_bikeway_mile", label: "Per bikeway mile" },
         { key: "bikeway_miles", label: "Bikeway miles" },
+        { key: "bikeway_pct_protected", label: "% protected",
+          title: "Share of the ward's on-street bikeway miles that are physically protected lanes" },
+        { key: "bikeway_pct_of_roads", label: "% streets w/ bikeways",
+          title: "Share of the ward's surface-street miles with any bike infrastructure (off-street trails excluded)" },
         { key: "population", label: "Population" },
         { key: "trend_direction", label: "Trend" },
       ];
@@ -647,6 +657,8 @@ if (typeof document !== "undefined") {
             BSD.fmt(row.crashes_per_10k_pop),
             BSD.fmt(row.crashes_per_bikeway_mile),
             BSD.fmt(row.bikeway_miles),
+            row.bikeway_pct_protected == null ? "—" : row.bikeway_pct_protected + "%",
+            row.bikeway_pct_of_roads == null ? "—" : row.bikeway_pct_of_roads + "%",
             BSD.fmt(row.population),
           ];
           plainCells.forEach(cell => {

@@ -62,6 +62,12 @@ DATASETS = {
     "red_light_cameras": "spqx-js37",  # Red Light Camera Violations
     "acs_ward": "k5pk-wpt9",       # ACS 5-Year Data by Ward - Most Recent Year (2023 remap,
                                    # pre-aggregated to wards by the city; confirmed live 2026-07-11)
+    "street_centerlines": "pr57-gg9e",  # Street Center Lines ("transportation") — the
+                                        # tabular SODA copy. The 6imu-meau map view's rows
+                                        # come back empty and its geospatial export is
+                                        # truncated server-side (verified 2026-07-12).
+                                        # 56,338 segments, last updated 2021-06; the street
+                                        # grid changes slowly, fine for a denominator.
 }
 
 # Ward Offices — the city's official roster of current alderpersons (name, email,
@@ -187,6 +193,16 @@ FACILITY_CATEGORY_MAP = {
 }
 
 FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow", "trail", "other"]
+
+# Coverage denominator: which street-centerline segments count as the city's
+# bikeable surface-street grid. CLASS: 1=expressway (cycling prohibited),
+# 2=arterial, 3=collector, 4=local, 5/7=alley-type stubs, 9=ramp,
+# 99/E/S=system artifacts, RIV=river channel. STATUS: N=in service (P=proposed,
+# V=vacated, UC/C=not usable roadway). Classes 2+3+4 with status N sum to
+# ~3,945 centerline miles — matching the city's oft-cited ~4,000 street miles
+# (verified live 2026-07-12).
+STREET_CLASSES_INCLUDED = {"2", "3", "4"}
+STREET_STATUS_INCLUDED = {"N"}
 
 # Main routes ("rail vs bus" hierarchy) — curated line roster, checked in like
 # other configs. See docs/superpowers/specs/2026-07-12-main-routes-design.md.

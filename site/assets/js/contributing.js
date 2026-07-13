@@ -15,6 +15,11 @@
       description: "The city's current bike infrastructure: protected, buffered, and painted lanes, greenways, trails."
     },
     {
+      name: "road_network.json", tier: "real",
+      title: "Street coverage", sourceId: "street_centerlines", sourceName: "Street centerlines",
+      description: "Surface-street miles citywide and per ward, plus the share of streets carrying any on-street bike infrastructure."
+    },
+    {
       name: "wards.geojson", tier: "real",
       title: "Ward boundaries & crash totals", sourceId: "wards", sourceName: "Wards",
       description: "Official 2023 ward boundaries with each ward's crash counts attached."
