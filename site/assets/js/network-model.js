@@ -64,6 +64,17 @@
     return groups;
   }
 
+  // Node visibility/declutter zoom thresholds (spec §5): interchanges read
+  // at city scale; orientation points wait for street level. Corridor labels
+  // for the demoted local network share the orientation threshold, and
+  // street-line-name labels (collision-prone downtown) share the interchange
+  // threshold — trails stay labeled at every zoom.
+  const ZOOM = {
+    interchangeNodes: 11,
+    lineLabels: 11,
+    corridorLabels: 13,
+  };
+
   // Default overlay ids enabled when network.html has no ?overlays= param.
   // Spec §5: quality (border) defaults off; connecting/mellow/nodes default on.
   const DEFAULT_OVERLAYS = ["connecting", "mellow", "nodes"];
@@ -216,6 +227,7 @@
   const api = {
     flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
     groupByCorridor,
+    ZOOM,
     DEFAULT_OVERLAYS, parseOverlays, serializeOverlays,
     GRADE_COLORS, LOCAL_STYLE, CONNECTING_TRAIL_STYLE,
     LINE_COLORS, FALLBACK_LINE_COLOR, lineStyle, qualityCasingStyle,

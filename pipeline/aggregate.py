@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 import geopandas as gpd
 from shapely.geometry import Point, shape, LineString, MultiLineString
+from shapely.ops import unary_union
 
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
@@ -226,12 +227,29 @@ def build_corridors(routes_gj, crashes):
     return out
 
 
+# Local equirectangular approximation for Chicago's latitude (~41.85N). Single shared
+# definition for build_intersections' crash-cluster grid math and build_network_nodes'
+# merge-distance node clustering (_meters_apart below) — both used to hard-code their
+# own copy of these constants.
+_LAT_M_PER_DEG = 111_320.0
+_LON_M_PER_DEG = 83_000.0
+
+
+def _deg_to_m(dlat, dlon):
+    """Convert a (delta-lat, delta-lon) degree offset to (dy_m, dx_m) meters, via the
+    shared equirectangular approximation above. Building-block for both callers: used
+    directly by build_intersections' grid-cell keys, and by _meters_apart's distance
+    formula for build_network_nodes' clustering."""
+    return dlat * _LAT_M_PER_DEG, dlon * _LON_M_PER_DEG
+
+
 def build_intersections(crashes, cell_m=100):
     """Grid-cluster crash points (~cell_m cells) and emit the top hotspots."""
     cells = defaultdict(list)
     for c in crashes:
         lat, lng = float(c["latitude"]), float(c["longitude"])
-        key = (round(lat * 111_320 / cell_m), round(lng * 83_000 / cell_m))
+        y_m, x_m = _deg_to_m(lat, lng)
+        key = (round(y_m / cell_m), round(x_m / cell_m))
         cells[key].append(c)
     out = []
     for recs in cells.values():
@@ -265,6 +283,14 @@ def build_findings(tuples, corridors, wards_gj, as_of_date):
     return build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date)
 
 
+def _lengths_m(geometries):
+    """Metric length (meters) of each shapely geometry, via the same OUTPUT_CRS ->
+    METRIC_CRS (UTM-16N) reprojection every trail/route length in this module uses.
+    Shared by build_osm_trails, build_mellow, and build_curated_trails, which each
+    used to inline this GeoDataFrame-roundtrip idiom separately."""
+    return gpd.GeoDataFrame(geometry=list(geometries), crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+
+
 def build_mellow(raw_gj):
     """Tag Mellow Bike Map's features with segment ids, lengths, and data_tier.
 
@@ -276,7 +302,7 @@ def build_mellow(raw_gj):
     """
     gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in raw_gj["features"]],
                            crs=OUTPUT_CRS)
-    lengths = gdf.to_crs(METRIC_CRS).geometry.length
+    lengths = _lengths_m(gdf.geometry)
     feats = []
     for f, geom, length in zip(raw_gj["features"], gdf.geometry, lengths):
         route_type = (f.get("properties") or {}).get("type") or "unknown"
@@ -334,7 +360,7 @@ def build_osm_trails(raw):
     for name in names:
         parts = by_name[name]  # each part has >=2 coords (filtered above)
         shapes.append(LineString(parts[0]) if len(parts) == 1 else MultiLineString(parts))
-    lengths = gpd.GeoDataFrame(geometry=shapes, crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+    lengths = _lengths_m(shapes)
 
     feats = []
     for name, geom, length in zip(names, shapes, lengths):
@@ -368,7 +394,7 @@ def build_curated_trails(curated_gj):
     if not feats_in:
         return {"type": "FeatureCollection", "features": []}
     shapes = [shape(f["geometry"]) for f in feats_in]
-    lengths = gpd.GeoDataFrame(geometry=shapes, crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+    lengths = _lengths_m(shapes)
     feats = []
     for f, length in zip(feats_in, lengths):
         props = dict(f.get("properties") or {})
@@ -583,71 +609,10 @@ def _line_id_to_name_and_order(main_routes_gj):
     return id_to_name, id_to_order
 
 
-def _geometry_segments(geometry):
-    """Flatten a LineString/MultiLineString geometry into consecutive-vertex
-    ((lon, lat), (lon, lat)) segment pairs for exact intersection math."""
-    gtype = geometry.get("type")
-    if gtype == "LineString":
-        parts = [geometry["coordinates"]]
-    elif gtype == "MultiLineString":
-        parts = geometry["coordinates"]
-    else:
-        return []
-    segs = []
-    for coords in parts:
-        for a, b in zip(coords, coords[1:]):
-            segs.append(((a[0], a[1]), (b[0], b[1])))
-    return segs
-
-
-def _bboxes_overlap(p1, p2, p3, p4):
-    """Cheap axis-aligned pre-filter before the full intersection solve below."""
-    ax0, ax1 = (p1[0], p2[0]) if p1[0] <= p2[0] else (p2[0], p1[0])
-    ay0, ay1 = (p1[1], p2[1]) if p1[1] <= p2[1] else (p2[1], p1[1])
-    bx0, bx1 = (p3[0], p4[0]) if p3[0] <= p4[0] else (p4[0], p3[0])
-    by0, by1 = (p3[1], p4[1]) if p3[1] <= p4[1] else (p4[1], p3[1])
-    return ax0 <= bx1 and bx0 <= ax1 and ay0 <= by1 and by0 <= ay1
-
-
-def _segment_intersection(p1, p2, p3, p4):
-    """Exact 2-D intersection point of segments p1->p2 and p3->p4, or None.
-
-    Points are (lon, lat) tuples; the math is plain Cartesian line-segment
-    intersection (cross-product / parametric form) — scale- and unit-invariant,
-    so doing it directly in lng/lat is correct for a yes/no + location
-    crossing test (unlike a length computation, which needs a projected CRS).
-    None covers parallel/collinear segments and crossings outside either
-    segment's span. Endpoint-inclusive (small epsilon) so two lines that meet
-    exactly at a shared vertex still register as an interchange.
-    """
-    if not _bboxes_overlap(p1, p2, p3, p4):
-        return None
-    (x1, y1), (x2, y2) = p1, p2
-    (x3, y3), (x4, y4) = p3, p4
-    dx1, dy1 = x2 - x1, y2 - y1
-    dx2, dy2 = x4 - x3, y4 - y3
-    denom = dx1 * dy2 - dy1 * dx2
-    if abs(denom) < 1e-18:
-        return None
-    t = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / denom
-    u = ((x3 - x1) * dy1 - (y3 - y1) * dx1) / denom
-    eps = 1e-9
-    if -eps <= t <= 1 + eps and -eps <= u <= 1 + eps:
-        return (x1 + t * dx1, y1 + t * dy1)
-    return None
-
-
-# Local equirectangular approximation for Chicago's latitude (~41.85N), matching
-# the constants build_intersections() already uses for its grid-cluster cell math.
-_LAT_M_PER_DEG = 111_320.0
-_LON_M_PER_DEG = 83_000.0
-
-
 def _meters_apart(latlon1, latlon2):
     lat1, lon1 = latlon1
     lat2, lon2 = latlon2
-    dy = (lat2 - lat1) * _LAT_M_PER_DEG
-    dx = (lon2 - lon1) * _LON_M_PER_DEG
+    dy, dx = _deg_to_m(lat2 - lat1, lon2 - lon1)
     return (dx * dx + dy * dy) ** 0.5
 
 
@@ -698,15 +663,14 @@ _NODE_MERGE_PAD_LON_DEG = 150 / _LON_M_PER_DEG
 _NODE_MERGE_PAD_LAT_DEG = 150 / _LAT_M_PER_DEG
 
 
-def _line_bbox(segs):
-    """(min_lon, min_lat, max_lon, max_lat) over every vertex in segs, padded by
-    the 150 m node-merge distance. None for an empty segment list."""
-    lons = [pt[0] for seg in segs for pt in seg]
-    lats = [pt[1] for seg in segs for pt in seg]
-    if not lons:
+def _line_bbox(geom):
+    """(min_lon, min_lat, max_lon, max_lat) shapely .bounds of geom, padded by the
+    150 m node-merge distance. None for an empty/None geometry."""
+    if geom is None or geom.is_empty:
         return None
-    return (min(lons) - _NODE_MERGE_PAD_LON_DEG, min(lats) - _NODE_MERGE_PAD_LAT_DEG,
-            max(lons) + _NODE_MERGE_PAD_LON_DEG, max(lats) + _NODE_MERGE_PAD_LAT_DEG)
+    min_lon, min_lat, max_lon, max_lat = geom.bounds
+    return (min_lon - _NODE_MERGE_PAD_LON_DEG, min_lat - _NODE_MERGE_PAD_LAT_DEG,
+            max_lon + _NODE_MERGE_PAD_LON_DEG, max_lat + _NODE_MERGE_PAD_LAT_DEG)
 
 
 def _line_bboxes_disjoint(b1, b2):
@@ -714,47 +678,79 @@ def _line_bboxes_disjoint(b1, b2):
     return b1[2] < b2[0] or b2[2] < b1[0] or b1[3] < b2[1] or b2[3] < b1[1]
 
 
+def _crossing_points(geom):
+    """Yield (lon, lat) crossing points out of a two-line shapely .intersection() result.
+
+    Point/MultiPoint contribute their coordinates directly — an ordinary crossing or a
+    shared vertex touch. A LineString/MultiLineString result means the two lines run
+    collinear along a shared block (e.g. two roster lines both claiming an overlapping
+    stretch of the same street); each such part contributes its true midpoint (by
+    length, via shapely's interpolate), one node per overlap. The old hand-rolled
+    segment-intersection math had no equivalent for this case and documented it as a
+    known miss. GeometryCollection (a pair can mix point touches and collinear
+    overlaps at once) is unpacked recursively. Any other geometry type (e.g. an empty
+    result) yields nothing.
+    """
+    if geom is None or geom.is_empty:
+        return
+    gtype = geom.geom_type
+    if gtype == "Point":
+        yield (geom.x, geom.y)
+    elif gtype == "MultiPoint":
+        for p in geom.geoms:
+            yield (p.x, p.y)
+    elif gtype == "LineString":
+        mid = geom.interpolate(0.5, normalized=True)
+        yield (mid.x, mid.y)
+    elif gtype == "MultiLineString":
+        for part in geom.geoms:
+            mid = part.interpolate(0.5, normalized=True)
+            yield (mid.x, mid.y)
+    elif gtype == "GeometryCollection":
+        for part in geom.geoms:
+            yield from _crossing_points(part)
+
+
 def build_network_nodes(main_routes_gj, orientation_points):
     """Interchange + orientation nodes for the network map (spec §7,
     docs/superpowers/specs/2026-07-12-network-map-distinction.md).
 
-    Interchanges are derived: every pair of distinct line_ids among
-    main_routes_gj["features"]' member geometries is checked for exact 2-D
-    segment intersections (pure python — no new deps). Raw intersection
-    points within 150 m of each other merge into one node at their centroid,
-    collecting every line_id involved; only merged points where >=2 distinct
-    lines meet are emitted as nodes. Orientation points are curated wayfinding
-    labels appended verbatim after the interchanges, tier derived, lines
-    always empty (they aren't derived from any line's geometry).
+    Interchanges are derived: each line_id's member feature geometries are merged
+    (shapely unary_union) into one geometry per line, and every pair of distinct
+    lines is checked via shapely .intersection() for crossing points (see
+    _crossing_points — ordinary crossings, shared-vertex touches, and collinear
+    shared-block overlaps all contribute a point). Raw crossing points within 150 m
+    of each other merge into one node at their centroid, collecting every line_id
+    involved; only merged points where >=2 distinct lines meet are emitted as nodes.
+    Orientation points are curated wayfinding labels appended verbatim after the
+    interchanges, tier derived, lines always empty (they aren't derived from any
+    line's geometry).
 
-    Before the O(segments_a * segments_b) inner loop for a pair of lines, a
-    cheap line-level bbox prefilter (each line's overall bbox, computed once
-    and padded by the 150 m merge distance) skips the pair entirely when the
-    boxes can't overlap — most roster line pairs are nowhere near each other,
-    so this cuts the dominant cost on the full network without changing which
-    intersections are found.
+    Before the .intersection() call for a pair of lines, a cheap line-level bbox
+    prefilter (each line's overall shapely .bounds, computed once and padded by the
+    150 m merge distance) skips the pair entirely when the boxes can't overlap —
+    most roster line pairs are nowhere near each other, so this cuts the dominant
+    cost on the full network without changing which intersections are found.
     """
     id_to_name, id_to_order = _line_id_to_name_and_order(main_routes_gj)
 
-    segs_by_line = defaultdict(list)
+    geoms_by_line = defaultdict(list)
     for f in main_routes_gj.get("features", []):
         line_id = f["properties"]["line_id"]
-        segs_by_line[line_id].extend(_geometry_segments(f["geometry"]))
+        geoms_by_line[line_id].append(shape(f["geometry"]))
 
-    line_ids = sorted(segs_by_line)  # deterministic pairing order
-    line_bboxes = {lid: _line_bbox(segs_by_line[lid]) for lid in line_ids}
+    line_ids = sorted(geoms_by_line)  # deterministic pairing order
+    line_geom = {lid: unary_union(geoms_by_line[lid]) for lid in line_ids}
+    line_bboxes = {lid: _line_bbox(line_geom[lid]) for lid in line_ids}
     raw_points = []  # (lat, lon, {line_id, line_id})
     for i, a in enumerate(line_ids):
         for b in line_ids[i + 1:]:
             bbox_a, bbox_b = line_bboxes[a], line_bboxes[b]
             if bbox_a is None or bbox_b is None or _line_bboxes_disjoint(bbox_a, bbox_b):
                 continue
-            for p1, p2 in segs_by_line[a]:
-                for p3, p4 in segs_by_line[b]:
-                    hit = _segment_intersection(p1, p2, p3, p4)
-                    if hit is not None:
-                        lon, lat = hit
-                        raw_points.append((lat, lon, {a, b}))
+            inter = line_geom[a].intersection(line_geom[b])
+            for lon, lat in _crossing_points(inter):
+                raw_points.append((lat, lon, {a, b}))
 
     interchanges = []
     if raw_points:
