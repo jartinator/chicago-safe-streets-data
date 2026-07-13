@@ -181,6 +181,10 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     exercising the full real dataset.
     """
     line = {"type": "LineString", "coordinates": [[-87.65, 41.90], [-87.65, 41.91]]}
+    # crashes_cyclist.geojson features are Points (not lines like the network
+    # geometry above) — emit_api's crash slices read geometry.coordinates as
+    # a single [lon, lat] pair.
+    point = {"type": "Point", "coordinates": [-87.65, 41.90]}
 
     (site_data_dir / "meta.json").write_text(json.dumps({
         "provenance": "socrata", "contract_version": "1.9", "sources": [],
@@ -188,9 +192,10 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     }))
     (site_data_dir / "crashes_cyclist.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [
-            {"type": "Feature", "geometry": line, "properties": {
-                "date": "2020-01-15T00:00:00", "injury_severity": "incapacitating",
-                "hit_and_run": False, "dooring": False, "ward": "1"}},
+            {"type": "Feature", "geometry": point, "properties": {
+                "crash_id": "a" * 128, "date": "2020-01-15T00:00:00",
+                "injury_severity": "incapacitating", "hit_and_run": False,
+                "dooring": False, "street": "100 N TEST ST", "ward": "1"}},
         ]}))
     (site_data_dir / "bikeway_mileage_series.json").write_text(json.dumps({
         "series": [{"date": "2020-01-01", "by_category": {"protected": 5.0, "painted": 2.0},
@@ -204,7 +209,26 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
         ]}))
     (site_data_dir / "findings.json").write_text(json.dumps([]))
     (site_data_dir / "ward_safety_index.json").write_text(json.dumps({
+        "data_tier": "derived", "note": "test ward safety index note.",
         "wards": [{"ward": "1"}],
+    }))
+    # emit_api's wards layer additionally reads these four files (not
+    # touched by refresh_reporting.main() itself — DECISIONS.md #8 keeps
+    # alderman matching manual/live-pulled, not offline-computed here).
+    (site_data_dir / "aldermen.json").write_text(json.dumps({
+        "as_of": "2020-01-15T00:00:00+00:00", "source": "test", "data_tier": "real",
+        "note": "test aldermen note.", "lookup_url": "https://example.org",
+        "wards": [{"ward": "1", "alderman": "Test Alder", "email": "a@x.gov",
+                  "phone": "111", "website": "https://x.example"}],
+    }))
+    (site_data_dir / "aldermen_safety_record.json").write_text(json.dumps({
+        "data_tier": "derived", "note": "test safety record note.", "aldermen": [],
+    }))
+    (site_data_dir / "menu_spending.json").write_text(json.dumps({
+        "data_tier": "proxy", "note": "test menu spending note.", "wards": {},
+    }))
+    (site_data_dir / "ward_311.json").write_text(json.dumps({
+        "data_tier": "proxy", "note": "test 311 note.", "wards": [],
     }))
     (site_data_dir / "bike_routes.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [],
