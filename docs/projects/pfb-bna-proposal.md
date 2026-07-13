@@ -3,8 +3,9 @@
 Builds on the source evaluation in
 `docs/research/followups/peopleforbikes-bna-evaluation.md` (access verified
 2026-07-13: unauthenticated JSON APIs + public GeoJSON file store). This
-document says what we would *build*. Status: **draft, under user-testing
-validation** — see `docs/research/user-needs/validation/pfb-bna/`.
+document says what we would *build*. Status: **validated 2026-07-13** by a six-persona re-run of the
+user-needs study machinery — see the Validation outcome section below and
+`docs/research/user-needs/validation/pfb-bna/VERDICT.md`.
 
 ## What the source gives us, in one breath
 
@@ -86,9 +87,20 @@ Minneapolis, Seattle) with scores from the same run. No extra pulls.
   that shape; access framing only.
 - No third overlapping geometry layer on the maps.
 
-## Validation
+## Validation outcome (2026-07-13)
 
-Persona re-run (6 of the 9 agents from the user-needs study: US, ADV,
-WARD, CDOT, RIDER, ORG) reacting to this proposal element by element.
-Verdicts land in `docs/research/user-needs/validation/pfb-bna/VERDICT.md`
-and gate which elements advance to implementation.
+Six-persona re-run (US, ADV, WARD, CDOT, RIDER, ORG) reacting element by
+element; full transcripts, memos, and synthesis in
+`docs/research/user-needs/validation/pfb-bna/`.
+
+| Element | Verdict | Required changes (abridged) |
+|---|---|---|
+| B1 scorecard | **Advance with changes** | Never standalone: ward detail adjacent, reconciliation sentence vs OYL's own crash trend (ADV), context on the "36" average (US), anti-discouragement copy for residents (RIDER). |
+| B2 ward access | **Advance with changes** | Ward page + one-pager only — **no sortable table column** (WARD: sortability, not wording, makes a ranking); differential-by-neighborhood OSM disclosure covering both failure directions (ORG); show block distribution, not just the average (US); neighborhood-name plain sentences (RIDER); read-aloud test with real humans before launch (ORG). |
+| B3 stress cross-check | **Advance with changes** | Strongest element across all audiences. Two-surface rule: disagreements published on expert surfaces (US, ORG kill conditions), one adjudicated conservative view on resident surfaces (RIDER kill condition); OSM-artifact triage + documented correction path before any per-segment public flag (CDOT kill condition); internal QA and aggregate findings before per-segment naming; disclose buffer-match error. |
+| B4 peer strip | **Killed** | Unanimous ignore, 6/6, every altitude. Peer scores stay one API call away if a press-kit need ever materializes. |
+
+Cross-cutting: OSM currency is the master caveat (version + run date +
+uneven-mapping disclosure on every BNA surface); every BNA number obeys
+the P1 anti-disinvestment copy rule; B1 can ship now, B2/B3 wait on the
+PFB license answer. The license ask goes out regardless of build order.
