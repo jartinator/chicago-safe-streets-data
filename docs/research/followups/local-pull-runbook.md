@@ -53,7 +53,7 @@ done
 column. If the dataset ID errors, search the portal for "FOIA Request Log -
 Transportation".) Prior granted requests = precedent to cite in the letter;
 prior denials = wording to avoid. Note findings in `docs/foia/log.md`, then
-send `docs/foia/cdot-counter-data.md` after its checklist.
+send `docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md` after its checklist.
 
 ## Order of operations this week
 
@@ -61,4 +61,4 @@ send `docs/foia/cdot-counter-data.md` after its checklist.
 2. Run §1 (refresh) — unblocks real numbers for PR B review.
 3. Run §2 + §3 (5 min), finish the letter's checklist, file the FOIA.
 4. Submit the Strava Metro application
-   (`strava-metro-application.md`).
+   (`docs/outbox/2026-07-13--exposure-data--strava-metro--application.md`).

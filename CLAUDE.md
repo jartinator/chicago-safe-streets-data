@@ -22,3 +22,21 @@ another chat is already live in this exact folder. When you see that warning:
 The guard only **warns** — it never blocks you. It's on you (and the user) to
 move. A warning that names a *different* folder than the one you're editing is
 not a collision; only same-folder warnings matter.
+
+## Human-task tracking & the outbox (binding for every session)
+
+Two standing conventions; follow them **as you work**, not as cleanup:
+
+1. **Tracker issue #33** ("Human action items — running tracker") is the
+   canonical list of tasks only a human can do. Whenever your work creates,
+   changes, or completes such a task — a letter that needs sending, an
+   application to submit, a contact to make — update #33 in the same
+   session: right section, `[initiative]` prefix, link to the artifact.
+   When the human reports something sent/answered, check the box and update
+   the artifact's front matter (and `docs/foia/log.md` for FOIA) in one pass.
+2. **Every pre-drafted outbound message lives in `docs/outbox/`** — FOIA
+   letters, partnership emails, applications, nudges. Naming, front matter
+   (status/initiative/to/sent/tracking), lifecycle, and the initiative-key
+   registry are defined in `docs/outbox/README.md`. Never leave send-ready
+   correspondence embedded in another doc; program docs link to the outbox
+   file instead.
