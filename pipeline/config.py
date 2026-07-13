@@ -124,6 +124,19 @@ ELMS_COMMITTEES_OF_INTEREST = [
     "Committee on Transportation and Public Way",
 ]
 
+# PeopleForBikes BNA / City Ratings (bna.peopleforbikes.org) — third-party annual
+# bike-network score computed from OpenStreetMap (crowdsourced tier). Unauthenticated
+# JSON API, verified 2026-07-13; access notes and full endpoint survey in
+# docs/research/followups/peopleforbikes-bna-evaluation.md. Only the citywide
+# scorecard (B1) ships from these endpoints; the block/ways file store is the
+# gated B2/B3 work (docs/superpowers/plans/2026-07-13-pfb-bna-b2-*.md, -b3-*.md).
+# Non-fatal like Mellow — the host may be egress-blocked in pipeline environments,
+# in which case aggregate.py keeps shipping the committed bna_scores.json.
+BNA_API_URL = "https://bna.peopleforbikes.org/api"
+BNA_CITY_RATINGS_PATH = "city-ratings/United%20States/Illinois/Chicago"
+# PFB's "large city" population floor, used for the peer-context rank.
+BNA_LARGE_CITY_MIN_POPULATION = 300_000
+
 # Ward Wise (Chi Hack Night, wardwisechicago.org) — volunteer project structuring
 # Aldermanic Menu Program spending (city only publishes PDFs). States it has a
 # public JSON API; every endpoint returned HTTP 500 during verification
@@ -261,7 +274,7 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.11"
+CONTRACT_VERSION = "1.12"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM

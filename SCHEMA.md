@@ -770,3 +770,49 @@ or renamed anywhere, so `CONTRACT_VERSION` stays `"1.11"`. `meta.json`'s
 entries plus their three member features (289 features total), and
 `network_nodes.json` picks up one derived interchange (North Branch Trail ×
 Green Bay Trail), 42 → 43 nodes.
+
+## Contract v1.12 changes (PFB BNA citywide scorecard)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.12"`. Additive only
+(validated proposal B1 — `docs/projects/pfb-bna-proposal.md`; six-persona
+verdict in `docs/research/user-needs/validation/pfb-bna/VERDICT.md`).
+
+- **`bna_scores.json` (new) — tier crowdsourced.** PeopleForBikes' Bicycle
+  Network Analysis citywide scorecard for Chicago, shaped by
+  `pipeline/bna_metrics.py` from the three unauthenticated JSON endpoints
+  `pull_bna.py` pulls (endpoint survey:
+  `docs/research/followups/peopleforbikes-bna-evaluation.md`):
+
+  ```
+  { data_tier: "crowdsourced",
+    as_of,                     // latest analysis date, YYYY-MM-DD
+    version,                   // PFB analysis version, e.g. "26.05"
+    score,                     // 0-100 citywide BNA score
+    subscores: { people?, opportunity?, core_services?,
+                 recreation?, retail?, transit? },   // 0-100 each
+    low_stress_miles, high_stress_miles,
+    history: [{ version, score, as_of }],            // ascending by as_of
+    context: { cities_rated, mean_score,             // over all rated cities
+               large_city_count, large_city_rank,    // population >= floor
+               large_city_min_population },
+    note }                     // OSM-currency disclosure, travels with the data
+  ```
+
+  Source-priority chain (`aggregate.build_bna`, mirrored by
+  `refresh_reporting.apply_bna`): `raw/bna.json` (live pull) → the committed
+  `bna_scores.json` (bna.peopleforbikes.org may be egress-blocked; an offline
+  or blocked run never drops or degrades the layer) → absent entirely. Only a
+  run with a real raw pull rewrites the file or its meta entry.
+
+- **`findings.json`** — gains the `bna-score` finding (tier crowdsourced),
+  appended after the crash-derived cards. Its copy rules are contract-adjacent
+  (verdict B1): national-average context in the description, a
+  network-not-crashes reconciliation sentence, and a caveat carrying the
+  analysis version/date, the OSM-currency disclosure, and the
+  "not a reason not to ride" anti-discouragement line. Omitted entirely when
+  no BNA source is available (fresh fork, host unreachable, file deleted).
+
+- **`meta.json`** — `sources` gains `bna_scores` (tier crowdsourced, inserted
+  between `osm_trails` and `main_routes`; `records` = number of analysis
+  years in `history`, `date_range` = first analysis date → `as_of`) — only on
+  runs that actually pulled (meta never claims a source ran when it didn't).

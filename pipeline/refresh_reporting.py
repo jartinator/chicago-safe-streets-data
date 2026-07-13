@@ -36,7 +36,8 @@ import json
 import emit_api
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
-                       build_mellow_connectors, mellow_connector_records)
+                       build_mellow_connectors, mellow_connector_records, build_bna)
+from bna_metrics import build_bna_finding
 from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -79,8 +80,28 @@ def _load(name):
     return json.loads((SITE_DATA_DIR / name).read_text())
 
 
+def apply_bna(findings):
+    """Append the PFB BNA finding, rewriting bna_scores.json only from a raw pull.
+
+    findings.json is fully rebuilt by this script, so the BNA card must be
+    re-appended from whatever source exists — aggregate.build_bna's priority
+    chain (raw/bna.json > committed site/data/bna_scores.json > None). But the
+    committed file itself follows the osm_trails invariant (never mutate data
+    this run can't rebuild at least as well): only a real raw pull rewrites it.
+    Returns (bna_scores_or_None, rebuilt_from_raw).
+    """
+    rebuilt = (RAW_DIR / "bna.json").exists()
+    bna = build_bna()
+    if bna:
+        findings.append(build_bna_finding(bna))
+        if rebuilt:
+            write_json(SITE_DATA_DIR / "bna_scores.json", bna)
+    return bna, rebuilt
+
+
 def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes, upsert_osm_trails=True):
+                        network_nodes, upsert_osm_trails=True,
+                        bna_scores=None, upsert_bna=False):
     """Register/update the citywide_trend, main_routes, mellow_connectors,
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
@@ -174,6 +195,21 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
                      "date_range": None}
         _upsert("osm_trails", osm_entry, anchor_ids=["main_routes"])
 
+    # bna_scores: aggregate.py's order places it between osm_trails and
+    # main_routes. Running this block after the osm_trails block, anchored on
+    # "main_routes" (guaranteed present from step 2), lands it exactly there.
+    # Same rebuild gating as osm_trails: only a run that actually re-pulled
+    # (upsert_bna=True) registers/updates the entry.
+    if upsert_bna and bna_scores:
+        bna_entry = {"id": "bna_scores",
+                     "name": "PeopleForBikes BNA City Rating (citywide scorecard)",
+                     "tier": "crowdsourced",
+                     "records": len(bna_scores.get("history") or []),
+                     "date_range": ([bna_scores["history"][0]["as_of"], bna_scores["as_of"]]
+                                    if bna_scores.get("history") and bna_scores.get("as_of")
+                                    else None)}
+        _upsert("bna_scores", bna_entry, anchor_ids=["main_routes"])
+
     nn_entry = {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
                 "tier": "derived", "records": len(network_nodes["nodes"]),
                 "date_range": None}
@@ -212,6 +248,9 @@ def main():
     old_ids = [f["id"] for f in _load("findings.json")]
     findings = build_findings_core(tuples, by_category_miles, corridors, ward_counts,
                                    as_of_date, road_coverage=road_coverage)
+    # PFB BNA scorecard card (B1) — re-appended from raw pull or committed
+    # bna_scores.json so the full findings rebuild doesn't drop it.
+    bna_scores_out, bna_rebuilt = apply_bna(findings)
     write_json(SITE_DATA_DIR / "findings.json", findings)
 
     # Citywide monthly trend — identical assembly to aggregate.main().
@@ -295,7 +334,8 @@ def main():
     # underlying pull, which this script does not redo.
     meta["contract_version"] = CONTRACT_VERSION
     upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes, upsert_osm_trails=rebuild_osm_trails)
+                        network_nodes, upsert_osm_trails=rebuild_osm_trails,
+                        bna_scores=bna_scores_out, upsert_bna=bna_rebuilt)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")
