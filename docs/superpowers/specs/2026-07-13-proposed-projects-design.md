@@ -117,10 +117,29 @@ UI — model tests for the new card data and ward filter.
 - Suburban projects; roster criteria: Chicago bikeway/trail proposals with
   an official record and active coverage.
 
-## Validation gate before implementation
+## Validation outcome (persona research, 2026-07-13)
 
-Same four persona subjects as rounds past. Probes: value of curated status
-+ coverage trail; whether curated status reads as OYL claiming insider
-knowledge; staleness tolerance (status_as_of visible); roster-selection
-fairness (whose projects make the list); where they'd expect it. Kill/trim
-per verdicts.
+Four interviews with the same subjects
+(docs/research/proposed-routes-news/interviews/, synthesis in
+`_synthesis-memo.md`): **4/4 conditional use — ship v1**, with binding
+amendments:
+
+- **A. Citation-visible status.** Every status requires ≥1 citation,
+  rendered next to the status word ("per CDOT project page · May 2026"),
+  not buried in data. A status without a primary-source link is "a rumor
+  with better formatting."
+- **B. Which-kind specifics.** `status_note` must disambiguate the small
+  vocabulary (which pot of money "funded in part" means, which kind of
+  "blocked"); status citations prefer official documents over news echoing
+  the same vague word.
+- **C. Published roster criteria, anti-coverage-bias.** Criteria in the
+  dataset note + sources card: official record exists, outcome unresolved,
+  geographic spread with under-covered South/West projects deliberately
+  included; news volume is explicitly not a criterion; additions invited
+  via the repo.
+- **D. Empty coverage state names what it measures:** "No recent news
+  coverage found — that measures press attention, not project activity."
+- **E. Existing surfaces only.** Action-page citywide card + ward-report
+  "Proposed here" line. No standalone page. (No map lines — accepted 4/4.)
+- **F. Inline honesty framing.** "Volunteer-reviewed · the official page is
+  authoritative" sits with the status, so stale can't masquerade as true.
