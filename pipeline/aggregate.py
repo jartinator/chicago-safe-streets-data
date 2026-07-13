@@ -686,6 +686,11 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
                     })
         else:  # osm_trails
             tokens = [t.lower() for t in line["name_tokens"]]
+            # exclude_tokens veto a name_tokens match: OSM has distinct
+            # trails whose names embed a roster trail's name (e.g. the
+            # "Evanston Lakefront Trail" is not Chicago's Lakefront Trail,
+            # which ends at Ardmore).
+            exclude = [t.lower() for t in line.get("exclude_tokens", [])]
             for f in trail_feats:
                 p = f["properties"]
                 seg_id = p.get("segment_id")
@@ -693,6 +698,8 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
                     continue
                 trail_name = (p.get("name") or "").lower()
                 if not any(tok in trail_name for tok in tokens):
+                    continue
+                if any(tok in trail_name for tok in exclude):
                     continue
                 claimed_trails.add(seg_id)
                 length_m = float(p.get("length_m") or 0.0)

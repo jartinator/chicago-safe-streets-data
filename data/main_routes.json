@@ -104,7 +104,8 @@
       "name": "Lakefront Trail",
       "termini": "Ardmore ⇄ 71st",
       "source": "osm_trails",
-      "name_tokens": ["lakefront"]
+      "name_tokens": ["lakefront"],
+      "exclude_tokens": ["evanston"]
     },
     {
       "id": "bloomingdale",

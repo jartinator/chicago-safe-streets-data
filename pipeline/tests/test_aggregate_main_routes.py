@@ -199,6 +199,20 @@ def test_trail_matching_by_name_token():
     assert "crashes_within_30m" not in lf["properties"]
 
 
+def test_trail_exclude_tokens_veto_a_name_match():
+    # OSM's "Evanston Lakefront Trail" is a distinct suburban trail whose
+    # name embeds "lakefront" — the roster's exclude_tokens must keep it
+    # out of Chicago's Lakefront Trail line (which ends at Ardmore).
+    trails = _fc([_trail("Lakefront Trail"),
+                  _trail("Evanston Lakefront Trail")])
+    out = aggregate.build_main_routes(_fc([]), trails, ROSTER)
+    member_names = {f["properties"]["segment_id"] for f in out["features"]}
+    assert "osm-trail-lakefront-trail" in member_names
+    assert "osm-trail-evanston-lakefront-trail" not in member_names
+    # the excluded trail's mileage stays out of the line stats too
+    assert _lines_by_id(out)["lakefront"]["miles_total"] == 10.0
+
+
 def test_stub_trails_produce_no_data_lines_with_zero_features():
     out = aggregate.build_main_routes(_fc([]), STUB_TRAILS, ROSTER)
     assert out["features"] == []
