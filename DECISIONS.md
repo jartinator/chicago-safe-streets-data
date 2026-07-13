@@ -243,3 +243,82 @@ environment forced a deviation. Newest last.
     street lines are `derived` (computed from CDOT's `real` segments), trail
     lines are `crowdsourced` (OSM) throughout, and crowdsourced trail mileage
     never enters real/derived-tier statistics.
+
+20. **The network map gets its own visual language, split from the transportation
+    map.** `network.html` and `index.html` had converged: both rendered
+    grade-colored main routes with white casing, both rendered crash severity
+    rings and obstruction heat, and the network map's white "nodes" were crash
+    clusters wearing a station icon — grade-coloring each *segment* of a route
+    also made a line impossible to trace end to end. Per
+    `docs/superpowers/specs/2026-07-12-network-map-distinction.md`, the network
+    map now answers one question only ("how do I get from area A to area B"),
+    with exactly three, independently toggleable concerns: **major routes**
+    render one **solid color per named line** (`LINE_COLORS`) instead of
+    per-segment grade coloring, so a route reads as one continuous line;
+    **connecting routes** split into two independent, overlappable levels
+    (connecting infrastructure, mellow routes) instead of one bundled toggle;
+    and **route quality** becomes an opt-in **border** layer (`quality` toggle)
+    that reuses the old always-on casing treatment, now grade-colored and
+    optional rather than a constant white outline. All safety data is removed
+    outright from `network.html` — crash rings, obstruction heat, the dooring
+    notice, and the crash-cluster stations are gone; that analysis lives
+    exclusively on `index.html`, which is unchanged. The white nodes are now
+    real: **interchanges**, derived from pairwise geometric intersections
+    between roster line segments (merged within 150 m, emitted only where ≥ 2
+    distinct lines meet), plus curated **orientation points** (hand-picked
+    major-road crossings for wayfinding) — both served from the new
+    `site/data/network_nodes.json`.
+    - **Curated-trails fallback.** The redesign also re-cut the roster to 21
+      lines (dropping the loop/belmont/31st fragments; adding California, King
+      Drive, Lawrence, Roosevelt, Marquette, and 83rd), which meant the 5
+      roster trail lines needed real geometry to render as major routes. But
+      this environment's egress policy blocks the Overpass API — confirmed:
+      proxy 403 on both `overpass-api.de` and the kumi.systems mirror, and
+      Socrata is blocked too — so `pull_osm_trails.py` can't run here. Per
+      owner approval, `data/curated_trails.geojson` ships hand-traced
+      approximate geometry (~100-300 m tolerance) at `crowdsourced` tier, the
+      same provenance posture as the mellow routes (#7/#16). `aggregate.py`
+      and `refresh_reporting.py` both prefer a real Overpass pull over it the
+      moment `pipeline/raw/osm_trails.json` exists — nothing needs to be
+      deleted or edited in the curated file to "upgrade" away from it.
+
+21. **Road-network coverage denominator: `pr57-gg9e`, classes 2/3/4 + status
+    N.** "What share of the street grid has any bike infrastructure" needs a
+    denominator — total surface-street miles — which the bikeway layers alone
+    can't supply. The canonical-looking Street Center Lines map view
+    (`6imu-meau`) turned out to be broken: its SODA rows come back empty and
+    its geospatial export is server-side truncated (verified 2026-07-12). The
+    tabular SODA copy (`pr57-gg9e`, "transportation") is the same underlying
+    layer and works. Its `class`/`status` codes needed filtering down to what
+    actually counts as "the street grid a bike could plausibly use":
+    `STREET_CLASSES_INCLUDED = {"2", "3", "4"}` (arterial/collector/local; class
+    1 is expressway, cycling-prohibited; 5/7 are alley-type stubs; 9 is ramp;
+    99/E/S are system artifacts; RIV is river channel — all excluded) and
+    `STREET_STATUS_INCLUDED = {"N"}` (in service; excludes proposed/vacated/
+    not-usable-roadway rows). That filter sums to ~3,945 centerline miles,
+    matching the city's oft-cited "~4,000 street miles" figure closely enough
+    to trust the denominator (verified live 2026-07-12). Both sides of every
+    coverage ratio (`road_network.json`'s `pct_with_bike_infra`, each ward's
+    `bikeway_pct_of_roads`) are projected centerline lengths (`METRIC_CRS`),
+    and the `trail` facility category is excluded from every numerator — the
+    same off-street-trails-are-not-roads rule used elsewhere in this project
+    (protected-share, main routes) applies here too.
+
+22. **Synthetic data never renders on a primary map surface, and synthetic
+    renders are watermarked.** The user-needs study
+    (`docs/research/user-needs/REPORT-ux-proposal.md`, P2) found the mock
+    obstruction layer was the site's single biggest trust liability: all nine
+    research personas distrusted it, and the recurring failure mode is that
+    **tier badges don't survive screenshots** — a cropped image of a
+    plausible-looking heat layer circulates as if real. So: the obstruction
+    layer is removed from `index.html` entirely and lives only on
+    `obstructions-preview.html`, behind a click-through gate that repeats on
+    every visit (no storage — staff turn over, warnings must not expire with
+    a cookie), with a diagonal "SYNTHETIC" watermark baked into the map
+    render itself so any screenshot self-identifies. Companion calls from the
+    same study, shipped together: every CSV export carries `#`-comment
+    provenance lines (dataset, tier, as-of, caveat); findings cards carry
+    their own as-of line; every page footer shows the last-refresh date; and
+    the ward "danger score" is re-presented as a **concern rank** (relative,
+    higher = worse) with its two component rates first-class and its math on
+    the new `methodology.html`.

@@ -1,0 +1,12 @@
+[
+  {"label": "Milwaukee / North / Damen", "lat": 41.9103, "lng": -87.6773},
+  {"label": "Logan Square",              "lat": 41.9296, "lng": -87.7074},
+  {"label": "Halsted / Fullerton",       "lat": 41.9254, "lng": -87.6484},
+  {"label": "Lawrence / Western",        "lat": 41.9686, "lng": -87.6889},
+  {"label": "Halsted / Roosevelt",       "lat": 41.8672, "lng": -87.6465},
+  {"label": "MLK / 35th",                "lat": 41.8308, "lng": -87.6169},
+  {"label": "Halsted / 63rd",            "lat": 41.7796, "lng": -87.6448},
+  {"label": "Vincennes / 79th",          "lat": 41.7509, "lng": -87.6350},
+  {"label": "Kedzie / Marquette",        "lat": 41.7715, "lng": -87.7027},
+  {"label": "83rd / Cottage Grove",      "lat": 41.7434, "lng": -87.6046}
+]

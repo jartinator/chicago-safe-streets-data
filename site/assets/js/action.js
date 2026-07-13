@@ -395,7 +395,7 @@
     const { entry, rank, total } = result;
     const score = entry.comparable_danger_score;
     const scoreDisplay = score == null ? "—" : `${BSD.esc(score)} / 100`;
-    html += `<div>Danger score: <span class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</span> <span class="muted">(vs other wards — higher is worse)</span></div>`;
+    html += `<div>Concern rank: <span class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</span> <span class="muted">(vs other wards — higher is worse)</span></div>`;
     html += `<div class="muted" style="margin-bottom: .6rem;">Rank ${BSD.fmt(rank)} of ${BSD.fmt(total)} wards</div>`;
 
     html += `<div class="kv-list">`;
@@ -426,6 +426,10 @@
 
     if (matched) {
       html += `<div><span class="stat">${BSD.fmt(matched.safety_sponsorships)}</span> <span class="muted">tagged bike/traffic-safety sponsorships (all records on file)</span></div>`;
+      // Loud, not a footnote (P6b): presenting sponsorship as a voting record
+      // is the exact error that burns advocates in front of an alderperson.
+      html += `<div class="notice" style="margin:.4rem 0;">Sponsorships are <strong>not votes</strong> — ` +
+        `most safety measures pass by voice vote with no individual record.</div>`;
 
       const noVotes = matched.recorded_no_votes ?? 0;
       if (noVotes > 0) {
@@ -494,7 +498,7 @@
     html += `<dt><strong>Cyclist crashes / injuries / deaths</strong> — real · from official records</dt>`;
     html += dd(`Chicago Police crash reports via the Chicago Data Portal. Recent months are provisional; dooring is structurally undercounted. ${BSD.esc(crashWindow)}`, "crashes");
 
-    html += `<dt><strong>Danger score</strong> — derived · calculated by us</dt>`;
+    html += `<dt><strong>Concern rank</strong> — derived · calculated by us</dt>`;
     html += dd(`Formula: average of this ward's percentile ranks on crashes per 10k residents (${per10k}) and crashes per bikeway mile (${perMile}). A relative ranking across wards, not absolute risk.`, "ward_safety_index");
 
     html += `<dt><strong>311 bike complaints</strong> — proxy · a related signal</dt>`;
@@ -538,6 +542,7 @@
       `<div class="report-section">${aldermanRecordSectionHTML(ward)}</div>` +
       `<div class="report-section">${menuSpendingSectionHTML(ward)}</div>` +
       `<footer class="report-foot">` +
+      `<a class="btn primary" href="ward.html?ward=${encodeURIComponent(ward)}">Printable one-pager →</a> ` +
       `<button type="button" class="linklike" id="ward-provenance">Where does this data come from?</button>` +
       `</footer>`;
 

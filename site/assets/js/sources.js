@@ -46,6 +46,20 @@
       metaId: "bike_routes"
     },
     {
+      id: "street_centerlines",
+      name: "Street Center Lines (surface-street grid)",
+      short: "Street centerlines",
+      origin: "Chicago Data Portal (Socrata)",
+      tier: "real",
+      cadence: "weekly pipeline run",
+      description: "The city's surface-street centerline grid, filtered to classes 2/3/4 (arterial/collector/local) and status N (in service) — expressways, ramps, alleys, and river channels excluded. Used as the surface-street denominator for the ward coverage metrics (% of streets with bikeways).",
+      limitations: "The underlying layer was last updated by the city in June 2021 — new streets built since then aren't reflected. No install-date field; this is a snapshot of current-state geometry, not a historical record.",
+      links: [
+        { text: "Street Center Lines", url: "https://data.cityofchicago.org/d/pr57-gg9e" }
+      ],
+      metaId: "street_centerlines"
+    },
+    {
       id: "sr311",
       name: "311 Service Requests (bike-related)",
       short: "311 requests",
@@ -82,8 +96,9 @@
       tier: "mock",
       cadence: "regenerated each pipeline run",
       description: "Reports of bike lanes blocked by cars, debris, or other obstructions. This is entirely synthetic MOCK data for schema demonstration — Bike Lane Uprising has no public API yet.",
-      limitations: "Entirely synthetic — no real reports. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
+      limitations: "Entirely synthetic — no real reports, so it never renders on the main maps; it lives only on a gated, watermarked demo page. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
       links: [
+        { text: "Synthetic demo page (gated)", url: "obstructions-preview.html" },
         { text: "Bike Lane Uprising", url: "https://www.bikelaneuprising.com" }
       ],
       metaId: "obstructions"
@@ -149,7 +164,7 @@
       origin: "Computed from CDOT Bike Routes + OSM trails roster",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "The ~18 marquee corridors drawn heavy on the map. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland) whose color varies along its length by facility grade (off-street / protected / painted / none). The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
+      description: "21 marquee corridors (16 street lines + 5 trail lines) drawn heavy on the map. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland) whose color varies along its length by facility grade (off-street / protected / painted / none). The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
       limitations: "the roster is editorial: we chose which corridors count as main routes; segment grades and mileage are computed from source data each run. Gaps in a corridor stay holes in the line — geometry is never fabricated. Street lines are derived from CDOT data; trail lines are crowdsourced OSM data; the two never blend.",
       links: [
         { text: "Roster config (data/main_routes.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/main_routes.json" }
@@ -157,13 +172,27 @@
       metaId: "main_routes"
     },
     {
+      id: "network_nodes",
+      name: "Network nodes (interchanges + orientation points)",
+      short: "Network nodes",
+      origin: "Computed from Main Routes geometry + a curated orientation-points list",
+      tier: "derived",
+      cadence: "weekly pipeline run",
+      description: "Derived interchange nodes computed from geometric intersections between main-route lines (merged within 150 m, only where 2+ lines meet) plus hand-picked orientation points (data/orientation_points.json) for wayfinding on the network map.",
+      limitations: "Interchanges only appear where two or more main-route lines actually cross in main_routes.geojson's geometry — a real-world crossing that isn't on the roster produces no node. Orientation points are a hand-picked list, not derived from any line's geometry, so their coverage is only as complete as that list.",
+      links: [
+        { text: "Orientation points config (data/orientation_points.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/orientation_points.json" }
+      ],
+      metaId: "network_nodes"
+    },
+    {
       id: "ward_safety_index",
-      name: "Ward Safety Index (comparable danger score)",
-      short: "Danger score",
+      name: "Ward Safety Index (concern rank)",
+      short: "Concern rank",
       origin: "Computed from crash data + ACS 5-Year by Ward population + CDOT Bike Routes",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "A 0-100 relative danger ranking per ward, blending crashes-per-capita and crashes-per-bikeway-mile so wards can be compared fairly rather than by raw crash count, plus year-over-year crash trend and bikeway-mile growth trend.",
+      description: "A 0-100 relative concern rank per ward (higher = worse), blending crashes-per-capita and crashes-per-bikeway-mile so wards can be compared fairly rather than by raw crash count, plus year-over-year crash trend and bikeway-mile growth trend.",
       limitations: "A relative ranking across wards, not an absolute risk measure. Population comes from Census ACS estimates (sampling error applies). Infrastructure growth trend is null until at least two dated bike-route snapshots exist.",
       links: [
         { text: "ACS 5-Year Data by Ward", url: "https://data.cityofchicago.org/Community-Economic-Development/ACS-5-Year-Data-by-Ward-Most-Recent-Year/k5pk-wpt9" }

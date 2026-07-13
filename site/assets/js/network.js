@@ -2,7 +2,7 @@
   BSD.initPage("network.html");
 
   // Paper canvas, not a basemap: this screen renders real geometry
-  // metro-style (thick casing + line, station markers, corridor labels)
+  // metro-style (thick casing + line, node markers, corridor labels)
   // rather than a distorted schematic (DECISIONS.md #10).
   document.getElementById("map").style.background = "#f7f9fb";
 
@@ -12,17 +12,20 @@
     center: [41.8781, -87.6298],
   });
 
-  const STATION_MIN_ZOOM = 12;
-  const LABEL_MIN_ZOOM = 13;
+  // Node/label visibility thresholds live in network-model.js as BSDNet.ZOOM
+  // (spec §5): interchanges read at city scale, orientation points only once
+  // you're zoomed to street level. Corridor labels for the demoted local
+  // network share the orientation threshold.
 
   // Explicit panes (not DOM insertion order) so z-order is stable no matter
-  // which toggles are on at load vs. flipped later: wards backdrop -> local
-  // ("bus") background network -> mellow background -> heat halos -> casing
-  // -> planned casing -> lines -> planned lines -> crash rings -> stations.
+  // which toggles are on at load vs. flipped later. Bottom -> top per spec
+  // §5: wards backdrop -> local ("bus") background network -> mellow
+  // background -> connecting trails -> quality border -> major-route casing
+  // -> major-route lines -> planned casing -> planned lines -> nodes.
   // Labels use Leaflet's own tooltipPane, already above every overlay pane.
   const PANE_ORDER = [
-    "wardsPane", "localPane", "mellowPane", "trailsPane", "heatPane", "casingPane",
-    "plannedCasingPane", "linesPane", "plannedPane", "crashesPane", "stationsPane",
+    "wardsPane", "localPane", "mellowPane", "connectingTrailsPane", "qualityPane",
+    "casingPane", "linesPane", "plannedCasingPane", "plannedPane", "nodesPane",
   ];
   PANE_ORDER.forEach((name, i) => {
     map.createPane(name);
@@ -30,26 +33,27 @@
   });
 
   const layers = {
-    casing: L.layerGroup(),
-    infrastructure: L.layerGroup(), // roster ("rail") lines, heavy metro treatment
-    local: L.layerGroup(), // everything else: thin muted "bus" background network
-    stations: L.layerGroup(), // hotspot stations on/near roster lines
-    stationsLocal: L.layerGroup(), // hotspot stations off the roster (declutter later)
-    labels: L.layerGroup(), // corridor labels for local streets (LABEL_MIN_ZOOM+)
-    lineLabels: L.layerGroup(), // roster line-name labels, always on
-    obstructions: L.layerGroup(), // obstruction heat halos
-    crashes: L.layerGroup(),
-    mellow: L.layerGroup(),
+    casing: L.layerGroup(),        // major routes: white casing, always on
+    lines: L.layerGroup(),         // major routes: solid line color, always on
+    quality: L.layerGroup(),       // quality border: grade-colored casing, toggle "quality"
+    local: L.layerGroup(),         // connecting infrastructure: demoted local network
+    connectingTrails: L.layerGroup(), // connecting infrastructure: non-roster OSM trails
+    mellow: L.layerGroup(),        // mellow routes, toggle "mellow"
+    nodesInterchange: L.layerGroup(), // interchange nodes, toggle "nodes" + z >= 11
+    nodesOrientation: L.layerGroup(), // orientation nodes, toggle "nodes" + z >= 13
+    labels: L.layerGroup(),        // corridor labels for local streets, z >= 13
+    lineLabelsTrails: L.layerGroup(),  // trail-line name labels: peripheral, shown at all zooms
+    lineLabelsStreets: L.layerGroup(), // street-line name labels: central and collision-prone, z >= BSDNet.ZOOM.lineLabels
     planned: L.layerGroup(),
     plannedCasing: L.layerGroup(),
-    trails: L.layerGroup(),
   };
 
   let routeFeatures = [];
-  let obstructionPoints = [];
   let selectedRoute = null;
 
-  // URL state: ?overlays=heat,crashes,stations,mellow,planned&corridor=<street>&line=<roster line id>
+  // URL state: ?overlays=quality,connecting,mellow,nodes,planned&corridor=<street>&line=<roster line id>
+  // Legacy overlay ids from the pre-distinction map (heat, crashes, stations,
+  // trails) are simply never checked below, so they're ignored silently.
   const state = {
     overlays: BSDNet.parseOverlays(BSD.qs().get("overlays")),
     corridor: BSD.qs().get("corridor") || "",
@@ -63,36 +67,43 @@
     });
   }
 
-  // Load data
-  const [bikeRoutes, obstructionsData, mellowData, plannedData, osmTrailsData, mainRoutesData, wardsData, stations] = await Promise.all([
+  // Load data. network_nodes.json is a new pipeline product (spec §7) that
+  // may 404 while the concurrent aggregate.py work lands — degrade to an
+  // empty node set rather than failing the whole page.
+  async function loadNodesSafe() {
+    try {
+      return await BSD.loadJSON("data/network_nodes.json");
+    } catch (e) {
+      return { nodes: [] };
+    }
+  }
+
+  const [bikeRoutes, mellowData, plannedData, osmTrailsData, mainRoutesData, wardsData, nodesData] = await Promise.all([
     BSD.loadJSON("data/bike_routes.geojson"),
-    BSD.loadJSON("data/obstructions_mock.geojson"),
     BSD.loadJSON("data/mellow_routes.geojson"),
     BSD.loadJSON("data/planned_routes.geojson"),
     BSD.loadJSON("data/osm_trails.geojson"),
     BSD.loadJSON("data/main_routes.geojson"),
     BSD.loadJSON("data/wards.geojson"),
-    BSD.loadJSON("data/intersections.json"),
+    loadNodesSafe(),
   ]);
 
   routeFeatures = bikeRoutes.features;
-  obstructionPoints = obstructionsData.features;
 
-  // Count obstructions per route segment and group segments into corridors —
-  // pure helpers live in network-model.js so Task 3's overlays can reuse them.
-  const obstructionCounts = BSDNet.countObstructions(routeFeatures, obstructionPoints);
+  // Group local-network segments into corridors — a pure helper so it stays
+  // Node-testable in network-model.js.
   const corridorGroups = BSDNet.groupByCorridor(routeFeatures);
 
-  // Main routes ("rail vs bus", spec §7): the curated roster keeps the heavy
-  // metro treatment, colored by facility grade along the line; every other
-  // segment demotes to a thin muted background network.
+  // Major routes (spec §2/§5): the curated roster gets the heavy metro
+  // treatment, one solid color per named line; every other segment demotes
+  // to the connecting-infrastructure level.
   const rosterIndex = BSDNet.buildRosterIndex(mainRoutesData.features);
   const linesMeta = BSDNet.linesById(mainRoutesData.lines);
   const { roster: rosterFeatures, local: localFeatures } = BSDNet.splitByRoster(routeFeatures, rosterIndex);
   // Roster trail members live only in main_routes.geojson (their source is
-  // osm_trails, not bike_routes). Currently empty while osm_trails is a stub —
-  // every trail line carries no_data: true — but the render path below is the
-  // same one the first live OSM pull will light up.
+  // osm_trails, not bike_routes). Empty until osm_trails is populated —
+  // every trail line carries no_data: true until then — but the render path
+  // below is the same one the first live trail pull lights up.
   const rosterTrailFeatures = mainRoutesData.features.filter(
     (f) => (linesMeta.get(f.properties.line_id) || {}).source === "osm_trails"
   );
@@ -102,29 +113,53 @@
   // context only, not a data layer with its own toggle or tier badge.
   L.geoJSON(wardsData, { pane: "wardsPane", style: { color: "#e2e8f0", weight: 1, fill: false } }).addTo(map);
 
-  // Draw roster ("rail") lines: white casing underneath, grade-colored line
-  // on top, so overlapping routes read as distinct "lines" like a transit
-  // diagram. Grade colors per spec §4; `none` grade renders dashed.
-  rosterFeatures.forEach((feature) => {
+  // Draw one major route member: white casing (always on), solid line-color
+  // stroke (always on), and a grade-colored quality-border casing (toggle
+  // "quality", off by default) — the layer stack that reads as "solid line
+  // color, thin white rim, grade-colored border" per spec §6.
+  function drawMajorRoute(feature, lineId, grade, onClick) {
     const latlngs = BSDNet.toLatLngs(feature.geometry);
+
+    const qualityCasing = L.polyline(latlngs, {
+      pane: "qualityPane", lineCap: "round", lineJoin: "round",
+      ...BSDNet.qualityCasingStyle(grade),
+    });
+    layers.quality.addLayer(qualityCasing);
+
     const casing = L.polyline(latlngs, {
-      pane: "casingPane", weight: 10, color: "#ffffff", opacity: 1, lineCap: "round", lineJoin: "round",
+      pane: "casingPane", weight: 9, color: "#ffffff", opacity: 1, lineCap: "round", lineJoin: "round",
     });
     layers.casing.addLayer(casing);
 
-    const grade = rosterIndex.get(String(feature.properties.segment_id)).grade;
     const line = L.polyline(latlngs, {
-      pane: "linesPane", lineCap: "round", lineJoin: "round", opacity: 1,
-      ...BSDNet.gradeLineStyle(grade),
+      pane: "linesPane", lineCap: "round", lineJoin: "round",
+      ...BSDNet.lineStyle(lineId),
     });
-    line.on("click", () => showDetail(feature));
     line.feature = feature;
-    layers.infrastructure.addLayer(line);
+    line.on("click", onClick);
+    layers.lines.addLayer(line);
+  }
+
+  rosterFeatures.forEach((feature) => {
+    const entry = rosterIndex.get(String(feature.properties.segment_id));
+    drawMajorRoute(feature, entry.lineId, entry.grade, () => showDetail(feature));
   });
 
-  // Draw the local ("bus") network: everything not on the roster, 1.5px
-  // muted, no casing, no stations/labels until zoomed past LABEL_MIN_ZOOM.
-  // Still clickable so corridor detail (and ?corridor= links) work citywide.
+  // Roster OSM trails get the identical major-route treatment. Their stats
+  // stay crowdsourced-tier — the detail panel says so. The pipeline
+  // (pipeline/aggregate.py) always stamps trail members' grade as
+  // "offstreet"; the `|| "offstreet"` fallback here is purely defensive.
+  rosterTrailFeatures.forEach((feature) => {
+    drawMajorRoute(
+      feature, feature.properties.line_id, feature.properties.grade || "offstreet",
+      () => showRosterTrailDetail(feature)
+    );
+  });
+
+  // Connecting infrastructure (toggle "connecting", default on): the local
+  // ("bus") background network — everything not on the roster — plus
+  // non-roster named OSM trails. Real toggle; the old disabled local-toggle
+  // checkbox becomes this live one.
   localFeatures.forEach((feature) => {
     const line = L.polyline(BSDNet.toLatLngs(feature.geometry), {
       pane: "localPane", lineCap: "round", lineJoin: "round", ...BSDNet.LOCAL_STYLE,
@@ -134,49 +169,29 @@
     layers.local.addLayer(line);
   });
 
-  // Roster OSM trails get the heavy treatment too (offstreet grade color).
-  // Their stats stay crowdsourced-tier — the detail panel says so.
-  rosterTrailFeatures.forEach((feature) => {
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
-    const casing = L.polyline(latlngs, {
-      pane: "casingPane", weight: 10, color: "#ffffff", opacity: 1, lineCap: "round", lineJoin: "round",
+  if ((osmTrailsData.features || []).length === 0) {
+    // Mirror the mellow-layer stub pattern: no trail data yet, so drop an
+    // invisible marker in the layer (keeps it non-empty for Leaflet) and let
+    // the toggle handler / detail panel show the same no_data_yet notice.
+    const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
+    noDataMarker._trailsStub = true;
+    layers.connectingTrails.addLayer(noDataMarker);
+  } else {
+    osmTrailsData.features.forEach((feature) => {
+      // Roster trails are already drawn heavy as major routes above — don't
+      // double-draw them in the connecting-infrastructure layer.
+      if (rosterIndex.has(String(feature.properties.segment_id))) return;
+      const line = L.polyline(BSDNet.toLatLngs(feature.geometry), {
+        pane: "connectingTrailsPane", lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTING_TRAIL_STYLE,
+      });
+      line.on("click", () => showDetail({ ...feature, _trail: true }));
+      layers.connectingTrails.addLayer(line);
     });
-    layers.casing.addLayer(casing);
-
-    const line = L.polyline(latlngs, {
-      pane: "linesPane", lineCap: "round", lineJoin: "round", opacity: 1,
-      ...BSDNet.gradeLineStyle(feature.properties.grade || "offstreet"),
-    });
-    line.on("click", () => showRosterTrailDetail(feature));
-    layers.infrastructure.addLayer(line);
-  });
-
-  // Draw station markers (crash hotspot clusters from data/intersections.json).
-  // Stations on/near a roster line keep metro prominence (STATION_MIN_ZOOM);
-  // stations out on the local network wait for LABEL_MIN_ZOOM like the labels.
-  const rosterBBoxes = rosterFeatures.concat(rosterTrailFeatures)
-    .map((f) => BSDNet.getPaddedBBox(f.geometry, 0.001));
-  const { onRoster: rosterStations, offRoster: localStations } = BSDNet.splitStations(stations, rosterBBoxes);
-  function makeStationMarker(s) {
-    const marker = L.circleMarker([s.lat, s.lng], {
-      pane: "stationsPane",
-      radius: 4 + Math.min(s.crashes, 12) * 0.5,
-      color: "#1a2330",
-      weight: 2.5,
-      fillColor: "#ffffff",
-      fillOpacity: 1,
-    });
-    marker.bindTooltip(BSD.esc(s.label), {
-      permanent: true, direction: "top", className: "station-label", offset: [0, -8],
-    });
-    marker.on("click", () => showStationDetail(s));
-    return marker;
   }
-  rosterStations.forEach((s) => layers.stations.addLayer(makeStationMarker(s)));
-  localStations.forEach((s) => layers.stationsLocal.addLayer(makeStationMarker(s)));
 
-  // Roster line-name labels: one permanent tooltip per line at the midpoint
-  // of its longest member — always visible, these ARE the metro map.
+  // Major-route line-name labels: one permanent tooltip per line at the
+  // midpoint of its longest member — always visible, tinted to the line's
+  // color so the label reads as part of the line, not generic chrome.
   function labelAnchor(feats) {
     const longest = feats.reduce((best, f) =>
       (f.properties.length_m || 0) > (best.properties.length_m || 0) ? f : best
@@ -190,10 +205,14 @@
       ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineMeta.id)
       : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineMeta.id);
     if (members.length === 0) return; // no_data trail lines: nothing to label, never fabricate
+    const color = BSDNet.LINE_COLORS[lineMeta.id] || BSDNet.FALLBACK_LINE_COLOR;
     const tooltip = L.tooltip({ permanent: true, direction: "center", className: "line-label" })
       .setLatLng(labelAnchor(members))
-      .setContent(BSD.esc(lineMeta.name));
-    layers.lineLabels.addLayer(tooltip);
+      .setContent(`<span style="color:${color}">${BSD.esc(lineMeta.name)}</span>`);
+    // Trail labels sit at the city's edges and read fine citywide; the street
+    // lines cluster downtown and their labels pile up below BSDNet.ZOOM.lineLabels.
+    if (lineMeta.source === "osm_trails") layers.lineLabelsTrails.addLayer(tooltip);
+    else layers.lineLabelsStreets.addLayer(tooltip);
   });
 
   // Corridor labels for the local network: one permanent tooltip per street,
@@ -205,38 +224,6 @@
       .setLatLng(labelAnchor(feats))
       .setContent(BSD.esc(street));
     layers.labels.addLayer(tooltip);
-  });
-
-  // Draw obstruction heat: translucent color halos, sized/colored by
-  // BSDNet.heatBucket, under the casing for every segment with count >= 1.
-  routeFeatures.forEach((feature) => {
-    const count = obstructionCounts.get(feature.properties.segment_id);
-    const bucket = BSDNet.heatBucket(count);
-    if (bucket) {
-      const halo = L.polyline(
-        BSDNet.toLatLngs(feature.geometry),
-        { pane: "heatPane", color: bucket.color, weight: 16, opacity: 0.45, lineCap: "round" }
-      );
-      layers.obstructions.addLayer(halo);
-    }
-  });
-
-  // Draw crash severity overlay: metro-legible rings, not filled dots.
-  routeFeatures.forEach((feature) => {
-    const crashes = feature.properties.crashes_within_30m;
-    if (crashes >= 5) {
-      const coords = BSDNet.flattenCoords(feature.geometry);
-      const mid = coords[Math.floor(coords.length / 2)];
-      const marker = L.circleMarker([mid[1], mid[0]], {
-        pane: "crashesPane",
-        radius: Math.min(4 + crashes / 3, 14),
-        color: "#dc2626",
-        weight: 2,
-        fillColor: "#dc2626",
-        fillOpacity: 0.15,
-      });
-      layers.crashes.addLayer(marker);
-    }
   });
 
   if (mellowData.features.length === 0) {
@@ -251,34 +238,18 @@
     mellowData.features.forEach((feature) => {
       const line = L.polyline(
         BSDNet.toLatLngs(feature.geometry),
-        { color: "#ec4899", weight: 2, opacity: 0.6, renderer: mellowRenderer, pane: "mellowPane" }
+        // Kept faint (w1.5 op0.4) so the citywide view reads major-routes-first;
+        // mellow is background texture, not a competing network.
+        { color: "#ec4899", weight: 1.5, opacity: 0.4, renderer: mellowRenderer, pane: "mellowPane" }
       );
       layers.mellow.addLayer(line);
-    });
-  }
-
-  if (osmTrailsData.features.length === 0) {
-    const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
-    noDataMarker._trailsStub = true;
-    layers.trails.addLayer(noDataMarker);
-  } else {
-    osmTrailsData.features.forEach((feature) => {
-      // Roster trails are already drawn heavy with the main routes above —
-      // don't double-draw them in this overlay.
-      if (rosterIndex.has(String(feature.properties.segment_id))) return;
-      const line = L.polyline(
-        BSDNet.toLatLngs(feature.geometry),
-        { color: BSD.FACILITY_COLORS.trail, weight: 4, opacity: 0.9, lineCap: "round", pane: "trailsPane" }
-      );
-      line.on("click", () => showDetail({ ...feature, _trail: true }));
-      layers.trails.addLayer(line);
     });
   }
 
   // Planned overlay: metro "under construction" convention — dashed line in
   // the facility color with its own dashed white casing. Stub behavior is
   // unchanged: an empty planned_routes.geojson renders nothing but still
-  // shows the no_data_yet note when toggled on (Task 3 brief #2).
+  // shows the no_data_yet note when toggled on.
   if (plannedData.features.length === 0) {
     const noDataMarker = L.marker([41.8781, -87.6298], { opacity: 0 });
     noDataMarker._plannedStub = true;
@@ -302,46 +273,70 @@
     });
   }
 
-  // Always-on layers (local background beneath casing beneath colored roster
-  // lines, line-name labels on top). Toggleable overlays are mounted below
-  // from `state.overlays`.
-  layers.local.addTo(map);
+  // Nodes (spec §7): interchanges (derived intersections between distinct
+  // lines) and orientation points (curated major-road crossings). No crash
+  // scaling anywhere — these are wayfinding markers, not safety data.
+  // Interchanges get the bolder marker + hover-only tooltip (they carry
+  // their own weight at city scale); orientation points get a smaller,
+  // muted marker with a permanent label (they only appear once zoomed in,
+  // so the label can stay on without cluttering the view).
+  const NODE_MARKER_STYLE = {
+    interchange: { radius: 5, color: "#1a2330", weight: 2.5 },
+    orientation: { radius: 3.5, color: "#64748b", weight: 2 },
+  };
+  function makeNodeMarker(n) {
+    const style = NODE_MARKER_STYLE[n.kind];
+    const marker = L.circleMarker([n.lat, n.lng], {
+      pane: "nodesPane", radius: style.radius, color: style.color, weight: style.weight,
+      fillColor: "#ffffff", fillOpacity: 1,
+    });
+    const tooltipOpts = n.kind === "orientation"
+      ? { permanent: true, direction: "top", className: "node-label", offset: [0, -6] }
+      : { direction: "top", offset: [0, -8] };
+    marker.bindTooltip(BSD.esc(n.label), tooltipOpts);
+    marker.on("click", () => showNodeDetail(n));
+    return marker;
+  }
+  (nodesData.nodes || []).forEach((n) => {
+    if (n.kind === "interchange") layers.nodesInterchange.addLayer(makeNodeMarker(n));
+    else if (n.kind === "orientation") layers.nodesOrientation.addLayer(makeNodeMarker(n));
+  });
+
+  // Always-on layers (major routes: casing under colored line, line-name
+  // labels on top). Toggleable overlays are mounted below from `state.overlays`.
   layers.casing.addTo(map);
-  layers.infrastructure.addTo(map);
-  layers.lineLabels.addTo(map);
-  if (state.overlays.has("heat")) layers.obstructions.addTo(map);
-  if (state.overlays.has("crashes")) layers.crashes.addTo(map);
+  layers.lines.addTo(map);
+  layers.lineLabelsTrails.addTo(map);
+  // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
+  if (state.overlays.has("quality")) layers.quality.addTo(map);
+  if (state.overlays.has("connecting")) {
+    layers.local.addTo(map);
+    layers.connectingTrails.addTo(map);
+  }
   if (state.overlays.has("mellow")) layers.mellow.addTo(map);
-  if (state.overlays.has("trails")) layers.trails.addTo(map);
   if (state.overlays.has("planned")) {
     layers.planned.addTo(map);
     layers.plannedCasing.addTo(map);
   }
 
-  let stationsEnabled = state.overlays.has("stations");
-
-  // Zoom-dependent declutter: station markers+labels and corridor labels
-  // are dense at city scale, so they're only shown once zoomed in enough
-  // to read them. Simplest compliant approach: add/remove the whole group.
-  // The demoted local network shows no stations or labels below
-  // LABEL_MIN_ZOOM (spec §7); roster stations keep STATION_MIN_ZOOM.
+  // Zoom-dependent declutter: node markers and corridor labels are dense at
+  // city scale, so they're only shown once zoomed in enough to read them.
+  // Simplest compliant approach: add/remove the whole group. Interchange
+  // nodes read at BSDNet.ZOOM.interchangeNodes; orientation nodes and the
+  // demoted local network's corridor labels wait for BSDNet.ZOOM.corridorLabels.
+  function setLayerVisible(layer, visible) {
+    if (visible) {
+      if (!map.hasLayer(layer)) layer.addTo(map);
+    } else if (map.hasLayer(layer)) {
+      map.removeLayer(layer);
+    }
+  }
   function updateDeclutter() {
     const z = map.getZoom();
-    if (stationsEnabled && z >= STATION_MIN_ZOOM) {
-      if (!map.hasLayer(layers.stations)) layers.stations.addTo(map);
-    } else if (map.hasLayer(layers.stations)) {
-      map.removeLayer(layers.stations);
-    }
-    if (stationsEnabled && z >= LABEL_MIN_ZOOM) {
-      if (!map.hasLayer(layers.stationsLocal)) layers.stationsLocal.addTo(map);
-    } else if (map.hasLayer(layers.stationsLocal)) {
-      map.removeLayer(layers.stationsLocal);
-    }
-    if (z >= LABEL_MIN_ZOOM) {
-      if (!map.hasLayer(layers.labels)) layers.labels.addTo(map);
-    } else if (map.hasLayer(layers.labels)) {
-      map.removeLayer(layers.labels);
-    }
+    setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
+    setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z >= BSDNet.ZOOM.interchangeNodes);
+    setLayerVisible(layers.nodesOrientation, state.overlays.has("nodes") && z >= BSDNet.ZOOM.corridorLabels);
+    setLayerVisible(layers.labels, state.overlays.has("connecting") && z >= BSDNet.ZOOM.corridorLabels);
   }
   map.on("zoomend", updateDeclutter);
 
@@ -365,56 +360,104 @@
 
   // Dynamic planned-toggle badge: stub while planned_routes.geojson is
   // still empty; once the pipeline populates it, shows the real data tier
-  // with zero UI changes needed (Task 3 brief #2).
+  // with zero UI changes needed.
   const plannedBadgeTier = plannedData.properties?.status === "no_data_yet"
     ? "stub"
     : (plannedData.features[0]?.properties?.data_tier || "real");
 
-  // 3-swatch heat legend, using the same buckets/colors as the halos.
-  const heatSwatches = [BSDNet.heatBucket(1), BSDNet.heatBucket(3), BSDNet.heatBucket(6)];
+  // Connecting-infrastructure badge: this one toggle gates two tiers at once
+  // — the demoted local ("bus") street network (real CDOT data) and the
+  // non-roster OSM trails (crowdsourced) — so show both badges rather than
+  // just "real". Grouped in their own flex span (instead of two bare
+  // .badge buttons) so the layer-control CSS's `margin-left: auto` right-align
+  // rule pushes them over as one unit instead of splitting the free space
+  // between them and spreading them apart / wrapping awkwardly in the 300px panel.
+  const connectingBadgesHTML =
+    `<span style="display:inline-flex; gap:0.3rem; margin-left:auto; flex:none;">${BSD.badgeHTML("real")}${BSD.badgeHTML("crowdsourced")}</span>`;
+
+  // Quality-border grade legend (spec §6): main-route quality border colors
+  // per segment grade. `none` is dashed on the map, so its swatch is dashed
+  // too. Only rendered while the "quality" toggle is on.
+  const GRADE_LEGEND = [
+    ["offstreet", "Off-street trail"],
+    ["protected", "Protected lane"],
+    ["painted", "Paint only (buffered / painted / greenway)"],
+    ["none", "Nothing (sharrows)"],
+  ];
+  function gradeLegendHTML() {
+    return GRADE_LEGEND.map(([grade, label]) => {
+      const dashed = grade === "none";
+      const bar = dashed
+        ? `border-top: 3px dashed ${BSDNet.GRADE_COLORS[grade]};`
+        : `background: ${BSDNet.GRADE_COLORS[grade]}; height: 3px;`;
+      return `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; font-size: 0.85em;">
+          <div style="width: 22px; ${bar}"></div>
+          <span>${BSD.esc(label)}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // Line legend: grouped Trails then Street lines, color chip + name +
+  // termini, sourced from main_routes.geojson's `lines` array.
+  function legendRow(line) {
+    const color = BSDNet.LINE_COLORS[line.id] || BSDNet.FALLBACK_LINE_COLOR;
+    const tier = BSD.lineBadgeTier(line);
+    // Name row and termini row are separate lines: with the tier badge in the
+    // flex row there isn't enough width left for "name — termini" without
+    // one-word-per-line wrapping in the 300px panel.
+    const termini = line.termini
+      ? `<div style="margin-left: calc(22px + 0.5rem); color: #64748b; font-size: 0.92em;">${BSD.esc(line.termini)}</div>`
+      : "";
+    return `
+      <div style="margin-bottom: 0.45rem; font-size: 0.85em;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 22px; height: 4px; border-radius: 2px; background: ${color}; flex: none;"></div>
+          <span style="flex: 1; min-width: 0;">${BSD.esc(line.name)}</span>
+          ${BSD.badgeHTML(tier)}
+        </div>
+        ${termini}
+      </div>
+    `;
+  }
+  const allLines = mainRoutesData.lines || [];
+  const trailLines = allLines.filter(l => l.source === "osm_trails");
+  const streetLines = allLines.filter(l => l.source !== "osm_trails");
+  function legendGroupHTML(title, lines) {
+    if (lines.length === 0) return "";
+    return `
+      <div style="margin: 0.7rem 0 0.4rem;"><strong>${BSD.esc(title)}</strong></div>
+      ${lines.map(legendRow).join("")}
+    `;
+  }
 
   // Build side panel
   const side = document.getElementById("side");
   side.innerHTML = `
     <div>
       <h2>Bikeway network</h2>
-      <p class="muted">Route-planning view: the main routes drawn heavy, graded by how much actually protects you; every other bikeway sits underneath as the thin local network. For why a street is dangerous, see the <a href="index.html">Map</a>.</p>
+      <p class="muted">Route-planning view: how to get from area A to area B. Major routes are drawn heavy, one solid color per named line. Toggle the quality border to see how much of a route actually protects you, and connecting infrastructure or mellow routes to see the lower-stress options that feed into it. For crash and infrastructure-condition data by location, see the <a href="index.html">Map</a>.</p>
 
       <div class="layer-control">
         <div class="filter-row">
-          <input type="checkbox" id="mainroutes-toggle" checked disabled>
-          <label for="mainroutes-toggle">Main routes ${BSD.badgeHTML("derived")}</label>
+          <input type="checkbox" id="quality-toggle" ${state.overlays.has("quality") ? "checked" : ""}>
+          <label for="quality-toggle">Quality border ${BSD.badgeHTML("derived")}</label>
+        </div>
+        <div id="quality-legend" style="display:${state.overlays.has("quality") ? "" : "none"}; margin: 0 0 0.6rem 1.6rem;">
+          ${gradeLegendHTML()}
         </div>
         <div class="filter-row">
-          <input type="checkbox" id="local-toggle" checked disabled>
-          <label for="local-toggle">Local network ${BSD.badgeHTML("real")}</label>
-        </div>
-        <div class="filter-row">
-          <input type="checkbox" id="station-toggle" ${state.overlays.has("stations") ? "checked" : ""}>
-          <label for="station-toggle">Crash hotspots (stations) ${BSD.badgeHTML("real")}</label>
-        </div>
-        <div class="filter-row">
-          <input type="checkbox" id="heat-toggle" ${state.overlays.has("heat") ? "checked" : ""}>
-          <label for="heat-toggle">Obstruction heat ${BSD.badgeHTML("mock")}</label>
-        </div>
-        <div id="heat-legend" style="display:${state.overlays.has("heat") ? "" : "none"}; margin: 0 0 0.6rem 1.6rem;">
-          ${heatSwatches.map(b => `
-            <span style="display:inline-flex; align-items:center; gap:0.3rem; margin-right:0.7rem; font-size:0.8em;">
-              <span class="legend-swatch" style="width:14px; height:14px; border-radius:50%; background:${b.color}; opacity:0.45;"></span>
-              ${BSD.esc(b.label)}
-            </span>`).join("")}
-        </div>
-        <div class="filter-row">
-          <input type="checkbox" id="crash-toggle" ${state.overlays.has("crashes") ? "checked" : ""}>
-          <label for="crash-toggle">Crash severity ${BSD.badgeHTML("real")}</label>
+          <input type="checkbox" id="connecting-toggle" ${state.overlays.has("connecting") ? "checked" : ""}>
+          <label for="connecting-toggle" style="flex: 1 1 0; min-width: 0;"><span style="flex: 1 1 auto; min-width: 0;">Connecting infrastructure</span>${connectingBadgesHTML}</label>
         </div>
         <div class="filter-row">
           <input type="checkbox" id="mellow-toggle" ${state.overlays.has("mellow") ? "checked" : ""}>
-          <label for="mellow-toggle">Mellow streets ${BSD.badgeHTML("crowdsourced")}</label>
+          <label for="mellow-toggle">Mellow routes ${BSD.badgeHTML("crowdsourced")}</label>
         </div>
         <div class="filter-row">
-          <input type="checkbox" id="trails-toggle" ${state.overlays.has("trails") ? "checked" : ""}>
-          <label for="trails-toggle">Off-street trails ${BSD.badgeHTML("crowdsourced")}</label>
+          <input type="checkbox" id="nodes-toggle" ${state.overlays.has("nodes") ? "checked" : ""}>
+          <label for="nodes-toggle">Nodes ${BSD.badgeHTML("derived")}</label>
         </div>
         <div class="filter-row">
           <input type="checkbox" id="planned-toggle" ${state.overlays.has("planned") ? "checked" : ""}>
@@ -422,46 +465,12 @@
         </div>
       </div>
 
-      <p class="muted" style="font-size: 0.82em; margin: 0 0 0.6rem;">Station circle size = crashes in that intersection cluster.</p>
-
-      <div class="legend-swatch">
-        <div style="margin-bottom: 0.75rem;">
-          <strong>Main-route grades</strong>
-        </div>
-  `;
-
-  // Grade legend (spec §4): main-route lines are colored by facility grade
-  // along their length, not by raw facility type. `none` is dashed on the
-  // map, so its swatch is dashed too. The local network gets its own row.
-  const GRADE_LEGEND = [
-    ["offstreet", "Off-street trail"],
-    ["protected", "Protected lane"],
-    ["painted", "Paint only (buffered / painted / greenway)"],
-    ["none", "Nothing (sharrows)"],
-  ];
-  for (const [grade, label] of GRADE_LEGEND) {
-    const dashed = grade === "none";
-    const bar = dashed
-      ? `border-top: 3px dashed ${BSDNet.GRADE_COLORS[grade]};`
-      : `background: ${BSDNet.GRADE_COLORS[grade]}; height: 3px;`;
-    side.innerHTML += `
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9em;">
-        <div style="width: 24px; ${bar}"></div>
-        <span>${label}</span>
+      <div class="line-legend">
+        ${legendGroupHTML("Trails", trailLines)}
+        ${legendGroupHTML("Street lines", streetLines)}
       </div>
-    `;
-  }
-  side.innerHTML += `
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9em;">
-        <div style="width: 24px; height: 2px; background: ${BSDNet.LOCAL_STYLE.color};"></div>
-        <span>Local network (all other bikeways)</span>
-      </div>
-  `;
 
-  side.innerHTML += `
-      </div>
       ${BSD.noticeHTML("directional")}
-      <div id="dooring-note" style="display:${state.overlays.has("crashes") ? "" : "none"}">${BSD.noticeHTML("dooring")}</div>
       <div class="side-detail" id="detail"></div>
     </div>
   `;
@@ -477,33 +486,36 @@
   if (state.overlays.has("planned") && plannedData.features.length === 0) {
     showDetail({ _plannedStub: true, properties: plannedData.properties });
   }
-  if (state.overlays.has("trails") && osmTrailsData.features.length === 0) {
+  if (state.overlays.has("connecting") && (osmTrailsData.features || []).length === 0) {
     showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
   }
 
   // Toggle handlers: mutate state.overlays, sync the map layer, then push
   // the new state to the URL so every toggle is deep-linkable.
-  document.getElementById("station-toggle").addEventListener("change", (e) => {
-    if (e.target.checked) state.overlays.add("stations"); else state.overlays.delete("stations");
-    stationsEnabled = e.target.checked;
-    updateDeclutter();
+  document.getElementById("quality-toggle").addEventListener("change", (e) => {
+    if (e.target.checked) state.overlays.add("quality"); else state.overlays.delete("quality");
+    if (e.target.checked) layers.quality.addTo(map);
+    else map.removeLayer(layers.quality);
+    document.getElementById("quality-legend").style.display = e.target.checked ? "" : "none";
     syncURL();
   });
 
-  document.getElementById("heat-toggle").addEventListener("change", (e) => {
-    if (e.target.checked) state.overlays.add("heat"); else state.overlays.delete("heat");
-    if (e.target.checked) layers.obstructions.addTo(map);
-    else map.removeLayer(layers.obstructions);
-    document.getElementById("heat-legend").style.display = e.target.checked ? "" : "none";
-    syncURL();
-  });
-
-  document.getElementById("crash-toggle").addEventListener("change", (e) => {
-    if (e.target.checked) state.overlays.add("crashes"); else state.overlays.delete("crashes");
-    if (e.target.checked) layers.crashes.addTo(map);
-    else map.removeLayer(layers.crashes);
-    // Dooring undercount disclaimer is mandatory wherever crash density shows.
-    document.getElementById("dooring-note").style.display = e.target.checked ? "" : "none";
+  document.getElementById("connecting-toggle").addEventListener("change", (e) => {
+    if (e.target.checked) state.overlays.add("connecting"); else state.overlays.delete("connecting");
+    if (e.target.checked) {
+      layers.local.addTo(map);
+      layers.connectingTrails.addTo(map);
+      if ((osmTrailsData.features || []).length === 0) {
+        showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
+      }
+    } else {
+      map.removeLayer(layers.local);
+      map.removeLayer(layers.connectingTrails);
+      if ((osmTrailsData.features || []).length === 0) {
+        document.getElementById("detail").innerHTML = "";
+      }
+    }
+    updateDeclutter(); // corridor labels only make sense while connecting infra is drawn
     syncURL();
   });
 
@@ -523,19 +535,9 @@
     syncURL();
   });
 
-  document.getElementById("trails-toggle").addEventListener("change", (e) => {
-    if (e.target.checked) state.overlays.add("trails"); else state.overlays.delete("trails");
-    if (e.target.checked) {
-      layers.trails.addTo(map);
-      if (osmTrailsData.features.length === 0) {
-        showDetail({ _trailsStub: true, properties: osmTrailsData.properties });
-      }
-    } else {
-      map.removeLayer(layers.trails);
-      if (osmTrailsData.features.length === 0) {
-        document.getElementById("detail").innerHTML = "";
-      }
-    }
+  document.getElementById("nodes-toggle").addEventListener("change", (e) => {
+    if (e.target.checked) state.overlays.add("nodes"); else state.overlays.delete("nodes");
+    updateDeclutter();
     syncURL();
   });
 
@@ -573,7 +575,7 @@
     if (feature._trailsStub) {
       detail.innerHTML = `
         <div>
-          <strong>Off-street trails</strong>
+          <strong>OpenStreetMap Off-street Trails</strong>
           <p class="muted">${BSD.esc(feature.properties.note)}</p>
         </div>
       `;
@@ -629,12 +631,10 @@
     const rosterEntry = rosterIndex.get(String(props.segment_id));
     const lineMeta = rosterEntry ? linesMeta.get(rosterEntry.lineId) : null;
     state.line = lineMeta ? lineMeta.id : "";
-    const obCount = obstructionCounts.get(props.segment_id) || 0;
 
     // Corridor context: aggregate every segment sharing this street name.
     const corridorFeats = corridorGroups.get(streetLabel) || [feature];
     const corridorLength = corridorFeats.reduce((sum, f) => sum + (f.properties.length_m || 0), 0);
-    const corridorCrashes = corridorFeats.reduce((sum, f) => sum + (f.properties.crashes_within_30m || 0), 0);
 
     const corridor = encodeURIComponent(props.street);
     const link = `index.html?layers=crashes,infrastructure&corridor=${corridor}`;
@@ -642,7 +642,7 @@
     // Main-route context: name the line this segment belongs to and print
     // its report-card number. Stats are derived tier (computed each run).
     const lineRows = lineMeta ? `
-          <dt>Main route</dt>
+          <dt>Major route</dt>
           <dd>${BSD.esc(lineMeta.name)}${lineMeta.termini ? ` — ${BSD.esc(lineMeta.termini)}` : ""}</dd>
 
           <dt>Line protected end-to-end</dt>
@@ -660,54 +660,38 @@
           <dt>Segment length</dt>
           <dd>${BSD.fmt(Math.round(props.length_m))} m</dd>
 
-          <dt>Segment crashes within 30m</dt>
-          <dd>${BSD.fmt(props.crashes_within_30m)} ${BSD.badgeHTML("real")}</dd>
-
-          <dt>Obstruction count</dt>
-          <dd>${BSD.fmt(obCount)} ${BSD.badgeHTML("mock")}</dd>
-
           <dt>Corridor total length</dt>
           <dd>${BSD.fmt(Math.round(corridorLength))} m across ${corridorFeats.length} segment${corridorFeats.length === 1 ? "" : "s"} ${BSD.badgeHTML("real")}</dd>
 
-          <dt>Corridor crashes within 30m</dt>
-          <dd>${BSD.fmt(corridorCrashes)} ${BSD.badgeHTML("real")}</dd>
-
           <dt></dt>
-          <dd><a href="${link}">Density view →</a></dd>
+          <dd><a href="${link}">Crash & infrastructure data →</a></dd>
         </dl>
-        ${BSD.noticeHTML("dooring")}
       </div>
     `;
 
     selectedRoute = feature;
   }
 
-  function showStationDetail(s) {
+  // Detail panel for an interchange or orientation node (spec §7). Purely
+  // wayfinding — no crash scaling, no safety data.
+  function showNodeDetail(n) {
     const detail = document.getElementById("detail");
-    const link = "index.html?layers=crashes,infrastructure";
-
+    const lineNames = (n.lines || []).map((id) => (linesMeta.get(id) || {}).name || id).join(" × ");
     detail.innerHTML = `
       <div>
-        <strong>${BSD.esc(s.label)}</strong>
-        <dl>
-          <dt>Crashes in cluster</dt>
-          <dd>${BSD.fmt(s.crashes)} ${BSD.badgeHTML(s.data_tier || "real")}</dd>
-        </dl>
-        ${BSD.noticeHTML("dooring")}
-        <p><a href="${link}">Density view →</a></p>
-        <p><a href="#" id="station-center">Center map here →</a></p>
+        <strong>${BSD.esc(n.label)}</strong> ${BSD.badgeHTML(n.data_tier || "derived")}
+        ${lineNames ? `<p class="muted">${BSD.esc(lineNames)}</p>` : ""}
+        <p><a href="#" id="node-center">Center map here →</a></p>
       </div>
     `;
-
-    document.getElementById("station-center").addEventListener("click", (e) => {
+    document.getElementById("node-center").addEventListener("click", (e) => {
       e.preventDefault();
-      map.setView([s.lat, s.lng], 16);
+      map.setView([n.lat, n.lng], 15);
     });
-
     selectedRoute = null;
   }
 
-  // Detail panel for a roster trail line member (source: osm_trails).
+  // Detail panel for a major-route trail member (source: osm_trails).
   // Everything here is crowdsourced tier and stays that way — no crash
   // stats exist for trails and none are shown (never fabricate).
   function showRosterTrailDetail(feature) {
@@ -729,7 +713,7 @@
             ? `${BSD.fmt(lineMeta.miles_total)} mi`
             : `${BSD.fmt(Math.round(props.length_m))} m`} ${BSD.badgeHTML("crowdsourced")}</dd>
         </dl>
-        <p class="muted">Trail geometry from OpenStreetMap — crowdsourced, coverage varies. Off-street the whole way; no crash stats are computed for trails.</p>
+        <p class="muted">Trail geometry from OpenStreetMap — crowdsourced, coverage varies. Off-street the whole way.</p>
       </div>
     `;
     selectedRoute = null;
@@ -757,7 +741,7 @@
       map.fitBounds(corridorBounds, { padding: [50, 50], animate: false });
     }
   } else if (state.line) {
-    // Restore ?line= (roster line deep link): fit the whole line and open
+    // Restore ?line= (major-route deep link): fit the whole line and open
     // its detail via the same mechanisms a click would use. ?corridor= wins
     // when both are present — it is the older, more specific contract.
     const lineMeta = linesMeta.get(state.line);

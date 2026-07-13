@@ -15,6 +15,11 @@
       description: "The city's current bike infrastructure: protected, buffered, and painted lanes, greenways, trails."
     },
     {
+      name: "road_network.json", tier: "real",
+      title: "Street coverage", sourceId: "street_centerlines", sourceName: "Street centerlines",
+      description: "Surface-street miles citywide and per ward, plus the share of streets carrying any on-street bike infrastructure."
+    },
+    {
       name: "wards.geojson", tier: "real",
       title: "Ward boundaries & crash totals", sourceId: "wards", sourceName: "Wards",
       description: "Official 2023 ward boundaries with each ward's crash counts attached."
@@ -74,8 +79,13 @@
     {
       name: "main_routes.geojson", tier: "derived",
       title: "Main routes", sourceId: "main_routes", sourceName: "Main routes",
-      description: "The ~18 marquee corridors — each named line's segments with a facility grade (off-street / protected / painted / none).",
+      description: "The 21 marquee corridors — each named line's segments with a facility grade (off-street / protected / painted / none).",
       calc: "Hand-curated roster in data/main_routes.json; each pipeline run assigns real CDOT/OSM segments to lines and computes grade mileage."
+    },
+    {
+      name: "network_nodes.json", tier: "derived",
+      title: "Network nodes", sourceId: "network_nodes", sourceName: "Network nodes",
+      description: "Interchange nodes where main routes cross (derived from geometry), plus hand-picked orientation points — wayfinding markers for the network map."
     },
     {
       // The roster lives at the repo root (data/, not site/data/), so it isn't
@@ -87,8 +97,8 @@
     },
     {
       name: "ward_safety_index.json", tier: "derived",
-      title: "Ward danger scores", sourceId: "ward_safety_index", sourceName: "Danger score",
-      description: "Each ward's 0–100 danger score (relative to other wards), with the rates behind it and 12-month trend.",
+      title: "Ward concern ranks", sourceId: "ward_safety_index", sourceName: "Concern rank",
+      description: "Each ward's 0–100 concern rank (relative to other wards, higher = worse; the JSON field keeps its original name comparable_danger_score), with the rates behind it and 12-month trend.",
       calc: "Average of the ward's percentile ranks on crashes per 10k residents and crashes per bikeway mile — every input is in this file's row."
     },
     {

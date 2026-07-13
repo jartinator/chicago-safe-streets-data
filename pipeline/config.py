@@ -30,6 +30,9 @@ MELLOW_API_URL = "https://mellowbikemap.com/api/routes/"
 # 312 RiverRun, North Shore Channel, North Branch, etc.) that CDOT's on-street
 # Bike Routes layer structurally omits. Crowdsourced tier. Non-fatal like Mellow.
 OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
+# overpass-api.de's usage policy requires clients to identify themselves; it
+# rejects the default python-requests User-Agent with HTTP 406 Not Acceptable.
+OSM_USER_AGENT = "chicago-safe-streets-data/1.0 (+https://github.com/jartinator/chicago-safe-streets-data)"
 # (south, west, north, east) — Chicago plus the North Branch Trail's reach north
 # into the forest preserves. Trails are shown full-length, not clipped at the city line.
 OSM_TRAILS_BBOX = (41.60, -87.95, 42.20, -87.50)
@@ -59,6 +62,12 @@ DATASETS = {
     "red_light_cameras": "spqx-js37",  # Red Light Camera Violations
     "acs_ward": "k5pk-wpt9",       # ACS 5-Year Data by Ward - Most Recent Year (2023 remap,
                                    # pre-aggregated to wards by the city; confirmed live 2026-07-11)
+    "street_centerlines": "pr57-gg9e",  # Street Center Lines ("transportation") — the
+                                        # tabular SODA copy. The 6imu-meau map view's rows
+                                        # come back empty and its geospatial export is
+                                        # truncated server-side (verified 2026-07-12).
+                                        # 56,338 segments, last updated 2021-06; the street
+                                        # grid changes slowly, fine for a denominator.
 }
 
 # Ward Offices — the city's official roster of current alderpersons (name, email,
@@ -185,9 +194,29 @@ FACILITY_CATEGORY_MAP = {
 
 FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow", "trail", "other"]
 
+# Coverage denominator: which street-centerline segments count as the city's
+# bikeable surface-street grid. CLASS: 1=expressway (cycling prohibited),
+# 2=arterial, 3=collector, 4=local, 5/7=alley-type stubs, 9=ramp,
+# 99/E/S=system artifacts, RIV=river channel. STATUS: N=in service (P=proposed,
+# V=vacated, UC/C=not usable roadway). Classes 2+3+4 with status N sum to
+# ~3,945 centerline miles — matching the city's oft-cited ~4,000 street miles
+# (verified live 2026-07-12).
+STREET_CLASSES_INCLUDED = {"2", "3", "4"}
+STREET_STATUS_INCLUDED = {"N"}
+
 # Main routes ("rail vs bus" hierarchy) — curated line roster, checked in like
 # other configs. See docs/superpowers/specs/2026-07-12-main-routes-design.md.
 MAIN_ROUTES_PATH = REPO_ROOT / "data" / "main_routes.json"
+
+# Hand-traced fallback geometry for the roster's off-street trails, used when
+# neither a live Overpass pull (raw/osm_trails.json) nor its committed output
+# exists in this run's environment. See docs/superpowers/specs/
+# 2026-07-12-network-map-distinction.md §8. Tier crowdsourced, like mellow routes.
+CURATED_TRAILS_PATH = REPO_ROOT / "data" / "curated_trails.geojson"
+
+# Hand-picked major-road crossings on roster lines, for network-map wayfinding —
+# see docs/superpowers/specs/2026-07-12-network-map-distinction.md §7.
+ORIENTATION_POINTS_PATH = REPO_ROOT / "data" / "orientation_points.json"
 
 # facility_category -> main-route grade (spec §4, user-locked 4-grade taxonomy).
 # Buffers and greenways are still just paint & signs -> "painted"; sharrows
@@ -218,4 +247,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.8"
+CONTRACT_VERSION = "1.9"

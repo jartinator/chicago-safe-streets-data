@@ -124,13 +124,14 @@ def protected_share(by_category_miles):
     }
 
 
-def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date):
+def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of_date,
+                        road_coverage=None):
     """Assemble findings.json from already-computed inputs — shared by
     aggregate.build_findings (live) and refresh_reporting.py (offline), so the
     published findings can be regenerated from committed data without logic drift.
 
-    Order (checkpoint-1 approved): ksi-trend, protected-share, top-corridors,
-    hit-and-run, ward-concentration, dooring-undercount.
+    Order (checkpoint-1 approved): ksi-trend, protected-share, street-coverage,
+    top-corridors, hit-and-run, ward-concentration, dooring-undercount.
     """
     findings = []
 
@@ -167,6 +168,27 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                        "protected = barrier/curb-protected on-street lanes. Off-street trails "
                        "are excluded — they live in the separate OSM layer."),
             "map_state": {"screen": "map", "layers": ["mainroutes"], "filters": {}},
+            "data_tier": "real",
+        })
+
+    if road_coverage and road_coverage.get("road_miles"):
+        rc = road_coverage
+        findings.append({
+            "id": "street-coverage",
+            "title": "How much of the street grid has bike infrastructure",
+            "stat": f"{rc['pct_with_bike_infra']:.0f}%",
+            "description": (f"Chicago has {rc['road_miles']:,.0f} miles of surface "
+                            f"streets (arterials, collectors, and neighborhood "
+                            f"streets). {rc['onstreet_bikeway_miles']:,.0f} miles — "
+                            f"{rc['pct_with_bike_infra']:.0f}% — have any bike "
+                            f"infrastructure at all, counting everything from "
+                            f"sharrows to protected lanes."),
+            "caveat": ("Centerline miles on both sides of the ratio. Expressways, "
+                       "ramps, alleys, and river channels are excluded from street "
+                       "miles; off-street trails are excluded from bikeway miles. "
+                       "The street centerline layer was last updated in 2021 — the "
+                       "grid changes slowly."),
+            "map_state": {"screen": "map", "layers": ["infrastructure"], "filters": {}},
             "data_tier": "real",
         })
 

@@ -62,6 +62,9 @@ function buildSafetyIndexRows(wards) {
       population: w.population,
       trend_direction: trend.direction != null ? trend.direction : null,
       trend_pct_change: trend.pct_change != null ? trend.pct_change : null,
+      bikeway_pct_protected: w.bikeway_pct_protected != null ? w.bikeway_pct_protected : null,
+      road_miles: w.road_miles != null ? w.road_miles : null,
+      bikeway_pct_of_roads: w.bikeway_pct_of_roads != null ? w.bikeway_pct_of_roads : null,
     };
   });
 }
@@ -109,6 +112,16 @@ if (typeof document !== "undefined") {
     BSD.initPage("table.html");
 
     const app = document.getElementById("app");
+
+    // Exported CSVs leave the page — each carries a provenance comment
+    // header (label, tier, as-of) built from meta.json at export time.
+    const metaPromise = BSD.loadJSON("data/meta.json").catch(() => null);
+    const exportCSV = (filename, rows, cols, label, tier, caveat) => {
+      metaPromise.then(meta => {
+        BSD.downloadCSV(filename, rows, cols,
+          BSD.provenanceLines(label, tier, meta && meta.generated_at, caveat));
+      });
+    };
 
     // Create heading
     const heading = document.createElement("div");
@@ -408,7 +421,9 @@ if (typeof document !== "undefined") {
         const filtered = filterCrashes(crashes, filters);
         const csvRows = buildCSVRows(filtered, facilityMap, SEVERITY_LABELS);
         const cols = ["crash_id", "date", "injury_severity", "crash_type", "dooring", "hit_and_run", "street", "ward", "facility", "lat", "lng"];
-        BSD.downloadCSV("cyclist_crashes_filtered.csv", csvRows, cols);
+        exportCSV("cyclist_crashes_filtered.csv", csvRows, cols,
+          "Cyclist-involved crashes (filtered)", "real",
+          "Raw counts, not ridership-normalized. Recent months provisional; dooring structurally undercounted.");
       });
       container.appendChild(csvBtn);
 
@@ -565,11 +580,16 @@ if (typeof document !== "undefined") {
       explainer.className = "fine-print";
       explainer.style.marginBottom = "0.75rem";
       explainer.innerHTML =
-        `<summary>About this score</summary>` +
-        `<p>The danger score is the average of each ward's percentile ranks on crashes per 10k ` +
-        `residents and crashes per bikeway mile — 0–100, higher = more dangerous relative to ` +
-        `other wards. It compares wards to each other; it is not an absolute risk measure. ` +
-        `<a href="sources.html#src-ward_safety_index">Full source detail →</a></p>`;
+        `<summary>About this ranking</summary>` +
+        `<p>The concern rank blends each ward's percentile ranks on the two component rates ` +
+        `shown in their own columns — crashes per 10k residents and crashes per bikeway mile — ` +
+        `into a 0–100 figure, higher = worse. It ranks wards against each other; it is not an ` +
+        `absolute risk measure, and the components matter more than the blend: a ward can rank ` +
+        `high from exposure-adjusted danger or from simply having almost no bikeway miles. ` +
+        `% protected is the protected share of the ward's on-street bikeway miles; % streets ` +
+        `w/ bikeways is the share of the ward's surface-street miles with any bike infrastructure. ` +
+        `<a href="methodology.html#ward-index">Full methodology →</a> · ` +
+        `<a href="sources.html#src-ward_safety_index">Source detail →</a></p>`;
       container.appendChild(explainer);
 
       const countDiv = document.createElement("div");
@@ -587,21 +607,28 @@ if (typeof document !== "undefined") {
       csvBtn.style.marginTop = "1rem";
       csvBtn.addEventListener("click", () => {
         const cols = ["rank", "ward", "comparable_danger_score", "cyclist_crashes",
-          "crashes_per_10k_pop", "crashes_per_bikeway_mile", "bikeway_miles", "population",
+          "crashes_per_10k_pop", "crashes_per_bikeway_mile", "bikeway_miles",
+          "bikeway_pct_protected", "road_miles", "bikeway_pct_of_roads", "population",
           "trend_direction", "trend_pct_change"];
-        BSD.downloadCSV("ward_safety_index.csv", rows, cols);
+        exportCSV("ward_safety_index.csv", rows, cols,
+          "Ward safety index", "derived",
+          "comparable_danger_score is a relative concern rank among wards (higher = worse), not absolute risk.");
       });
       container.appendChild(csvBtn);
 
       const COLS = [
         { key: "rank", label: "Rank" },
         { key: "ward", label: "Ward" },
-        { key: "comparable_danger_score", label: "Danger score",
-          title: "0–100 vs other wards — see 'About this score'" },
+        { key: "comparable_danger_score", label: "Concern rank",
+          title: "0–100 relative to other wards, higher = worse — not absolute risk. See 'About this ranking'" },
         { key: "cyclist_crashes", label: "Crashes" },
         { key: "crashes_per_10k_pop", label: "Per 10k pop" },
         { key: "crashes_per_bikeway_mile", label: "Per bikeway mile" },
         { key: "bikeway_miles", label: "Bikeway miles" },
+        { key: "bikeway_pct_protected", label: "% protected",
+          title: "Share of the ward's on-street bikeway miles that are physically protected lanes" },
+        { key: "bikeway_pct_of_roads", label: "% streets w/ bikeways",
+          title: "Share of the ward's surface-street miles with any bike infrastructure (off-street trails excluded)" },
         { key: "population", label: "Population" },
         { key: "trend_direction", label: "Trend" },
       ];
@@ -647,6 +674,8 @@ if (typeof document !== "undefined") {
             BSD.fmt(row.crashes_per_10k_pop),
             BSD.fmt(row.crashes_per_bikeway_mile),
             BSD.fmt(row.bikeway_miles),
+            row.bikeway_pct_protected == null ? "—" : row.bikeway_pct_protected + "%",
+            row.bikeway_pct_of_roads == null ? "—" : row.bikeway_pct_of_roads + "%",
             BSD.fmt(row.population),
           ];
           plainCells.forEach(cell => {
@@ -706,7 +735,9 @@ if (typeof document !== "undefined") {
       csvBtn.style.marginTop = "1rem";
       csvBtn.addEventListener("click", () => {
         const cols = ["intro_date", "title", "type", "status", "sponsors", "source", "vote", "topic_tagged_by", "url"];
-        BSD.downloadCSV("council_records.csv", rows, cols);
+        exportCSV("council_records.csv", rows, cols,
+          "Council records (bike/street-safety legislation)", "real",
+          "Sponsorships are not votes — most safety items pass by voice vote with no roll call. topic_relevant tag is automated (derived).");
       });
       container.appendChild(csvBtn);
 

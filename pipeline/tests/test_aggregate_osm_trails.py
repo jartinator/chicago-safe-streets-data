@@ -17,6 +17,8 @@ def test_build_osm_trails_groups_by_name_and_tags_crowdsourced():
     out = aggregate.build_osm_trails(raw)
 
     assert out["type"] == "FeatureCollection"
+    # top-level envelope tier, uniform with build_curated_trails()'s output shape
+    assert out["data_tier"] == "crowdsourced"
     # two ways sharing "Lakefront Trail" collapse into ONE feature
     names = sorted(f["properties"]["name"] for f in out["features"])
     assert names == ["Lakefront Trail", "North Branch Trail"]
@@ -40,3 +42,4 @@ def test_build_osm_trails_skips_unnamed_and_non_ways():
     ]}
     out = aggregate.build_osm_trails(raw)
     assert out["features"] == []
+    assert out["data_tier"] == "crowdsourced"
