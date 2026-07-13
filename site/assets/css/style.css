@@ -261,6 +261,11 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
 .report-meta { font-size: .82rem; opacity: .85; margin: .2rem 0 0; }
 .report-section { padding: 1rem 1.2rem; border-top: 1px solid var(--line); }
 .report-foot { padding: .7rem 1.2rem; border-top: 1px solid var(--line); background: #f3f6f9; font-size: .85rem; }
+.record-cols { display: grid; grid-template-columns: 1fr; gap: .8rem 1.6rem; margin-top: .5rem; }
+.record-col-head { font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-bottom: .3rem; }
+@media (min-width: 760px) {
+  .record-cols { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 600px) {
   .table-stack thead { display: none; }
   .table-stack tr { display: block; border: 1px solid var(--line); border-radius: 8px; margin: .5rem 0; }

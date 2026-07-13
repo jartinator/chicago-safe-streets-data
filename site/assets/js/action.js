@@ -48,6 +48,20 @@
     return { matched, aldermanName };
   }
 
+  // Records where this alderman cast a recorded "no" on a topic-relevant
+  // matter — the same rule aggregate.py uses to count recorded_no_votes
+  // (exact no_voters name + topic_relevant + recorded_votes present), so the
+  // list can never contradict the published count. Exact-match only, never
+  // fuzzy (a wrong match misattributes a real person's vote). Newest first.
+  function getNoVoteRecordsForAlderman(councilData, sponsorName) {
+    if (!sponsorName || !councilData || !Array.isArray(councilData.records)) return [];
+    return councilData.records
+      .filter(r => r && r.topic_relevant && r.recorded_votes &&
+        Array.isArray(r.recorded_votes.no_voters) &&
+        r.recorded_votes.no_voters.indexOf(sponsorName) !== -1)
+      .sort((a, b) => String(b.intro_date || "").localeCompare(String(a.intro_date || "")));
+  }
+
   // Look up a ward's row in menu_spending.json (keyed by ward string).
   function getMenuSpendingForWard(menuData, ward) {
     if (!menuData || !menuData.wards) return null;
@@ -118,7 +132,7 @@
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       getSafetyIndexForWard, getSponsorRecordsForWard, getMenuSpendingForWard,
-      getUpcomingForWard,
+      getUpcomingForWard, getNoVoteRecordsForAlderman,
     };
   }
 
@@ -459,32 +473,63 @@
     let html = sectionHeadingHTML("Alderperson record", "derived");
 
     if (matched) {
-      html += `<div><span class="stat">${BSD.fmt(matched.safety_sponsorships)}</span> <span class="muted">tagged bike/traffic-safety sponsorships (all records on file)</span></div>`;
       // Loud, not a footnote (P6b): presenting sponsorship as a voting record
-      // is the exact error that burns advocates in front of an alderperson.
+      // is the exact error that burns advocates in front of an alderperson —
+      // doubly so now that the two lists sit next to each other.
       html += `<div class="notice" style="margin:.4rem 0;">Sponsorships are <strong>not votes</strong> — ` +
         `most safety measures pass by voice vote with no individual record.</div>`;
 
-      const noVotes = matched.recorded_no_votes ?? 0;
-      if (noVotes > 0) {
-        html += `<div>Recorded "no" votes on tagged measures: ` +
-          `<strong style="color: var(--sev-incap);" title="Times this alderperson appears in a contested roll-call's no_voters list — rare; most measures pass by voice vote">${BSD.fmt(noVotes)}</strong></div>`;
-      } else {
-        html += `<div>Recorded "no" votes on tagged measures: ${BSD.fmt(noVotes)}</div>`;
-      }
+      const recordLine = rec => {
+        const date = rec.intro_date ? String(rec.intro_date).slice(0, 10) : "—";
+        const title = rec.url
+          ? `<a href="${BSD.esc(rec.url)}" target="_blank" rel="noopener">${BSD.esc(rec.title)}</a>`
+          : BSD.esc(rec.title);
+        return `<div>${BSD.esc(date)} · ${title} · ${BSD.esc(rec.status)}</div>`;
+      };
+      const moreLine = n => n > 0
+        ? `<div class="muted">+ ${BSD.fmt(n)} more on file</div>` : "";
 
-      const records = Array.isArray(matched.records) ? matched.records.slice(0, 5) : [];
-      if (records.length) {
+      html += `<div class="record-cols">`;
+
+      // Left: what they sponsored (tagged bike/traffic-safety records).
+      const sponsored = Array.isArray(matched.records) ? matched.records : [];
+      html += `<div>`;
+      html += `<div class="record-col-head">Sponsored</div>`;
+      html += `<div><span class="stat">${BSD.fmt(matched.safety_sponsorships)}</span> <span class="muted">tagged bike/traffic-safety sponsorships (all records on file)</span></div>`;
+      if (sponsored.length) {
         html += `<div class="kv-list" style="margin-top: .6rem;">`;
-        records.forEach(rec => {
-          const date = rec.intro_date ? String(rec.intro_date).slice(0, 10) : "—";
-          const title = rec.url
-            ? `<a href="${BSD.esc(rec.url)}" target="_blank" rel="noopener">${BSD.esc(rec.title)}</a>`
-            : BSD.esc(rec.title);
-          html += `<div>${BSD.esc(date)} · ${title} · ${BSD.esc(rec.status)}</div>`;
-        });
+        sponsored.slice(0, 5).forEach(rec => { html += recordLine(rec); });
+        html += moreLine(sponsored.length - 5);
         html += `</div>`;
       }
+      html += `</div>`;
+
+      // Right: recorded "no" votes on tagged measures, resolved from
+      // council_records.json by the same exact-name rule the pipeline counts
+      // with (see getNoVoteRecordsForAlderman).
+      const noVotes = matched.recorded_no_votes ?? 0;
+      const noVoteRecords = getNoVoteRecordsForAlderman(councilData, matched.sponsor_name);
+      html += `<div>`;
+      html += `<div class="record-col-head">Voted "no"</div>`;
+      const noVotesStyle = noVotes > 0 ? ` style="color: var(--sev-incap);"` : "";
+      html += `<div><span class="stat"${noVotesStyle}>${BSD.fmt(noVotes)}</span> <span class="muted">recorded "no" votes on tagged measures</span></div>`;
+      if (noVoteRecords.length) {
+        html += `<div class="kv-list" style="margin-top: .6rem;">`;
+        noVoteRecords.slice(0, 5).forEach(rec => { html += recordLine(rec); });
+        html += moreLine(noVoteRecords.length - 5);
+        html += `</div>`;
+      } else if (noVotes > 0) {
+        // Pipeline counted no-votes but the join found none — council_records
+        // failed to load or the files are from different runs. Say so rather
+        // than render a count the list contradicts.
+        html += `<div class="muted" style="margin-top: .6rem;">Vote detail unavailable this run.</div>`;
+      } else {
+        html += `<div class="muted" style="margin-top: .6rem;">None on record — a recorded "no" is rare because ` +
+          `most measures pass by voice vote with no individual roll call.</div>`;
+      }
+      html += `</div>`;
+
+      html += `</div>`;
     } else {
       html += `<p>No sponsorship records match this ward's alderperson yet — sponsor names are matched exactly, never guessed.</p>`;
       if (!aldermanName) {
