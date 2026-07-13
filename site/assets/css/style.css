@@ -151,6 +151,90 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 }
 .line-label::before { display: none; }
 
+/* ---- network (metro) screen: route-tiers panel (design v2) ---- */
+.panel-divider { border: none; border-top: 1px solid var(--line); margin: 0.7rem 0; }
+.caption { font-style: italic; margin: 0.3rem 0 0.6rem; }
+
+/* Tier toggle rows: swatch + name + muted description, per spec §1/§8. */
+.tier-label { display: flex; align-items: flex-start; gap: 0.5rem; flex: 1 1 0; min-width: 0; cursor: pointer; }
+.tier-swatch { flex: none; width: 26px; height: 10px; margin-top: 0.2rem; border-radius: 2px; }
+.tier-swatch.swatch-trail { background: #64748b; height: 8px; border-radius: 4px; }
+.tier-swatch.swatch-main { background: #64748b; height: 4px; border-radius: 2px; margin-top: 0.32rem; }
+.tier-swatch.swatch-connector {
+  height: 0; margin-top: 0.32rem; border-top: 2.5px dashed #94a3b8;
+}
+.tier-text { display: flex; flex-direction: column; min-width: 0; }
+.tier-name { font-size: 0.9rem; }
+.tier-desc { font-size: 0.78rem; }
+
+/* Quality-border grade legend (spec §3). */
+.quality-legend { margin: 0 0 0.5rem 1.6rem; }
+.quality-legend-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }
+.quality-swatch { width: 22px; flex: none; }
+.quality-footnote { margin: 0.2rem 0 0; font-size: 0.78rem; }
+.capsule-glyph {
+  display: inline-block; width: 20px; height: 11px; flex: none;
+  background: #fff; border: 1.5px solid #1a2330; border-radius: 6px;
+}
+
+/* Comfort floor segmented control (spec §5). */
+.comfort-floor { margin: 0.6rem 0; }
+.segmented {
+  display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+}
+.segmented-opt {
+  flex: 1 1 0; border: none; border-radius: 0; background: #fff; padding: 0.4rem 0.3rem;
+  font-size: 0.8rem; cursor: pointer; color: var(--ink);
+}
+.segmented-opt + .segmented-opt { border-left: 1px solid var(--line); }
+.segmented-opt.active { background: var(--ink); color: #fff; }
+.segmented-opt:hover:not(.active) { background: #eef2f6; }
+
+/* Detail-card slot (spec §7/§8): populated on selection, muted placeholder otherwise. */
+.card-placeholder { font-style: italic; margin: 0.4rem 0; }
+.detail-card { margin: 0.3rem 0 0.8rem; }
+.detail-card + .detail-card { border-top: 1px solid var(--line); padding-top: 0.6rem; }
+.detail-card-head { display: flex; align-items: center; gap: 0.5rem; }
+.detail-card-head .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.detail-card-termini { margin-top: 0.5rem; }
+.mix-bar {
+  display: flex; height: 10px; border-radius: 5px; overflow: hidden;
+  background: var(--line); margin: 0.2rem 0 0.35rem;
+}
+.mix-bar .mix-seg { height: 100%; }
+.mix-bar .mix-seg.grade-paint {
+  background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(255,255,255,.45) 3px 6px);
+}
+.mix-legend { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; font-size: 0.76rem; color: var(--ink-soft); }
+.mix-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 0.25rem; vertical-align: middle; }
+
+/* "All routes" roster (spec §8): grouped rows, color dot + name + mini mix bar. */
+.roster-title { font-weight: 700; margin: 0.5rem 0 0.2rem; }
+.roster-list { max-height: 280px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 0.3rem 0.5rem; }
+.roster-group-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); margin: 0.5rem 0 0.15rem; }
+.roster-group-title:first-child { margin-top: 0.1rem; }
+.roster-row {
+  display: flex; align-items: center; gap: 0.45rem; width: 100%; padding: 0.22rem 0.1rem;
+  border: none; background: none; font: inherit; font-size: 0.82rem; color: inherit;
+  text-align: left; cursor: pointer; border-radius: 4px;
+}
+.roster-row:hover { background: #eef2f6; }
+.roster-row.selected { background: #e0e7ef; font-weight: 600; }
+.roster-row .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-row.no-data { opacity: 0.6; }
+.mini-mix {
+  display: flex; width: 60px; height: 6px; flex: none; border-radius: 3px; overflow: hidden; background: var(--line);
+}
+.mini-mix span { height: 100%; }
+
+/* Interlining capsule transfer marker (spec §6): white pill, dark outline,
+ * rotated perpendicular to travel via inline transform on the inner span. */
+.capsule-marker span {
+  display: block; width: 16px; height: 8px; background: #fff;
+  border: 1.5px solid #1a2330; border-radius: 4px;
+}
+
 /* ---- shared layout primitives (modal, cards, reports) ---- */
 .card-heading { margin-top: 0; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
 .fine-print { color: var(--ink-soft); font-size: .8rem; margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--line); }

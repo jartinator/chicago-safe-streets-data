@@ -13,19 +13,26 @@
     ? require("./common.js")
     : root.BSD;
 
-  // Grade taxonomy, user-ranked: off-street (prized) > protected > painted >
-  // none. Colors per design spec §4; `none` (sharrows/other) renders dashed.
-  const GRADE_ORDER = ["offstreet", "protected", "painted", "none"];
+  // Grade taxonomy, user-ranked: off-street (prized) > protected > paint >
+  // mellow > none. Colors match the network map's quality-border palette
+  // (docs/superpowers/specs/2026-07-13-network-tiers-design.md §3/§9) so a
+  // grade reads the same color on both screens; `none` (sharrows/other)
+  // renders dashed. `mellow` (greenway / mellow-derived geometry) is new in
+  // the v2 taxonomy — `painted` was renamed `paint` to match the pipeline's
+  // main_routes.geojson grade values exactly.
+  const GRADE_ORDER = ["offstreet", "protected", "paint", "mellow", "none"];
   const GRADE_COLORS = {
     offstreet: "#0369a1",
     protected: "#0b6e4f",
-    painted: "#f59e0b",
+    paint: "#f59e0b",
+    mellow: "#7c3aed",
     none: "#94a3b8",
   };
   const GRADE_LABELS = {
     offstreet: "Off-street",
     protected: "Protected",
-    painted: "Paint only",
+    paint: "Paint only",
+    mellow: "Mellow (greenway)",
     none: "Nothing",
   };
 

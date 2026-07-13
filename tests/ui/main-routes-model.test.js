@@ -6,17 +6,18 @@ global.document = undefined;
 
 const M = require("../../site/assets/js/main-routes-model.js");
 
-// ---- grade constants (spec §4) ----
+// ---- grade constants (network v2 spec §3/§9) ----
 
 assert.deepStrictEqual(
-  M.GRADE_ORDER, ["offstreet", "protected", "painted", "none"],
-  "GRADE_ORDER: off-street > protected > painted > none (user-ranked)"
+  M.GRADE_ORDER, ["offstreet", "protected", "paint", "mellow", "none"],
+  "GRADE_ORDER: off-street > protected > paint > mellow > none (user-ranked)"
 );
 assert.strictEqual(M.GRADE_COLORS.offstreet, "#0369a1", "offstreet grade color matches spec");
 assert.strictEqual(M.GRADE_COLORS.protected, "#0b6e4f", "protected grade color matches spec");
-assert.strictEqual(M.GRADE_COLORS.painted, "#f59e0b", "painted grade color matches spec");
+assert.strictEqual(M.GRADE_COLORS.paint, "#f59e0b", "paint grade color matches spec");
+assert.strictEqual(M.GRADE_COLORS.mellow, "#7c3aed", "mellow grade color matches spec (new in v2)");
 assert.strictEqual(M.GRADE_COLORS.none, "#94a3b8", "none grade color matches spec");
-["offstreet", "protected", "painted", "none"].forEach(g =>
+["offstreet", "protected", "paint", "mellow", "none"].forEach(g =>
   assert.ok(M.GRADE_LABELS[g], `GRADE_LABELS has a label for ${g}`));
 
 // ---- gradeStyle: grade -> Leaflet-ready stroke style ----
@@ -25,6 +26,13 @@ const prot = M.gradeStyle("protected");
 assert.strictEqual(prot.color, "#0b6e4f", "gradeStyle(protected): spec color");
 assert.strictEqual(prot.weight, 4.5, "gradeStyle: 4.5px stroke per spec §7");
 assert.strictEqual(prot.dashArray, null, "gradeStyle(protected): solid line");
+
+const paint = M.gradeStyle("paint");
+assert.strictEqual(paint.color, "#f59e0b", "gradeStyle(paint): spec color");
+assert.strictEqual(paint.dashArray, null, "gradeStyle(paint): solid (only 'none' dashes on this per-segment stroke)");
+
+const mellow = M.gradeStyle("mellow");
+assert.strictEqual(mellow.color, "#7c3aed", "gradeStyle(mellow): spec color");
 
 const none = M.gradeStyle("none");
 assert.strictEqual(none.color, "#94a3b8", "gradeStyle(none): muted gray");
@@ -46,25 +54,26 @@ assert.strictEqual(M.CASING_STYLE.weight, 8, "CASING_STYLE: 8px per spec §7");
 // ---- completionSegments: miles_by_grade -> stacked-bar segments ----
 
 // Segments come back in GRADE_ORDER with percentage widths of total miles.
-const segs = M.completionSegments({ painted: 3, protected: 1 });
+const segs = M.completionSegments({ paint: 3, protected: 1 });
 assert.strictEqual(segs.length, 2, "completionSegments: one segment per non-zero grade");
-assert.strictEqual(segs[0].grade, "protected", "completionSegments: protected before painted (GRADE_ORDER)");
-assert.strictEqual(segs[1].grade, "painted", "completionSegments: painted second");
+assert.strictEqual(segs[0].grade, "protected", "completionSegments: protected before paint (GRADE_ORDER)");
+assert.strictEqual(segs[1].grade, "paint", "completionSegments: paint second");
 assert.ok(Math.abs(segs[0].pct - 25) < 1e-9, "completionSegments: 1 of 4 miles -> 25%");
 assert.ok(Math.abs(segs[1].pct - 75) < 1e-9, "completionSegments: 3 of 4 miles -> 75%");
 assert.strictEqual(segs[0].color, "#0b6e4f", "completionSegments: segments carry grade color");
 assert.strictEqual(segs[0].miles, 1, "completionSegments: segments carry raw miles");
 
-// Percent widths always sum to 100 (bar fills its track exactly).
-const three = M.completionSegments({ protected: 2.21, painted: 6.77, none: 0.51 });
-const total = three.reduce((s, x) => s + x.pct, 0);
+// Percent widths always sum to 100 (bar fills its track exactly), including
+// the new mellow grade mixed in with the others.
+const four = M.completionSegments({ protected: 2.21, paint: 6.77, mellow: 1.1, none: 0.51 });
+const total = four.reduce((s, x) => s + x.pct, 0);
 assert.ok(Math.abs(total - 100) < 1e-6, "completionSegments: pct widths sum to 100");
-assert.deepStrictEqual(three.map(s => s.grade), ["protected", "painted", "none"],
-  "completionSegments: three grades ordered protected > painted > none");
+assert.deepStrictEqual(four.map(s => s.grade), ["protected", "paint", "mellow", "none"],
+  "completionSegments: four grades ordered protected > paint > mellow > none");
 
 // Zero and missing grades are omitted; empty input -> empty bar.
-const sparse = M.completionSegments({ protected: 0, painted: 2 });
-assert.deepStrictEqual(sparse.map(s => s.grade), ["painted"],
+const sparse = M.completionSegments({ protected: 0, paint: 2 });
+assert.deepStrictEqual(sparse.map(s => s.grade), ["paint"],
   "completionSegments: zero-mile grades omitted");
 assert.deepStrictEqual(M.completionSegments({}), [], "completionSegments: empty input -> []");
 assert.deepStrictEqual(M.completionSegments(null), [], "completionSegments: null input -> []");
