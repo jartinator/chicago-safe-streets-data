@@ -37,7 +37,8 @@ import emit_api
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
                        build_mellow_connectors, mellow_connector_records,
-                       build_news_items)
+                       build_news_items, build_proposed_projects,
+                       load_proposed_projects_roster)
 from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -81,7 +82,8 @@ def _load(name):
 
 
 def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes, upsert_osm_trails=True, news_items=None):
+                        network_nodes, upsert_osm_trails=True, news_items=None,
+                        proposed_projects=None):
     """Register/update the citywide_trend, main_routes, mellow_connectors,
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
@@ -191,6 +193,17 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
                       "tier": "real", "records": len(news_items["items"]),
                       "date_range": None}
         _upsert("news_items", news_entry, anchor_ids=[])
+
+    # proposed_projects: rebuilt together with news_items (it joins the
+    # roster to the fresh news matches), so it upserts under the same
+    # rebuilt-this-run condition. Appended last, after news_items.
+    if proposed_projects is not None:
+        pp_entry = {"id": "proposed_projects",
+                    "name": "Proposed & In-Progress Bikeway Projects (curated roster)",
+                    "tier": "derived",
+                    "records": len(proposed_projects["projects"]),
+                    "date_range": None}
+        _upsert("proposed_projects", pp_entry, anchor_ids=[])
 
 
 def main():
@@ -317,17 +330,24 @@ def main():
     # list with an honest-but-empty one).
     news_raw_path = RAW_DIR / "news.json"
     news_items = None
+    proposed = None
     if news_raw_path.exists() and raw_is_fixture:
         print(f"  news_items: {news_raw_path} is from a --fixtures run — left "
               f"committed site/data/news_items.json untouched")
     elif news_raw_path.exists():
-        news_items = build_news_items(load_main_routes_roster())
+        projects_roster = load_proposed_projects_roster()
+        news_items = build_news_items(load_main_routes_roster(), projects_roster)
         write_json(SITE_DATA_DIR / "news_items.json", news_items)
+        # The proposed-projects file is a pure function of the checked-in
+        # roster + the news items just rebuilt, so it refreshes with them.
+        proposed = build_proposed_projects(projects_roster, news_items)
+        write_json(SITE_DATA_DIR / "proposed_projects.json", proposed)
         print(f"  news_items: rebuilt from {news_raw_path} "
-              f"({len(news_items['items'])} items)")
+              f"({len(news_items['items'])} items); proposed_projects: "
+              f"{len(proposed['projects'])} projects")
     else:
         print(f"  news_items: {news_raw_path} absent — left committed "
-              f"site/data/news_items.json untouched")
+              f"site/data/news_items.json and proposed_projects.json untouched")
 
     # meta.json: stamp the (possibly newer) contract version and register the
     # citywide_trend / main_routes / mellow_connectors / osm_trails /
@@ -337,7 +357,7 @@ def main():
     meta["contract_version"] = CONTRACT_VERSION
     upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
                         network_nodes, upsert_osm_trails=rebuild_osm_trails,
-                        news_items=news_items)
+                        news_items=news_items, proposed_projects=proposed)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")

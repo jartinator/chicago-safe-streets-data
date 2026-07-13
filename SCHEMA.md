@@ -830,3 +830,60 @@ permanently killed by the validation study).
   date_range: null }`. Unconditional (the file is always written; zero
   records on a degraded/offline run is honest, not absent). Placed last,
   after `menu_spending`.
+
+## proposed_projects.json — tier derived (coverage headlines real, matching derived)
+
+A short, hand-curated editorial roster of active Chicago bikeway/trail
+proposals (`data/proposed_projects.json`, the `main_routes.json` pattern),
+published with per-project news coverage auto-joined from `news_items.json`.
+Design + persona validation:
+docs/superpowers/specs/2026-07-13-proposed-projects-design.md; evidence:
+docs/research/proposed-routes-news/evidence-proposals.md. No geometry — no
+machine-readable planned-bikeway data exists (verified 2026-07), so projects
+render as cards, never map lines.
+
+```
+{ data_tier: "derived",       // the roster and its statuses are curated
+  coverage_tier: "real",      // coverage headlines/links/dates are verbatim
+  match_tier: "derived",      // the phrase-matching is computed
+  as_of,                      // the news pull's fetched_at (null = no pull)
+  note,
+  projects: [{
+    id, name,
+    status,                   // controlled vocab (roster file lists it)
+    status_as_of,             // date the status was last volunteer-reviewed
+    status_note,              // which-kind specifics (which funding, which
+                              // block) — validation amendment B
+    description,
+    wards: [],                // curator-assigned; empty = citywide/unassigned
+    official_links: [{text, url}],
+    news_phrases: [],         // curated multi-word match phrases (bare
+                              // corridor tokens are forbidden — "606" alone
+                              // is ~1/12 on-topic, evidence brief §2)
+    citations: [{title, url, source, published}],  // status evidence
+    coverage: [{title, url, source, published, via}]  // joined from
+                              // news_items, newest first, cap 8
+  }] }
+```
+
+## Contract v1.13 changes (proposed projects)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.13"`. Additive only.
+
+- **`proposed_projects.json`** (new file) — schema above.
+- **`news_items.json`** — each item's `matches` gains `projects:
+  [{ id, name, via }]` (same auditable-`via` mechanics as routes). An item
+  that names a rostered project is relevant by definition, even without a
+  safety-keyword hit. The newest-first `NEWS_MAX_ITEMS` cap no longer drops
+  project-matched items: any windowed item with a project match survives the
+  cap (project coverage is sparse, milestone-driven, and is what
+  `proposed_projects.json` joins on).
+- **`pull_news.py`** adds one roster-derived Google News query feed (the
+  projects' curated phrases), so coverage follows the roster — several real
+  projects' current coverage lives on outlets outside the base allowlist.
+
+### meta.json — new source entry
+- **`proposed_projects`** (new): `{ id: "proposed_projects", name:
+  "Proposed & In-Progress Bikeway Projects (curated roster)", tier:
+  "derived", records: <project count>, date_range: null }`. Unconditional;
+  placed last, after `news_items`.
