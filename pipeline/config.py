@@ -30,6 +30,9 @@ MELLOW_API_URL = "https://mellowbikemap.com/api/routes/"
 # 312 RiverRun, North Shore Channel, North Branch, etc.) that CDOT's on-street
 # Bike Routes layer structurally omits. Crowdsourced tier. Non-fatal like Mellow.
 OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
+# overpass-api.de's usage policy requires clients to identify themselves; it
+# rejects the default python-requests User-Agent with HTTP 406 Not Acceptable.
+OSM_USER_AGENT = "chicago-safe-streets-data/1.0 (+https://github.com/jartinator/chicago-safe-streets-data)"
 # (south, west, north, east) — Chicago plus the North Branch Trail's reach north
 # into the forest preserves. Trails are shown full-length, not clipped at the city line.
 OSM_TRAILS_BBOX = (41.60, -87.95, 42.20, -87.50)
