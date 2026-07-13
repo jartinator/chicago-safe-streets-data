@@ -236,12 +236,18 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
 .op-foot { margin-top: .9rem; padding-top: .5rem; border-top: 1px solid var(--line);
   font-size: .68rem; color: var(--ink-soft); letter-spacing: .01em; }
 
+/* Print rules are scoped to the one-pager page (body.onepager-page) so no
+ * other page's print output changes. The .banner (fixture-data warning) is
+ * deliberately NOT hidden anywhere: a printed demo-build artifact must still
+ * carry its synthetic-data warning. */
 @media print {
-  .site-header, .site-footer, .banner, .no-print { display: none !important; }
-  body { background: #fff; }
-  .page { padding: 0; max-width: none; }
-  .onepager { box-shadow: none; border: none; max-width: none; padding: 0; }
-  .onepager a { text-decoration: none; color: inherit; }
-  .badge { border: 1px solid #999; color: #333; background: #fff !important; }
+  body.onepager-page .site-header,
+  body.onepager-page .site-footer,
+  body.onepager-page .no-print { display: none !important; }
+  body.onepager-page { background: #fff; }
+  body.onepager-page .page { padding: 0; max-width: none; }
+  body.onepager-page .onepager { box-shadow: none; border: none; max-width: none; padding: 0; }
+  body.onepager-page .onepager a { text-decoration: none; color: inherit; }
+  body.onepager-page .badge { border: 1px solid #999; color: #333; background: #fff !important; }
   @page { margin: 1.4cm; }
 }

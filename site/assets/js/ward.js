@@ -25,7 +25,11 @@
     return `${MONTH_ABBR[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
   }
 
-  if (!ward || !/^\d+$/.test(ward) || Number(ward) < 1 || Number(ward) > 50) {
+  // Normalize "03"/"007" -> "3": all data files key wards as unpadded
+  // strings, and a strict-match miss would render a plausible-looking
+  // all-"no data" printout for a ward that has data.
+  const wardNorm = /^\d+$/.test(ward) ? String(Number(ward)) : ward;
+  if (!wardNorm || !/^\d+$/.test(wardNorm) || Number(wardNorm) < 1 || Number(wardNorm) > 50) {
     app.innerHTML = `<h1>Ward one-pager</h1>
       <p>Pick a ward to build a printable one-page report:</p>
       <p class="chip-toc">${Array.from({ length: 50 }, (_, i) =>
@@ -45,7 +49,7 @@
     const today = new Date().toISOString().slice(0, 10);
     const o = W.buildOnePager(
       { safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData },
-      ward, today);
+      wardNorm, today);
     render(o);
   }).catch(err => {
     app.innerHTML = `<div class="notice">Failed to load data: ${B.esc(err.message)}</div>`;
@@ -84,7 +88,7 @@
       ? `${B.money(o.menuBikeSpent)} <span class="muted">of ${B.money(o.menuTotalSpent)} total — unverified extract, cross-check before citing</span>`
       : noData, "proxy");
     html += kv("Next committee hearing", o.nextMeeting
-      ? `${fmtDate(o.nextMeeting.date)} — ${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}` +
+      ? `${B.esc(fmtDate(o.nextMeeting.date))} — ${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}` +
         (o.nextMeeting.comment ? `<div class="fine-print">${B.esc(o.nextMeeting.comment)}</div>` : "")
       : `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>`, "real");
     return html;
@@ -136,7 +140,7 @@
     html += `<div class="op-action"><strong>One thing you can do:</strong><br>${action}</div>`;
     if (o.nextMeeting) {
       html += `<p class="op-plain muted">City Council's next street-safety meeting:
-        ${fmtDate(o.nextMeeting.date)} (${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}).
+        ${B.esc(fmtDate(o.nextMeeting.date))} (${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}).
         Anyone can send a written comment.</p>`;
     }
     return html;
