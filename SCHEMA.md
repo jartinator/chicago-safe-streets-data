@@ -295,6 +295,10 @@ Refreshed every pipeline run. If `structured_data_available` is `false`,
 JSON/RSS endpoint for eLMS's meeting calendar was confirmed as of this
 contract version (see DECISIONS.md).
 
+Since contract v1.10, each meeting whose agenda PDF was fetched and parsed
+also carries `agenda_items` and `agenda_amended` — see "Contract v1.10
+changes" below for the item shape and provenance rules.
+
 ## menu_spending.json — tier proxy
 ```
 { data_tier: "proxy", note,
@@ -576,3 +580,36 @@ number ascending.
   `{ id: "street_centerlines", name: "Street Center Lines (surface-street grid)",
   tier: "real", records: <feature count> | null, date_range: null }`, placed
   directly after the `bike_routes` entry.
+
+## Contract v1.10 changes (agenda items)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.10"`. Additive only.
+
+- **`hearings.json`** — each meeting whose agenda PDF was downloaded and
+  yielded text (new `pull_agenda_items.py`, merged by `aggregate.py`) gains:
+
+  ```
+  meetings: [{ …existing fields…,
+    agenda_amended: bool,          // "AMENDED" banner on the PDF cover page
+    agenda_items: [{
+      record_number|null,          // e.g. "O2026-0026797"; null for items the
+                                   // agenda lists without one (appointments,
+                                   // Rule 45 approvals)
+      ward|null,                   // the "(28)" tag printed on the agenda line
+      section|null,                // agenda section heading, verbatim
+      agenda_text,                 // verbatim item text from the official PDF
+      title|null, type|null, status|null, sponsor|null, category|null,
+      matter_url|null,             // eLMS matter API lookup by record_number;
+                                   // all null when the lookup failed
+      safety_keyword_match: bool,  // SAFETY_TOPIC_KEYWORDS hit (derived)
+      tracked: bool                // record_number is in council_records.json
+    }] }]
+  ```
+
+  Both keys are **absent** (not empty) on meetings whose PDF could not be
+  fetched or parsed — an empty `agenda_items` list means "parsed fine, nothing
+  listed", never "extraction failed". Every published string is verbatim from
+  the official agenda PDF or the eLMS matter API — nothing is generated. The
+  two boolean flags are the only derived fields. When any agenda was merged,
+  the top-level `note` gains a sentence saying extraction is best-effort and
+  the PDF is authoritative.

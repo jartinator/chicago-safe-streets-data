@@ -334,3 +334,20 @@ environment forced a deviation. Newest last.
     runner and opens a `data/auto-refresh` PR carrying the sanity table —
     never pushing to main. Review shrinks from "run a pipeline locally" to
     "skim the PR, merge". The documented local run remains as a fallback.
+
+24. **Agenda PDFs get parsed, and record numbers get looked up — context comes
+    from official sources, not generation.** eLMS publishes meeting agendas
+    only as PDFs (the API's `agenda` field is empty even on published
+    meetings — verified 2026-07-13), so "what will this meeting decide" was
+    invisible to anyone who didn't open a PDF full of bare record numbers.
+    `pull_agenda_items.py` closes that gap deterministically: extract the PDF
+    text (pypdf), keep item text verbatim, and resolve every record number
+    through the eLMS matter API (`/matter?filter=recordNumber eq '…'`) for the
+    canonical title, sponsor, type, and status, linking to the public matter
+    page (`/Matter/?matterId=…`). No LLM anywhere on this path — the
+    classify-stage exception (#15) stays the only one. Parsing a loosely
+    formatted PDF is best-effort by nature, so the module is non-fatal
+    end-to-end, meetings whose PDF can't be parsed just keep their link, the
+    published note says the PDF is authoritative, and the only derived fields
+    are two booleans (`safety_keyword_match`, `tracked`) computed in
+    aggregate.py.
