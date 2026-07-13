@@ -65,7 +65,15 @@ environment forced a deviation. Newest last.
       geometry through Ramer–Douglas–Peucker (40 m tolerance,
       `BSDNet.schematicLatLngs`). Vertices are only dropped, never moved or
       invented, and endpoints survive so segments stay connected — still not
-      a distorted schematic. Trail strokes also slimmed 11/15 px → 7/10 px.
+      a distorted schematic.
+    - *2026-07-13 (same day, metro-map pass 2):* trail strokes slimmed to the
+      main routes' 6/9 px (tiers now read by outline color, not bulk), all
+      stroke weights scale with zoom (`BSDNet.zoomWeightFactor`, 0.6 at the
+      citywide fit → 1 at street zoom), and holes inside a roster line are
+      bridged with straight strokes in a lightened line color
+      (`BSDNet.gapSegments` + `lightenColor`) so every line reads connected.
+      The pale shade is the honesty marker: inferred continuity, never
+      presented as surveyed geometry.
 
 11. **Spatial params.** Nearest-bikeway threshold 30 m in EPSG:26916 (UTM 16N);
     intersection hotspots are ~100 m grid clusters (≥2 crashes), top 25

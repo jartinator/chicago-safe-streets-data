@@ -56,6 +56,8 @@
     quality: L.layerGroup(),         // quality border, toggle "quality"
     trailsOutline: L.layerGroup(),   // trails: darkened outline
     trails: L.layerGroup(),          // trails: core stroke
+    gapsTrails: L.layerGroup(),      // trails: lighter gap-filler strokes
+    gapsMain: L.layerGroup(),        // main routes: lighter gap-filler strokes
     connectors: L.layerGroup(),      // connectors tier: non-roster bike_routes + mellow_connectors + non-roster osm_trails
     halo: L.layerGroup(),            // selection halo (spec §7)
     capsules: L.layerGroup(),        // interlining transfer-capsule markers (spec §6)
@@ -136,11 +138,19 @@
 
   let selectedLineIds = null; // Set<line id> | null
 
+  // All stroke weights scale with zoom (BSDNet.zoomWeightFactor — 0.6 at
+  // the citywide fit up to 1 at street zoom) so the metro lines stay slim
+  // when zoomed out instead of crowding into a smudge. Every restyle path
+  // multiplies its base weights by this; the zoomend handler below updates
+  // it and restyles when it changes.
+  let weightFactor = BSDNet.zoomWeightFactor(map.getZoom());
+
   // Per-feature layer records so floor/selection restyles can be applied
   // without rebuilding geometry (spec §5: "restyle existing polylines
   // (setStyle) not rebuilding").
-  const mainRouteRecords = []; // { grade, lineIds, casingLayer, borderLayer, strandLayers: [{lineId, layer}] }
+  const mainRouteRecords = []; // { grade, lineIds, casingLayer, casingBaseWeight, borderLayer, strandLayers: [{lineId, layer}] }
   const trailRecords = [];     // { lineId, coreLayer, outlineLayer }
+  const gapRecords = [];       // { lineId, layer, baseWeight } — lighter continuity strokes
 
   function isLineSelected(lineId) {
     return selectedLineIds != null && selectedLineIds.has(lineId);
@@ -157,20 +167,26 @@
       rec.casingLayer.setStyle({ opacity: 0 });
       if (rec.borderLayer) rec.borderLayer.setStyle({ opacity: 0 });
       rec.strandLayers.forEach((s) => {
-        s.layer.setStyle({ ...BSDNet.DRAINED_STYLE, dashArray: null, opacity: dimOpacity });
+        s.layer.setStyle({
+          ...BSDNet.DRAINED_STYLE,
+          weight: BSDNet.DRAINED_STYLE.weight * weightFactor,
+          dashArray: null, opacity: dimOpacity,
+        });
       });
     } else {
-      rec.casingLayer.setStyle({ opacity: dimOpacity });
+      rec.casingLayer.setStyle({ opacity: dimOpacity, weight: rec.casingBaseWeight * weightFactor });
       const borderStyle = BSDNet.qualityBorderStyle(rec.grade);
       if (rec.borderLayer) {
-        rec.borderLayer.setStyle(borderStyle ? { ...borderStyle, opacity: dimOpacity } : { opacity: 0 });
+        rec.borderLayer.setStyle(borderStyle
+          ? { ...borderStyle, weight: borderStyle.weight * weightFactor, opacity: dimOpacity }
+          : { opacity: 0 });
       }
       rec.strandLayers.forEach((s) => {
         const selected = isLineSelected(s.lineId);
         const base = BSDNet.lineStyle(s.lineId);
         s.layer.setStyle({
           ...base,
-          weight: selected ? base.weight + 2 : base.weight,
+          weight: base.weight * weightFactor + (selected ? 2 : 0),
           opacity: dimOpacity,
         });
       });
@@ -182,13 +198,31 @@
     const dimmed = isDimmed([rec.lineId]);
     const dimOpacity = dimmed ? 0.6 : 1;
     const base = BSDNet.trailStyle(rec.lineId);
-    rec.coreLayer.setStyle({ ...base, weight: selected ? base.weight + 2 : base.weight, opacity: dimOpacity });
-    rec.outlineLayer.setStyle({ opacity: dimOpacity });
+    const outlineBase = BSDNet.trailOutlineStyle(rec.lineId);
+    rec.coreLayer.setStyle({
+      ...base,
+      weight: base.weight * weightFactor + (selected ? 2 : 0),
+      opacity: dimOpacity,
+    });
+    rec.outlineLayer.setStyle({ weight: outlineBase.weight * weightFactor, opacity: dimOpacity });
+  }
+
+  // Gap fillers dim with their line and scale with zoom like every other
+  // stroke; they carry no selection weight bump (they're continuity hints,
+  // not the line itself).
+  function restyleGaps() {
+    gapRecords.forEach((g) => {
+      g.layer.setStyle({
+        weight: g.baseWeight * weightFactor,
+        opacity: isDimmed([g.lineId]) ? 0.6 : 1,
+      });
+    });
   }
 
   function restyleAll() {
     mainRouteRecords.forEach(restyleMainRoute);
     trailRecords.forEach(restyleTrail);
+    restyleGaps();
   }
 
   // Selection halo (spec §7): a soft glow polyline (~16px, 25% opacity of
@@ -209,7 +243,7 @@
         if (seen.has(key)) return;
         seen.add(key);
         layers.halo.addLayer(L.polyline(BSDNet.schematicLatLngs(feature.geometry), {
-          pane: "haloPane", color, weight: 16, opacity: 0.25, lineCap: "round", lineJoin: "round",
+          pane: "haloPane", color, weight: 16 * weightFactor, opacity: 0.25, lineCap: "round", lineJoin: "round",
         }));
       });
     });
@@ -347,7 +381,7 @@
 
     mainRouteRecords.push({
       feature, grade: entry.grade, lineIds: entry.lineIds,
-      casingLayer, borderLayer, strandLayers: [{ lineId, layer: line }],
+      casingLayer, casingBaseWeight: 9, borderLayer, strandLayers: [{ lineId, layer: line }],
     });
   }
 
@@ -390,8 +424,9 @@
       : null;
     if (borderLayer) layers.quality.addLayer(borderLayer);
 
+    const casingBaseWeight = 9 + (plan.strands.length - 1) * 4;
     const casingLayer = L.polyline(plan.casing.latlngs, {
-      pane: "casingPane", weight: 9 + (plan.strands.length - 1) * 4, color: "#ffffff", opacity: 1,
+      pane: "casingPane", weight: casingBaseWeight, color: "#ffffff", opacity: 1,
       lineCap: "round", lineJoin: "round",
     });
     layers.casing.addLayer(casingLayer);
@@ -411,7 +446,7 @@
       layers.capsules.addLayer(marker);
     });
 
-    mainRouteRecords.push({ feature, grade: entry.grade, lineIds: entry.lineIds, casingLayer, borderLayer, strandLayers });
+    mainRouteRecords.push({ feature, grade: entry.grade, lineIds: entry.lineIds, casingLayer, casingBaseWeight, borderLayer, strandLayers });
   }
 
   function onLineClick(lineId) {
@@ -448,6 +483,46 @@
     layers.trails.addLayer(coreLayer);
 
     trailRecords.push({ lineId, coreLayer, outlineLayer });
+  });
+
+  /* ---------------- draw: gap fillers (metro-map continuity) ---------------- */
+  // A roster line's member segments don't always touch — the source data
+  // has real holes, so a line can render as dashes of itself. Bridge every
+  // hole with a straight stroke in a lighter shade of the line color:
+  // reads as one connected metro line, while the paler shade keeps it
+  // honest as inferred continuity rather than surveyed geometry.
+  // Non-interactive, and mounted to the map *before* the real strokes in
+  // the same pane so it always sits underneath them.
+
+  const GAP_LIGHTEN = 0.55;
+  const GAP_BASE_WEIGHT = 6; // matches the core stroke weight of both tiers
+
+  function drawLineGaps(lineId, features, pane, group) {
+    const parts = [];
+    features.forEach((f) => {
+      const ll = BSDNet.schematicLatLngs(f.geometry);
+      (BSDNet.isMultiPart(ll) ? ll : [ll]).forEach((p) => parts.push(p));
+    });
+    const color = BSDNet.lightenColor(
+      BSDNet.LINE_COLORS[lineId] || BSDNet.FALLBACK_LINE_COLOR, GAP_LIGHTEN);
+    BSDNet.gapSegments(parts).forEach((seg) => {
+      const layer = L.polyline(seg, {
+        pane, interactive: false, lineCap: "round",
+        color, weight: GAP_BASE_WEIGHT, opacity: 1,
+      });
+      group.addLayer(layer);
+      gapRecords.push({ lineId, layer, baseWeight: GAP_BASE_WEIGHT });
+    });
+  }
+
+  (mainRoutesData.lines || []).forEach((lineMeta) => {
+    const isTrail = lineMeta.source === "osm_trails";
+    const members = isTrail
+      ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineMeta.id)
+      : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineMeta.id);
+    if (members.length === 0) return; // no_data lines: nothing to bridge, never fabricate
+    if (isTrail) drawLineGaps(lineMeta.id, members, "trailsPane", layers.gapsTrails);
+    else drawLineGaps(lineMeta.id, members, "linesPane", layers.gapsMain);
   });
 
   /* ---------------- draw: connectors (spec §1) ---------------- */
@@ -571,10 +646,12 @@
   // Gated on state.overlays so a ?overlays= that excludes "main"/"trails"
   // actually hides these — and so the checkboxes below (rendered from the
   // same state.overlays) agree with what's on the map at load.
-  if (state.overlays.has("main")) { layers.casing.addTo(map); layers.lines.addTo(map); layers.capsules.addTo(map); }
+  // Within a tier, gap fillers mount before the core strokes: same pane,
+  // earlier in the SVG, so the lighter bridges render underneath.
+  if (state.overlays.has("main")) { layers.casing.addTo(map); layers.gapsMain.addTo(map); layers.lines.addTo(map); layers.capsules.addTo(map); }
   // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
-  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
+  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.gapsTrails.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
   if (state.overlays.has("connectors") && state.floor === "any") layers.connectors.addTo(map);
   if (state.overlays.has("planned")) { layers.planned.addTo(map); layers.plannedCasing.addTo(map); }
 
@@ -599,6 +676,23 @@
     mainRouteRecords.forEach(restyleMainRoute);
   }
 
+  // Connectors and planned routes have no per-feature records — scale
+  // their fixed base weights directly whenever the zoom factor changes.
+  function restyleStaticWeights() {
+    layers.connectors.eachLayer((l) => l.setStyle({ weight: BSDNet.CONNECTOR_STYLE.weight * weightFactor }));
+    layers.planned.eachLayer((l) => l.setStyle({ weight: 5 * weightFactor }));
+    layers.plannedCasing.eachLayer((l) => l.setStyle({ weight: 8 * weightFactor }));
+  }
+
+  function applyZoomWeights() {
+    const f = BSDNet.zoomWeightFactor(map.getZoom());
+    if (f === weightFactor) return;
+    weightFactor = f;
+    restyleAll();
+    updateHalo();
+    restyleStaticWeights();
+  }
+
   function updateDeclutter() {
     const z = map.getZoom();
     setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
@@ -610,7 +704,10 @@
     // otherwise a floor hides the connectors layer but its labels linger.
     setLayerVisible(layers.labels, state.overlays.has("connectors") && state.floor === "any" && z >= BSDNet.ZOOM.corridorLabels);
   }
-  map.on("zoomend", updateDeclutter);
+  map.on("zoomend", () => {
+    applyZoomWeights();
+    updateDeclutter();
+  });
 
   // Fit bounds to bike network
   if (routeFeatures.length > 0) {
@@ -622,6 +719,11 @@
     map.fitBounds(allBounds, { padding: [50, 50], animate: false });
   }
   updateDeclutter();
+  // Layers are drawn with unscaled base weights; apply the current zoom's
+  // weight factor once now (the zoomend path only restyles on *changes*).
+  weightFactor = BSDNet.zoomWeightFactor(map.getZoom());
+  restyleAll();
+  restyleStaticWeights();
 
   /* ---------------- deselect triggers (spec §7, click-bug fix) ---------------- */
   // Every feature click handler above calls L.DomEvent.stop(e), so this
@@ -812,8 +914,8 @@
   TIER_ROWS.forEach((t) => {
     document.getElementById(`${t.id}-toggle`).addEventListener("change", (e) => {
       if (e.target.checked) state.overlays.add(t.id); else state.overlays.delete(t.id);
-      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
-      if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
+      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.gapsTrails, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
+      if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.gapsMain, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
       if (t.id === "connectors") { setLayerVisible(layers.connectors, e.target.checked && state.floor === "any"); updateDeclutter(); }
       syncURL();
     });

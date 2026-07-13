@@ -189,8 +189,8 @@ assert.strictEqual(N.darkenColor("#ffffff", 1), "#000000", "darkenColor: amount 
 assert.strictEqual(N.darkenColor("#c8c8c8", 0.5), "#646464", "darkenColor: halves each channel");
 assert.strictEqual(N.darkenColor("not-a-color", 0.5), "not-a-color", "darkenColor: bad input passes through unchanged");
 
-assert.strictEqual(N.trailStyle("lakefront").weight, 7,
-  "trailStyle: weight 7 — just above main routes' 6, thin enough not to smudge");
+assert.strictEqual(N.trailStyle("lakefront").weight, 6,
+  "trailStyle: weight 6 — uniform with main routes, DC-metro style; tier reads by outline color");
 assert.strictEqual(N.trailStyle("lakefront").color, N.LINE_COLORS.lakefront, "trailStyle: uses the line color");
 const outline = N.trailOutlineStyle("lakefront");
 assert.strictEqual(outline.color, N.darkenColor(N.LINE_COLORS.lakefront, 0.35),
@@ -499,5 +499,55 @@ assert.deepStrictEqual(
   "schematicLatLngs: composes toLatLngs + simplifyLatLngs at the default tolerance"
 );
 assert.ok(N.SIMPLIFY_TOLERANCE_METERS > 0, "SIMPLIFY_TOLERANCE_METERS: positive");
+
+// ---- lightenColor ----
+assert.strictEqual(N.lightenColor("#1d4ed8", 0), "#1d4ed8", "lightenColor: amount 0 -> unchanged");
+assert.strictEqual(N.lightenColor("#000000", 1), "#ffffff", "lightenColor: amount 1 -> white");
+assert.strictEqual(N.lightenColor("#006464", 0.5), "#80b2b2", "lightenColor: halves the distance to white");
+assert.strictEqual(N.lightenColor("nope", 0.5), "nope", "lightenColor: bad input passes through unchanged");
+
+// ---- zoomWeightFactor ----
+assert.strictEqual(N.zoomWeightFactor(10), 0.6, "zoomWeightFactor: clamped at 0.6 below z11");
+assert.strictEqual(N.zoomWeightFactor(11), 0.6, "zoomWeightFactor: 0.6 at the citywide fit");
+assert.strictEqual(N.zoomWeightFactor(12), 0.8, "zoomWeightFactor: midpoint at z12");
+assert.strictEqual(N.zoomWeightFactor(13), 1, "zoomWeightFactor: full weight from z13");
+assert.strictEqual(N.zoomWeightFactor(16), 1, "zoomWeightFactor: clamped at 1 above z13");
+assert.strictEqual(N.zoomWeightFactor(NaN), 1, "zoomWeightFactor: non-finite zoom -> 1");
+
+// ---- gapSegments ----
+// Three collinear north-south parts with two holes between them. Parts are
+// given out of order and the middle one reversed — chaining must sort that
+// out. 0.01 deg lat ≈ 1113 m.
+const partA = [[41.90, -87.65], [41.91, -87.65]];
+const partB = [[41.93, -87.65], [41.92, -87.65]]; // reversed
+const partC = [[41.94, -87.65], [41.95, -87.65]];
+const gaps = N.gapSegments([partC, partA, partB]);
+assert.strictEqual(gaps.length, 2, "gapSegments: two holes -> two bridges");
+const gapKeys = gaps.map((g) => g.map((pt) => pt.join(",")).sort().join(" ")).sort();
+assert.deepStrictEqual(gapKeys, [
+  "41.91,-87.65 41.92,-87.65",
+  "41.93,-87.65 41.94,-87.65",
+], "gapSegments: bridges span exactly the two holes, regardless of part order/orientation");
+
+// Touching parts produce no bridges (join distance under tolerance).
+assert.deepStrictEqual(
+  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.91, -87.65], [41.92, -87.65]]]),
+  [],
+  "gapSegments: contiguous parts need no bridge"
+);
+
+// Near-touching parts under the join tolerance (~30 m) also need no bridge.
+assert.deepStrictEqual(
+  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.9101, -87.65], [41.92, -87.65]]]),
+  [],
+  "gapSegments: sub-tolerance joins (~11 m) are already 'connected'"
+);
+
+// Degenerate inputs: nothing to chain.
+assert.deepStrictEqual(N.gapSegments([]), [], "gapSegments: no parts");
+assert.deepStrictEqual(N.gapSegments([partA]), [], "gapSegments: single part");
+assert.deepStrictEqual(N.gapSegments([partA, [[41.99, -87.60]]]), [],
+  "gapSegments: sub-2-vertex parts are ignored");
+assert.ok(N.GAP_JOIN_TOLERANCE_METERS > 0, "GAP_JOIN_TOLERANCE_METERS: positive");
 
 console.log("network-model OK");
