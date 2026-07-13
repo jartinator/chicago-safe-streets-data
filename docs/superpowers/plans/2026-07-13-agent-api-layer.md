@@ -99,7 +99,7 @@ Same style as `aggregate.py`/`refresh_reporting.py`: pure unit-testable builders
 - **`site/robots.txt`** (static): allow all + `Sitemap:` line.
 - **`site/sitemap.xml`** (generated): **[folded]** all current HTML pages — index, network, findings, table, sources, methodology, action, ward (base URL only; per-ward views are query-param), contributing — plus llms.txt and the API index; `lastmod` from `meta.json.generated_at`. `obstructions-preview.html` is deliberately omitted (gated demo page, not for indexing).
 - **HTML head**: `<link rel="alternate">` to `api/v1/index.json` and `llms.txt` on all pages; schema.org `Dataset` JSON-LD block in `index.html`.
-- **Docs**: README "For agents (static API)" section; CONTRIBUTING one-liner routing API contract changes to `schemas/`; **[folded] DECISIONS.md #24** (the plan predated #21–#23) — "Agent-first consumption is a static, versioned mirror, not a service" (records the no-server rationale, the additive namespace, hand-written-schemas choice, crash-id-prefix trade-off, and the synthetic-data exclusion).
+- **Docs**: README "For agents (static API)" section; CONTRIBUTING one-liner routing API contract changes to `schemas/`; **[folded] a new DECISIONS.md entry** (take the next free number at implementation time — reserved slots keep getting claimed by parallel sessions; #24 went to network tiers) — "Agent-first consumption is a static, versioned mirror, not a service" (records the no-server rationale, the additive namespace, hand-written-schemas choice, crash-id-prefix trade-off, and the synthetic-data exclusion).
 
 ## 5. Testing & verification
 
@@ -123,7 +123,7 @@ End-to-end verification:
 2. **Ward layer** — `wards/*`, `crashes/*`, size tests, pruning.
 3. **Routes + council** — `routes/*`, `council/*`.
 4. **Schemas + CI validation** — `schemas/`, jsonschema dep, schema tests, `check_api.py`, data-guard step, optional tests.yml.
-5. **Discovery + docs** — llms.txt/sitemap/robots, HTML head links + JSON-LD, README/CONTRIBUTING/SCHEMA.md v1.10, DECISIONS.md #24, CONTRACT_VERSION bump.
+5. **Discovery + docs** — llms.txt/sitemap/robots, HTML head links + JSON-LD, README/CONTRIBUTING/SCHEMA.md v1.10, the new DECISIONS entry, CONTRACT_VERSION bump.
 
 **[folded] Sequencing vs. the UX roadmap:** this layer slots after the
 Tranche-1 items already shipped (#19/#20) and runs parallel to Tranche 2 —
