@@ -1,11 +1,13 @@
+import hashlib
 import json
 
 import pytest
 
 import emit_api
-from config import SITE_BASE_URL, CONTRACT_VERSION
+from config import CRASH_ID_PREFIX_LEN, SITE_BASE_URL, CONTRACT_VERSION
 from emit_api import (COMPARABLE_DANGER_SCORE_DESC, build_citywide, build_corridors_api,
-                      build_index, build_ward_file, build_wards_index, emit_all)
+                      build_crash_slice, build_index, build_ward_file, build_wards_index,
+                      crash_id_prefixes, emit_all)
 
 
 def _meta(provenance="socrata", generated_at="2026-07-01T00:00:00+00:00"):
@@ -126,6 +128,23 @@ def _ward_311(wards=None):
            "wards": wards}
 
 
+def _crash_id(n):
+    # 128-hex-char, matching the real crashes_cyclist.geojson crash_id shape.
+    return hashlib.sha512(f"crash-{n}".encode()).hexdigest()
+
+
+def _crash_feature(crash_id, ward="1", date="2024-05-19T11:51:00.000", lon=-87.670612,
+                   lat=41.997585, injury_severity="none", dooring=False, hit_and_run=False,
+                   street="6346 N CLARK ST", crash_type="PEDALCYCLIST", lighting="DAYLIGHT",
+                   segment_id="656", data_tier="real"):
+    props = {"crash_id": crash_id, "date": date, "injury_severity": injury_severity,
+            "dooring": dooring, "hit_and_run": hit_and_run, "crash_type": crash_type,
+            "lighting": lighting, "street": street, "ward": ward, "segment_id": segment_id,
+            "data_tier": data_tier}
+    return {"type": "Feature", "geometry": {"type": "Point", "coordinates": [lon, lat]},
+           "properties": props}
+
+
 def _write_site_data(dir_, n_wards=50):
     dir_.mkdir(parents=True, exist_ok=True)
     (dir_ / "meta.json").write_text(json.dumps(_meta()))
@@ -152,6 +171,13 @@ def _write_site_data(dir_, n_wards=50):
                     "by_type": {"Bicycle Request/Complaint": n * 10}}
                    for n in range(1, n_wards + 1)]
     (dir_ / "ward_311.json").write_text(json.dumps(_ward_311(wards=sr311_wards)))
+
+    # One crash per ward, plus one with ward=null — excluded from every slice
+    # and exercised by the null-ward-exclusion test below.
+    crash_features = [_crash_feature(_crash_id(n), ward=str(n)) for n in range(1, n_wards + 1)]
+    crash_features.append(_crash_feature(_crash_id(9001), ward=None))
+    (dir_ / "crashes_cyclist.geojson").write_text(
+        json.dumps({"type": "FeatureCollection", "features": crash_features}))
 
 
 # --- 1. envelope propagation -------------------------------------------------
@@ -290,12 +316,22 @@ def test_build_index_fetch_recipes_reference_known_urls():
     out = build_index(_meta(), _endpoint_bytes())
     allowed = {SITE_BASE_URL + "/api/v1/citywide.json",
               SITE_BASE_URL + "/api/v1/corridors.json",
-              SITE_BASE_URL + "/api/v1/wards/ward-40.json"}
-    assert 3 <= len(out["fetch_recipes"]) <= 4
+              SITE_BASE_URL + "/api/v1/wards/ward-40.json",
+              SITE_BASE_URL + "/api/v1/crashes/ward-40.json"}
+    assert 4 <= len(out["fetch_recipes"]) <= 5
     for recipe in out["fetch_recipes"]:
         assert recipe["question"] and recipe["then"]
         for url in recipe["fetch"]:
             assert url in allowed
+
+
+def test_build_index_crashes_fetch_recipe_present():
+    out = build_index(_meta(), _endpoint_bytes())
+    crash_recipes = [r for r in out["fetch_recipes"]
+                     if SITE_BASE_URL + "/api/v1/crashes/ward-40.json" in r["fetch"]]
+    assert len(crash_recipes) == 1
+    assert "ward 40" in crash_recipes[0]["question"].lower()
+    assert "columnar" in crash_recipes[0]["then"].lower()
 
 
 def test_build_index_ward_fetch_recipe_uses_exact_danger_score_string():
@@ -320,17 +356,17 @@ def test_build_index_planned_namespaces_are_marked_not_yet_published():
         assert "not yet published" in entry.lower()
 
 
-def test_build_index_planned_no_longer_lists_wards():
+def test_build_index_planned_no_longer_lists_wards_or_crashes():
     out = build_index(_meta(), _endpoint_bytes())
     assert not any("wards/" in entry for entry in out["planned"])
+    assert not any("crashes/" in entry for entry in out["planned"])
     # still-unpublished namespaces stay
-    assert any("crashes/" in entry for entry in out["planned"])
     assert any("routes/" in entry for entry in out["planned"])
     assert any("council/" in entry for entry in out["planned"])
     assert any("schemas/" in entry for entry in out["planned"])
 
 
-def test_build_index_omits_ward_family_when_no_ward_files_given():
+def test_build_index_omits_ward_and_crash_families_when_no_files_given():
     out = build_index(_meta(), _endpoint_bytes())
     assert out["families"] == []
 
@@ -343,6 +379,16 @@ def test_build_index_ward_family_present_with_count_and_real_max_bytes():
     assert fam["count"] == 50
     assert fam["bytes_approx_max"] == max(ward_files_bytes.values())
     assert fam["example"] == SITE_BASE_URL + "/api/v1/wards/ward-01.json"
+
+
+def test_build_index_crash_family_present_with_count_and_real_max_bytes():
+    crash_files_bytes = {f"crashes/ward-{n:02d}.json": 2000 + n for n in range(1, 51)}
+    out = build_index(_meta(), _endpoint_bytes(), crash_files_bytes=crash_files_bytes)
+    families = {f["path_template"]: f for f in out["families"]}
+    fam = families["crashes/ward-{NN}.json"]
+    assert fam["count"] == 50
+    assert fam["bytes_approx_max"] == max(crash_files_bytes.values())
+    assert fam["example"] == SITE_BASE_URL + "/api/v1/crashes/ward-01.json"
 
 
 # --- 5. no obstruction leakage -------------------------------------------------
@@ -366,6 +412,7 @@ def test_emit_all_mentions_obstruction_only_in_index_no_synthetic_statement(
         assert "obstruction" not in (api_dir / name).read_text().lower()
     assert "obstruction" not in (api_dir / "wards" / "index.json").read_text().lower()
     assert "obstruction" not in (api_dir / "wards" / "ward-01.json").read_text().lower()
+    assert "obstruction" not in (api_dir / "crashes" / "ward-01.json").read_text().lower()
 
 
 # --- 6. emit_all IO orchestration ----------------------------------------------
@@ -379,16 +426,18 @@ def test_emit_all_writes_all_files(tmp_path, monkeypatch):
 
     written = emit_all()
 
-    # phase-1 (2) + wards/index.json (1) + 50 ward files + index.json (1) = 54
-    assert len(written) == 54
+    # phase-1 (2) + wards/index.json (1) + 50 ward files + 50 crash files
+    # + index.json (1) = 104
+    assert len(written) == 104
     expected = {"citywide.json", "corridors.json", "index.json", "wards/index.json"}
     expected |= {f"wards/ward-{n:02d}.json" for n in range(1, 51)}
+    expected |= {f"crashes/ward-{n:02d}.json" for n in range(1, 51)}
     assert set(written) == expected
     for name in written:
         assert (api_dir / name).exists()
 
 
-def test_emit_all_ward_files_within_budget(tmp_path, monkeypatch):
+def test_emit_all_files_within_budget(tmp_path, monkeypatch):
     site_data = tmp_path / "site_data"
     api_dir = tmp_path / "api"
     _write_site_data(site_data)
@@ -398,7 +447,9 @@ def test_emit_all_ward_files_within_budget(tmp_path, monkeypatch):
     written = emit_all()
 
     for path, size in written.items():
-        assert size <= emit_api.API_SIZE_BUDGET_BYTES, f"{path} over budget: {size}"
+        budget = (emit_api.API_CRASH_SLICE_BUDGET_BYTES if path.startswith("crashes/")
+                 else emit_api.API_SIZE_BUDGET_BYTES)
+        assert size <= budget, f"{path} over budget: {size}"
 
 
 def test_emit_all_budget_violation_raises_system_exit(tmp_path, monkeypatch):
@@ -436,6 +487,9 @@ def test_emit_all_prunes_stale_files_but_preserves_schemas(tmp_path, monkeypatch
     stale_ward = api_dir / "wards" / "ward-99.json"
     stale_ward.parent.mkdir(parents=True, exist_ok=True)
     stale_ward.write_text("{}")
+    stale_crash = api_dir / "crashes" / "ward-99.json"
+    stale_crash.parent.mkdir(parents=True, exist_ok=True)
+    stale_crash.write_text("{}")
     schema = api_dir / "schemas" / "whatever.schema.json"
     schema.parent.mkdir(parents=True)
     schema.write_text("{}")
@@ -445,7 +499,9 @@ def test_emit_all_prunes_stale_files_but_preserves_schemas(tmp_path, monkeypatch
     assert not stale.exists()
     assert not stale.parent.exists()  # emptied routes/ dir pruned too
     assert not stale_ward.exists()  # stale ward-99.json pruned; wards/ itself stays (real files)
+    assert not stale_crash.exists()  # same, for crashes/
     assert (api_dir / "wards").exists()
+    assert (api_dir / "crashes").exists()
     assert schema.exists()
 
 
@@ -629,3 +685,253 @@ def test_build_ward_file_envelope_mixed_with_tier_note():
     assert out["_meta"]["data_tier"] == "mixed"
     assert out["_meta"].get("tier_note")
     assert out["_meta"]["human_page"] == out["one_pager_url"]
+
+
+# --- 10. crash_id_prefixes -------------------------------------------------------
+
+def test_crash_id_prefixes_unique_ids_all_get_the_short_prefix():
+    ids = [_crash_id(1), _crash_id(2), _crash_id(3)]
+    out = crash_id_prefixes(ids)
+    assert set(out) == set(ids)
+    for full_id in ids:
+        assert out[full_id] == full_id[:CRASH_ID_PREFIX_LEN]
+        assert len(out[full_id]) == CRASH_ID_PREFIX_LEN
+
+
+def test_crash_id_prefixes_collision_falls_back_to_full_id_both_sides():
+    shared = "a" * CRASH_ID_PREFIX_LEN
+    id_a = shared + "1" * 20
+    id_b = shared + "2" * 20
+    id_c = "b" * CRASH_ID_PREFIX_LEN + "3" * 20  # distinct prefix, unaffected
+
+    out = crash_id_prefixes([id_a, id_b, id_c])
+
+    assert out[id_a] == id_a
+    assert out[id_b] == id_b
+    assert out[id_c] == id_c[:CRASH_ID_PREFIX_LEN]
+
+
+def test_crash_id_prefixes_returns_full_length_map():
+    ids = [_crash_id(n) for n in range(1, 6)]
+    out = crash_id_prefixes(ids)
+    assert len(out) == len(ids)
+
+
+def test_crash_id_prefixes_skips_missing_ids_without_crashing():
+    ids = [_crash_id(1), None, ""]
+    out = crash_id_prefixes(ids)  # must not raise
+    assert out[_crash_id(1)] == _crash_id(1)[:CRASH_ID_PREFIX_LEN]
+    assert None not in out
+    assert "" not in out
+
+
+# --- 11. build_crash_slice --------------------------------------------------------
+
+def test_build_crash_slice_columns_exact():
+    out = build_crash_slice(_meta(), "40", [], {})
+    assert out["columns"] == ["crash_id", "date", "lat", "lng", "injury_severity",
+                              "dooring", "hit_and_run", "street"]
+
+
+def test_build_crash_slice_row_values_rounded_ordered_and_verbatim_date():
+    full_id = _crash_id(1)
+    feature = _crash_feature(full_id, lon=-87.1234567, lat=41.7654321,
+                             injury_severity="fatal", dooring=True, hit_and_run=False,
+                             street="123 N MAIN ST", date="2024-05-19T11:51:00.000")
+    id_map = crash_id_prefixes([full_id])
+
+    out = build_crash_slice(_meta(), "40", [feature], id_map)
+
+    assert out["rows"] == [[
+        full_id[:CRASH_ID_PREFIX_LEN],
+        "2024-05-19T11:51:00.000",
+        round(41.7654321, 5),
+        round(-87.1234567, 5),
+        "fatal",
+        True,
+        False,
+        "123 N MAIN ST",
+    ]]
+
+
+def test_build_crash_slice_missing_property_becomes_null():
+    full_id = _crash_id(2)
+    feature = _crash_feature(full_id)
+    del feature["properties"]["hit_and_run"]  # simulate a genuinely absent property
+    id_map = crash_id_prefixes([full_id])
+
+    out = build_crash_slice(_meta(), "40", [feature], id_map)
+
+    assert out["rows"][0][6] is None
+
+
+def test_build_crash_slice_explicit_null_property_becomes_null():
+    full_id = _crash_id(3)
+    feature = _crash_feature(full_id, dooring=None)
+    id_map = crash_id_prefixes([full_id])
+
+    out = build_crash_slice(_meta(), "40", [feature], id_map)
+
+    assert out["rows"][0][5] is None
+
+
+def test_build_crash_slice_count_matches_row_count_and_preserves_order():
+    features = [_crash_feature(_crash_id(n), street=f"{n} N ORDER ST") for n in range(3)]
+    ids = [f["properties"]["crash_id"] for f in features]
+    id_map = crash_id_prefixes(ids)
+
+    out = build_crash_slice(_meta(), "40", features, id_map)
+
+    assert out["count"] == 3
+    assert len(out["rows"]) == 3
+    assert [row[7] for row in out["rows"]] == ["0 N ORDER ST", "1 N ORDER ST", "2 N ORDER ST"]
+
+
+def test_build_crash_slice_note_mentions_prefix_len_rounding_and_dropped_columns():
+    out = build_crash_slice(_meta(), "40", [], {})
+    note = out["note"]
+    assert str(CRASH_ID_PREFIX_LEN) in note
+    assert "5 decimal" in note
+    for dropped_column in ("crash_type", "lighting", "segment_id"):
+        assert dropped_column in note
+
+
+def test_build_crash_slice_empty_ward_has_columns_but_no_rows():
+    out = build_crash_slice(_meta(), "40", [], {})
+    assert out["columns"]
+    assert out["rows"] == []
+    assert out["count"] == 0
+
+
+def test_build_crash_slice_links_and_envelope():
+    out = build_crash_slice(_meta(), "7", [], {})
+    assert out["ward"] == "7"
+    assert out["ward_url"] == SITE_BASE_URL + "/api/v1/wards/ward-07.json"
+    assert out["full_data_url"] == SITE_BASE_URL + "/data/crashes_cyclist.geojson"
+    assert out["_meta"]["data_tier"] == "real"
+    assert out["_meta"]["human_page"] == SITE_BASE_URL + "/index.html"
+
+
+def test_build_crash_slice_worst_case_1200_rows_stays_under_budget():
+    # A synthetic ward bigger than the real worst ward (27, 1,187 crashes),
+    # with realistic field values: unique 128-hex ids (so all get the short
+    # prefix — no collisions), a weighted injury_severity mix matching the
+    # real dataset's distribution (non_incapacitating is most common, not
+    # the shortest value), and street strings around the real ~17-char
+    # average length.
+    severities_weighted = (["non_incapacitating"] * 49 + ["none"] * 28 +
+                           ["reported_not_evident"] * 13 + ["incapacitating"] * 9 +
+                           ["fatal"] * 1)
+    streets = ["6346 N CLARK ST", "2000 S DAMEN AVE", "100 W MADISON ST",
+              "1500 N HALSTED ST", "4200 S KING DR"]
+
+    features = []
+    for i in range(1200):
+        full_id = hashlib.sha512(f"worst-case-{i}".encode()).hexdigest()
+        features.append(_crash_feature(
+            full_id, ward="27",
+            injury_severity=severities_weighted[i % len(severities_weighted)],
+            street=streets[i % len(streets)],
+            dooring=bool(i % 2), hit_and_run=bool((i + 1) % 2)))
+    ids = [f["properties"]["crash_id"] for f in features]
+    id_map = crash_id_prefixes(ids)
+
+    out = build_crash_slice(_meta(), "27", features, id_map)
+    size = len(json.dumps(out).encode("utf-8"))
+
+    assert out["count"] == 1200
+    assert size < emit_api.API_CRASH_SLICE_BUDGET_BYTES
+
+
+# --- 12. _enforce_budget per-family budgets ---------------------------------------
+
+def test_enforce_budget_crash_file_between_100kb_and_150kb_passes():
+    written = {"crashes/ward-01.json": 120_000, "citywide.json": 5_000}
+    emit_api._enforce_budget(written)  # must not raise
+
+
+def test_enforce_budget_crash_file_over_150kb_raises_naming_file():
+    written = {"crashes/ward-01.json": 160_000}
+    with pytest.raises(SystemExit) as excinfo:
+        emit_api._enforce_budget(written)
+    assert "crashes/ward-01.json" in str(excinfo.value)
+    assert "160,000" in str(excinfo.value)
+
+
+def test_enforce_budget_non_crash_file_still_fails_at_100kb():
+    written = {"citywide.json": 100_001}
+    with pytest.raises(SystemExit) as excinfo:
+        emit_api._enforce_budget(written)
+    assert "citywide.json" in str(excinfo.value)
+
+
+# --- 13. emit_all crash-slice extension --------------------------------------------
+
+def test_emit_all_writes_50_crash_files(tmp_path, monkeypatch):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    written = emit_all()
+
+    crash_files = {f"crashes/ward-{n:02d}.json" for n in range(1, 51)}
+    assert crash_files <= set(written)
+    for rel in crash_files:
+        assert (api_dir / rel).exists()
+
+
+def test_emit_all_excludes_null_ward_crashes_without_crashing(tmp_path, monkeypatch, capsys):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)  # includes one ward=null crash feature
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    emit_all()  # must not raise
+
+    out = capsys.readouterr().out
+    assert "1 features with no ward assignment excluded from slices" in out
+
+
+def test_emit_all_crash_slice_rows_only_include_matching_ward(tmp_path, monkeypatch):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    emit_all()
+
+    ward_1 = json.loads((api_dir / "crashes" / "ward-01.json").read_text())
+    assert ward_1["count"] == 1
+    ward_1_columns = dict(zip(ward_1["columns"], ward_1["rows"][0]))
+    assert ward_1_columns["crash_id"] == _crash_id(1)[:CRASH_ID_PREFIX_LEN]
+
+
+def test_emit_all_index_has_crash_family_planned_removed_and_fetch_recipe(
+        tmp_path, monkeypatch):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    emit_all()
+
+    index = json.loads((api_dir / "index.json").read_text())
+
+    families = {f["path_template"]: f for f in index["families"]}
+    fam = families["crashes/ward-{NN}.json"]
+    assert fam["count"] == 50
+    actual_sizes = [(api_dir / "crashes" / f"ward-{n:02d}.json").stat().st_size
+                    for n in range(1, 51)]
+    assert fam["bytes_approx_max"] == max(actual_sizes)
+    assert fam["example"] == SITE_BASE_URL + "/api/v1/crashes/ward-01.json"
+
+    assert not any("crashes/" in entry for entry in index["planned"])
+
+    crash_recipes = [r for r in index["fetch_recipes"]
+                     if any("crashes/ward-40.json" in u for u in r["fetch"])]
+    assert len(crash_recipes) == 1

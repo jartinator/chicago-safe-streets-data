@@ -181,6 +181,10 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     exercising the full real dataset.
     """
     line = {"type": "LineString", "coordinates": [[-87.65, 41.90], [-87.65, 41.91]]}
+    # crashes_cyclist.geojson features are Points (not lines like the network
+    # geometry above) — emit_api's crash slices read geometry.coordinates as
+    # a single [lon, lat] pair.
+    point = {"type": "Point", "coordinates": [-87.65, 41.90]}
 
     (site_data_dir / "meta.json").write_text(json.dumps({
         "provenance": "socrata", "contract_version": "1.9", "sources": [],
@@ -188,9 +192,10 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     }))
     (site_data_dir / "crashes_cyclist.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [
-            {"type": "Feature", "geometry": line, "properties": {
-                "date": "2020-01-15T00:00:00", "injury_severity": "incapacitating",
-                "hit_and_run": False, "dooring": False, "ward": "1"}},
+            {"type": "Feature", "geometry": point, "properties": {
+                "crash_id": "a" * 128, "date": "2020-01-15T00:00:00",
+                "injury_severity": "incapacitating", "hit_and_run": False,
+                "dooring": False, "street": "100 N TEST ST", "ward": "1"}},
         ]}))
     (site_data_dir / "bikeway_mileage_series.json").write_text(json.dumps({
         "series": [{"date": "2020-01-01", "by_category": {"protected": 5.0, "painted": 2.0},

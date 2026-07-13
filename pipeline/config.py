@@ -272,3 +272,14 @@ SITE_BASE_URL = "https://jartinator.github.io/chicago-safe-streets-data"
 # emit_api.py hard-fails if any emitted file exceeds this — the design goal is
 # a cold agent reaching a cited answer in <=3 fetches of <100 KB each.
 API_SIZE_BUDGET_BYTES = 100_000
+# Crash slices (site/api/v1/crashes/ward-NN.json) are columnar rows, not prose,
+# and the worst ward (27, 1,187 crashes) needs more headroom than a hand-
+# written endpoint ever would — this budget applies to that one family only,
+# everything else still enforces API_SIZE_BUDGET_BYTES.
+API_CRASH_SLICE_BUDGET_BYTES = 150_000
+# crash_id in the source data is a 128-hex-char string; emitting it in full in
+# every row of every ward file wastes bytes for no agent-facing benefit, so
+# crash slices truncate to this many leading hex chars (falling back to the
+# full id per-crash on the rare prefix collision — see crash_id_prefixes in
+# emit_api.py).
+CRASH_ID_PREFIX_LEN = 16
