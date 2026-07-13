@@ -101,5 +101,5 @@ jaredthomasmeyer@gmail.com
 - **If CDOT says no historical versions are retained:** that answer is itself useful — it confirms
   the pipeline's forward-only snapshot approach (`data/snapshots/`, `infra_growth_trend()`) is the
   only viable path, and the FOIA log will document that the data does not exist.
-- **Cross-reference:** see `DECISIONS.md` (#18) and `docs/foia-log.md` for how any returned data would
+- **Cross-reference:** see `DECISIONS.md` (#18) and `log.md` (this folder) for how any returned data would
   feed `bikeway_mileage_series.json` and the per-ward `infra_growth_trend`.

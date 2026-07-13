@@ -36,7 +36,7 @@ Also try the interactive Vendor/Contract/Payment search
 (https://webapps1.chicago.gov/vcsearch) for vendor names "Eco-Counter",
 "Eco Counter", "Replica", "Sidewalk Labs". A hit gives the FOIA a contract
 number to cite; a miss supports the "developer-funded, agreement-based"
-theory (note either way in `docs/foia-log.md`).
+theory (note either way in `docs/foia/log.md`).
 
 ## 3. FOIA-precedent check — prior bike-count requests to CDOT
 
@@ -52,8 +52,8 @@ done
 (Field names vary by log; `$q` full-text search avoids guessing the
 column. If the dataset ID errors, search the portal for "FOIA Request Log -
 Transportation".) Prior granted requests = precedent to cite in the letter;
-prior denials = wording to avoid. Note findings in `docs/foia-log.md`, then
-send `docs/foia-cdot-counter-request-letter.md` after its checklist.
+prior denials = wording to avoid. Note findings in `docs/foia/log.md`, then
+send `docs/foia/cdot-counter-data.md` after its checklist.
 
 ## Order of operations this week
 

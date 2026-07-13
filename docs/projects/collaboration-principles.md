@@ -45,8 +45,8 @@ alongside the product's existing provenance ethos (badges, caveats, read-only).
 
 - `docs/research/followups/agent-research-crawl-foia.md` — the reference-
   crawl method (principle 2), first executed for CDOT counter data
-  (`docs/foia-cdot-counter-crawl.md`).
-- `docs/foia-log.md` — request tracking; add an "allies" note per contact
+  (`docs/foia/cdot-counter-crawl.md`).
+- `docs/foia/log.md` — request tracking; add an "allies" note per contact
   where a relationship exists (principle 5). Keep names out of the public
   repo unless already public.
 - `docs/projects/gov-agent-layer-proposal.md` — the standing-tool extension

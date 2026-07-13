@@ -396,7 +396,7 @@ as likely to exist and worth verifying. Ordered by feasibility.
 |---|---|---|---|
 | **Bike Lane Uprising** | Replaces the mock layer with the real thing — 65k+ reports, ward-sortable; the single most-demanded swap | Partnership (no public API) | The conversation the mock schema was built for; P2 makes OYL a safer partner |
 | **Strava Metro** | Corridor-level relative volumes | **Free for advocacy orgs** since 2020 | Apply; if granted, becomes a second labeled exposure proxy (recreational skew caveat) |
-| **CDOT counter data** (Chicago/Wells Eco-Counter; any manual counts) | Ground-truth calibration for proxies | Ask/FOIA | Request via existing FOIA channel (`docs/foia-log.md`) |
+| **CDOT counter data** (Chicago/Wells Eco-Counter; any manual counts) | Ground-truth calibration for proxies | Ask/FOIA | Request via existing FOIA channel (`docs/foia/log.md`) |
 
 **Long-shots / flagged honestly**
 - **IDPH Trauma Registry / EMS (NEMSIS)** — the HIN-grade injury fusion (US's
@@ -415,7 +415,7 @@ as likely to exist and worth verifying. Ordered by feasibility.
 - **CDOT quarterly Bike Lane Mileage Tracker** — OYL already mirrors the
   concept forward from snapshots; verify whether CDOT will share install
   dates or historic tracker editions (this is CDOT-persona's #1 need and the
-  FOIA in `docs/foia-cdot-bikeway-mileage-history.md` is the right thread —
+  FOIA in `docs/foia/cdot-bikeway-mileage-history.md` is the right thread —
   continue it).
 - **Candidate questionnaires / pledge records** (ATA election questionnaires,
   BikePAC endorsements) — the UK pledge-tracker analog. If public editions

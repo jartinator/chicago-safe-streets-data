@@ -71,7 +71,7 @@ opening the URLs before filing.*
 > document.
 
 *(Item-numbering keeps each ask independently grantable; a partial response
-is still a win. Log the filing in `docs/foia-log.md`.)*
+is still a win. Log the filing in `docs/foia/log.md`.)*
 
 ## Open-data enablement blurb (attach as a closing note — optional, tested language)
 

@@ -60,7 +60,7 @@ broken out by trip purpose if the data allows it.
 
 **Status:** Unconfirmed. The original proposal lists CDOT counter data as a
 partnership ask requiring outreach via the existing FOIA channel
-(`docs/foia-log.md`), but does not confirm it exists or is accessible.
+(`docs/foia/log.md`), but does not confirm it exists or is accessible.
 
 A quick web search during this conversation found: CDOT publishes quarterly
 bikeway installation data, the Chicago Cycling Strategy, bike rack locations,

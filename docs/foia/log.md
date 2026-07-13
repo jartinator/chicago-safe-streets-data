@@ -1,13 +1,14 @@
-# FOIA request log — bikeway mileage history
+# FOIA request log
 
-Tracking open-records requests filed to recover a historical bikeway-mileage time series
-(the public Bike Routes portal layer is current-state only; the quarterly tracker is
-overwritten). See `docs/foia-cdot-bikeway-mileage-history.md` for the full request rationale.
+Tracking every open-records request for this project. One row per request;
+full rationale and request bodies live in this folder's per-request files
+(see `README.md` for the index).
 
 | # | Date sent | Agency | Contact | Subject | Status | Ref # | Statutory reply due | Follow-up |
 |---|-----------|--------|---------|---------|--------|-------|---------------------|-----------|
 | 1 | _(draft prepared 2026-07-12 — not yet sent)_ | CDOT | CDOTfoia@cityofchicago.org | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | Draft in Gmail | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 | 2 | _(draft prepared 2026-07-12 — not yet sent)_ | Office of the City Clerk | clerkfoia@cityofchicago.org | City Council committee records reporting CDOT bikeway/bike-lane mileage | Draft in Gmail | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
+| 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`cdot-counter-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 
 ## What each request seeks
 
