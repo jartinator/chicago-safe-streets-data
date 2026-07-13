@@ -1,7 +1,7 @@
 # Deploys site/ to GitHub Pages on merge to main.
 # One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
-# Data refresh is intentionally a documented local run (see README), not a
-# scheduled cloud job — the site deploys whatever site/data was last committed.
+# Data refresh arrives via reviewed PRs — weekly from data-refresh.yml, or a
+# documented local run (see README) — the site deploys whatever was committed.
 name: Deploy to Pages
 
 on:
