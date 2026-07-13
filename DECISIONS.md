@@ -59,6 +59,21 @@ environment forced a deviation. Newest last.
     distorted schematic — a genuine DC-Metro-style schematization is a design
     project of its own; this keeps the "read the network" job without inventing
     geography.
+    - *2026-07-13:* geometry-faithful, but straightened at render time. Raw
+      CDOT/OSM vertices every few meters made lines read smudgy/squiggly at
+      metro-map stroke widths, so the network screen now runs all drawn
+      geometry through Ramer–Douglas–Peucker (40 m tolerance,
+      `BSDNet.schematicLatLngs`). Vertices are only dropped, never moved or
+      invented, and endpoints survive so segments stay connected — still not
+      a distorted schematic.
+    - *2026-07-13 (same day, metro-map pass 2):* trail strokes slimmed to the
+      main routes' 6/9 px (tiers now read by outline color, not bulk), all
+      stroke weights scale with zoom (`BSDNet.zoomWeightFactor`, 0.6 at the
+      citywide fit → 1 at street zoom), and holes inside a roster line are
+      bridged with straight strokes in a lightened line color
+      (`BSDNet.gapSegments` + `lightenColor`) so every line reads connected.
+      The pale shade is the honesty marker: inferred continuity, never
+      presented as surveyed geometry.
 
 11. **Spatial params.** Nearest-bikeway threshold 30 m in EPSG:26916 (UTM 16N);
     intersection hotspots are ~100 m grid clusters (≥2 crashes), top 25
@@ -448,3 +463,20 @@ environment forced a deviation. Newest last.
     `#a21caf`. Same no-contract-bump posture as #26; the derived node layer
     picked up one new interchange (North Branch Trail × Green Bay Trail at
     Braeside) automatically.
+
+28. **Downtown convergence: four lines interline into a Loop trunk that leads
+    to the Lakefront Trail.** The Milwaukee, Clark, Lake Street, and
+    Jackson–Washington lines previously stubbed out at scattered downtown
+    ends. The roster now routes all four onto real shared facilities —
+    Randolph (protected/buffered, Desplaines to the lakefront at ~-87.6135),
+    Washington east of Halsted, the one-block protected Michigan link, and
+    Clark's tail via Dearborn's protected two-way lane (not the Walton stub) —
+    using per-street `clip_bbox` entries so a line claims only its stretch of
+    a shared street. Shared segments render as pixel-spaced parallel strands
+    (interlining, spec §6), so the trunk reads DC-metro style at every zoom.
+    Couplet/multi-street lines chain gap fills per source street with at most
+    one feeder bridge per street pair, and every gap bridge prefers routing
+    over the connector mesh (mellowest grade first, detour-capped, straight
+    fallback) — the lightened color still marks all of it as inferred
+    continuity. Connectors default off on the network map; the toggle brings
+    the mesh back.
