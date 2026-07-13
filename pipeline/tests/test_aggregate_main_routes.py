@@ -1,14 +1,10 @@
 import aggregate
 
 # The tests run against the REAL checked-in roster (data/main_routes.json) so
-# they validate the shipped config's ordering guarantees (loop first, etc.),
-# not a synthetic stand-in.
+# they validate the shipped config, not a synthetic stand-in.
 ROSTER = aggregate.load_main_routes_roster()
 
-# Loop bbox from the roster: (south, west, north, east) around downtown.
-LOOP_MID = (41.882, -87.630)      # inside the loop clip bbox
-WEST_MID = (41.882, -87.720)      # well west of it (Garfield Park-ish)
-NORTH_MID = (41.950, -87.700)     # far outside the loop bbox
+NORTH_MID = (41.950, -87.700)
 
 
 def _seg(sid, street, cat, length_m=1609.34, mid=NORTH_MID, crashes=0):
@@ -44,19 +40,22 @@ def _lines_by_id(out):
 
 
 def test_roster_shape_matches_spec():
+    # spec 2026-07-12-network-map-distinction.md §3: 16 street lines + 5 trail
+    # lines = 21; loop/belmont/31st dropped, 6 new lines added.
     lines = ROSTER["lines"]
-    assert len(lines) == 18
+    assert len(lines) == 21
     street = [ln for ln in lines if ln["source"] == "bike_routes"]
     trail = [ln for ln in lines if ln["source"] == "osm_trails"]
-    assert len(street) == 13 and len(trail) == 5
-    # loop is FIRST so its bbox claims downtown segments before the couplet lines
-    assert lines[0]["id"] == "loop"
-    assert lines[0].get("clip_bbox"), "loop must carry its downtown clip bbox"
+    assert len(street) == 16 and len(trail) == 5
     ids = [ln["id"] for ln in lines]
-    assert ids.index("loop") < ids.index("jackson-washington")
-    assert ids.index("loop") < ids.index("state-indiana")
+    assert not ({"loop", "belmont", "31st"} & set(ids)), "dropped lines must be gone"
+    assert {"california", "mlk-drive", "lawrence", "roosevelt", "marquette", "83rd"} <= set(ids)
+    assert {"milwaukee", "halsted", "clark", "kedzie", "damen", "state-indiana",
+            "vincennes", "elston", "lake", "jackson-washington"} <= set(ids)
     assert {"lakefront", "bloomingdale", "major-taylor",
             "north-shore-channel", "north-branch"} <= set(ids)
+    # no line carries a clip_bbox anymore (that was loop-only)
+    assert not any(ln.get("clip_bbox") for ln in lines)
 
 
 def test_normalize_street_strips_type_suffix():
@@ -69,25 +68,50 @@ def test_normalize_street_strips_type_suffix():
     assert aggregate.normalize_street("ST") == "ST"
 
 
-def test_first_match_wins_loop_bbox_claims_downtown_washington():
+def test_first_match_wins_when_two_lines_share_a_street():
+    # First-match-wins policy, independent of any one real roster line (no two
+    # real roster lines currently share a street name): a synthetic 2-line
+    # roster where both list HALSTED — the earlier line claims the segment.
+    mini_roster = {"lines": [
+        {"id": "first", "name": "First", "termini": "a", "source": "bike_routes",
+         "streets": ["HALSTED"]},
+        {"id": "second", "name": "Second", "termini": "b", "source": "bike_routes",
+         "streets": ["HALSTED"]},
+    ]}
+    routes = _fc([_seg("h1", "HALSTED", "protected")])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, mini_roster)
+    assert out["features"][0]["properties"]["line_id"] == "first"
+
+
+def test_clip_bbox_filters_by_segment_midpoint():
+    # clip_bbox is unused by the current roster (only "loop" carried one, and
+    # it was dropped — spec §3) but build_main_routes must still honor it.
+    downtown_mid = (41.882, -87.630)   # inside the bbox
+    west_mid = (41.882, -87.720)       # well outside it
+    mini_roster = {"lines": [
+        {"id": "downtown", "name": "Downtown", "termini": "a", "source": "bike_routes",
+         "streets": ["WASHINGTON"], "clip_bbox": [41.868, -87.647, 41.9, -87.615]},
+        {"id": "westside", "name": "Westside", "termini": "b", "source": "bike_routes",
+         "streets": ["WASHINGTON"]},
+    ]}
     routes = _fc([
-        _seg("w-downtown", "WASHINGTON", "protected", mid=LOOP_MID),
-        _seg("w-westside", "WASHINGTON", "buffered", mid=WEST_MID),
+        _seg("w-downtown", "WASHINGTON", "protected", mid=downtown_mid),
+        _seg("w-westside", "WASHINGTON", "buffered", mid=west_mid),
     ])
-    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, mini_roster)
     by_seg = {f["properties"]["segment_id"]: f["properties"] for f in out["features"]}
-    assert by_seg["w-downtown"]["line_id"] == "loop"
-    assert by_seg["w-westside"]["line_id"] == "jackson-washington"
+    assert by_seg["w-downtown"]["line_id"] == "downtown"
+    assert by_seg["w-westside"]["line_id"] == "westside"
     # a segment joins at most one line — no duplicates in the member features
     seg_ids = [f["properties"]["segment_id"] for f in out["features"]]
     assert len(seg_ids) == len(set(seg_ids)) == 2
 
 
 def test_street_suffix_variant_matches_roster():
-    # the raw data carries both RANDOLPH and RANDOLPH ST (spec §5)
-    routes = _fc([_seg("r1", "RANDOLPH ST", "protected", mid=LOOP_MID)])
+    # the raw data carries both MILWAUKEE and MILWAUKEE AVE (spec §5)
+    routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])
     out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
-    assert out["features"][0]["properties"]["line_id"] == "loop"
+    assert out["features"][0]["properties"]["line_id"] == "milwaukee"
 
 
 def test_grade_mapping_including_greenway_and_sharrow():
@@ -176,4 +200,4 @@ def test_top_level_shape_is_derived_with_lines_key():
     assert out["type"] == "FeatureCollection"
     assert out["data_tier"] == "derived"
     assert "editorial" in out["note"]
-    assert len(out["lines"]) == 18
+    assert len(out["lines"]) == 21

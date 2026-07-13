@@ -1,7 +1,12 @@
 /* Pure geometry/aggregation helpers for the Network (metro-map) screen.
  * No DOM, no Leaflet — Node-testable. Exposed as window.BSDNet in the
- * browser, module.exports in Node. Consumed by network.js and (per
- * DECISIONS.md #10 / task-3 overlays) reused for heatBucket/countObstructions. */
+ * browser, module.exports in Node. Consumed by network.js.
+ *
+ * Spec: docs/superpowers/specs/2026-07-12-network-map-distinction.md
+ * The network map has exactly three concerns (§2): major routes (one solid
+ * color per line), connecting routes (local network + trails + mellow), and
+ * route quality (an opt-in grade-colored border). No safety data lives here
+ * — that's the transportation map's job (index.html / map.js). */
 (function (root) {
   // Flatten LineString or MultiLineString coordinates to one list of [lng, lat]
   // pairs. The live CDOT bike-routes feed is MultiLineString (each feature can
@@ -46,27 +51,6 @@
            lng >= bbox[0][1] && lng <= bbox[1][1];
   }
 
-  // Count obstructions falling within each route segment's padded bbox.
-  // Returns Map<segment_id, count>.
-  function countObstructions(routeFeatures, obstructionPoints) {
-    const counts = new Map();
-    routeFeatures.forEach((feature) => {
-      const bbox = getPaddedBBox(feature.geometry);
-      const count = obstructionPoints.filter((p) => pointInBBox(p, bbox)).length;
-      counts.set(feature.properties.segment_id, count);
-    });
-    return counts;
-  }
-
-  // Bucket an obstruction count into a heat tier: null for 0, else a
-  // { color, label } tier used for overlay styling and legends.
-  function heatBucket(count) {
-    if (!count || count <= 0) return null;
-    if (count <= 2) return { color: "#fbbf24", label: "1–2" };
-    if (count <= 5) return { color: "#f97316", label: "3–5" };
-    return { color: "#dc2626", label: "6+" };
-  }
-
   // Group route features by corridor (street name). A missing/empty street
   // is bucketed under "(unnamed)". Returns Map<street, feature[]>.
   function groupByCorridor(routeFeatures) {
@@ -81,7 +65,8 @@
   }
 
   // Default overlay ids enabled when network.html has no ?overlays= param.
-  const DEFAULT_OVERLAYS = ["heat", "stations", "trails"];
+  // Spec §5: quality (border) defaults off; connecting/mellow/nodes default on.
+  const DEFAULT_OVERLAYS = ["connecting", "mellow", "nodes"];
 
   // Sentinel for "explicitly no overlays": BSD.setParams deletes params
   // whose value is "", so an empty set serialized as "" would vanish from
@@ -91,7 +76,10 @@
   // Parse the `overlays` URL param into a Set of overlay ids. `str` is
   // whatever BSD.qs().get("overlays") returns: null when the param is
   // absent (fall back to defaults), the "none" sentinel (empty set), or a
-  // comma-joined string ("" also yields an empty set).
+  // comma-joined string ("" also yields an empty set). Unknown/legacy ids
+  // (e.g. "heat", "crashes", "stations", "trails" from the pre-distinction
+  // map) are not filtered here — network.js simply never looks them up, so
+  // they're silently ignored per spec §5.
   function parseOverlays(str) {
     if (str == null) return new Set(DEFAULT_OVERLAYS);
     if (str === OVERLAYS_NONE) return new Set();
@@ -104,12 +92,13 @@
     return overlaySet.size === 0 ? OVERLAYS_NONE : [...overlaySet].join(",");
   }
 
-  // ---- Main routes ("rail vs bus") helpers — spec §4/§7 of
-  // docs/superpowers/specs/2026-07-12-main-routes-design.md ----
+  // ---- Main routes ("rail vs bus") helpers — spec §4/§5/§6 of
+  // docs/superpowers/specs/2026-07-12-network-map-distinction.md ----
 
   // Grade colors, user-ranked offstreet > protected > painted > none.
   // Duplicated from the grade taxonomy rather than imported from
-  // main-routes-model.js: network.html only loads this model file.
+  // main-routes-model.js: network.html only loads this model file. Shared
+  // with the transportation map and roster report cards (spec §6).
   const GRADE_COLORS = {
     offstreet: "#0369a1",
     protected: "#0b6e4f",
@@ -120,11 +109,58 @@
   // Demoted local ("bus") network: thin, muted, no casing.
   const LOCAL_STYLE = { color: "#cbd5e1", weight: 1.5, opacity: 0.9 };
 
-  // Heavy metro stroke for a roster line member. `none` grade (sharrows /
-  // unknown) renders dashed — the line exists on paper, not on the street.
-  function gradeLineStyle(grade) {
+  // Non-roster OSM trails join the connecting-infrastructure level too
+  // (spec §5, "Connecting infrastructure" row).
+  const CONNECTING_TRAIL_STYLE = { color: "#38bdf8", weight: 2, opacity: 0.8 };
+
+  // One solid color per named line (spec §4). Crossing/parallel-nearby
+  // lines differ strongly in hue or lightness; the GRADE_COLORS hues are
+  // reserved for the quality border, so no line color repeats a grade hue
+  // except trails (uniformly off-street; the border adds nothing there).
+  const LINE_COLORS = {
+    // diagonals
+    "milwaukee":            "#1d4ed8",
+    "elston":               "#ea580c",
+    "vincennes":            "#c026d3",
+    // north-south, west -> east
+    "california":           "#db2777",
+    "kedzie":               "#7c3aed",
+    "damen":                "#059669",
+    "halsted":               "#dc2626",
+    "clark":                "#0891b2",
+    "state-indiana":        "#4d7c0f",
+    "mlk-drive":            "#92400e",
+    // east-west, north -> south
+    "lawrence":             "#881337",
+    "lake":                 "#a16207",
+    "jackson-washington":   "#6b21a8",
+    "roosevelt":            "#0284c7",
+    "marquette":            "#1e40af",
+    "83rd":                 "#16a34a",
+    // trails
+    "lakefront":            "#0369a1",
+    "bloomingdale":         "#65a30d",
+    "major-taylor":         "#ca8a04",
+    "north-shore-channel":  "#0d9488",
+    "north-branch":         "#3f6212",
+  };
+  const FALLBACK_LINE_COLOR = "#334155"; // any line id not in the map
+
+  // Major-route stroke style (spec §5): one solid color per line, weight 6,
+  // no dashes, no per-segment styling. Falls back for any line id not yet
+  // in LINE_COLORS (new roster additions, typos) rather than drawing nothing.
+  function lineStyle(lineId) {
+    return { color: LINE_COLORS[lineId] || FALLBACK_LINE_COLOR, weight: 6, opacity: 1 };
+  }
+
+  // Quality border (spec §5/§6): a toggleable, per-segment grade-colored
+  // casing drawn *around* the constant line color — the swap from the old
+  // always-on white-casing/grade-line roles. Weight 13 so it reads as a rim
+  // around the weight-6 line + weight-9 white casing. `none` grade (sharrows
+  // / unknown) renders dashed — the line exists on paper, not on the street.
+  function qualityCasingStyle(grade) {
     const known = Object.prototype.hasOwnProperty.call(GRADE_COLORS, grade);
-    const style = { color: known ? GRADE_COLORS[grade] : GRADE_COLORS.none, weight: 7 };
+    const style = { color: known ? GRADE_COLORS[grade] : GRADE_COLORS.none, weight: 13 };
     if (!known || grade === "none") style.dashArray = "6,9";
     return style;
   }
@@ -177,32 +213,13 @@
     return streets;
   }
 
-  // Station {lat, lng} vs a list of [[minLat,minLng],[maxLat,maxLng]] bboxes.
-  function stationInAnyBBox(station, bboxes) {
-    return bboxes.some((b) =>
-      station.lat >= b[0][0] && station.lat <= b[1][0] &&
-      station.lng >= b[0][1] && station.lng <= b[1][1]
-    );
-  }
-
-  // Partition stations: on/near a roster line (kept at metro prominence)
-  // vs off-roster (declutters with the labels, not before).
-  function splitStations(stations, rosterBBoxes) {
-    const onRoster = [];
-    const offRoster = [];
-    (stations || []).forEach((s) => {
-      (stationInAnyBBox(s, rosterBBoxes) ? onRoster : offRoster).push(s);
-    });
-    return { onRoster, offRoster };
-  }
-
   const api = {
     flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
-    countObstructions, heatBucket, groupByCorridor,
-    parseOverlays, serializeOverlays,
-    GRADE_COLORS, LOCAL_STYLE, gradeLineStyle,
-    buildRosterIndex, linesById, splitByRoster, membersOfLine,
-    rosterStreets, stationInAnyBBox, splitStations,
+    groupByCorridor,
+    DEFAULT_OVERLAYS, parseOverlays, serializeOverlays,
+    GRADE_COLORS, LOCAL_STYLE, CONNECTING_TRAIL_STYLE,
+    LINE_COLORS, FALLBACK_LINE_COLOR, lineStyle, qualityCasingStyle,
+    buildRosterIndex, linesById, splitByRoster, membersOfLine, rosterStreets,
   };
 
   root.BSDNet = api;

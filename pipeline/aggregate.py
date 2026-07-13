@@ -19,7 +19,8 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
                     INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE,
-                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP)
+                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP,
+                    CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -326,7 +327,7 @@ def build_osm_trails(raw):
         by_name[name].append([(pt["lon"], pt["lat"]) for pt in geom])
 
     if not by_name:
-        return {"type": "FeatureCollection", "features": []}
+        return {"type": "FeatureCollection", "features": [], "data_tier": "crowdsourced"}
 
     names = sorted(by_name)
     shapes = []
@@ -348,7 +349,58 @@ def build_osm_trails(raw):
                 "data_tier": "crowdsourced",
             },
         })
-    return {"type": "FeatureCollection", "features": feats}
+    return {"type": "FeatureCollection", "features": feats, "data_tier": "crowdsourced"}
+
+
+def build_curated_trails(curated_gj):
+    """Build the osm_trails layer from the hand-traced curated fallback (spec §8,
+    docs/superpowers/specs/2026-07-12-network-map-distinction.md).
+
+    Used when raw/osm_trails.json (a real Overpass pull) is absent but
+    data/curated_trails.geojson exists. Each feature passes through unchanged
+    except length_m, recomputed with the identical UTM-16N reprojection
+    build_osm_trails uses, so build_main_routes and every other osm_trails
+    consumer see the same shape regardless of which source built the layer.
+    Tier stays crowdsourced; the curated file's top-level note (provenance/
+    approximation caveat) is preserved onto the output.
+    """
+    feats_in = curated_gj.get("features", [])
+    if not feats_in:
+        return {"type": "FeatureCollection", "features": []}
+    shapes = [shape(f["geometry"]) for f in feats_in]
+    lengths = gpd.GeoDataFrame(geometry=shapes, crs=OUTPUT_CRS).to_crs(METRIC_CRS).geometry.length
+    feats = []
+    for f, length in zip(feats_in, lengths):
+        props = dict(f.get("properties") or {})
+        props["length_m"] = round(float(length), 1)
+        props.setdefault("data_tier", "crowdsourced")
+        feats.append({"type": "Feature", "geometry": f["geometry"], "properties": props})
+    out = {"type": "FeatureCollection", "features": feats, "data_tier": "crowdsourced"}
+    if curated_gj.get("note"):
+        out["note"] = curated_gj["note"]
+    return out
+
+
+def build_osm_trails_layer(raw_path=None, curated_path=CURATED_TRAILS_PATH):
+    """site/data/osm_trails.geojson, in spec §8's priority order:
+
+    1. raw_path (a real Overpass pull, pipeline/raw/osm_trails.json) via build_osm_trails;
+    2. else curated_path (data/curated_trails.geojson) via build_curated_trails;
+    3. else the empty stub.
+
+    Shared by aggregate.main() and refresh_reporting.py so both build paths
+    apply the identical priority order and can never drift.
+    """
+    raw_path = raw_path if raw_path is not None else (RAW_DIR / "osm_trails.json")
+    if raw_path.exists():
+        return build_osm_trails(json.loads(raw_path.read_text()))
+    if curated_path.exists():
+        return build_curated_trails(json.loads(curated_path.read_text()))
+    return stub_layer(
+        "OpenStreetMap off-street trails (Lakefront, 312 RiverRun, North Shore "
+        "Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py "
+        "didn't run, or Overpass was unreachable), and no curated fallback exists "
+        "at data/curated_trails.geojson either. See CONTRIBUTING.md.")
 
 
 _STREET_TYPE_SUFFIXES = {"ST", "AVE", "BLVD", "RD", "DR", "WAY", "PKWY"}
@@ -396,6 +448,10 @@ def _in_bbox(latlon, bbox):
 
 
 def load_main_routes_roster(path=MAIN_ROUTES_PATH):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_orientation_points(path=ORIENTATION_POINTS_PATH):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -511,6 +567,229 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
         "lines": lines_out,
         "features": out_feats,
     }
+
+
+def _line_id_to_name_and_order(main_routes_gj):
+    """{line_id: name} and {line_id: roster position} from main_routes_gj["lines"].
+
+    The roster position gives node labels a deterministic, spec-matching join
+    order (e.g. "Milwaukee Line × Bloomingdale Trail (606)" — milwaukee is
+    listed before the trail lines in data/main_routes.json).
+    """
+    id_to_name, id_to_order = {}, {}
+    for i, ln in enumerate(main_routes_gj.get("lines", [])):
+        id_to_name[ln["id"]] = ln["name"]
+        id_to_order[ln["id"]] = i
+    return id_to_name, id_to_order
+
+
+def _geometry_segments(geometry):
+    """Flatten a LineString/MultiLineString geometry into consecutive-vertex
+    ((lon, lat), (lon, lat)) segment pairs for exact intersection math."""
+    gtype = geometry.get("type")
+    if gtype == "LineString":
+        parts = [geometry["coordinates"]]
+    elif gtype == "MultiLineString":
+        parts = geometry["coordinates"]
+    else:
+        return []
+    segs = []
+    for coords in parts:
+        for a, b in zip(coords, coords[1:]):
+            segs.append(((a[0], a[1]), (b[0], b[1])))
+    return segs
+
+
+def _bboxes_overlap(p1, p2, p3, p4):
+    """Cheap axis-aligned pre-filter before the full intersection solve below."""
+    ax0, ax1 = (p1[0], p2[0]) if p1[0] <= p2[0] else (p2[0], p1[0])
+    ay0, ay1 = (p1[1], p2[1]) if p1[1] <= p2[1] else (p2[1], p1[1])
+    bx0, bx1 = (p3[0], p4[0]) if p3[0] <= p4[0] else (p4[0], p3[0])
+    by0, by1 = (p3[1], p4[1]) if p3[1] <= p4[1] else (p4[1], p3[1])
+    return ax0 <= bx1 and bx0 <= ax1 and ay0 <= by1 and by0 <= ay1
+
+
+def _segment_intersection(p1, p2, p3, p4):
+    """Exact 2-D intersection point of segments p1->p2 and p3->p4, or None.
+
+    Points are (lon, lat) tuples; the math is plain Cartesian line-segment
+    intersection (cross-product / parametric form) — scale- and unit-invariant,
+    so doing it directly in lng/lat is correct for a yes/no + location
+    crossing test (unlike a length computation, which needs a projected CRS).
+    None covers parallel/collinear segments and crossings outside either
+    segment's span. Endpoint-inclusive (small epsilon) so two lines that meet
+    exactly at a shared vertex still register as an interchange.
+    """
+    if not _bboxes_overlap(p1, p2, p3, p4):
+        return None
+    (x1, y1), (x2, y2) = p1, p2
+    (x3, y3), (x4, y4) = p3, p4
+    dx1, dy1 = x2 - x1, y2 - y1
+    dx2, dy2 = x4 - x3, y4 - y3
+    denom = dx1 * dy2 - dy1 * dx2
+    if abs(denom) < 1e-18:
+        return None
+    t = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / denom
+    u = ((x3 - x1) * dy1 - (y3 - y1) * dx1) / denom
+    eps = 1e-9
+    if -eps <= t <= 1 + eps and -eps <= u <= 1 + eps:
+        return (x1 + t * dx1, y1 + t * dy1)
+    return None
+
+
+# Local equirectangular approximation for Chicago's latitude (~41.85N), matching
+# the constants build_intersections() already uses for its grid-cluster cell math.
+_LAT_M_PER_DEG = 111_320.0
+_LON_M_PER_DEG = 83_000.0
+
+
+def _meters_apart(latlon1, latlon2):
+    lat1, lon1 = latlon1
+    lat2, lon2 = latlon2
+    dy = (lat2 - lat1) * _LAT_M_PER_DEG
+    dx = (lon2 - lon1) * _LON_M_PER_DEG
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def _cluster_points(points, threshold_m):
+    """Union-find clustering: merge (lat, lon, {line_ids}) points within
+    threshold_m of ANY other point in their eventual cluster, returning one
+    (centroid_lat, centroid_lon, merged_line_ids) per cluster.
+    """
+    n = len(points)
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i, j):
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            parent[ri] = rj
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _meters_apart(points[i][:2], points[j][:2]) <= threshold_m:
+                union(i, j)
+
+    groups = defaultdict(list)
+    for i in range(n):
+        groups[find(i)].append(i)
+
+    clusters = []
+    for idxs in groups.values():
+        lat = sum(points[i][0] for i in idxs) / len(idxs)
+        lon = sum(points[i][1] for i in idxs) / len(idxs)
+        line_ids = set()
+        for i in idxs:
+            line_ids |= points[i][2]
+        clusters.append((lat, lon, line_ids))
+    return clusters
+
+
+# Padding (in degrees, at Chicago's latitude) added around each line's bbox before
+# the build_network_nodes() pairwise prefilter below, so two lines whose segments
+# don't literally overlap but whose nearest points are still within the 150 m merge
+# distance aren't wrongly skipped.
+_NODE_MERGE_PAD_LON_DEG = 150 / _LON_M_PER_DEG
+_NODE_MERGE_PAD_LAT_DEG = 150 / _LAT_M_PER_DEG
+
+
+def _line_bbox(segs):
+    """(min_lon, min_lat, max_lon, max_lat) over every vertex in segs, padded by
+    the 150 m node-merge distance. None for an empty segment list."""
+    lons = [pt[0] for seg in segs for pt in seg]
+    lats = [pt[1] for seg in segs for pt in seg]
+    if not lons:
+        return None
+    return (min(lons) - _NODE_MERGE_PAD_LON_DEG, min(lats) - _NODE_MERGE_PAD_LAT_DEG,
+            max(lons) + _NODE_MERGE_PAD_LON_DEG, max(lats) + _NODE_MERGE_PAD_LAT_DEG)
+
+
+def _line_bboxes_disjoint(b1, b2):
+    """True when two (min_lon, min_lat, max_lon, max_lat) boxes cannot overlap."""
+    return b1[2] < b2[0] or b2[2] < b1[0] or b1[3] < b2[1] or b2[3] < b1[1]
+
+
+def build_network_nodes(main_routes_gj, orientation_points):
+    """Interchange + orientation nodes for the network map (spec §7,
+    docs/superpowers/specs/2026-07-12-network-map-distinction.md).
+
+    Interchanges are derived: every pair of distinct line_ids among
+    main_routes_gj["features"]' member geometries is checked for exact 2-D
+    segment intersections (pure python — no new deps). Raw intersection
+    points within 150 m of each other merge into one node at their centroid,
+    collecting every line_id involved; only merged points where >=2 distinct
+    lines meet are emitted as nodes. Orientation points are curated wayfinding
+    labels appended verbatim after the interchanges, tier derived, lines
+    always empty (they aren't derived from any line's geometry).
+
+    Before the O(segments_a * segments_b) inner loop for a pair of lines, a
+    cheap line-level bbox prefilter (each line's overall bbox, computed once
+    and padded by the 150 m merge distance) skips the pair entirely when the
+    boxes can't overlap — most roster line pairs are nowhere near each other,
+    so this cuts the dominant cost on the full network without changing which
+    intersections are found.
+    """
+    id_to_name, id_to_order = _line_id_to_name_and_order(main_routes_gj)
+
+    segs_by_line = defaultdict(list)
+    for f in main_routes_gj.get("features", []):
+        line_id = f["properties"]["line_id"]
+        segs_by_line[line_id].extend(_geometry_segments(f["geometry"]))
+
+    line_ids = sorted(segs_by_line)  # deterministic pairing order
+    line_bboxes = {lid: _line_bbox(segs_by_line[lid]) for lid in line_ids}
+    raw_points = []  # (lat, lon, {line_id, line_id})
+    for i, a in enumerate(line_ids):
+        for b in line_ids[i + 1:]:
+            bbox_a, bbox_b = line_bboxes[a], line_bboxes[b]
+            if bbox_a is None or bbox_b is None or _line_bboxes_disjoint(bbox_a, bbox_b):
+                continue
+            for p1, p2 in segs_by_line[a]:
+                for p3, p4 in segs_by_line[b]:
+                    hit = _segment_intersection(p1, p2, p3, p4)
+                    if hit is not None:
+                        lon, lat = hit
+                        raw_points.append((lat, lon, {a, b}))
+
+    interchanges = []
+    if raw_points:
+        for lat, lon, ids in _cluster_points(raw_points, threshold_m=150):
+            if len(ids) < 2:
+                continue
+            ordered = sorted(ids, key=lambda lid: id_to_order.get(lid, 0))
+            label = " × ".join(id_to_name.get(lid, lid) for lid in ordered)
+            interchanges.append({"lat": round(lat, 6), "lon": round(lon, 6),
+                                 "ids": ordered, "label": label})
+        interchanges.sort(key=lambda n: (n["lat"], n["lon"]))
+
+    nodes = []
+    for i, n in enumerate(interchanges, start=1):
+        nodes.append({
+            "id": f"node-{i:03d}",
+            "kind": "interchange",
+            "lat": n["lat"],
+            "lng": n["lon"],
+            "label": n["label"],
+            "lines": n["ids"],
+            "data_tier": "derived",
+        })
+    for i, pt in enumerate(orientation_points, start=1):
+        nodes.append({
+            "id": f"orient-{i:03d}",
+            "kind": "orientation",
+            "lat": pt["lat"],
+            "lng": pt["lng"],
+            "label": pt["label"],
+            "lines": [],
+            "data_tier": "derived",
+        })
+
+    return {"nodes": nodes, "data_tier": "derived"}
 
 
 def stub_layer(status_note):
@@ -1085,16 +1364,12 @@ def main():
             "(pull_mellow.py didn't run, or the source was unreachable). "
             "See CONTRIBUTING.md.")
 
-    osm_trails_raw_path = RAW_DIR / "osm_trails.json"
-    if osm_trails_raw_path.exists():
-        osm_trails_gj = build_osm_trails(json.loads(osm_trails_raw_path.read_text()))
-    else:
-        osm_trails_gj = stub_layer(
-            "OpenStreetMap off-street trails (Lakefront, 312 RiverRun, North Shore "
-            "Channel, North Branch, etc.) were not pulled this run (pull_osm_trails.py "
-            "didn't run, or Overpass was unreachable). See CONTRIBUTING.md.")
+    # Priority order (spec §8): real Overpass pull, else the hand-traced curated
+    # fallback (data/curated_trails.geojson), else the empty stub.
+    osm_trails_gj = build_osm_trails_layer()
 
     main_routes_gj = build_main_routes(routes_gj, osm_trails_gj, load_main_routes_roster())
+    network_nodes_out = build_network_nodes(main_routes_gj, load_orientation_points())
 
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
@@ -1121,6 +1396,9 @@ def main():
              if osm_trails_gj["features"] else []) + [
             {"id": "main_routes", "name": "Main Routes (curated line roster)",
              "tier": "derived", "records": len(main_routes_gj["lines"]),
+             "date_range": None},
+            {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
+             "tier": "derived", "records": len(network_nodes_out["nodes"]),
              "date_range": None},
             {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
              "tier": "real", "records": len(citywide_trend["months"]),
@@ -1164,6 +1442,7 @@ def main():
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
     write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails_gj)
     write_json(SITE_DATA_DIR / "main_routes.geojson", main_routes_gj)
+    write_json(SITE_DATA_DIR / "network_nodes.json", network_nodes_out)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
     write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
@@ -1187,7 +1466,8 @@ def main():
     print(f"aggregate: {len(crash_gj['features'])} crashes, {len(routes_gj['features'])} segments, "
           f"{len(wards_gj['features'])} wards, {len(corridors)} corridors, "
           f"{len(intersections)} hotspots, {len(findings)} findings, "
-          f"{len(main_routes_gj['lines'])} main-route lines -> site/data "
+          f"{len(main_routes_gj['lines'])} main-route lines, "
+          f"{len(network_nodes_out['nodes'])} network nodes -> site/data "
           f"(provenance={provenance})")
 
 

@@ -22,7 +22,8 @@ Usage: python refresh_reporting.py
 import argparse
 import json
 
-from aggregate import build_main_routes, load_main_routes_roster
+from aggregate import (build_main_routes, load_main_routes_roster,
+                       build_osm_trails_layer, build_network_nodes, load_orientation_points)
 from config import SITE_DATA_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -63,6 +64,76 @@ def tuples_from_geojson(gj):
 
 def _load(name):
     return json.loads((SITE_DATA_DIR / name).read_text())
+
+
+def upsert_meta_sources(meta, months, anchor, osm_trails, main_routes, network_nodes):
+    """Register/update the citywide_trend, main_routes, osm_trails, and
+    network_nodes source entries in meta["sources"] in place, matching
+    aggregate.py's final ordering exactly: ... mellow_routes, osm_trails,
+    main_routes, network_nodes, citywide_trend, ward_safety_index, ...
+
+    The order these four blocks RUN in matters, not just each entry's target
+    position, because later blocks anchor on ids inserted by earlier ones:
+
+    1. citywide_trend anchors on "ward_safety_index" (or list end).
+    2. main_routes anchors on "citywide_trend" (now present from step 1), so it
+       always lands immediately before it.
+    3. osm_trails anchors on "main_routes" (now present from step 2), so it
+       always lands immediately before it — even on a legacy meta.json that has
+       neither id yet. (Anchoring osm_trails on "main_routes" before main_routes
+       has been upserted — the original bug — left osm_trails stranded at the
+       end of the list on such a meta.json, drifting from aggregate.py's order.)
+    4. network_nodes anchors on "citywide_trend" (still present), landing
+       immediately after main_routes (since main_routes was inserted just
+       before citywide_trend in step 2).
+    """
+    if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
+        entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
+                 "tier": "real", "records": len(months),
+                 "date_range": [CRASH_START_DATE, anchor]}
+        ids = [s.get("id") for s in meta["sources"]]
+        pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
+        meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
+
+    # main_routes upsert runs BEFORE the osm_trails block below, so that block's
+    # "insert just before main_routes" anchor always has a main_routes entry to
+    # anchor on, even starting from a legacy meta.json with neither id.
+    mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
+                "tier": "derived", "records": len(main_routes["lines"]),
+                "date_range": None}
+    ids = [s.get("id") for s in meta["sources"]]
+    if "main_routes" in ids:
+        meta["sources"][ids.index("main_routes")] = mr_entry
+    else:
+        # aggregate.py places main_routes just before citywide_trend
+        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
+        meta["sources"].insert(pos, mr_entry)
+
+    # osm_trails: register/update the source entry only when the layer actually
+    # has features (mirrors aggregate.py's conditional inclusion — an empty stub
+    # never gets a source entry).
+    if osm_trails["features"]:
+        osm_entry = {"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
+                     "tier": "crowdsourced", "records": len(osm_trails["features"]),
+                     "date_range": None}
+        ids = [s.get("id") for s in meta["sources"]]
+        if "osm_trails" in ids:
+            meta["sources"][ids.index("osm_trails")] = osm_entry
+        else:
+            # aggregate.py places osm_trails just before main_routes
+            pos = ids.index("main_routes") if "main_routes" in ids else len(ids)
+            meta["sources"].insert(pos, osm_entry)
+
+    nn_entry = {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
+                "tier": "derived", "records": len(network_nodes["nodes"]),
+                "date_range": None}
+    ids = [s.get("id") for s in meta["sources"]]
+    if "network_nodes" in ids:
+        meta["sources"][ids.index("network_nodes")] = nn_entry
+    else:
+        # aggregate.py places network_nodes just after main_routes, before citywide_trend
+        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
+        meta["sources"].insert(pos, nn_entry)
 
 
 def main():
@@ -122,36 +193,34 @@ def main():
         rec["monthly"] = ward_monthly.get(w) or monthly_counts([], start_month, end_month)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", wsi)
 
+    # osm_trails: rebuild from the same priority-ordered source aggregate.py uses
+    # (live Overpass pull, else the hand-traced curated fallback, else the stub —
+    # spec §8), not just read back the possibly-stale committed file, so a curated
+    # trail addition/edit takes effect on the next offline refresh too.
+    osm_trails = build_osm_trails_layer()
+    write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails)
+
     # Main routes: rebuild the curated-line layer from the committed CDOT segments
-    # + committed OSM trails + checked-in roster, via the exact same
+    # + the just-rebuilt OSM trails + checked-in roster, via the exact same
     # build_main_routes the live aggregate path calls (no logic drift possible).
     main_routes = build_main_routes(_load("bike_routes.geojson"),
-                                    _load("osm_trails.geojson"),
+                                    osm_trails,
                                     load_main_routes_roster())
     write_json(SITE_DATA_DIR / "main_routes.geojson", main_routes)
 
+    # Network nodes: derived interchanges (exact intersections between roster
+    # lines) + curated orientation points (spec §7), rebuilt from the main_routes
+    # layer just written above.
+    network_nodes = build_network_nodes(main_routes, load_orientation_points())
+    write_json(SITE_DATA_DIR / "network_nodes.json", network_nodes)
+
     # meta.json: stamp the (possibly newer) contract version and register the
-    # citywide_trend / main_routes sources if this meta predates them.
+    # citywide_trend / osm_trails / main_routes / network_nodes sources if this
+    # meta predates them (see upsert_meta_sources for the ordering rationale).
     # generated_at stays — it describes the underlying pull, which this script
     # does not redo.
     meta["contract_version"] = CONTRACT_VERSION
-    if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
-        entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
-                 "tier": "real", "records": len(months),
-                 "date_range": [CRASH_START_DATE, anchor]}
-        ids = [s.get("id") for s in meta["sources"]]
-        pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
-        meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
-    mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
-                "tier": "derived", "records": len(main_routes["lines"]),
-                "date_range": None}
-    ids = [s.get("id") for s in meta["sources"]]
-    if "main_routes" in ids:
-        meta["sources"][ids.index("main_routes")] = mr_entry
-    else:
-        # aggregate.py places main_routes just before citywide_trend
-        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
-        meta["sources"].insert(pos, mr_entry)
+    upsert_meta_sources(meta, months, anchor, osm_trails, main_routes, network_nodes)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")
@@ -166,6 +235,8 @@ def main():
         pct_s = f"{pct:5.1f}% protected" if pct is not None else " " * 16
         flag_s = "  NO DATA" if ln.get("no_data") else ""
         print(f"    {ln['id']:<20} {ln['miles_total']:6.2f} mi  {pct_s}{flag_s}")
+    print(f"  osm_trails: {len(osm_trails['features'])} trail features; "
+          f"network_nodes: {len(network_nodes['nodes'])} nodes")
 
 
 if __name__ == "__main__":
