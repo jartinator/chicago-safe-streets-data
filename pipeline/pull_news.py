@@ -145,7 +145,9 @@ def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
             print(f"  WARNING: {cfg['url']} fetched but did not parse as RSS.",
                   file=sys.stderr)
         feeds.append({"url": cfg["url"], "source": cfg["source"],
-                      "kind": cfg["kind"], "ok": items is not None,
+                      "kind": cfg["kind"],
+                      "query_is_filter": bool(cfg.get("query_is_filter")),
+                      "ok": items is not None,
                       "items": items or []})
 
     # Title dedup FIRST (direct feeds are listed before the aggregator, so
@@ -183,6 +185,9 @@ def project_query_feed(path=PROPOSED_PROJECTS_PATH):
         return None
     query = ("(" + " OR ".join(f'"{p}"' for p in phrases)
              + ") Chicago when:90d")
+    # No query_is_filter: corridor-name phrases ("Grand Avenue") surface
+    # unrelated stories — these items must pass the normal relevance gate
+    # (safety keyword, topic category, or a project match).
     return {"url": ("https://news.google.com/rss/search?q=" + quote(query)
                     + "&hl=en-US&gl=US&ceid=US:en"),
             "source": None, "kind": "google_news"}

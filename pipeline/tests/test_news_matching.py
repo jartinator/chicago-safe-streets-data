@@ -85,19 +85,26 @@ def test_trail_tokens_match_without_suffix():
 
 
 def test_relevance_gate():
+    RSS = {"kind": "rss"}
     assert aggregate._news_relevant(
-        {"title": "New bike lane on Halsted", "categories": []}, "rss")
+        {"title": "New bike lane on Halsted", "categories": []}, RSS)
     assert aggregate._news_relevant(
-        {"title": "Council transit roundup", "categories": ["Bicycling"]}, "rss")
+        {"title": "Council transit roundup", "categories": ["Bicycling"]}, RSS)
     assert not aggregate._news_relevant(
-        {"title": "Mayor announces housing plan", "categories": ["Housing"]}, "rss")
-    # Google items are pre-filtered by the search query itself:
+        {"title": "Mayor announces housing plan", "categories": ["Housing"]}, RSS)
+    # Only Google feeds whose query IS the filter get the free pass:
     assert aggregate._news_relevant(
-        {"title": "Anything at all", "categories": []}, "google_news")
+        {"title": "Anything at all", "categories": []},
+        {"kind": "google_news", "query_is_filter": True})
+    # The roster-derived project query is NOT its own filter — its corridor
+    # phrases surface daycare openings and out-of-state streets:
+    assert not aggregate._news_relevant(
+        {"title": "Daycare opens new location on Grand Avenue",
+         "categories": []}, {"kind": "google_news"})
     # Streetsblog's daily link-digest posts are never items:
     assert not aggregate._news_relevant(
         {"title": "Today’s Headlines for Monday, July 13", "categories": []},
-        "rss")
+        RSS)
 
 
 def test_build_news_items_window_cap_and_shape(tmp_path, monkeypatch):

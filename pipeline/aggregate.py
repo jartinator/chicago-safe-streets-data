@@ -1622,13 +1622,22 @@ NEWS_TOPIC_CATEGORIES = {"bicycling", "bikes", "bike lanes", "bike safety",
                          "complete streets", "vision zero", "dooring"}
 
 
-def _news_relevant(item, feed_kind):
+def _title_has_safety_keyword(item):
+    title = (item.get("title") or "").lower()
+    return any(kw in title for kw in SAFETY_TOPIC_KEYWORDS)
+
+
+def _news_relevant(item, feed):
     if _DIGEST_TITLE_RE.search(item.get("title") or ""):
         return False
-    if feed_kind == "google_news":
-        return True  # the search query itself is the filter
-    title = (item.get("title") or "").lower()
-    if any(kw in title for kw in SAFETY_TOPIC_KEYWORDS):
+    # Only queries scoped tightly enough to BE the filter get a free pass
+    # (the base "bike lane…" Google query). The roster-derived project query
+    # sets query_is_filter False — its corridor-name phrases surface
+    # unrelated stories that must pass the normal gate below (or carry a
+    # project match, handled by the caller).
+    if feed.get("kind") == "google_news" and feed.get("query_is_filter"):
+        return True
+    if _title_has_safety_keyword(item):
         return True
     return any((c or "").lower() in NEWS_TOPIC_CATEGORIES
                for c in item.get("categories") or [])
@@ -1653,11 +1662,14 @@ def _alderman_matchers(aldermen_wards):
                            "surname": last, "full": f"{first} {last}"})
     surname_counts = Counter(p["surname"].lower() for p in parsed)
     for p in parsed:
-        pats = [re.compile(r"\b" + re.escape(p["full"]) + r"\b", re.IGNORECASE)]
+        # (pattern, needs_context) — the uniform matcher-pattern shape (see
+        # _project_matchers); alderman patterns never need extra context.
+        pats = [(re.compile(r"\b" + re.escape(p["full"]) + r"\b",
+                            re.IGNORECASE), False)]
         if surname_counts[p["surname"].lower()] == 1:
-            pats.append(re.compile(
+            pats.append((re.compile(
                 r"\b(?:Ald\.?|Alderman|Alderwoman|Alderperson)\s+"
-                + re.escape(p["surname"]) + r"\b", re.IGNORECASE))
+                + re.escape(p["surname"]) + r"\b", re.IGNORECASE), False))
         p["patterns"] = pats
     return parsed
 
@@ -1670,12 +1682,12 @@ def _route_matchers(roster):
         pats = []
         for street in line.get("streets") or []:
             name = street["name"] if isinstance(street, dict) else street
-            pats.append(re.compile(
+            pats.append((re.compile(
                 r"\b" + re.escape(name.title()) + r"\s+" + _STREET_SUFFIXES + r"\b",
-                re.IGNORECASE))
+                re.IGNORECASE), False))
         for token in line.get("name_tokens") or []:
-            pats.append(re.compile(r"\b" + re.escape(token) + r"\b",
-                                   re.IGNORECASE))
+            pats.append((re.compile(r"\b" + re.escape(token) + r"\b",
+                                    re.IGNORECASE), False))
         if pats:
             matchers.append({"id": line["id"], "name": line["name"],
                              "patterns": pats})
@@ -1719,11 +1731,6 @@ def _project_matchers(projects_roster):
     return matchers
 
 
-def _title_has_safety_keyword(item):
-    title = (item.get("title") or "").lower()
-    return any(kw in title for kw in SAFETY_TOPIC_KEYWORDS)
-
-
 def match_news_item(item, alderman_matchers, route_matchers,
                     project_matchers=()):
     """{wards, aldermen, routes, projects} for one item, every entry carrying
@@ -1742,7 +1749,7 @@ def match_news_item(item, alderman_matchers, route_matchers,
         wards.append({"ward": m.group(1), "via": f"'{m.group(0)}' in headline"})
 
     for a in alderman_matchers:
-        for pattern in a["patterns"]:
+        for pattern, _ in a["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 aldermen.append({"name": a["name"], "ward": a["ward"],
@@ -1754,7 +1761,7 @@ def match_news_item(item, alderman_matchers, route_matchers,
                 break
 
     for r in route_matchers:
-        for pattern in r["patterns"]:
+        for pattern, _ in r["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 routes.append({"id": r["id"], "name": r["name"], "via": where})
@@ -1845,7 +1852,7 @@ def build_news_items(roster, projects_roster=None):
                 continue
             matches = match_news_item(item, alderman_matchers, route_matchers,
                                       project_matchers)
-            if not (_news_relevant(item, feed.get("kind"))
+            if not (_news_relevant(item, feed)
                     or matches["projects"]):
                 continue
             items.append({

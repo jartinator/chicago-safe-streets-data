@@ -492,17 +492,24 @@
   // status citation is rendered WITH the status — "the date and the link
   // protect the site's credibility... they don't protect my afternoon" — and
   // the volunteer-reviewed framing sits inline, so stale can't read as true).
+  // Shared "volunteer-reviewed <date>, per <citation>" fragment — the one
+  // piece both project renderings must never let drift apart (a status
+  // shown without its citation is exactly the failure the validation study
+  // flagged).
+  function statusReviewedHTML(p) {
+    const cite = Array.isArray(p.citations) && p.citations[0] ? p.citations[0] : null;
+    return `volunteer-reviewed ${BSD.esc(fmtDate(p.status_as_of))}` +
+      (cite ? `, per <a href="${BSD.esc(cite.url)}" target="_blank" rel="noopener">${BSD.esc(cite.source || "citation")}</a>` : "");
+  }
+
   function proposedSectionHTML(ward) {
     const projects = getProjectsForWard(projectsData, ward);
     if (!projects.length) return ""; // no section — citywide card covers the rest
     let html = sectionHeadingHTML("Proposed & in progress here", "derived");
     html += `<div class="kv-list">`;
     projects.forEach(p => {
-      const cite = Array.isArray(p.citations) && p.citations[0] ? p.citations[0] : null;
       html += `<div><strong>${BSD.esc(p.name)}</strong> — ${BSD.esc(p.status)}` +
-        ` <span class="muted">(volunteer-reviewed ${BSD.esc(fmtDate(p.status_as_of))}` +
-        (cite ? `, per <a href="${BSD.esc(cite.url)}" target="_blank" rel="noopener">${BSD.esc(cite.source || "citation")}</a>` : "") +
-        `)</span>`;
+        ` <span class="muted">(${statusReviewedHTML(p)})</span>`;
       if (p.description) html += `<div class="fine-print">${BSD.esc(p.description)}</div>`;
       html += `</div>`;
     });
@@ -775,13 +782,10 @@
 
     html += `<div class="kv-list">`;
     projects.forEach(p => {
-      const cite = Array.isArray(p.citations) && p.citations[0] ? p.citations[0] : null;
       html += `<div style="margin-bottom:.6rem;"><strong>${BSD.esc(p.name)}</strong>` +
         (Array.isArray(p.wards) && p.wards.length
           ? ` <span class="muted">· Ward${p.wards.length > 1 ? "s" : ""} ${BSD.esc(p.wards.join(", "))}</span>` : "") +
-        `<div><em>${BSD.esc(p.status)}</em> <span class="muted">— volunteer-reviewed ${BSD.esc(fmtDate(p.status_as_of))}` +
-        (cite ? `, per <a href="${BSD.esc(cite.url)}" target="_blank" rel="noopener">${BSD.esc(cite.source || "citation")}</a>` : "") +
-        `</span></div>`;
+        `<div><em>${BSD.esc(p.status)}</em> <span class="muted">— ${statusReviewedHTML(p)}</span></div>`;
       if (p.description) html += `<div class="fine-print">${BSD.esc(p.description)}</div>`;
       if (p.status_note) html += `<div class="fine-print">${BSD.esc(p.status_note)}</div>`;
       (Array.isArray(p.official_links) ? p.official_links : []).forEach(l => {

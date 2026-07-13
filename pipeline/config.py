@@ -156,10 +156,16 @@ NEWS_FEEDS = [
      "source": "Streetsblog Chicago", "kind": "rss"},
     {"url": "https://blockclubchicago.org/category/transportation/feed/",
      "source": "Block Club Chicago", "kind": "rss"},
+    # query_is_filter: this query is scoped tightly enough that its results
+    # are bike-safety-relevant by construction — aggregate's relevance gate
+    # accepts them without a keyword check. The roster-derived project query
+    # (pull_news.project_query_feed) deliberately does NOT set this: its
+    # corridor-name phrases can surface unrelated stories, which must pass
+    # the normal keyword/project gate.
     {"url": ("https://news.google.com/rss/search?q=%22bike+lane%22+OR+"
              "%22bike+lanes%22+OR+%22protected+lane%22+OR+dooring+Chicago"
              "+when:90d&hl=en-US&gl=US&ceid=US:en"),
-     "source": None, "kind": "google_news"},
+     "source": None, "kind": "google_news", "query_is_filter": True},
 ]
 # Published window/cap: items older than this (relative to the pull's
 # fetched_at, so re-aggregation is deterministic) are dropped at aggregate
