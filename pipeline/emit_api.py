@@ -110,6 +110,7 @@ def _envelope(meta, data_tier, human_page, tier_note=None):
     envelope["license"] = LICENSE
     envelope["attribution"] = ATTRIBUTION
     envelope["human_page"] = human_page
+    envelope["methodology"] = f"{SITE_BASE_URL}/methodology.html"
     return envelope
 
 
@@ -215,6 +216,9 @@ def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, s
     alderman_entry = next((a for a in aldermen["wards"] if a["ward"] == ward), None)
     alderman_note = None
     if alderman_entry is not None:
+        # File-level keys (as_of/source/data_tier/lookup_url/note, per merge)
+        # win here and below: if a per-ward source record ever grows a
+        # same-named key, it would be silently shadowed by this spread order.
         alderman = {**alderman_entry, "as_of": aldermen["as_of"], "source": aldermen["source"],
                    "data_tier": aldermen["data_tier"], "lookup_url": aldermen["lookup_url"]}
     else:

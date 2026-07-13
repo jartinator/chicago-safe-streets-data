@@ -206,6 +206,13 @@ def test_envelope_carries_license_and_attribution():
     assert "On Your Left!" in out["_meta"]["attribution"]
 
 
+def test_envelope_methodology_present_and_follows_human_page():
+    out = build_corridors_api(_meta(), _corridors(), _intersections())
+    assert out["_meta"]["methodology"] == SITE_BASE_URL + "/methodology.html"
+    keys = list(out["_meta"].keys())
+    assert keys.index("methodology") == keys.index("human_page") + 1
+
+
 # --- 2. build_citywide --------------------------------------------------------
 
 def test_build_citywide_sections_present_and_map_state_stripped():
