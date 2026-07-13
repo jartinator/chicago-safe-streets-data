@@ -50,8 +50,8 @@ highest-stakes rider for corridor safety data. Design consequences:
 The agent reference-crawl scoped in `agent-research-crawl-foia.md` has been
 run (six source classes: CDOT pages, FOIA logs, press, procurement, partner
 byproducts, standing tracker documents). Results, FOIA-ready citation list,
-and the draft "open data enablement" blurb: **`../../foia-cdot-counter-crawl.md`**.
-That file is the input for the next FOIA filing per `docs/foia-log.md`
+and the draft "open data enablement" blurb: **`../../foia/cdot-counter-crawl.md`**.
+That file is the input for the next FOIA filing per `docs/foia/log.md`
 conventions.
 
 ## 4. Consolidated proxies could exceed CMAP granularity — NOTED for P5, with a discipline

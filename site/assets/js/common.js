@@ -186,6 +186,31 @@
     return line.no_data ? "stub" : line.data_tier;
   }
 
+  // Shared stacked-bar segment builder: given a { grade: miles } map, an
+  // ordered list of grade ids, and { colors, labels } lookups, returns one
+  // entry per non-zero grade (in `order`) with a pct width of *that* total
+  // (widths sum to 100). Backs both BSDMainRoutes.completionSegments (main
+  // routes report card, GRADE_ORDER + labels) and BSDNet.qualityMixSegments
+  // (network map mix bar, QUALITY_MIX_ORDER, no labels) so the stacked-bar
+  // math lives once. `opts.labels` is optional — segments only carry a
+  // `label` field when it's supplied.
+  function mixSegments(byGrade, order, opts) {
+    const o = opts || {};
+    const colors = o.colors || {};
+    const labels = o.labels || null;
+    if (!byGrade) return [];
+    const present = order
+      .map((g) => ({ grade: g, miles: byGrade[g] || 0 }))
+      .filter((s) => s.miles > 0);
+    const total = present.reduce((sum, s) => sum + s.miles, 0);
+    if (total <= 0) return [];
+    return present.map((s) => {
+      const seg = { grade: s.grade, miles: s.miles, pct: (s.miles / total) * 100, color: colors[s.grade] };
+      if (labels) seg.label = labels[s.grade];
+      return seg;
+    });
+  }
+
   function qs() {
     return new URLSearchParams(location.search);
   }
@@ -420,7 +445,7 @@
     TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
     downloadCSV, csvText, provenanceLines, initPage, trendHTML, scoreColor, money, lineBadgeTier,
-    rollingSums, trendChartSVG, icsForEvent, downloadICS, agendaHighlights,
+    rollingSums, trendChartSVG, icsForEvent, downloadICS, mixSegments, agendaHighlights,
   };
 
   if (typeof module !== "undefined" && module.exports) {
@@ -428,7 +453,7 @@
     // for surface parity — call it only in a browser).
     module.exports = {
       trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN, lineBadgeTier,
-      rollingSums, trendChartSVG, icsForEvent, downloadICS, csvText, provenanceLines,
+      rollingSums, trendChartSVG, icsForEvent, downloadICS, csvText, provenanceLines, mixSegments,
       agendaHighlights,
     };
   }

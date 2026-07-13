@@ -164,7 +164,7 @@
       origin: "Computed from CDOT Bike Routes + OSM trails roster",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "21 marquee corridors (16 street lines + 5 trail lines) drawn heavy on the map. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland) whose color varies along its length by facility grade (off-street / protected / painted / none). The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
+      description: "19 marquee corridors (14 street lines + 5 trail lines, owner-signed roster) drawn heavy on both map screens. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland). The network map draws each line in one solid color with an opt-in quality border showing the facility grade along it (protected / paint / mellow / none — trails are off-street); the transportation map instead colors each member segment directly by its own grade, so quality reads segment-by-segment. The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
       limitations: "the roster is editorial: we chose which corridors count as main routes; segment grades and mileage are computed from source data each run. Gaps in a corridor stay holes in the line — geometry is never fabricated. Street lines are derived from CDOT data; trail lines are crowdsourced OSM data; the two never blend.",
       links: [
         { text: "Roster config (data/main_routes.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/main_routes.json" }
@@ -184,6 +184,20 @@
         { text: "Orientation points config (data/orientation_points.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/orientation_points.json" }
       ],
       metaId: "network_nodes"
+    },
+    {
+      id: "mellow_connectors",
+      name: "Mellow connectors (deduped low-stress links)",
+      short: "Mellow connectors",
+      origin: "Computed from Mellow Bike Map geometry minus CDOT Bike Routes overlap",
+      tier: "crowdsourced",
+      cadence: "weekly pipeline run",
+      description: "The connector-tier remainder of the community Mellow Bike Map: mellow geometry within 25 m of an official CDOT bikeway is dropped as a duplicate, and what's left ships as one citywide layer of quiet-street links between routes for the network map.",
+      limitations: "Inherits the Mellow Bike Map's crowdsourced tier — volunteer-tagged streets, no official review. The 25 m dedupe is purely geometric: a mellow street just beyond the buffer of a parallel bikeway survives, one hugging it is dropped, regardless of how riders treat them.",
+      links: [
+        { text: "Mellow Bike Map", url: "https://mellowbikemap.com" }
+      ],
+      metaId: "mellow_connectors"
     },
     {
       id: "ward_safety_index",

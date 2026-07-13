@@ -295,8 +295,8 @@ Refreshed every pipeline run. If `structured_data_available` is `false`,
 JSON/RSS endpoint for eLMS's meeting calendar was confirmed as of this
 contract version (see DECISIONS.md).
 
-Since contract v1.10, each meeting whose agenda PDF was fetched and parsed
-also carries `agenda_items` and `agenda_amended` — see "Contract v1.10
+Since contract v1.11, each meeting whose agenda PDF was fetched and parsed
+also carries `agenda_items` and `agenda_amended` — see "Contract v1.11
 changes" below for the item shape and provenance rules.
 
 ## menu_spending.json — tier proxy
@@ -581,9 +581,152 @@ number ascending.
   tier: "real", records: <feature count> | null, date_range: null }`, placed
   directly after the `bike_routes` entry.
 
-## Contract v1.10 changes (agenda items)
+## Contract v1.10 changes (network tiers)
 
-`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.10"`. Additive only.
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.10"` for this round.
+See `docs/superpowers/specs/2026-07-13-network-tiers-design.md` for the full
+design (three route tiers, quality regrade, mellow dedupe, comfort floor,
+interlining, selection state); this section documents what's actually built
+in the pipeline. `site/data/meta.json` on disk carries
+`"contract_version": "1.10"`, aligned with `CONTRACT_VERSION` — it was
+brought in line with this round's `CONTRACT_VERSION` bump in the same commit
+that cut it, and already reflects this round's outputs (19-line roster,
+`mellow_connectors` source entry). If `pipeline/config.py`'s
+`CONTRACT_VERSION` is bumped again in a future round, a full pipeline run
+(`python3 pipeline/run_all.py` or `refresh_reporting.py`) is needed to pick
+up the new string.
+
+### data/main_routes.json — roster re-cut (14 street + 5 trail = 19 lines)
+Same checked-in-config contract as the v1.8/v1.9 sections above (format
+unchanged); the line **list** drops two street lines added in the v1.9
+re-cut:
+
+- **Demoted to connectors:** `roosevelt`, `vincennes` — removed from the
+  roster entirely (not just unrendered as major routes); their segments still
+  flow through the pipeline, they just land in the connector tier
+  (`build_mellow_connectors`'s sibling connector geometry / the non-roster
+  remainder of `bike_routes.geojson`) rather than as named `main_routes.geojson`
+  lines.
+- **Final roster: 14 street lines + 5 trail lines = 19 lines**, owner-signed
+  count per spec §2 (down from 21 in the v1.9 re-cut). Confirmed against the
+  checked-in `data/main_routes.json` and the built `main_routes.geojson`'s
+  `lines` array (both list exactly: `milwaukee`, `halsted`, `clark`, `kedzie`,
+  `damen`, `state-indiana`, `elston`, `lake`, `jackson-washington`,
+  `california`, `mlk-drive`, `lawrence`, `marquette`, `83rd` — the 14 street
+  lines — plus `lakefront`, `bloomingdale`, `major-taylor`,
+  `north-shore-channel`, `north-branch` — the 5 trail lines, unchanged).
+
+### main_routes.geojson — `line_ids` (multi-line segment membership)
+`build_main_routes` no longer assigns a `bike_routes` street segment to only
+the first roster line whose `streets` list matches it — **every** matching
+line claims it (spec §6, "interlining" groundwork). Each such segment is
+still emitted as **one** feature, now carrying two properties instead of one:
+
+| key | type | notes |
+|---|---|---|
+| `line_ids` | string[] | every matching roster line id, in roster order |
+| `line_id` | string | `line_ids[0]`, kept for back-compat with any code that only needs "a" line for this segment |
+
+The segment's length and crash count fold into **every** matching line's
+`miles_total` / `miles_by_grade` / `crashes_total` (a shared segment is not
+split or double-discounted). Trail features are unaffected — trail matching
+stays first-match-wins over `osm_trails.geojson` via `name_tokens` (spec §6
+only lifts the restriction for `bike_routes` street matchers) — and always
+carry `line_ids` of length 1. On the current roster no two lines' `streets`
+lists overlap, so on real data every feature's `line_ids` still has length 1
+(confirmed: `site/data/main_routes.geojson`, all 286 features). The
+multi-membership behavior is covered by synthetic fixtures in
+`pipeline/tests/test_aggregate_main_routes.py`, not by live data yet.
+
+### Quality regrade — `MAIN_ROUTE_GRADE_MAP` (4 independent grades, not a ranked ladder)
+`config.py`'s `MAIN_ROUTE_GRADE_MAP` changes from the v1.8 three-level
+`offstreet > painted > none` ladder to four independent grade strings — no
+grade is "between" the others, each maps from a disjoint set of
+`facility_category` values:
+
+| grade | from facility_category | change from v1.8/v1.9 |
+|---|---|---|
+| `protected` | `protected` | unchanged |
+| `paint` | `buffered`, `painted` | renamed from `painted`; **no longer includes `greenway`** |
+| `mellow` | `greenway` | **new grade** — greenways are traffic-calmed streets, not painted lanes, so they get their own grade instead of being lumped into `paint` |
+| `none` | `sharrow`, `other` (default for any unmatched category) | unchanged in membership, renamed from a "worst" rung to an independent grade |
+| `offstreet` | `trail` (osm_trails features) | unchanged |
+
+`mellow` is also the grade stamped on `mellow_connectors.geojson`'s
+`facility_category` (`"mellow"`), so the same grade string spans both
+main-route greenway segments and deduped connector geometry. Verified against
+`pipeline/config.py`'s `MAIN_ROUTE_GRADE_MAP` dict.
+
+### site/data/mellow_connectors.geojson — tier crowdsourced (new file, produced by `build_mellow_connectors`)
+Replaces the standalone mellow overlay on the network map (spec §4).
+`mellow_routes.geojson` itself is unchanged and keeps shipping (this is an
+additional file, not a rename). Built by `build_mellow_connectors()` in
+`pipeline/aggregate.py` (shared by the live `aggregate.py` path and the
+offline `refresh_reporting.py` path, so the two can never drift on dedupe
+logic):
+
+```
+{ type: "FeatureCollection", data_tier: "crowdsourced", note,
+  features: [ {                                   // 0 or 1 features, never more
+    type: "Feature",
+    geometry: { type: "MultiLineString", coordinates: [...] },
+    properties: { segment_id: "mellow-connectors", facility_category: "mellow",
+                  length_m, parts, data_tier: "crowdsourced" }
+  } ] }
+```
+
+Algorithm: `mellow_routes.geojson`'s per-`route_type` MultiLineStrings are
+exploded into their individual block-length parts; a part is **dropped** when
+it falls within `MELLOW_DEDUPE_BUFFER_M` (25 m, applied in `METRIC_CRS` /
+EPSG:26916) of any published `bike_routes.geojson` segment (`bike_routes`
+wins — real infrastructure de-duplicates the crowdsourced layer, not the
+other way around); everything a `bike_routes` buffer union doesn't touch is
+kept. The bike-route buffers are unioned once and wrapped in a shapely
+`PreparedGeometry` so every part pays one indexed `.intersects()` call rather
+than testing against each bike segment individually.
+
+Because connectors are identity-less by design (spec §1 — no named line, no
+per-segment properties worth keeping), every surviving part collapses into
+**one** feature whose geometry is a single MultiLineString of all kept parts
+— the same shape `mellow_routes.geojson` itself already uses. Coordinates are
+rounded to 6 decimal places (~0.1 m). `properties.parts` is the kept-part
+count; that count is also what `meta.json` reports as this source's
+`records` (via `mellow_connector_records()`) — there is no other feature to
+count. When zero parts survive dedupe, `features` is `[]` (no zero-part
+feature is ever emitted) but the envelope keeps `data_tier: "crowdsourced"` —
+dedupe genuinely ran, it just kept nothing. When `mellow_routes.geojson`
+itself had no features to dedupe this run (nothing to run dedupe against in
+the first place), the file instead uses the project's standard stub shape
+(`stub_layer()`; same convention as `planned_routes.geojson` and the
+`osm_trails.geojson` tier-3 stub): `{ type: "FeatureCollection", features:
+[], properties: { status: "no_data_yet", note } }` — no top-level
+`data_tier`, so a stub can never be mistaken for a real crowdsourced-tier
+result with zero records.
+
+The top-level `note` also carries the run's drop rate as prose (e.g. "This
+run dropped 34.1% of mellow route miles as duplicates of on-street bike
+infrastructure") — computed as `1 - (kept length / pre-dedupe length)`, not a
+separate structured field. Current build: 38,114 parts, ~936 route-miles kept,
+2.2 MB on disk, 34.1% of mellow route-miles dropped as duplicates (confirmed
+against the committed `site/data/mellow_connectors.geojson`).
+
+### meta.json — new source entry
+- **`mellow_connectors`** (new): `{ id: "mellow_connectors", name: "Mellow
+  Connectors (deduped crowdsourced low-stress links)", tier: "crowdsourced",
+  records: <kept-part count>, date_range: null }`. Registered by both build
+  paths (`aggregate.py` inline; `refresh_reporting.py`'s
+  `upsert_meta_sources`), only when the built layer has at least one feature
+  — same "don't overwrite a prior real entry with a zero-record one on a
+  degraded run" posture as `osm_trails`'s v1.9 entry. Placed just before
+  `osm_trails` in source order. Confirmed present in the committed
+  `site/data/meta.json` with `records: 38114`, matching the geojson's `parts`
+  count exactly.
+- **`main_routes`** — `records` drops from 21 (v1.9) to 19, reflecting the
+  roster re-cut above. Confirmed in the committed `meta.json`.
+
+## Contract v1.11 changes (agenda items)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.11"`. Additive only.
 
 - **`hearings.json`** — each meeting whose agenda PDF was downloaded and
   yielded text (new `pull_agenda_items.py`, merged by `aggregate.py`) gains:

@@ -221,18 +221,29 @@ CURATED_TRAILS_PATH = REPO_ROOT / "data" / "curated_trails.geojson"
 # see docs/superpowers/specs/2026-07-12-network-map-distinction.md §7.
 ORIENTATION_POINTS_PATH = REPO_ROOT / "data" / "orientation_points.json"
 
-# facility_category -> main-route grade (spec §4, user-locked 4-grade taxonomy).
-# Buffers and greenways are still just paint & signs -> "painted"; sharrows
-# count as nothing -> "none".
+# facility_category -> main-route grade (network tiers v2 design, spec §3,
+# docs/superpowers/specs/2026-07-13-network-tiers-design.md). Four independent
+# grade levels: protected <- protected; paint <- buffered/painted (still just
+# paint & signs); mellow <- greenway (its own grade now, not lumped into paint
+# — greenways are traffic-calmed streets, not painted lanes) + mellow-derived
+# connector geometry (see build_mellow_connectors); none <- sharrow and any
+# unmatched/other facility_category (the .get(..., "none") default in
+# build_main_routes covers "unmatched"); offstreet <- trail, unchanged.
 MAIN_ROUTE_GRADE_MAP = {
     "trail": "offstreet",
     "protected": "protected",
-    "buffered": "painted",
-    "painted": "painted",
-    "greenway": "painted",
+    "buffered": "paint",
+    "painted": "paint",
+    "greenway": "mellow",
     "sharrow": "none",
     "other": "none",
 }
+
+# Buffer distance (meters) for matching mellow_routes geometry against
+# bike_routes when building mellow_connectors.geojson (network tiers v2 design
+# spec §4): a mellow line part is dropped as a duplicate when it falls within
+# this distance of any published bike_routes segment. Applied in METRIC_CRS.
+MELLOW_DEDUPE_BUFFER_M = 25.0
 
 # 311 is a biased proxy. Rather than hard-coding sr_type names (the city renames them),
 # match on substrings; pull_311.py also supports --list-types to inspect the live taxonomy.
@@ -250,4 +261,4 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.10"
+CONTRACT_VERSION = "1.11"
