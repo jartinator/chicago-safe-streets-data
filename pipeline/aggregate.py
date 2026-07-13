@@ -359,13 +359,15 @@ def build_mellow_connectors(mellow_gj, routes_gj, buffer_m=MELLOW_DEDUPE_BUFFER_
     (see mellow_connector_records)."""
     mellow_feats = mellow_gj.get("features", [])
     if not mellow_feats:
-        return {
-            "type": "FeatureCollection",
-            "data_tier": "crowdsourced",
-            "note": ("No mellow route geometry was available to dedupe this run "
-                     "(mellow_routes.geojson has no features this run) — see its own note."),
-            "features": [],
-        }
+        # No mellow geometry to dedupe this run — emit the standard stub shape
+        # (spec's stub convention: empty FeatureCollection with
+        # properties.status/"no_data_yet" + properties.note), NOT a
+        # crowdsourced-tier envelope with a top-level data_tier claiming real
+        # content over zero features. Matches planned_routes.geojson / the
+        # osm_trails empty-stub tier / stub_layer()'s documented shape.
+        return stub_layer(
+            "No mellow route geometry was available to dedupe this run "
+            "(mellow_routes.geojson has no features this run) — see its own note.")
 
     # Explode every mellow MultiLineString into its individual parts.
     mellow_gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in mellow_feats],

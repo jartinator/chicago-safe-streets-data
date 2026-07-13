@@ -18,6 +18,13 @@ inputs this script doesn't have. Corridors and ward counts are read from the
 committed files as-is; protected-share miles come from the latest entry of the
 committed bikeway_mileage_series.json (same centerline methodology as the live path).
 
+Invariant: an offline run never mutates data it can't rebuild at least as well.
+osm_trails.geojson is only rebuilt when pipeline/raw/osm_trails.json (a real
+Overpass pull) is present; otherwise the committed file is read back as-is and
+fed unchanged into main_routes/network_nodes, so a fresh clone (raw/ is
+gitignored and normally absent) can never silently downgrade the committed
+real-OSM trails to the smaller curated/stub fallback.
+
 Usage: python refresh_reporting.py
 """
 import argparse
@@ -26,7 +33,7 @@ import json
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
                        build_mellow_connectors, mellow_connector_records)
-from config import SITE_DATA_DIR, CONTRACT_VERSION, CRASH_START_DATE
+from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
 from socrata import write_json
@@ -69,7 +76,7 @@ def _load(name):
 
 
 def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes):
+                        network_nodes, upsert_osm_trails=True):
     """Register/update the citywide_trend, main_routes, mellow_connectors,
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
@@ -82,8 +89,9 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
     1. citywide_trend anchors on "ward_safety_index" (or list end).
     2. main_routes anchors on "citywide_trend" (now present from step 1), so it
        always lands immediately before it.
-    3. mellow_connectors anchors on "main_routes" (now present from step 2), so
-       it lands immediately before it.
+    3. mellow_connectors anchors on "osm_trails" if present, else "main_routes"
+       (now present from step 2), so it lands immediately before whichever is
+       there.
     4. osm_trails ALSO anchors on "main_routes" (still present) — running this
        block after mellow_connectors means osm_trails' insert lands BETWEEN
        mellow_connectors and main_routes, giving mellow_connectors, osm_trails,
@@ -91,17 +99,39 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
        the three yet. (Anchoring osm_trails on "main_routes" before main_routes
        has been upserted — the original bug — left osm_trails stranded at the
        end of the list on such a meta.json, drifting from aggregate.py's order.)
+       Skipped entirely when upsert_osm_trails is False (offline refresh with
+       no raw Overpass pull to rebuild from — see refresh_reporting.main()).
     5. network_nodes anchors on "citywide_trend" (still present), landing
        immediately after main_routes (since main_routes was inserted just
        before citywide_trend in step 2).
+
+    All five blocks funnel through the single `_upsert` helper below: update
+    the existing entry in place (unless update_if_present=False), or insert a
+    new one at the position of the first present id in `anchor_ids` (else at
+    the list's end). Each block still computes ids fresh via `_upsert` itself,
+    so the anchor-chaining behavior described above is unchanged.
     """
-    if not any(s.get("id") == "citywide_trend" for s in meta.get("sources", [])):
-        entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
-                 "tier": "real", "records": len(months),
-                 "date_range": [CRASH_START_DATE, anchor]}
+    def _upsert(id_, entry, anchor_ids, update_if_present=True):
         ids = [s.get("id") for s in meta["sources"]]
-        pos = ids.index("ward_safety_index") if "ward_safety_index" in ids else len(ids)
-        meta["sources"].insert(pos, entry)  # same position as aggregate.py's list
+        if id_ in ids:
+            if update_if_present:
+                meta["sources"][ids.index(id_)] = entry
+            return
+        pos = len(ids)
+        for anchor_id in anchor_ids:
+            if anchor_id in ids:
+                pos = ids.index(anchor_id)
+                break
+        meta["sources"].insert(pos, entry)
+
+    # citywide_trend: insert-only if absent — unlike the other four, an
+    # existing entry is never overwritten here (its own block above already
+    # wrote the current month's data via write_json).
+    ct_entry = {"id": "citywide_trend", "name": "Citywide Crash Trend (monthly counts)",
+                "tier": "real", "records": len(months),
+                "date_range": [CRASH_START_DATE, anchor]}
+    _upsert("citywide_trend", ct_entry, anchor_ids=["ward_safety_index"],
+           update_if_present=False)
 
     # main_routes upsert runs BEFORE the osm_trails block below, so that block's
     # "insert just before main_routes" anchor always has a main_routes entry to
@@ -109,13 +139,7 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
     mr_entry = {"id": "main_routes", "name": "Main Routes (curated line roster)",
                 "tier": "derived", "records": len(main_routes["lines"]),
                 "date_range": None}
-    ids = [s.get("id") for s in meta["sources"]]
-    if "main_routes" in ids:
-        meta["sources"][ids.index("main_routes")] = mr_entry
-    else:
-        # aggregate.py places main_routes just before citywide_trend
-        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
-        meta["sources"].insert(pos, mr_entry)
+    _upsert("main_routes", mr_entry, anchor_ids=["citywide_trend"])
 
     # mellow_connectors: register/update only when the built layer has features
     # (same conditional pattern as osm_trails below). aggregate.py's list places
@@ -132,40 +156,24 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
                     "tier": "crowdsourced",
                     "records": mellow_connector_records(mellow_connectors),
                     "date_range": None}
-        ids = [s.get("id") for s in meta["sources"]]
-        if "mellow_connectors" in ids:
-            meta["sources"][ids.index("mellow_connectors")] = mc_entry
-        elif "osm_trails" in ids:
-            meta["sources"].insert(ids.index("osm_trails"), mc_entry)
-        else:
-            pos = ids.index("main_routes") if "main_routes" in ids else len(ids)
-            meta["sources"].insert(pos, mc_entry)
+        _upsert("mellow_connectors", mc_entry, anchor_ids=["osm_trails", "main_routes"])
 
     # osm_trails: register/update the source entry only when the layer actually
     # has features (mirrors aggregate.py's conditional inclusion — an empty stub
-    # never gets a source entry).
-    if osm_trails["features"]:
+    # never gets a source entry) AND this run actually rebuilt it — an offline
+    # refresh with no raw Overpass pull leaves the committed osm_trails.geojson
+    # (and its meta entry) untouched rather than re-stamping it from a file it
+    # didn't regenerate.
+    if upsert_osm_trails and osm_trails["features"]:
         osm_entry = {"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
                      "tier": "crowdsourced", "records": len(osm_trails["features"]),
                      "date_range": None}
-        ids = [s.get("id") for s in meta["sources"]]
-        if "osm_trails" in ids:
-            meta["sources"][ids.index("osm_trails")] = osm_entry
-        else:
-            # aggregate.py places osm_trails just before main_routes
-            pos = ids.index("main_routes") if "main_routes" in ids else len(ids)
-            meta["sources"].insert(pos, osm_entry)
+        _upsert("osm_trails", osm_entry, anchor_ids=["main_routes"])
 
     nn_entry = {"id": "network_nodes", "name": "Network Map Nodes (interchanges + orientation points)",
                 "tier": "derived", "records": len(network_nodes["nodes"]),
                 "date_range": None}
-    ids = [s.get("id") for s in meta["sources"]]
-    if "network_nodes" in ids:
-        meta["sources"][ids.index("network_nodes")] = nn_entry
-    else:
-        # aggregate.py places network_nodes just after main_routes, before citywide_trend
-        pos = ids.index("citywide_trend") if "citywide_trend" in ids else len(ids)
-        meta["sources"].insert(pos, nn_entry)
+    _upsert("network_nodes", nn_entry, anchor_ids=["citywide_trend"])
 
 
 def main():
@@ -230,12 +238,29 @@ def main():
         rec["monthly"] = ward_monthly.get(w) or monthly_counts([], start_month, end_month)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", wsi)
 
-    # osm_trails: rebuild from the same priority-ordered source aggregate.py uses
-    # (live Overpass pull, else the hand-traced curated fallback, else the stub —
-    # spec §8), not just read back the possibly-stale committed file, so a curated
-    # trail addition/edit takes effect on the next offline refresh too.
-    osm_trails = build_osm_trails_layer()
-    write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails)
+    # osm_trails: only rebuild when a real Overpass pull (pipeline/raw/osm_trails.json,
+    # gitignored) is actually present. Offline refresh never mutates data it can't
+    # rebuild at least as well: build_osm_trails_layer()'s fallback chain (raw >
+    # curated > stub) means that on a fresh clone with raw/ absent, "rebuilding"
+    # would silently replace the committed real-OSM osm_trails.geojson with the
+    # much smaller curated/stub fallback, then cascade that degradation into
+    # main_routes.geojson and network_nodes.json. So: rebuild only when raw_path
+    # exists (a curated_trails.geojson edit then does take effect, same as
+    # before); otherwise read the committed file back as-is and feed it into
+    # build_main_routes/build_network_nodes unchanged — this is what the
+    # pre-v2 script did.
+    osm_raw_path = RAW_DIR / "osm_trails.json"
+    rebuild_osm_trails = osm_raw_path.exists()
+    if rebuild_osm_trails:
+        osm_trails = build_osm_trails_layer()
+        write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails)
+        print(f"  osm_trails: rebuilt from {osm_raw_path} "
+              f"({len(osm_trails['features'])} features)")
+    else:
+        osm_trails = _load("osm_trails.geojson")
+        print(f"  osm_trails: {osm_raw_path} absent — left committed "
+              f"site/data/osm_trails.geojson untouched "
+              f"({len(osm_trails.get('features', []))} features)")
 
     # Main routes: rebuild the curated-line layer from the committed CDOT segments
     # + the just-rebuilt OSM trails + checked-in roster, via the exact same
@@ -266,7 +291,7 @@ def main():
     # underlying pull, which this script does not redo.
     meta["contract_version"] = CONTRACT_VERSION
     upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes)
+                        network_nodes, upsert_osm_trails=rebuild_osm_trails)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")

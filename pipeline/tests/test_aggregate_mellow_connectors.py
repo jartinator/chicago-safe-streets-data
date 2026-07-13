@@ -79,13 +79,17 @@ def test_no_bike_routes_keeps_every_mellow_part():
     assert len(f["geometry"]["coordinates"]) == 2
 
 
-def test_no_mellow_features_returns_empty_collection_with_note():
+def test_no_mellow_features_returns_stub_shape():
+    # Matches the project's stub convention (stub_layer()): empty
+    # FeatureCollection with properties.status/"no_data_yet" + properties.note,
+    # and NO top-level data_tier claiming real (crowdsourced) content.
     empty_mellow = {"type": "FeatureCollection", "features": []}
     out = aggregate.build_mellow_connectors(empty_mellow, ROUTES_GJ)
     assert out["type"] == "FeatureCollection"
-    assert out["data_tier"] == "crowdsourced"
     assert out["features"] == []
-    assert out["note"]
+    assert "data_tier" not in out
+    assert out["properties"]["status"] == "no_data_yet"
+    assert out["properties"]["note"]
 
 
 def test_everything_deduped_away_yields_zero_features():
