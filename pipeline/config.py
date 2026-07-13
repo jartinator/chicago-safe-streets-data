@@ -262,3 +262,13 @@ INJURY_SEVERITY_MAP = {
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
 CONTRACT_VERSION = "1.11"
+
+# Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
+# files generated from the already-committed site/data/* contract for LLM
+# agents to fetch and cite. See pipeline/emit_api.py.
+API_VERSION = "1"
+SITE_API_DIR = REPO_ROOT / "site" / "api" / "v1"
+SITE_BASE_URL = "https://jartinator.github.io/chicago-safe-streets-data"
+# emit_api.py hard-fails if any emitted file exceeds this — the design goal is
+# a cold agent reaching a cited answer in <=3 fetches of <100 KB each.
+API_SIZE_BUDGET_BYTES = 100_000
