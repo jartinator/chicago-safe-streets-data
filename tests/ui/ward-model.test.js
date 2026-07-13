@@ -91,3 +91,18 @@ assert.strictEqual(empty.menuBikeSpent, null, "missing menu data is null, never 
 assert.deepStrictEqual(empty.topCorridors, []);
 
 console.log("ward-model OK");
+
+// ---- nextMeeting: contract v1.10 agenda_items pass through untouched ----
+const hearingsWithAgenda = {
+  structured_data_available: true,
+  committees: [{ committee: "Committee on Transportation", meetings: [
+    { date: "2026-07-15T09:00:00",
+      agenda_items: [{ record_number: "O2026-1", ward: 28, title: "Vacation of alley",
+                       safety_keyword_match: false, tracked: false }] },
+  ] }],
+};
+const nmAgenda = W.nextMeeting(hearingsWithAgenda, "2026-07-13");
+assert.strictEqual(nmAgenda.agenda_items.length, 1, "agenda_items passed through");
+assert.strictEqual(nmAgenda.agenda_items[0].title, "Vacation of alley");
+assert.strictEqual(W.nextMeeting(hearings, "2026-07-13").agenda_items, null,
+  "meetings without parsed agendas carry null, not a fabricated empty list");
