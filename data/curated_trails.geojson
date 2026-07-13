@@ -1,0 +1,105 @@
+{
+  "type": "FeatureCollection",
+  "note": "Hand-traced fallback geometry for the five roster off-street trails. Written because this build environment's egress policy blocks the Overpass API (see pull_osm_trails.py), so the OSM pull cannot run. Vertices were placed from editorial knowledge of the corridors and are approximate (roughly 100-300 m tolerance) — good enough for the network map's schematic route view, NOT survey-grade. Provenance: data_tier 'crowdsourced', like the mellow routes. aggregate.py prefers a real raw/osm_trails.json over this file whenever one exists; delete nothing here to upgrade — just run the OSM pull in an environment that allows it.",
+  "data_tier": "crowdsourced",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "curated-trail-lakefront-trail",
+        "name": "Lakefront Trail",
+        "facility_category": "trail",
+        "data_tier": "crowdsourced",
+        "note": "Ardmore to 71st along the shoreline; hand-traced approximation."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-87.6547, 41.9866], [-87.6512, 41.9776], [-87.6455, 41.9700],
+          [-87.6389, 41.9636], [-87.6379, 41.9550], [-87.6373, 41.9488],
+          [-87.6362, 41.9398], [-87.6300, 41.9330], [-87.6265, 41.9262],
+          [-87.6255, 41.9124], [-87.6238, 41.9016], [-87.6134, 41.8916],
+          [-87.6135, 41.8887], [-87.6167, 41.8810], [-87.6140, 41.8673],
+          [-87.6160, 41.8623], [-87.6089, 41.8514], [-87.6039, 41.8384],
+          [-87.5966, 41.8203], [-87.5901, 41.8093], [-87.5800, 41.7995],
+          [-87.5788, 41.7955], [-87.5760, 41.7860], [-87.5745, 41.7833],
+          [-87.5662, 41.7745], [-87.5655, 41.7660]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "curated-trail-bloomingdale-trail",
+        "name": "Bloomingdale Trail (The 606)",
+        "facility_category": "trail",
+        "data_tier": "crowdsourced",
+        "note": "Elevated rail-trail along Bloomingdale Ave (1800 N), Ridgeway to Ashland."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-87.7208, 41.9137], [-87.6940, 41.9136], [-87.6676, 41.9133]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "curated-trail-major-taylor-trail",
+        "name": "Major Taylor Trail",
+        "facility_category": "trail",
+        "data_tier": "crowdsourced",
+        "note": "Rail-corridor diagonal from Dan Ryan Woods through Beverly/Morgan Park to Whistler Woods; hand-traced approximation."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-87.6788, 41.7419], [-87.6700, 41.7330], [-87.6640, 41.7216],
+          [-87.6560, 41.7100], [-87.6480, 41.6980], [-87.6430, 41.6870],
+          [-87.6400, 41.6760], [-87.6360, 41.6620], [-87.6339, 41.6543]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "curated-trail-north-shore-channel-trail",
+        "name": "North Shore Channel Trail",
+        "facility_category": "trail",
+        "data_tier": "crowdsourced",
+        "note": "Along the channel from River Park (Lawrence) north to Green Bay Rd."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-87.7060, 41.9680], [-87.7078, 41.9757], [-87.7080, 41.9834],
+          [-87.7086, 41.9975], [-87.7090, 42.0060], [-87.7093, 42.0119],
+          [-87.7096, 42.0192], [-87.7099, 42.0266], [-87.7080, 42.0350],
+          [-87.7020, 42.0420], [-87.6995, 42.0445]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "segment_id": "curated-trail-north-branch-trail",
+        "name": "North Branch Trail",
+        "facility_category": "trail",
+        "data_tier": "crowdsourced",
+        "note": "Gompers Park along the river through the forest preserves to the Botanic Garden; hand-traced approximation."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-87.7284, 41.9757], [-87.7360, 41.9820], [-87.7450, 41.9880],
+          [-87.7550, 41.9940], [-87.7630, 41.9990], [-87.7690, 42.0090],
+          [-87.7780, 42.0180], [-87.7850, 42.0300], [-87.7900, 42.0420],
+          [-87.7960, 42.0560], [-87.8020, 42.0700], [-87.8060, 42.0850],
+          [-87.8040, 42.0990], [-87.7980, 42.1100], [-87.7920, 42.1250],
+          [-87.7880, 42.1380], [-87.7855, 42.1470]
+        ]
+      }
+    }
+  ]
+}

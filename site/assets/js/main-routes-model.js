@@ -5,6 +5,14 @@
  * Consumed by map.js to draw roster lines heavy (white casing under
  * grade-colored strokes) and to render the per-line report cards. */
 (function (root) {
+  // BSD.lineBadgeTier lives in common.js, which every page that loads this
+  // file loads first (index.html: common.js -> map-model.js ->
+  // main-routes-model.js -> map.js). In Node, common.js isn't required by
+  // the test harness ahead of time, so pull it in directly there.
+  const BSD = (typeof module !== "undefined" && module.exports)
+    ? require("./common.js")
+    : root.BSD;
+
   // Grade taxonomy, user-ranked: off-street (prized) > protected > painted >
   // none. Colors per design spec §4; `none` (sharrows/other) renders dashed.
   const GRADE_ORDER = ["offstreet", "protected", "painted", "none"];
@@ -68,9 +76,11 @@
 
   // Badge tier for a roster line: its own data_tier (derived for street
   // lines, crowdsourced for trails) unless there is no data this run —
-  // then the stub badge, mirroring the map's other stub layers.
+  // then the stub badge, mirroring the map's other stub layers. Delegates
+  // to the shared BSD.lineBadgeTier (common.js); kept as its own export
+  // here since map.js and this file's tests call it as BSDMainRoutes.lineBadgeTier.
   function lineBadgeTier(line) {
-    return line.no_data ? "stub" : line.data_tier;
+    return BSD.lineBadgeTier(line);
   }
 
   // Printed "{pct}% protected" report-card number. Street lines only —

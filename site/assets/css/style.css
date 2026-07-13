@@ -137,12 +137,12 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 }
 
 /* ---- network (metro) screen ---- */
-.station-label {
+.node-label {
   background: transparent; border: none; box-shadow: none;
-  font-size: 0.68rem; font-weight: 700; color: var(--ink);
+  font-size: 0.62rem; font-weight: 700; color: var(--ink);
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
-.station-label::before { display: none; }
+.node-label::before { display: none; }
 .line-label {
   background: transparent; border: none; box-shadow: none;
   font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em;

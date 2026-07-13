@@ -6,18 +6,6 @@ global.document = undefined;
 
 const N = require("../../site/assets/js/network-model.js");
 
-// ---- heatBucket ----
-assert.strictEqual(N.heatBucket(0), null, "heatBucket(0) is null");
-assert.strictEqual(N.heatBucket(1).color, "#fbbf24", "heatBucket(1) is amber");
-assert.strictEqual(N.heatBucket(2).color, "#fbbf24", "heatBucket(2) is amber");
-assert.strictEqual(N.heatBucket(2).label, "1–2", "heatBucket(2) label");
-assert.strictEqual(N.heatBucket(3).color, "#f97316", "heatBucket(3) is orange");
-assert.strictEqual(N.heatBucket(5).color, "#f97316", "heatBucket(5) is orange");
-assert.strictEqual(N.heatBucket(3).label, "3–5", "heatBucket(3) label");
-assert.strictEqual(N.heatBucket(6).color, "#dc2626", "heatBucket(6) is red");
-assert.strictEqual(N.heatBucket(6).label, "6+", "heatBucket(6) label");
-assert.strictEqual(N.heatBucket(20).color, "#dc2626", "heatBucket(20) is red");
-
 // ---- groupByCorridor ----
 const corridorFeatures = [
   { properties: { street: "MILWAUKEE AVE", segment_id: "1" } },
@@ -38,24 +26,6 @@ const grouped2 = N.groupByCorridor([
 ]);
 assert.strictEqual(grouped2.size, 1, "groupByCorridor: empty string and null share (unnamed) bucket");
 assert.strictEqual(grouped2.get("(unnamed)").length, 2, "groupByCorridor: both features bucketed");
-
-// ---- countObstructions ----
-const routeFeatures = [
-  {
-    properties: { segment_id: "A" },
-    geometry: {
-      type: "LineString",
-      coordinates: [[-87.65, 41.90], [-87.64, 41.91]],
-    },
-  },
-];
-const obstructionPoints = [
-  { geometry: { coordinates: [-87.645, 41.905] } }, // inside bbox
-  { geometry: { coordinates: [-87.6445, 41.906] } }, // inside bbox
-  { geometry: { coordinates: [-87.9, 42.5] } }, // far outside bbox
-];
-const counts = N.countObstructions(routeFeatures, obstructionPoints);
-assert.strictEqual(counts.get("A"), 2, "countObstructions: 2 of 3 points inside bbox");
 
 // ---- toLatLngs ----
 const multiLine = {
@@ -113,36 +83,53 @@ assert.ok(
   "pointInBBox: point outside bbox"
 );
 
+// ---- ZOOM thresholds (spec §5): interchanges read at city scale,
+// orientation nodes wait for street level ----
+assert.deepStrictEqual(
+  N.ZOOM, { interchangeNodes: 11, lineLabels: 11, corridorLabels: 13 },
+  "ZOOM: interchange/line-label thresholds at 11, corridor/orientation-label threshold at 13"
+);
+
+// ---- DEFAULT_OVERLAYS (spec §5) ----
+assert.deepStrictEqual(
+  N.DEFAULT_OVERLAYS, ["connecting", "mellow", "nodes"],
+  "DEFAULT_OVERLAYS: connecting+mellow+nodes on by default, quality/planned off"
+);
+
 // ---- parseOverlays / serializeOverlays (network.html URL state) ----
 assert.deepStrictEqual(
-  [...N.parseOverlays(null)], ["heat", "stations", "trails"],
-  "parseOverlays: null (param absent) falls back to defaults heat+stations+trails"
+  [...N.parseOverlays(null)], ["connecting", "mellow", "nodes"],
+  "parseOverlays: null (param absent) falls back to defaults"
 );
 assert.deepStrictEqual(
-  [...N.parseOverlays(undefined)], ["heat", "stations", "trails"],
-  "parseOverlays: undefined falls back to defaults heat+stations+trails"
+  [...N.parseOverlays(undefined)], ["connecting", "mellow", "nodes"],
+  "parseOverlays: undefined falls back to defaults"
 );
 assert.strictEqual(
   N.parseOverlays("").size, 0,
   "parseOverlays: explicit empty string means no overlays enabled"
 );
 assert.deepStrictEqual(
-  [...N.parseOverlays("heat,crashes")], ["heat", "crashes"],
+  [...N.parseOverlays("quality,connecting")], ["quality", "connecting"],
   "parseOverlays: comma list parses in order"
 );
+assert.deepStrictEqual(
+  [...N.parseOverlays("heat,stations,trails")], ["heat", "stations", "trails"],
+  "parseOverlays: legacy/unknown ids still parse into the Set (network.js just never checks for them, so they're ignored silently)"
+);
 assert.strictEqual(
-  N.serializeOverlays(new Set(["heat", "crashes"])), "heat,crashes",
+  N.serializeOverlays(new Set(["quality", "nodes"])), "quality,nodes",
   "serializeOverlays: joins a Set with commas"
 );
 assert.strictEqual(
-  N.serializeOverlays(N.parseOverlays("heat,crashes,stations")),
-  "heat,crashes,stations",
+  N.serializeOverlays(N.parseOverlays("quality,connecting,mellow")),
+  "quality,connecting,mellow",
   "round-trip: parseOverlays -> serializeOverlays preserves content"
 );
 assert.strictEqual(
   N.serializeOverlays(N.parseOverlays(null)),
-  "heat,stations,trails",
-  "round-trip: absent param -> defaults -> 'heat,stations,trails'"
+  "connecting,mellow,nodes",
+  "round-trip: absent param -> defaults -> 'connecting,mellow,nodes'"
 );
 
 // Empty set must survive the URL: BSD.setParams deletes empty-string params
@@ -165,40 +152,70 @@ assert.deepStrictEqual(
   "round-trip: serialize(empty) parses back to empty, not defaults"
 );
 
-// ---- main routes: GRADE_COLORS / gradeLineStyle (spec §4) ----
+// ---- main routes: GRADE_COLORS / qualityCasingStyle (spec §4/§6) ----
 assert.strictEqual(N.GRADE_COLORS.offstreet, "#0369a1", "GRADE_COLORS: offstreet");
 assert.strictEqual(N.GRADE_COLORS.protected, "#0b6e4f", "GRADE_COLORS: protected");
 assert.strictEqual(N.GRADE_COLORS.painted, "#f59e0b", "GRADE_COLORS: painted");
 assert.strictEqual(N.GRADE_COLORS.none, "#94a3b8", "GRADE_COLORS: none");
 
-assert.strictEqual(N.gradeLineStyle("protected").color, "#0b6e4f", "gradeLineStyle: protected color");
-assert.strictEqual(N.gradeLineStyle("protected").dashArray, undefined, "gradeLineStyle: protected is solid");
-assert.strictEqual(N.gradeLineStyle("offstreet").color, "#0369a1", "gradeLineStyle: offstreet color");
-assert.strictEqual(N.gradeLineStyle("painted").color, "#f59e0b", "gradeLineStyle: painted color");
-assert.strictEqual(N.gradeLineStyle("none").color, "#94a3b8", "gradeLineStyle: none color");
-assert.ok(N.gradeLineStyle("none").dashArray, "gradeLineStyle: none is dashed");
+assert.strictEqual(N.qualityCasingStyle("protected").color, "#0b6e4f", "qualityCasingStyle: protected color");
+assert.strictEqual(N.qualityCasingStyle("protected").dashArray, undefined, "qualityCasingStyle: protected is solid");
+assert.strictEqual(N.qualityCasingStyle("protected").weight, 13, "qualityCasingStyle: weight 13 (quality border, spec §5)");
+assert.strictEqual(N.qualityCasingStyle("offstreet").color, "#0369a1", "qualityCasingStyle: offstreet color");
+assert.strictEqual(N.qualityCasingStyle("painted").color, "#f59e0b", "qualityCasingStyle: painted color");
+assert.strictEqual(N.qualityCasingStyle("none").color, "#94a3b8", "qualityCasingStyle: none color");
+assert.strictEqual(N.qualityCasingStyle("none").dashArray, "6,9", "qualityCasingStyle: none is dashed 6,9");
 assert.strictEqual(
-  N.gradeLineStyle("bogus").color, "#94a3b8",
-  "gradeLineStyle: unknown grade falls back to the none treatment"
+  N.qualityCasingStyle("bogus").color, "#94a3b8",
+  "qualityCasingStyle: unknown grade falls back to the none treatment"
 );
-assert.ok(N.gradeLineStyle("bogus").dashArray, "gradeLineStyle: unknown grade dashed like none");
-assert.ok(N.gradeLineStyle("protected").weight > N.LOCAL_STYLE.weight,
-  "gradeLineStyle: roster lines heavier than local network");
+assert.ok(N.qualityCasingStyle("bogus").dashArray, "qualityCasingStyle: unknown grade dashed like none");
 
-// ---- main routes: LOCAL_STYLE (demoted "bus" network, spec §7) ----
+// ---- main routes: LINE_COLORS / FALLBACK_LINE_COLOR / lineStyle (spec §4) ----
+const EXPECTED_LINE_IDS = [
+  "milwaukee", "elston", "vincennes",
+  "california", "kedzie", "damen", "halsted", "clark", "state-indiana", "mlk-drive",
+  "lawrence", "lake", "jackson-washington", "roosevelt", "marquette", "83rd",
+  "lakefront", "bloomingdale", "major-taylor", "north-shore-channel", "north-branch",
+];
+assert.strictEqual(EXPECTED_LINE_IDS.length, 21, "test fixture: 21 line ids (16 street + 5 trail)");
+EXPECTED_LINE_IDS.forEach((id) => {
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(N.LINE_COLORS, id),
+    `LINE_COLORS: has entry for "${id}"`
+  );
+  assert.match(
+    N.LINE_COLORS[id], /^#[0-9a-f]{6}$/i,
+    `LINE_COLORS["${id}"] is a 7-char hex color`
+  );
+});
+assert.strictEqual(Object.keys(N.LINE_COLORS).length, 21, "LINE_COLORS: exactly 21 entries");
+assert.match(N.FALLBACK_LINE_COLOR, /^#[0-9a-f]{6}$/i, "FALLBACK_LINE_COLOR is a 7-char hex color");
+
+assert.strictEqual(N.lineStyle("milwaukee").color, N.LINE_COLORS.milwaukee, "lineStyle: known line uses LINE_COLORS entry");
+assert.strictEqual(N.lineStyle("milwaukee").weight, 6, "lineStyle: weight 6 (spec §4)");
+assert.strictEqual(N.lineStyle("milwaukee").opacity, 1, "lineStyle: opacity 1, no dashes/per-segment styling");
+assert.strictEqual(N.lineStyle("milwaukee").dashArray, undefined, "lineStyle: major routes never dashed");
+assert.strictEqual(N.lineStyle("not-a-real-line").color, N.FALLBACK_LINE_COLOR, "lineStyle: unknown line id falls back");
+assert.strictEqual(N.lineStyle("not-a-real-line").weight, 6, "lineStyle: fallback still weight 6");
+
+// ---- main routes: LOCAL_STYLE / CONNECTING_TRAIL_STYLE (spec §5) ----
 assert.strictEqual(N.LOCAL_STYLE.color, "#cbd5e1", "LOCAL_STYLE: muted slate color");
 assert.strictEqual(N.LOCAL_STYLE.weight, 1.5, "LOCAL_STYLE: 1.5px");
+assert.strictEqual(N.CONNECTING_TRAIL_STYLE.color, "#38bdf8", "CONNECTING_TRAIL_STYLE: sky-blue color");
+assert.strictEqual(N.CONNECTING_TRAIL_STYLE.weight, 2, "CONNECTING_TRAIL_STYLE: weight 2");
+assert.strictEqual(N.CONNECTING_TRAIL_STYLE.opacity, 0.8, "CONNECTING_TRAIL_STYLE: opacity 0.8");
 
 // ---- main routes: buildRosterIndex / splitByRoster / membersOfLine ----
 const mainRouteFeatures = [
-  { properties: { segment_id: "7", line_id: "loop", grade: "protected" } },
-  { properties: { segment_id: "8", line_id: "loop", grade: "painted" } },
+  { properties: { segment_id: "7", line_id: "milwaukee", grade: "protected" } },
+  { properties: { segment_id: "8", line_id: "milwaukee", grade: "painted" } },
   { properties: { segment_id: "42", line_id: "halsted", grade: "none" } },
   { properties: { segment_id: "osm-trail-lakefront-trail", line_id: "lakefront", grade: "offstreet" } },
 ];
 const rosterIdx = N.buildRosterIndex(mainRouteFeatures);
 assert.strictEqual(rosterIdx.size, 4, "buildRosterIndex: one entry per member");
-assert.deepStrictEqual(rosterIdx.get("7"), { lineId: "loop", grade: "protected" },
+assert.deepStrictEqual(rosterIdx.get("7"), { lineId: "milwaukee", grade: "protected" },
   "buildRosterIndex: maps segment_id to line + grade");
 assert.deepStrictEqual(rosterIdx.get("42"), { lineId: "halsted", grade: "none" },
   "buildRosterIndex: none-grade member indexed");
@@ -217,7 +234,7 @@ assert.strictEqual(split.local[0].properties.segment_id, "999",
   "splitByRoster: unmatched segment lands in local");
 
 assert.deepStrictEqual(
-  N.membersOfLine(networkFeatures, rosterIdx, "loop").map(f => f.properties.segment_id),
+  N.membersOfLine(networkFeatures, rosterIdx, "milwaukee").map(f => f.properties.segment_id),
   ["7"],
   "membersOfLine: filters features to one line's members"
 );
@@ -228,10 +245,10 @@ assert.deepStrictEqual(
 
 // ---- main routes: linesById ----
 const linesMeta = N.linesById([
-  { id: "loop", name: "Downtown circulator", no_data: false },
+  { id: "milwaukee", name: "Milwaukee Line", no_data: false },
   { id: "lakefront", name: "Lakefront Trail", no_data: true },
 ]);
-assert.strictEqual(linesMeta.get("loop").name, "Downtown circulator", "linesById: lookup by id");
+assert.strictEqual(linesMeta.get("milwaukee").name, "Milwaukee Line", "linesById: lookup by id");
 assert.strictEqual(linesMeta.get("lakefront").no_data, true, "linesById: no_data preserved");
 assert.strictEqual(N.linesById(undefined).size, 0, "linesById: missing lines array -> empty map");
 
@@ -240,20 +257,5 @@ const streets = N.rosterStreets(networkFeatures, rosterIdx);
 assert.ok(streets.has("DEARBORN"), "rosterStreets: roster member street included");
 assert.ok(streets.has("HALSTED"), "rosterStreets: second roster street included");
 assert.ok(!streets.has("MARQUETTE"), "rosterStreets: local-only street excluded");
-
-// ---- main routes: station split (no stations on the bus layer below LABEL_MIN_ZOOM) ----
-const rosterBBoxes = [N.getPaddedBBox(singleLine, 0.001)];
-const stations = [
-  { lat: 41.905, lng: -87.645, label: "on roster" },
-  { lat: 42.5, lng: -87.9, label: "far away" },
-];
-assert.ok(N.stationInAnyBBox(stations[0], rosterBBoxes), "stationInAnyBBox: near roster line");
-assert.ok(!N.stationInAnyBBox(stations[1], rosterBBoxes), "stationInAnyBBox: far from roster");
-const stationSplit = N.splitStations(stations, rosterBBoxes);
-assert.strictEqual(stationSplit.onRoster.length, 1, "splitStations: 1 station on roster");
-assert.strictEqual(stationSplit.onRoster[0].label, "on roster", "splitStations: right station kept");
-assert.strictEqual(stationSplit.offRoster.length, 1, "splitStations: 1 station off roster");
-assert.strictEqual(N.splitStations([], rosterBBoxes).onRoster.length, 0,
-  "splitStations: empty stations -> empty partitions");
 
 console.log("network-model OK");
