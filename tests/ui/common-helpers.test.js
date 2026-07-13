@@ -151,8 +151,10 @@ const all = B.agendaHighlights(meeting, null, 0);
 assert.strictEqual(all.length, 3, "max 0/omitted returns everything");
 assert.strictEqual(all[0].label, "Protected bike lane on Clark St",
   "no ward filter: safety match first");
-assert.ok(all.some(h => h.label.startsWith("APPOINTMENT OF X")),
-  "no-record item falls back to verbatim agenda text");
+assert.strictEqual(all[1].label, "Vacation of alley",
+  "record-numbered matters outrank no-record items");
+assert.ok(all[2].label.startsWith("APPOINTMENT OF X"),
+  "no-record item falls back to verbatim agenda text, ranked last");
 
 // Truncation of long PDF text (no title from the record lookup)
 const long = B.agendaHighlights({ agenda_items: [
