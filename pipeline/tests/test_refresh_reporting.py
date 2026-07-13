@@ -184,6 +184,7 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
 
     (site_data_dir / "meta.json").write_text(json.dumps({
         "provenance": "socrata", "contract_version": "1.9", "sources": [],
+        "generated_at": "2020-01-15T00:00:00+00:00",
     }))
     (site_data_dir / "crashes_cyclist.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [
@@ -192,7 +193,8 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
                 "hit_and_run": False, "dooring": False, "ward": "1"}},
         ]}))
     (site_data_dir / "bikeway_mileage_series.json").write_text(json.dumps({
-        "series": [{"date": "2020-01-01", "by_category": {"protected": 5.0, "painted": 2.0}}],
+        "series": [{"date": "2020-01-01", "by_category": {"protected": 5.0, "painted": 2.0},
+                    "total": 7.0}],
     }))
     (site_data_dir / "corridors.json").write_text(json.dumps([]))
     (site_data_dir / "wards.geojson").write_text(json.dumps({
@@ -250,6 +252,10 @@ def test_refresh_offline_run_leaves_committed_osm_trails_untouched_when_raw_abse
     monkeypatch.setattr(refresh_reporting, "SITE_DATA_DIR", site_data_dir)
     monkeypatch.setattr(refresh_reporting, "RAW_DIR", raw_dir)
     monkeypatch.setattr("sys.argv", ["refresh_reporting.py"])
+    # Not exercising emit_api here — this test is scoped to the osm_trails
+    # guard; stub it out so main() doesn't reach for site/data/intersections.json
+    # (not part of this minimal fixture) or write outside tmp_path.
+    monkeypatch.setattr(refresh_reporting.emit_api, "emit_all", lambda: {})
 
     refresh_reporting.main()
 
@@ -270,3 +276,39 @@ def test_refresh_offline_run_leaves_committed_osm_trails_untouched_when_raw_abse
     # whole pipeline.
     assert (site_data_dir / "main_routes.geojson").exists()
     assert (site_data_dir / "network_nodes.json").exists()
+
+
+def test_refresh_reporting_main_calls_emit_api_at_the_end(tmp_path, monkeypatch):
+    # An offline reporting refresh must regenerate site/api/v1/ coherently
+    # with the site/data files it just rewrote — otherwise the two go stale
+    # relative to each other. Exercise emit_api.emit_all() for real (routed
+    # into tmp_path) rather than just stubbing it, so a wiring regression
+    # (wrong call site, wrong args, exception swallowed) would show up here.
+    site_data_dir = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    raw_dir = tmp_path / "raw"
+    site_data_dir.mkdir()
+    raw_dir.mkdir()
+
+    _minimal_offline_fixture(site_data_dir, osm_trails_features=3)
+    # emit_api additionally reads intersections.json, which refresh_reporting
+    # itself never touches.
+    (site_data_dir / "intersections.json").write_text(json.dumps([]))
+
+    monkeypatch.setattr(refresh_reporting, "SITE_DATA_DIR", site_data_dir)
+    monkeypatch.setattr(refresh_reporting, "RAW_DIR", raw_dir)
+    monkeypatch.setattr(refresh_reporting.emit_api, "SITE_DATA_DIR", site_data_dir)
+    monkeypatch.setattr(refresh_reporting.emit_api, "SITE_API_DIR", api_dir)
+    monkeypatch.setattr("sys.argv", ["refresh_reporting.py"])
+
+    refresh_reporting.main()
+
+    assert (api_dir / "index.json").exists()
+    assert (api_dir / "citywide.json").exists()
+    assert (api_dir / "corridors.json").exists()
+    # The API's generated_at must match the meta.json refresh_reporting just
+    # wrote back out — proof emit_api ran AFTER the meta.json rewrite, not
+    # against stale data.
+    meta_out = json.loads((site_data_dir / "meta.json").read_text())
+    index = json.loads((api_dir / "index.json").read_text())
+    assert index["_meta"]["generated_at"] == meta_out["generated_at"]

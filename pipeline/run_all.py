@@ -20,6 +20,7 @@ Stages:
   7. spatial_join
   8. classify_safety_topic (LLM tagging stage — explicit exception, see CONTRIBUTING.md)
   9. aggregate            (writes site/data/*)
+  10. emit_api           (writes site/api/v1/ — the agent-first static API)
 
 Weekly refresh = run this, review the printed sanity output, commit site/data.
 Prints a per-stage timing table at the end so the slowest stages are visible.
@@ -56,6 +57,7 @@ COMMON_STAGES = [
     ["spatial_join.py"],
     ["classify_safety_topic.py"],
     ["aggregate.py"],
+    ["emit_api.py"],
 ]
 
 

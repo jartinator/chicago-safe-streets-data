@@ -8,12 +8,14 @@ on:
   pull_request:
     paths:
       - "site/data/**"
+      - "site/api/**"
       - "pipeline/**"
       - ".github/workflows/data-guard.yml"
   push:
     branches: [main]
     paths:
       - "site/data/**"
+      - "site/api/**"
 
 jobs:
   provenance:

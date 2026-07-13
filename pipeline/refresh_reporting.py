@@ -8,6 +8,9 @@ aggregate.build_mellow_connectors functions as the live path, so the
 published numbers can ship without a multi-hour live run and without logic
 drift. The weekly `python run_all.py` remains the canonical path.
 
+Finishes by calling emit_api.emit_all() so site/api/v1/ stays coherent with
+the site/data/ files this script just rewrote.
+
 Provenance guard: refuses to run when meta.json's provenance is not "socrata" —
 fixture/synthetic data must never be re-stamped as reporting truth (see the
 provenance-stamp history: fix "make live pipeline authoritative about provenance").
@@ -30,6 +33,7 @@ Usage: python refresh_reporting.py
 import argparse
 import json
 
+import emit_api
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
                        build_mellow_connectors, mellow_connector_records)
@@ -311,6 +315,10 @@ def main():
     mc_miles = sum(f["properties"]["length_m"] for f in mellow_connectors["features"]) / 1609.34
     print(f"  mellow_connectors: {len(mellow_connectors['features'])} feature(s), "
           f"{mellow_connector_records(mellow_connectors)} parts, {mc_miles:.2f} mi")
+
+    # Regenerate site/api/v1/ so it stays coherent with the site/data/ files
+    # just rewritten above, rather than drifting stale until the next live run.
+    emit_api.emit_all()
 
 
 if __name__ == "__main__":
