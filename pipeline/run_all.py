@@ -13,7 +13,8 @@ Stages:
   4. pull_ward_demographics, restore_frozen (frozen pre-2023 Legistar council records —
      see note below), pull_councilmatic (post-2023 council data — see DECISIONS.md),
      pull_menu_spending, pull_hearings, pull_agenda_items (agenda PDF items +
-     eLMS matter context; consumes raw/hearings.json)
+     eLMS matter context; consumes raw/hearings.json), pull_news (public RSS
+     headlines — matching happens in aggregate)
      (ward-accountability layer — see DECISIONS.md; each is non-fatal on failure)
   5. snapshot_bike_routes (dated copy — builds install-date history over time)
   6. make_mock_obstructions

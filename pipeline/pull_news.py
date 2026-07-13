@@ -59,24 +59,29 @@ def resolve_redirect(url):
 
 
 def _iso_pubdate(text):
-    """RFC-2822 pubDate -> ISO 8601 string, or None if unparseable."""
+    """RFC-2822 pubDate -> UTC-normalized ISO 8601 string, or None if
+    unparseable. Normalizing to UTC keeps the published strings lexically
+    sortable across feeds that stamp different UTC offsets."""
     if not text:
         return None
     try:
-        return parsedate_to_datetime(text.strip()).isoformat(timespec="seconds")
+        return (parsedate_to_datetime(text.strip())
+                .astimezone(timezone.utc).isoformat(timespec="seconds"))
     except (TypeError, ValueError):
         return None
 
 
-def parse_feed(xml_bytes, default_source, kind, resolve_fn=resolve_redirect):
+def parse_feed(xml_bytes, default_source, kind):
     """Verbatim items from one RSS document:
-    [{title, url, source, published, categories: []}]. Returns [] on any
-    parse failure. Google News items get their outlet name from the per-item
-    <source> element and their link resolved to the publisher URL."""
+    [{title, url, source, published, categories: []}]. Returns None on a
+    parse failure (distinct from a valid-but-empty feed's []). Google News
+    items get their outlet name from the per-item <source> element; their
+    opaque redirect links are resolved later, in build_feeds, after title
+    dedup has dropped the ones we'd throw away anyway."""
     try:
         root = ET.fromstring(xml_bytes)
     except ET.ParseError:
-        return []
+        return None
     items = []
     for node in root.iter("item"):
         title = (node.findtext("title") or "").strip()
@@ -86,7 +91,6 @@ def parse_feed(xml_bytes, default_source, kind, resolve_fn=resolve_redirect):
         source = default_source
         if kind == "google_news":
             source = (node.findtext("source") or "").strip() or None
-            link = resolve_fn(link)
             # Google appends " - <outlet>" to every title; strip it so the
             # published headline is the outlet's own and cross-feed title
             # dedup can catch the same story arriving via the direct feed.
@@ -126,18 +130,30 @@ def dedup_items(feeds):
 
 
 def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
-    """[{url, source, ok, items: [...]}] — one entry per configured feed,
-    ok:false with empty items for any feed that failed to fetch or parse."""
+    """[{url, source, kind, ok, items: [...]}] — one entry per configured
+    feed. ok means fetched AND parsed (a valid feed with zero items this
+    week is still ok:true); a failed feed is ok:false with empty items."""
     feeds = []
     for cfg in feed_configs:
         raw = fetch_fn(cfg["url"])
-        items = (parse_feed(raw, cfg["source"], cfg["kind"], resolve_fn=resolve_fn)
-                 if raw else [])
-        if raw and not items:
-            print(f"  WARNING: {cfg['url']} fetched but yielded no items.",
+        items = parse_feed(raw, cfg["source"], cfg["kind"]) if raw else None
+        if raw is not None and items is None:
+            print(f"  WARNING: {cfg['url']} fetched but did not parse as RSS.",
                   file=sys.stderr)
         feeds.append({"url": cfg["url"], "source": cfg["source"],
-                      "kind": cfg["kind"], "ok": bool(items), "items": items})
+                      "kind": cfg["kind"], "ok": items is not None,
+                      "items": items or []})
+
+    # Title dedup FIRST (direct feeds are listed before the aggregator, so
+    # they win), so Google items that merely re-surface an allowlisted
+    # outlet's own story are dropped before paying one HEAD request each to
+    # resolve their opaque redirect links. A second pass after resolution
+    # catches URL-level duplicates that only become visible once resolved.
+    dedup_items(feeds)
+    for feed in feeds:
+        if feed["kind"] == "google_news":
+            for item in feed["items"]:
+                item["url"] = resolve_fn(item["url"])
     return dedup_items(feeds)
 
 

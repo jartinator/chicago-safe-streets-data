@@ -52,20 +52,46 @@ def test_parse_feed_verbatim_fields():
     assert items[1]["published"] is None
 
 
-def test_parse_feed_google_source_and_redirect_resolution():
-    items = pull_news.parse_feed(
-        GOOGLE_RSS, None, "google_news",
-        resolve_fn=lambda url: "https://blockclubchicago.org/2026/06/23/bike-lanes")
+def test_parse_feed_google_source_and_title_suffix():
+    items = pull_news.parse_feed(GOOGLE_RSS, None, "google_news")
     assert len(items) == 1
     assert items[0]["source"] == "Block Club Chicago"
-    assert items[0]["url"] == "https://blockclubchicago.org/2026/06/23/bike-lanes"
+    # Redirect links are NOT resolved here (that happens in build_feeds,
+    # after title dedup, so discarded items never cost a HEAD request):
+    assert items[0]["url"] == "https://news.google.com/rss/articles/opaque123"
     # Google's " - <outlet>" title suffix is stripped (headline stays the
     # outlet's own; enables cross-feed title dedup):
     assert items[0]["title"] == "Chicago's Bike Lanes Don't Hurt Businesses"
 
 
-def test_parse_feed_malformed_xml_degrades_to_empty():
-    assert pull_news.parse_feed(b"<rss><channel><item>", "X", "rss") == []
+def test_build_feeds_resolves_google_links_after_dedup():
+    resolved = []
+
+    def resolve(url):
+        resolved.append(url)
+        return "https://blockclubchicago.org/2026/06/23/bike-lanes"
+
+    feeds = pull_news.build_feeds(
+        [{"url": "g", "source": None, "kind": "google_news"}],
+        fetch_fn=lambda url: GOOGLE_RSS, resolve_fn=resolve)
+    assert resolved == ["https://news.google.com/rss/articles/opaque123"]
+    assert feeds[0]["items"][0]["url"] == \
+        "https://blockclubchicago.org/2026/06/23/bike-lanes"
+
+
+def test_parse_feed_malformed_xml_returns_none():
+    # None (parse failure) is distinct from [] (valid feed, zero items):
+    assert pull_news.parse_feed(b"<rss><channel><item>", "X", "rss") is None
+    empty = b'<?xml version="1.0"?><rss version="2.0"><channel></channel></rss>'
+    assert pull_news.parse_feed(empty, "X", "rss") == []
+
+
+def test_build_feeds_empty_but_valid_feed_is_ok():
+    empty = b'<?xml version="1.0"?><rss version="2.0"><channel></channel></rss>'
+    feeds = pull_news.build_feeds(
+        [{"url": "a", "source": "A", "kind": "rss"}],
+        fetch_fn=lambda url: empty, resolve_fn=lambda url: url)
+    assert feeds[0]["ok"] is True and feeds[0]["items"] == []
 
 
 def test_build_feeds_dedups_across_feeds_direct_feed_wins():

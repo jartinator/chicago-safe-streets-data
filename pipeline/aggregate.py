@@ -10,6 +10,7 @@ Usage: python aggregate.py
 import argparse
 import json
 import re
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -1651,13 +1652,11 @@ def _alderman_matchers(aldermen_wards):
                            "surname": last, "full": f"{first} {last}"})
     surname_counts = Counter(p["surname"].lower() for p in parsed)
     for p in parsed:
-        pats = [(re.compile(r"\b" + re.escape(p["full"]) + r"\b", re.IGNORECASE),
-                 p["full"])]
+        pats = [re.compile(r"\b" + re.escape(p["full"]) + r"\b", re.IGNORECASE)]
         if surname_counts[p["surname"].lower()] == 1:
-            pats.append((re.compile(
+            pats.append(re.compile(
                 r"\b(?:Ald\.?|Alderman|Alderwoman|Alderperson)\s+"
-                + re.escape(p["surname"]) + r"\b", re.IGNORECASE),
-                f"Ald. {p['surname']}"))
+                + re.escape(p["surname"]) + r"\b", re.IGNORECASE))
         p["patterns"] = pats
     return parsed
 
@@ -1670,13 +1669,12 @@ def _route_matchers(roster):
         pats = []
         for street in line.get("streets") or []:
             name = street["name"] if isinstance(street, dict) else street
-            display = name.title()
-            pats.append((re.compile(
-                r"\b" + re.escape(display) + r"\s+" + _STREET_SUFFIXES + r"\b",
-                re.IGNORECASE), display))
+            pats.append(re.compile(
+                r"\b" + re.escape(name.title()) + r"\s+" + _STREET_SUFFIXES + r"\b",
+                re.IGNORECASE))
         for token in line.get("name_tokens") or []:
-            pats.append((re.compile(r"\b" + re.escape(token) + r"\b",
-                                    re.IGNORECASE), token))
+            pats.append(re.compile(r"\b" + re.escape(token) + r"\b",
+                                   re.IGNORECASE))
         if pats:
             matchers.append({"id": line["id"], "name": line["name"],
                              "patterns": pats})
@@ -1712,7 +1710,7 @@ def match_news_item(item, alderman_matchers, route_matchers):
         wards.append({"ward": m.group(1), "via": f"'{m.group(0)}' in headline"})
 
     for a in alderman_matchers:
-        for pattern, label in a["patterns"]:
+        for pattern in a["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 aldermen.append({"name": a["name"], "ward": a["ward"],
@@ -1724,7 +1722,7 @@ def match_news_item(item, alderman_matchers, route_matchers):
                 break
 
     for r in route_matchers:
-        for pattern, label in r["patterns"]:
+        for pattern in r["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 routes.append({"id": r["id"], "name": r["name"], "via": where})
@@ -1766,8 +1764,15 @@ def build_news_items(roster):
     cutoff = anchor - timedelta(days=NEWS_WINDOW_DAYS)
 
     aldermen_path = SITE_DATA_DIR / "aldermen.json"
-    aldermen_wards = (json.loads(aldermen_path.read_text()).get("wards", [])
-                      if aldermen_path.exists() else [])
+    if aldermen_path.exists():
+        aldermen_wards = json.loads(aldermen_path.read_text()).get("wards", [])
+    else:
+        # From-scratch site/data dir (pull_aldermen didn't run / no committed
+        # file yet): degrade loudly, not silently — items still publish, just
+        # without alderman-name matches this run.
+        aldermen_wards = []
+        print("news_items: site/data/aldermen.json absent — alderman matching "
+              "skipped this run.", file=sys.stderr)
     alderman_matchers = _alderman_matchers(aldermen_wards)
     route_matchers = _route_matchers(roster)
 

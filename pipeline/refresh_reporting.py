@@ -86,7 +86,9 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
     mellow_connectors, osm_trails, main_routes, network_nodes, citywide_trend,
-    ward_safety_index, ...
+    ward_safety_index, ... (plus a sixth, order-independent block at the end
+    of this function: news_items, appended last, only when this run rebuilt
+    the news layer from a real raw pull).
 
     The order these five blocks RUN in matters, not just each entry's target
     position, because later blocks anchor on ids inserted by earlier ones:
@@ -264,8 +266,18 @@ def main():
     # before); otherwise read the committed file back as-is and feed it into
     # build_main_routes/build_network_nodes unchanged — this is what the
     # pre-v2 script did.
+    # Raw files left by a --fixtures run (raw/PROVENANCE says "fixtures") are
+    # synthetic — treat them as absent everywhere below, or fixture geometry/
+    # headlines get re-stamped over committed real data.
+    raw_provenance_path = RAW_DIR / "PROVENANCE"
+    raw_is_fixture = (raw_provenance_path.exists()
+                      and raw_provenance_path.read_text().strip() == "fixtures")
+
     osm_raw_path = RAW_DIR / "osm_trails.json"
-    rebuild_osm_trails = osm_raw_path.exists()
+    rebuild_osm_trails = osm_raw_path.exists() and not raw_is_fixture
+    if osm_raw_path.exists() and raw_is_fixture:
+        print(f"  osm_trails: {osm_raw_path} is from a --fixtures run — left "
+              f"committed site/data/osm_trails.geojson untouched")
     if rebuild_osm_trails:
         osm_trails = build_osm_trails_layer()
         write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails)
@@ -305,7 +317,10 @@ def main():
     # list with an honest-but-empty one).
     news_raw_path = RAW_DIR / "news.json"
     news_items = None
-    if news_raw_path.exists():
+    if news_raw_path.exists() and raw_is_fixture:
+        print(f"  news_items: {news_raw_path} is from a --fixtures run — left "
+              f"committed site/data/news_items.json untouched")
+    elif news_raw_path.exists():
         news_items = build_news_items(load_main_routes_roster())
         write_json(SITE_DATA_DIR / "news_items.json", news_items)
         print(f"  news_items: rebuilt from {news_raw_path} "

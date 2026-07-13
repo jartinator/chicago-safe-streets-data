@@ -70,7 +70,7 @@
     return newsData.items
       .filter(item => item && item.matches && Array.isArray(item.matches.wards) &&
         item.matches.wards.some(w => w && String(w.ward) === wardStr))
-      .slice(0, max || 5)
+      .slice(0, max == null ? 5 : max)
       .map(item => ({ title: item.title, url: item.url,
                       source: item.source || null, published: item.published }));
   }
