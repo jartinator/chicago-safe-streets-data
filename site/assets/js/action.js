@@ -141,10 +141,21 @@
       .slice(0, max == null ? 5 : max);
   }
 
+  // Proposed/in-progress projects tagged to this ward (proposed_projects.json).
+  // Roster wards are curator-assigned; an empty wards list means "citywide or
+  // ward unassigned" and such projects appear only on the citywide card.
+  function getProjectsForWard(projectsData, ward) {
+    if (!projectsData || !Array.isArray(projectsData.projects)) return [];
+    const wardStr = String(ward);
+    return projectsData.projects.filter(p => p && Array.isArray(p.wards) &&
+      p.wards.some(w => String(w) === wardStr));
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       getSafetyIndexForWard, getSponsorRecordsForWard, getMenuSpendingForWard,
       getUpcomingForWard, getNoVoteRecordsForAlderman, getNewsForWard,
+      getProjectsForWard,
     };
   }
 
@@ -166,13 +177,14 @@
   let councilData = null;
   let metaData = null;
   let newsData = null;
+  let projectsData = null;
 
   async function loadAllData() {
     try {
       [
         wardsData, aldemenData, ward311Data,
         safetyIndexData, aldermenSafetyData, menuSpendingData, hearingsData,
-        councilData, metaData, newsData,
+        councilData, metaData, newsData, projectsData,
       ] = await Promise.all([
         BSD.loadJSON("data/wards.geojson"),
         BSD.loadJSON("data/aldermen.json"),
@@ -184,6 +196,7 @@
         BSD.loadJSON("data/council_records.json").catch(() => null),
         BSD.loadJSON("data/meta.json").catch(() => null),
         BSD.loadJSON("data/news_items.json").catch(() => null),
+        BSD.loadJSON("data/proposed_projects.json").catch(() => null),
       ]);
     } catch (err) {
       throw new Error(`Failed to load data: ${err.message}`);
@@ -474,6 +487,38 @@
     return html;
   }
 
+  // ---- Proposed-here section (ward report) ----
+  // Roster projects curator-tagged to this ward (validation study 2026-07-13:
+  // status citation is rendered WITH the status — "the date and the link
+  // protect the site's credibility... they don't protect my afternoon" — and
+  // the volunteer-reviewed framing sits inline, so stale can't read as true).
+  // Shared "volunteer-reviewed <date>, per <citation>" fragment — the one
+  // piece both project renderings must never let drift apart (a status
+  // shown without its citation is exactly the failure the validation study
+  // flagged).
+  function statusReviewedHTML(p) {
+    const cite = Array.isArray(p.citations) && p.citations[0] ? p.citations[0] : null;
+    return `volunteer-reviewed ${BSD.esc(fmtDate(p.status_as_of))}` +
+      (cite ? `, per <a href="${BSD.esc(cite.url)}" target="_blank" rel="noopener">${BSD.esc(cite.source || "citation")}</a>` : "");
+  }
+
+  function proposedSectionHTML(ward) {
+    const projects = getProjectsForWard(projectsData, ward);
+    if (!projects.length) return ""; // no section — citywide card covers the rest
+    let html = sectionHeadingHTML("Proposed & in progress here", "derived");
+    html += `<div class="kv-list">`;
+    projects.forEach(p => {
+      html += `<div><strong>${BSD.esc(p.name)}</strong> — ${BSD.esc(p.status)}` +
+        ` <span class="muted">(${statusReviewedHTML(p)})</span>`;
+      if (p.description) html += `<div class="fine-print">${BSD.esc(p.description)}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+    html += `<div class="fine-print">Statuses are volunteer judgments backed by the linked citation — ` +
+      `the official project page is authoritative. Full list and coverage in the citywide card below.</div>`;
+    return html;
+  }
+
   // ---- Safety scorecard section ----
   function scorecardSectionHTML(ward) {
     const result = getSafetyIndexForWard(safetyIndexData, ward);
@@ -633,6 +678,9 @@
     html += `<dt><strong>Recent coverage</strong> — real · outlets' public RSS feeds</dt>`;
     html += dd(`Verbatim headlines/links from independent news outlets (coverage, not endorsement); ward matching is computed by name rules and can miss or mismatch — the article is authoritative.`, "news_items");
 
+    html += `<dt><strong>Proposed & in progress</strong> — derived · curated by volunteers</dt>`;
+    html += dd(`Hand-picked roster of active projects; each status is a volunteer judgment backed by the citation shown with it and dated when last reviewed — the official project page is authoritative.`, "proposed_projects");
+
     html += `<dt><strong>Current alderperson</strong> — real · city Ward Offices roster</dt>`;
     html += dd(`The city's own roster${BSD.esc(rosterAsOf)}; vacant seats appear as a lookup link, never a guessed name.`, "aldermen");
 
@@ -656,6 +704,7 @@
     const alderman = getAldermanForWard(ward);
     const aldermanName = alderman && alderman.alderman ? alderman.alderman : null;
     const upcoming = getUpcomingForWard(hearingsData, councilData, aldermanName, ward, todayISO());
+    const proposedHTML = proposedSectionHTML(ward);
 
     const section = document.createElement("section");
     section.className = "report";
@@ -665,6 +714,7 @@
       `<div class="report-section">${crashSectionHTML(ward, entry)}</div>` +
       `<div class="report-section">${upcomingSectionHTML(ward, aldermanName, upcoming)}</div>` +
       `<div class="report-section">${newsSectionHTML(ward)}</div>` +
+      (proposedHTML ? `<div class="report-section">${proposedHTML}</div>` : "") +
       `<div class="report-section">${scorecardSectionHTML(ward)}</div>` +
       `<div class="report-section">${aldermanRecordSectionHTML(ward)}</div>` +
       `<div class="report-section">${menuSpendingSectionHTML(ward)}</div>` +
@@ -711,6 +761,55 @@
   function clearWardReport() {
     const existing = document.getElementById("ward-report");
     if (existing) existing.remove();
+  }
+
+  // ---- Citywide proposed-projects card (ward-independent) ----
+  // Validation study 2026-07-13: citation renders with the status (A/F); the
+  // empty coverage state names what it measures — press attention, not
+  // project activity (D); no map lines (nothing machine-readable exists).
+  function buildProjectsCard() {
+    const card = document.createElement("div");
+    card.className = "card projects-card";
+
+    let html = sectionHeadingHTML("Proposed & in progress (citywide)", "derived");
+    const projects = (projectsData && Array.isArray(projectsData.projects))
+      ? projectsData.projects : [];
+    if (!projects.length) {
+      html += `<p class="muted">No proposed-projects roster in the current pull.</p>`;
+      card.innerHTML = html;
+      return card;
+    }
+
+    html += `<div class="kv-list">`;
+    projects.forEach(p => {
+      html += `<div style="margin-bottom:.6rem;"><strong>${BSD.esc(p.name)}</strong>` +
+        (Array.isArray(p.wards) && p.wards.length
+          ? ` <span class="muted">· Ward${p.wards.length > 1 ? "s" : ""} ${BSD.esc(p.wards.join(", "))}</span>` : "") +
+        `<div><em>${BSD.esc(p.status)}</em> <span class="muted">— ${statusReviewedHTML(p)}</span></div>`;
+      if (p.description) html += `<div class="fine-print">${BSD.esc(p.description)}</div>`;
+      if (p.status_note) html += `<div class="fine-print">${BSD.esc(p.status_note)}</div>`;
+      (Array.isArray(p.official_links) ? p.official_links : []).forEach(l => {
+        html += `<div class="fine-print"><a href="${BSD.esc(l.url)}" target="_blank" rel="noopener">${BSD.esc(l.text)}</a></div>`;
+      });
+      const coverage = Array.isArray(p.coverage) ? p.coverage.slice(0, 3) : [];
+      if (coverage.length) {
+        coverage.forEach(c => {
+          html += `<div class="fine-print">${BSD.esc(fmtDate(c.published))} · ` +
+            `<span class="muted">${BSD.esc(c.source || "unknown outlet")}</span> · ` +
+            `<a href="${BSD.esc(c.url)}" target="_blank" rel="noopener" title="Matched: ${BSD.esc(c.via)}">${BSD.esc(c.title)}</a></div>`;
+        });
+      } else {
+        html += `<div class="fine-print muted">No recent news coverage found — that measures press attention, not project activity.</div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+    html += `<div class="fine-print">Hand-curated roster (selection criteria on the ` +
+      `<a href="sources.html#src-proposed_projects">Sources page</a>); statuses are volunteer ` +
+      `judgments backed by the linked citations — the official project page is authoritative. ` +
+      `No map lines are drawn: the city publishes no machine-readable planned-routes data.</div>`;
+    card.innerHTML = html;
+    return card;
   }
 
   // ---- Citywide hearings card (ward-independent) ----
@@ -861,11 +960,12 @@
 
       app.appendChild(reportCards);
 
-      // (5) Citywide hearings card last.
+      // (5) Citywide hearings card, then the proposed-projects card.
       const hearingsSection = document.createElement("section");
       hearingsSection.className = "section-gap";
       app.appendChild(hearingsSection);
       app.appendChild(buildHearingsCard());
+      app.appendChild(buildProjectsCard());
 
       // (6) Closing line.
       const closingLine = document.createElement("div");

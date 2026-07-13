@@ -130,4 +130,4 @@ def test_build_feeds_failed_fetch_is_nonfatal():
         resolve_fn=lambda url: url)
     assert feeds[0]["ok"] is True
     assert feeds[1] == {"url": "b", "source": "B", "kind": "rss",
-                        "ok": False, "items": []}
+                        "query_is_filter": False, "ok": False, "items": []}

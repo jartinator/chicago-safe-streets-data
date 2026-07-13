@@ -156,10 +156,16 @@ NEWS_FEEDS = [
      "source": "Streetsblog Chicago", "kind": "rss"},
     {"url": "https://blockclubchicago.org/category/transportation/feed/",
      "source": "Block Club Chicago", "kind": "rss"},
+    # query_is_filter: this query is scoped tightly enough that its results
+    # are bike-safety-relevant by construction — aggregate's relevance gate
+    # accepts them without a keyword check. The roster-derived project query
+    # (pull_news.project_query_feed) deliberately does NOT set this: its
+    # corridor-name phrases can surface unrelated stories, which must pass
+    # the normal keyword/project gate.
     {"url": ("https://news.google.com/rss/search?q=%22bike+lane%22+OR+"
              "%22bike+lanes%22+OR+%22protected+lane%22+OR+dooring+Chicago"
              "+when:90d&hl=en-US&gl=US&ceid=US:en"),
-     "source": None, "kind": "google_news"},
+     "source": None, "kind": "google_news", "query_is_filter": True},
 ]
 # Published window/cap: items older than this (relative to the pull's
 # fetched_at, so re-aggregation is deterministic) are dropped at aggregate
@@ -167,6 +173,17 @@ NEWS_FEEDS = [
 NEWS_WINDOW_DAYS = 90
 NEWS_MAX_ITEMS = 60
 NEWS_FEED_MAX_BYTES = 5 * 1024 * 1024
+
+# Proposed & in-progress bikeway projects — hand-curated editorial roster
+# (the main_routes.json pattern): statuses are volunteer-reviewed with
+# citations; the news layer auto-attaches coverage per project via its
+# curated news_phrases. Design + validation: docs/superpowers/specs/
+# 2026-07-13-proposed-projects-design.md. pull_news.py also derives one
+# extra Google News query from the roster's phrases so coverage follows the
+# roster (several real projects' current coverage lives on outlets outside
+# the base allowlist).
+PROPOSED_PROJECTS_PATH = REPO_ROOT / "data" / "proposed_projects.json"
+NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT = 2  # keeps the query URL sane
 
 # Crash data is citywide-reliable only from this date (capability report).
 CRASH_START_DATE = "2017-09-01"
@@ -288,7 +305,7 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.12"
+CONTRACT_VERSION = "1.13"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM

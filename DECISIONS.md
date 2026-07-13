@@ -499,3 +499,25 @@ environment forced a deviation. Newest last.
     outright; (c) the pull identifies itself as OnYourLeftNewsBot (both
     outlets' robots.txt disallow AI-branded crawlers by name) and treats any
     403/429 as the outlet opting out — skip the feed, never work around it.
+
+30. **Proposed routes ship as a curated roster with auto-attached news
+    coverage — no geometry, no derived statuses, no bare-token matching.**
+    `data/proposed_projects.json` + `proposed_projects.json` answer "what's
+    proposed here and what's its status" for the 606/Bloomingdale extension
+    class of question. Three calls: (a) statuses are hand-curated with a
+    visible last-reviewed date and citation, because news text cannot settle
+    them deterministically — the Archer saga had outlets describing the same
+    facts as "installed" and "ripped out" in the same month, and Streetsblog
+    published a piece disputing CBS's characterization of the same project;
+    (b) project matching uses curated multi-word phrases only ("Bloomingdale
+    Trail extension"), never bare corridor names — Streetsblog's own the-606
+    tag feed is ~1/12 on-topic for the extension; (c) no map lines: CDOT
+    publishes planned bikeways as a spreadsheet plus static maps (a
+    volunteer had to hand-geocode it to map it), and CMAP's Bikeway
+    Inventory System, probed directly at its ArcGIS REST endpoint
+    (2026-07-13), is an archive of 2012-era municipal plan documents — so
+    honest geometry does not exist, and `planned_routes.geojson` stays a
+    stub while this feature renders cards. Roster selection criteria are
+    published (official record + unresolved outcome + geographic spread;
+    news volume explicitly not a criterion) after the validation study
+    flagged coverage-volume drift as imported inequity.

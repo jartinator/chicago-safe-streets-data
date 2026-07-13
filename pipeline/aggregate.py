@@ -26,7 +26,8 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP, MELLOW_DEDUPE_BUFFER_M,
                     STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED,
                     CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH,
-                    SAFETY_TOPIC_KEYWORDS, NEWS_WINDOW_DAYS, NEWS_MAX_ITEMS)
+                    SAFETY_TOPIC_KEYWORDS, NEWS_WINDOW_DAYS, NEWS_MAX_ITEMS,
+                    PROPOSED_PROJECTS_PATH)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -1621,13 +1622,22 @@ NEWS_TOPIC_CATEGORIES = {"bicycling", "bikes", "bike lanes", "bike safety",
                          "complete streets", "vision zero", "dooring"}
 
 
-def _news_relevant(item, feed_kind):
+def _title_has_safety_keyword(item):
+    title = (item.get("title") or "").lower()
+    return any(kw in title for kw in SAFETY_TOPIC_KEYWORDS)
+
+
+def _news_relevant(item, feed):
     if _DIGEST_TITLE_RE.search(item.get("title") or ""):
         return False
-    if feed_kind == "google_news":
-        return True  # the search query itself is the filter
-    title = (item.get("title") or "").lower()
-    if any(kw in title for kw in SAFETY_TOPIC_KEYWORDS):
+    # Only queries scoped tightly enough to BE the filter get a free pass
+    # (the base "bike lane…" Google query). The roster-derived project query
+    # sets query_is_filter False — its corridor-name phrases surface
+    # unrelated stories that must pass the normal gate below (or carry a
+    # project match, handled by the caller).
+    if feed.get("kind") == "google_news" and feed.get("query_is_filter"):
+        return True
+    if _title_has_safety_keyword(item):
         return True
     return any((c or "").lower() in NEWS_TOPIC_CATEGORIES
                for c in item.get("categories") or [])
@@ -1652,11 +1662,14 @@ def _alderman_matchers(aldermen_wards):
                            "surname": last, "full": f"{first} {last}"})
     surname_counts = Counter(p["surname"].lower() for p in parsed)
     for p in parsed:
-        pats = [re.compile(r"\b" + re.escape(p["full"]) + r"\b", re.IGNORECASE)]
+        # (pattern, needs_context) — the uniform matcher-pattern shape (see
+        # _project_matchers); alderman patterns never need extra context.
+        pats = [(re.compile(r"\b" + re.escape(p["full"]) + r"\b",
+                            re.IGNORECASE), False)]
         if surname_counts[p["surname"].lower()] == 1:
-            pats.append(re.compile(
+            pats.append((re.compile(
                 r"\b(?:Ald\.?|Alderman|Alderwoman|Alderperson)\s+"
-                + re.escape(p["surname"]) + r"\b", re.IGNORECASE))
+                + re.escape(p["surname"]) + r"\b", re.IGNORECASE), False))
         p["patterns"] = pats
     return parsed
 
@@ -1669,12 +1682,12 @@ def _route_matchers(roster):
         pats = []
         for street in line.get("streets") or []:
             name = street["name"] if isinstance(street, dict) else street
-            pats.append(re.compile(
+            pats.append((re.compile(
                 r"\b" + re.escape(name.title()) + r"\s+" + _STREET_SUFFIXES + r"\b",
-                re.IGNORECASE))
+                re.IGNORECASE), False))
         for token in line.get("name_tokens") or []:
-            pats.append(re.compile(r"\b" + re.escape(token) + r"\b",
-                                   re.IGNORECASE))
+            pats.append((re.compile(r"\b" + re.escape(token) + r"\b",
+                                    re.IGNORECASE), False))
         if pats:
             matchers.append({"id": line["id"], "name": line["name"],
                              "patterns": pats})
@@ -1694,9 +1707,35 @@ def _search_tagged(item, pattern):
     return None
 
 
-def match_news_item(item, alderman_matchers, route_matchers):
-    """{wards, aldermen, routes} for one item, every entry carrying `via`."""
-    wards, aldermen, routes = [], [], []
+def _project_matchers(projects_roster):
+    """Per-project match patterns from the proposed-projects roster.
+
+    Two phrase tiers (validated live 2026-07-13 — bare corridor names
+    attached Phoenix/Long Island "Grand Avenue" stories and DLSD crash
+    reports, none about the projects; and bare "606" is ~1/12 on-topic for
+    the extension, evidence brief §2):
+    - `news_phrases`: project-specific wording, matches on its own;
+    - `news_phrases_ctx`: corridor names that only match when the headline
+      also carries a bike/street-safety keyword — a corridor name alone
+      says nothing about the project.
+    """
+    matchers = []
+    for project in (projects_roster or {}).get("projects") or []:
+        pats = [(re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE), False)
+                for p in project.get("news_phrases") or []]
+        pats += [(re.compile(r"\b" + re.escape(p) + r"\b", re.IGNORECASE), True)
+                 for p in project.get("news_phrases_ctx") or []]
+        if pats:
+            matchers.append({"id": project["id"], "name": project["name"],
+                             "patterns": pats})
+    return matchers
+
+
+def match_news_item(item, alderman_matchers, route_matchers,
+                    project_matchers=()):
+    """{wards, aldermen, routes, projects} for one item, every entry carrying
+    `via`."""
+    wards, aldermen, routes, projects = [], [], [], []
     seen_wards = set()
 
     for cat in item.get("categories") or []:
@@ -1710,7 +1749,7 @@ def match_news_item(item, alderman_matchers, route_matchers):
         wards.append({"ward": m.group(1), "via": f"'{m.group(0)}' in headline"})
 
     for a in alderman_matchers:
-        for pattern in a["patterns"]:
+        for pattern, _ in a["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 aldermen.append({"name": a["name"], "ward": a["ward"],
@@ -1722,13 +1761,25 @@ def match_news_item(item, alderman_matchers, route_matchers):
                 break
 
     for r in route_matchers:
-        for pattern in r["patterns"]:
+        for pattern, _ in r["patterns"]:
             where = _search_tagged(item, pattern)
             if where:
                 routes.append({"id": r["id"], "name": r["name"], "via": where})
                 break
 
-    return {"wards": wards, "aldermen": aldermen, "routes": routes}
+    for p in project_matchers:
+        for pattern, needs_context in p["patterns"]:
+            if needs_context and not _title_has_safety_keyword(item):
+                continue
+            where = _search_tagged(item, pattern)
+            if where:
+                projects.append({"id": p["id"], "name": p["name"],
+                                 "via": where + (" + safety keyword in headline"
+                                                 if needs_context else "")})
+                break
+
+    return {"wards": wards, "aldermen": aldermen, "routes": routes,
+            "projects": projects}
 
 
 NEWS_NOTE = (
@@ -1743,10 +1794,21 @@ NEWS_NOTE = (
     "than others.")
 
 
-def build_news_items(roster):
+def load_proposed_projects_roster(path=PROPOSED_PROJECTS_PATH):
+    """The checked-in proposed-projects roster, or None if absent/unreadable
+    (non-fatal — the news layer just publishes without project matches)."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def build_news_items(roster, projects_roster=None):
     """site/data/news_items.json from raw/news.json: relevance-filtered,
     entity-matched, windowed to NEWS_WINDOW_DAYS before the pull's own
-    fetched_at (deterministic on re-aggregation), newest first, capped."""
+    fetched_at (deterministic on re-aggregation), newest first, capped.
+    An item that names a rostered proposed project is relevant by
+    definition, even without a safety-keyword hit."""
     path = RAW_DIR / "news.json"
     empty = {"data_tier": "real", "match_tier": "derived", "as_of": None,
              "note": NEWS_NOTE, "items": []}
@@ -1775,12 +1837,11 @@ def build_news_items(roster):
               "skipped this run.", file=sys.stderr)
     alderman_matchers = _alderman_matchers(aldermen_wards)
     route_matchers = _route_matchers(roster)
+    project_matchers = _project_matchers(projects_roster)
 
     items = []
     for feed in raw.get("feeds") or []:
         for item in feed.get("items") or []:
-            if not _news_relevant(item, feed.get("kind")):
-                continue
             try:
                 published = datetime.fromisoformat(item["published"])
             except (TypeError, ValueError, KeyError):
@@ -1789,17 +1850,69 @@ def build_news_items(roster):
                 published = published.replace(tzinfo=timezone.utc)
             if published < cutoff:
                 continue
+            matches = match_news_item(item, alderman_matchers, route_matchers,
+                                      project_matchers)
+            if not (_news_relevant(item, feed)
+                    or matches["projects"]):
+                continue
             items.append({
                 "title": item["title"],
                 "url": item["url"],
                 "source": item.get("source"),
                 "published": item["published"],
-                "matches": match_news_item(item, alderman_matchers,
-                                           route_matchers),
+                "matches": matches,
             })
     items.sort(key=lambda i: i["published"], reverse=True)
+    # Newest-first cap, but project-matched items always survive it: they are
+    # what proposed_projects.json joins on, they're sparse by design
+    # (milestone-driven coverage), and cutting a project's only two stories
+    # because 60 fresher citywide items exist defeats the roster.
+    kept = items[:NEWS_MAX_ITEMS]
+    kept_urls = {i["url"] for i in kept}
+    kept += [i for i in items[NEWS_MAX_ITEMS:]
+             if i["matches"]["projects"] and i["url"] not in kept_urls]
     return {"data_tier": "real", "match_tier": "derived", "as_of": fetched_at,
-            "note": NEWS_NOTE, "items": items[:NEWS_MAX_ITEMS]}
+            "note": NEWS_NOTE, "items": kept}
+
+
+PROPOSED_NOTE = (
+    "Hand-curated roster of active Chicago bikeway/trail proposals and "
+    "projects. Selection criteria: an official record exists, the outcome is "
+    "unresolved, and the set keeps geographic spread — under-covered South "
+    "and West Side projects are deliberately included; news-coverage volume "
+    "is not a criterion. Each status is a volunteer-reviewed judgment backed "
+    "by the citations listed with it (status_as_of = when it was last "
+    "reviewed); the linked official page is always authoritative. Attached "
+    "coverage is verbatim headlines from the news_items dataset, matched by "
+    "each project's curated phrases (auditable via `via`); an empty coverage "
+    "list measures press attention, not project activity.")
+
+PROPOSED_COVERAGE_CAP = 8
+
+
+def build_proposed_projects(projects_roster, news_items_out):
+    """site/data/proposed_projects.json: the checked-in roster verbatim, plus
+    per-project `coverage` joined from the just-built news items (newest
+    first, capped) so each project card is self-contained."""
+    if not projects_roster:
+        return {"data_tier": "derived", "as_of": None, "note": PROPOSED_NOTE
+                + " Roster file missing this run.", "projects": []}
+    by_project = defaultdict(list)
+    for item in news_items_out.get("items") or []:
+        for pm in item["matches"].get("projects") or []:
+            by_project[pm["id"]].append({
+                "title": item["title"], "url": item["url"],
+                "source": item.get("source"), "published": item["published"],
+                "via": pm["via"],
+            })
+    projects = []
+    for project in projects_roster.get("projects") or []:
+        out = dict(project)
+        out["coverage"] = by_project.get(project["id"], [])[:PROPOSED_COVERAGE_CAP]
+        projects.append(out)
+    return {"data_tier": "derived", "coverage_tier": "real",
+            "match_tier": "derived", "as_of": news_items_out.get("as_of"),
+            "note": PROPOSED_NOTE, "projects": projects}
 
 
 def main():
@@ -1907,7 +2020,11 @@ def main():
     main_routes_roster = load_main_routes_roster()
     main_routes_gj = build_main_routes(routes_gj, osm_trails_gj, main_routes_roster)
     network_nodes_out = build_network_nodes(main_routes_gj, load_orientation_points())
-    news_items_out = build_news_items(main_routes_roster)
+    proposed_projects_roster = load_proposed_projects_roster()
+    news_items_out = build_news_items(main_routes_roster,
+                                      proposed_projects_roster)
+    proposed_projects_out = build_proposed_projects(proposed_projects_roster,
+                                                    news_items_out)
 
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
@@ -1972,6 +2089,10 @@ def main():
             {"id": "news_items", "name": "News Coverage (public RSS headlines)",
              "tier": "real", "records": len(news_items_out["items"]),
              "date_range": None},
+            {"id": "proposed_projects",
+             "name": "Proposed & In-Progress Bikeway Projects (curated roster)",
+             "tier": "derived", "records": len(proposed_projects_out["projects"]),
+             "date_range": None},
         ],
     }
 
@@ -2001,6 +2122,7 @@ def main():
     write_json(SITE_DATA_DIR / "menu_spending.json", menu_spending_out)
     write_json(SITE_DATA_DIR / "road_network.json", road_network)
     write_json(SITE_DATA_DIR / "news_items.json", news_items_out)
+    write_json(SITE_DATA_DIR / "proposed_projects.json", proposed_projects_out)
 
     # Fixtures/offline fallback only: live runs fill aldermen.json from the city's
     # Ward Offices dataset via pull_aldermen.py (which fails soft, preserving the

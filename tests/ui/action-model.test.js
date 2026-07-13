@@ -323,3 +323,34 @@ console.log("action-model OK");
     "getNewsForWard: shapeless data returns empty list");
   console.log("action-model news OK");
 }
+
+// ---- getProjectsForWard: curated proposed-projects roster (contract v1.13) ----
+{
+  const projectsData = {
+    data_tier: "derived",
+    projects: [
+      { id: "archer-avenue", name: "Archer Avenue Traffic Safety Project",
+        status: "installed, being modified", status_as_of: "2026-07-13",
+        wards: ["12"], coverage: [] },
+      { id: "grand-avenue", name: "Grand Avenue Protected Bike Lanes (Phase 2)",
+        status: "under construction", status_as_of: "2026-07-13",
+        wards: ["1", "27", "36"], coverage: [] },
+      { id: "dusable-lsd-redesign", name: "DuSable LSD Redesign",
+        status: "proposed", status_as_of: "2026-07-13",
+        wards: [], coverage: [] },  // unassigned wards -> citywide card only
+    ],
+  };
+  assert.deepStrictEqual(
+    A.getProjectsForWard(projectsData, 12).map(p => p.id), ["archer-avenue"],
+    "getProjectsForWard: ward-tagged project found (numeric ward arg)");
+  assert.deepStrictEqual(
+    A.getProjectsForWard(projectsData, "27").map(p => p.id), ["grand-avenue"],
+    "getProjectsForWard: multi-ward project matches any of its wards");
+  assert.deepStrictEqual(A.getProjectsForWard(projectsData, "5"), [],
+    "getProjectsForWard: untagged ward gets nothing — empty wards ≠ every ward");
+  assert.deepStrictEqual(A.getProjectsForWard(null, 12), [],
+    "getProjectsForWard: null data returns empty list");
+  assert.deepStrictEqual(A.getProjectsForWard({ projects: null }, 12), [],
+    "getProjectsForWard: shapeless data returns empty list");
+  console.log("action-model proposed-projects OK");
+}

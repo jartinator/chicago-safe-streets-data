@@ -16,14 +16,18 @@ pipeline. A 403/429 means the outlet opted out: skip it, never work around.
 Idempotent: re-running overwrites cleanly.
 """
 import argparse
+import json
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from urllib.parse import quote
 
 import requests
 
-from config import NEWS_FEEDS, NEWS_USER_AGENT, NEWS_FEED_MAX_BYTES, RAW_DIR
+from config import (NEWS_FEEDS, NEWS_USER_AGENT, NEWS_FEED_MAX_BYTES, RAW_DIR,
+                    PROPOSED_PROJECTS_PATH,
+                    NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT)
 from socrata import write_json
 
 _HEADERS = {
@@ -141,7 +145,9 @@ def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
             print(f"  WARNING: {cfg['url']} fetched but did not parse as RSS.",
                   file=sys.stderr)
         feeds.append({"url": cfg["url"], "source": cfg["source"],
-                      "kind": cfg["kind"], "ok": items is not None,
+                      "kind": cfg["kind"],
+                      "query_is_filter": bool(cfg.get("query_is_filter")),
+                      "ok": items is not None,
                       "items": items or []})
 
     # Title dedup FIRST (direct feeds are listed before the aggregator, so
@@ -157,12 +163,51 @@ def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
     return dedup_items(feeds)
 
 
+def project_query_feed(path=PROPOSED_PROJECTS_PATH):
+    """One extra Google News feed config derived from the proposed-projects
+    roster's curated phrases, or None when the roster is absent, unreadable,
+    or empty (non-fatal — the base feeds still run). Several real projects'
+    current coverage lives on outlets outside the base allowlist (evidence:
+    docs/research/proposed-routes-news/evidence-proposals.md), so the query
+    follows the roster instead of hard-coding more outlets."""
+    try:
+        roster = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    phrases = []
+    for project in roster.get("projects") or []:
+        # Strict phrases first; corridor-name (ctx) phrases fill remaining
+        # slots — the query is Chicago-scoped below either way.
+        pool = ((project.get("news_phrases") or [])
+                + (project.get("news_phrases_ctx") or []))
+        phrases.extend(pool[:NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT])
+    if not phrases:
+        return None
+    query = ("(" + " OR ".join(f'"{p}"' for p in phrases)
+             + ") Chicago when:90d")
+    # No query_is_filter: corridor-name phrases ("Grand Avenue") surface
+    # unrelated stories — these items must pass the normal relevance gate
+    # (safety keyword, topic category, or a project match).
+    return {"url": ("https://news.google.com/rss/search?q=" + quote(query)
+                    + "&hl=en-US&gl=US&ceid=US:en"),
+            "source": None, "kind": "google_news"}
+
+
+def news_feed_configs():
+    """The base allowlist plus the roster-derived project query (when any)."""
+    feeds = list(NEWS_FEEDS)
+    extra = project_query_feed()
+    if extra:
+        feeds.append(extra)
+    return feeds
+
+
 def main():
     argparse.ArgumentParser(
         description="Pull public news-feed items (RSS) about Chicago bike safety."
     ).parse_args()
 
-    feeds = build_feeds(NEWS_FEEDS)
+    feeds = build_feeds(news_feed_configs())
     write_json(RAW_DIR / "news.json", {
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "feeds": feeds,
