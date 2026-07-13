@@ -97,8 +97,8 @@
     },
     {
       name: "ward_safety_index.json", tier: "derived",
-      title: "Ward danger scores", sourceId: "ward_safety_index", sourceName: "Danger score",
-      description: "Each ward's 0–100 danger score (relative to other wards), with the rates behind it and 12-month trend.",
+      title: "Ward concern ranks", sourceId: "ward_safety_index", sourceName: "Concern rank",
+      description: "Each ward's 0–100 concern rank (relative to other wards, higher = worse; the JSON field keeps its original name comparable_danger_score), with the rates behind it and 12-month trend.",
       calc: "Average of the ward's percentile ranks on crashes per 10k residents and crashes per bikeway mile — every input is in this file's row."
     },
     {

@@ -303,3 +303,22 @@ environment forced a deviation. Newest last.
     and the `trail` facility category is excluded from every numerator — the
     same off-street-trails-are-not-roads rule used elsewhere in this project
     (protected-share, main routes) applies here too.
+
+22. **Synthetic data never renders on a primary map surface, and synthetic
+    renders are watermarked.** The user-needs study
+    (`docs/research/user-needs/REPORT-ux-proposal.md`, P2) found the mock
+    obstruction layer was the site's single biggest trust liability: all nine
+    research personas distrusted it, and the recurring failure mode is that
+    **tier badges don't survive screenshots** — a cropped image of a
+    plausible-looking heat layer circulates as if real. So: the obstruction
+    layer is removed from `index.html` entirely and lives only on
+    `obstructions-preview.html`, behind a click-through gate that repeats on
+    every visit (no storage — staff turn over, warnings must not expire with
+    a cookie), with a diagonal "SYNTHETIC" watermark baked into the map
+    render itself so any screenshot self-identifies. Companion calls from the
+    same study, shipped together: every CSV export carries `#`-comment
+    provenance lines (dataset, tier, as-of, caveat); findings cards carry
+    their own as-of line; every page footer shows the last-refresh date; and
+    the ward "danger score" is re-presented as a **concern rank** (relative,
+    higher = worse) with its two component rates first-class and its math on
+    the new `methodology.html`.

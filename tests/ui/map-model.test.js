@@ -46,8 +46,8 @@ assert.deepStrictEqual(
   "DENSITY_RAMPS.crashes matches spec"
 );
 assert.deepStrictEqual(
-  M.DENSITY_RAMPS.obstructions, ["#fde68a", "#fbbf24", "#f97316", "#b91c1c"],
-  "DENSITY_RAMPS.obstructions matches spec"
+  M.DENSITY_RAMPS.obstructions, undefined,
+  "no obstructions ramp: mock data never renders on primary map surfaces (see obstructions-preview.html)"
 );
 
 // ---- rampColor ----

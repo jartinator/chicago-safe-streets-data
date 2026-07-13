@@ -33,7 +33,6 @@
   // Color ramps for density dots, keyed by layer id.
   const DENSITY_RAMPS = {
     crashes: ["#fecaca", "#f87171", "#dc2626", "#7f1d1d"],
-    obstructions: ["#fde68a", "#fbbf24", "#f97316", "#b91c1c"],
   };
 
   // Pick a ramp step by count / maxCount quartile.

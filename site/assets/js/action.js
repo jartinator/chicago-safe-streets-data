@@ -395,7 +395,7 @@
     const { entry, rank, total } = result;
     const score = entry.comparable_danger_score;
     const scoreDisplay = score == null ? "—" : `${BSD.esc(score)} / 100`;
-    html += `<div>Danger score: <span class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</span> <span class="muted">(vs other wards — higher is worse)</span></div>`;
+    html += `<div>Concern rank: <span class="stat" style="color: ${BSD.scoreColor(score)};">${scoreDisplay}</span> <span class="muted">(vs other wards — higher is worse)</span></div>`;
     html += `<div class="muted" style="margin-bottom: .6rem;">Rank ${BSD.fmt(rank)} of ${BSD.fmt(total)} wards</div>`;
 
     html += `<div class="kv-list">`;
@@ -494,7 +494,7 @@
     html += `<dt><strong>Cyclist crashes / injuries / deaths</strong> — real · from official records</dt>`;
     html += dd(`Chicago Police crash reports via the Chicago Data Portal. Recent months are provisional; dooring is structurally undercounted. ${BSD.esc(crashWindow)}`, "crashes");
 
-    html += `<dt><strong>Danger score</strong> — derived · calculated by us</dt>`;
+    html += `<dt><strong>Concern rank</strong> — derived · calculated by us</dt>`;
     html += dd(`Formula: average of this ward's percentile ranks on crashes per 10k residents (${per10k}) and crashes per bikeway mile (${perMile}). A relative ranking across wards, not absolute risk.`, "ward_safety_index");
 
     html += `<dt><strong>311 bike complaints</strong> — proxy · a related signal</dt>`;

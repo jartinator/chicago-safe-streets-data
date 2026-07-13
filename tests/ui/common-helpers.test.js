@@ -99,4 +99,26 @@ assert.ok(ics.includes("\r\n"), "uses CRLF line endings");
 // downloadICS is DOM-bound but must be exported alongside the pure helpers.
 assert.strictEqual(typeof B.downloadICS, "function");
 
+// CSV provenance (trust-hardening PR): exports must carry their own
+// source/tier/as-of as #-comment lines that a parser can strip.
+const csv = B.csvText(
+  [{ a: 1, b: 'x,y' }, { a: 2, b: null }],
+  ["a", "b"],
+  B.provenanceLines("Test dataset", "derived", "2026-07-13T01:02:03Z", "A caveat.")
+);
+const lines = csv.split("\n");
+assert.ok(lines[0].startsWith("# On Your Left! (OYL) — Test dataset"));
+assert.ok(lines[1].includes("Data as of 2026-07-13"));
+assert.ok(lines[1].includes("calculated by us from real data"), "tier rendered in plain words (TIER_PLAIN)");
+assert.strictEqual(lines[2], "# A caveat.");
+assert.ok(lines[3].startsWith("# Methodology & caveats:"));
+assert.strictEqual(lines[4], "a,b");
+assert.strictEqual(lines[5], '1,"x,y"');
+assert.strictEqual(lines[6], "2,");
+// no provenance → plain CSV, no comment lines
+assert.strictEqual(B.csvText([{ a: 1 }], ["a"]).split("\n")[0], "a");
+// newlines in provenance must not break the comment-line format
+assert.ok(!B.provenanceLines("x", "real", null, "two\nlines")
+  .some(l => l.includes("\n")) || B.csvText([], ["a"], ["two\nlines"]).split("\n")[0] === "# two lines");
+
 console.log("common-helpers OK");
