@@ -52,3 +52,12 @@ def test_osm_trails_pull_is_a_live_stage():
     # third-party layer (Mellow), before the COMMON aggregate stage.
     live = _flat(run_all.LIVE_STAGES)
     assert "pull_osm_trails.py" in live
+
+
+def test_emit_api_is_a_common_stage_after_aggregate():
+    # emit_api.py builds site/api/v1/ from site/data/*, so it must run after
+    # aggregate.py (which writes site/data/*), and in both live and
+    # --fixtures runs (it's a COMMON stage, not a LIVE-only one).
+    common = _flat(run_all.COMMON_STAGES)
+    assert "emit_api.py" in common
+    assert common.index("emit_api.py") > common.index("aggregate.py")
