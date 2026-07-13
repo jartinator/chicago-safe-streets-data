@@ -35,6 +35,10 @@
       const grid = document.createElement("div");
       grid.className = "cards-grid";
 
+      // Cards travel as screenshots in group chats and printouts — each one
+      // must carry its own origin + as-of date, not rely on page context.
+      const asOfShort = meta.generated_at ? String(meta.generated_at).slice(0, 10) : null;
+
       for (const finding of findings) {
         const card = document.createElement("div");
         card.className = "card";
@@ -124,6 +128,14 @@
           ? "See the main routes →"
           : "Explore on map →";
 
+        // Screenshot-survivable provenance line
+        let provLine = null;
+        if (asOfShort) {
+          provLine = document.createElement("p");
+          provLine.className = "muted prov-line";
+          provLine.textContent = `On Your Left! · data as of ${asOfShort}`;
+        }
+
         // Assemble card
         card.appendChild(stat);
         card.appendChild(titleWithBadge);
@@ -132,6 +144,7 @@
         card.appendChild(caveat);
         if (wardLinks) card.appendChild(wardLinks);
         card.appendChild(btn);
+        if (provLine) card.appendChild(provLine);
 
         grid.appendChild(card);
       }

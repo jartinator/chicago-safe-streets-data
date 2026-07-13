@@ -204,3 +204,15 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
 .route-row.no-data { opacity: 0.6; }
 .route-row.no-data .route-name { color: var(--ink-soft); }
 .route-pct { white-space: nowrap; font-size: 0.74rem; min-width: 5.4em; text-align: right; }
+
+/* ---- provenance-that-travels (PR: trust hardening) ---- */
+.data-asof { font-size: .8rem; margin-bottom: .4rem; }
+.prov-line { font-size: .74rem; letter-spacing: .02em; margin: .5rem 0 0; }
+
+/* Synthetic-data watermark: baked into the render so any screenshot of the
+ * demo map self-identifies. Tiled diagonal SVG text, click-through. */
+.synthetic-frame { position: relative; }
+.synthetic-watermark {
+  position: absolute; inset: 0; z-index: 1100; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='170'%3E%3Ctext x='10' y='95' font-family='sans-serif' font-size='26' font-weight='700' fill='%23b91c1c' fill-opacity='0.16' transform='rotate(-24 130 85)'%3ESYNTHETIC%3C/text%3E%3C/svg%3E");
+}

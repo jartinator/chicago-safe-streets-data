@@ -96,8 +96,9 @@
       tier: "mock",
       cadence: "regenerated each pipeline run",
       description: "Reports of bike lanes blocked by cars, debris, or other obstructions. This is entirely synthetic MOCK data for schema demonstration — Bike Lane Uprising has no public API yet.",
-      limitations: "Entirely synthetic — no real reports. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
+      limitations: "Entirely synthetic — no real reports, so it never renders on the main maps; it lives only on a gated, watermarked demo page. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
       links: [
+        { text: "Synthetic demo page (gated)", url: "obstructions-preview.html" },
         { text: "Bike Lane Uprising", url: "https://www.bikelaneuprising.com" }
       ],
       metaId: "obstructions"

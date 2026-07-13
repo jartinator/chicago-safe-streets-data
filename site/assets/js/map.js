@@ -17,7 +17,7 @@
     subdomains: "abcd", maxZoom: 19,
   }).addTo(map);
 
-  // Zoom-adaptive density rendering: below DETAIL_ZOOM, crashes/obstructions
+  // Zoom-adaptive density rendering: below DETAIL_ZOOM, crashes
   // render as tight, route-hugging density dots (small ~100m cells, capped
   // radii) instead of thousands of individual markers merging into a blob.
   // Purely zoom-derived — no URL/state changes. Cameras and wards untouched.
@@ -70,10 +70,12 @@
     shade: B.qs().get("shade") || "density",
   };
 
+  // Obstructions (mock tier) are deliberately absent: synthetic data never
+  // renders on a primary map surface. See obstructions-preview.html and
+  // DECISIONS.md.
   const LAYERS = [
     { id: "mainroutes", label: "Main routes", tier: "derived" },
     { id: "crashes", label: "Cyclist crashes", tier: "real" },
-    { id: "obstructions", label: "Obstructions", tier: "mock" },
     { id: "infrastructure", label: "Bike infrastructure", tier: "real" },
     { id: "trails", label: "Off-street trails", tier: "crowdsourced" },
     { id: "planned", label: "Planned routes", tier: "stub" },
@@ -87,7 +89,6 @@
 
   Promise.all([
     B.loadJSON("data/crashes_cyclist.geojson"),
-    B.loadJSON("data/obstructions_mock.geojson").catch(() => ({ features: [] })),
     B.loadJSON("data/bike_routes.geojson"),
     B.loadJSON("data/planned_routes.geojson"),
     B.loadJSON("data/osm_trails.geojson").catch(() => ({ features: [] })),
@@ -99,8 +100,8 @@
     B.loadJSON("data/aldermen.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/ward_safety_index.json").catch(() => ({ wards: [] })),
     B.loadJSON("data/menu_spending.json").catch(() => ({ wards: {} })),
-  ]).then(([crashes, obstructions, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
-    Object.assign(data, { crashes, obstructions, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections });
+  ]).then(([crashes, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections, aldermen, safety, menu]) => {
+    Object.assign(data, { crashes, routes, planned, trails, mainRoutes, cameras, wards, corridors, intersections });
     // Per-line geographic bounds (union of member-segment bboxes) for the
     // roster's click-to-zoom. no_data lines have no members, hence no entry.
     data.lineBounds = {};
@@ -184,15 +185,6 @@
     groups.crashes = buildCrashGroup(filteredCrashes);
     groups.crashesDensity = buildDensityGroup(filteredCrashes, "crashes");
 
-    groups.obstructions = L.layerGroup((data.obstructions.features || []).map(f => {
-      const p = f.properties;
-      const [lng, lat] = f.geometry.coordinates;
-      return L.circleMarker([lat, lng], {
-        radius: 4, color: "#b91c1c", weight: 1, dashArray: "2,2", fillOpacity: 0.35,
-      }).on("click", () => showObstruction(p));
-    }));
-    groups.obstructionsDensity = buildDensityGroup(data.obstructions.features || [], "obstructions");
-
     groups.infrastructure = L.layerGroup(data.routes.features.map(f => {
       const p = f.properties;
       const line = L.geoJSON(f, {
@@ -272,7 +264,7 @@
     groups.crashesDensity = buildDensityGroup(filtered, "crashes");
   }
 
-  // True when the map is zoomed out past DETAIL_ZOOM and crash/obstruction
+  // True when the map is zoomed out past DETAIL_ZOOM and crash
   // layers should render as density dots instead of individual markers.
   function isDensityMode() {
     return map.getZoom() < DETAIL_ZOOM;
@@ -287,8 +279,7 @@
     // groups (e.g. a scroll-wheel zoom while the map is still loading).
     if (!groups.crashes) return;
     const density = isDensityMode();
-    [["crashes", groups.crashes, groups.crashesDensity],
-     ["obstructions", groups.obstructions, groups.obstructionsDensity]].forEach(([id, individual, densityGroup]) => {
+    [["crashes", groups.crashes, groups.crashesDensity]].forEach(([id, individual, densityGroup]) => {
       const show = state.layers.has(id) ? (density ? densityGroup : individual) : null;
       [individual, densityGroup].forEach(g => {
         if (g !== show && map.hasLayer(g)) map.removeLayer(g);
@@ -299,7 +290,7 @@
   }
 
   // Muted hint shown under the layer control while in density mode with
-  // either crashes or obstructions on. Toggles an existing DOM node
+  // crashes on. Toggles an existing DOM node
   // in-place (called from syncDensityMode on zoomend, no side-panel
   // rebuild needed) and is also invoked at the end of renderSide() so a
   // freshly-rendered panel starts in the correct state regardless of
@@ -307,13 +298,13 @@
   function updateDensityHint() {
     const hint = document.getElementById("densityHint");
     if (!hint) return;
-    const show = isDensityMode() && (state.layers.has("crashes") || state.layers.has("obstructions"));
+    const show = isDensityMode() && state.layers.has("crashes");
     hint.style.display = show ? "" : "none";
   }
 
   function syncLayers() {
     for (const { id } of LAYERS) {
-      if (id === "crashes" || id === "obstructions") continue; // handled by syncDensityMode()
+      if (id === "crashes") continue; // handled by syncDensityMode()
       if (state.layers.has(id)) { if (!map.hasLayer(groups[id])) groups[id].addTo(map); }
       else if (map.hasLayer(groups[id])) map.removeLayer(groups[id]);
     }
@@ -362,7 +353,7 @@
     // so both belong in the legend.
     const shadeLegend = state.shade === "danger" ? `
       <div class="muted" style="margin:0.4rem 0" title="${B.esc(data.safetyNote || "")}">
-        <strong>Danger score ${B.badgeHTML("derived")}</strong><br>
+        <strong>Concern rank — higher = worse ${B.badgeHTML("derived")}</strong><br>
         ${[[[B.scoreColor(85)], "80+"], [[B.scoreColor(65)], "60+"], [[B.scoreColor(45)], "40+"],
            [[B.scoreColor(25)], "20+"], [[B.scoreColor(10), B.scoreColor(null)], "<20 / no data"]].map(([colors, label]) =>
           `<span style="white-space:nowrap">${colors.map(c =>
@@ -380,7 +371,7 @@
         <label style="display:inline-flex;gap:0.3rem;align-items:center">Ward shading:
           <select id="shade">
             <option value="density" ${state.shade === "density" ? "selected" : ""}>Crash density (real)</option>
-            <option value="danger" ${state.shade === "danger" ? "selected" : ""}>Danger score (derived)</option>
+            <option value="danger" ${state.shade === "danger" ? "selected" : ""}>Concern rank (derived)</option>
           </select>
         </label>
       </div>
@@ -479,7 +470,7 @@
     const top = Object.entries(streets).sort((a, z) => z[1].crashes - a[1].crashes).slice(0, 6);
     const ald = data.aldermanByWard[String(w)] || {};
 
-    // Ward accountability rows: danger score/rank, crash trend, bikeway
+    // Ward accountability rows: concern rank, crash trend, bikeway
     // miles, menu spending — all sourced from ward_safety_index.json and
     // menu_spending.json, both of which are allowed to fail to load or omit
     // this ward, so every field below is null-safe.
@@ -499,8 +490,8 @@
         <dt>Injury crashes / fatal</dt><dd>${B.fmt(p.injuries)} / ${B.fmt(p.fatalities)}</dd>
         <dt>311 bike complaints ${B.badgeHTML("proxy")}</dt><dd>${B.fmt(p.complaints_311)}</dd>
         <dt>Alderman</dt><dd>${B.esc(ald.alderman || "—")} — <a href="${B.LINKS.aldermanLookup}" target="_blank" rel="noopener">official lookup</a></dd>
-        <dt>Danger score ${B.badgeHTML("derived")}</dt>
-        <dd>${scoreRow}</dd>
+        <dt>Concern rank ${B.badgeHTML("derived")}</dt>
+        <dd>${scoreRow}${score == null ? "" : ' <span class="muted">(relative among wards, not absolute risk — <a href="methodology.html#ward-index">methodology</a>)</span>'}</dd>
         <dt>Crash trend ${B.badgeHTML("derived")}</dt>
         <dd>${trendRow}</dd>
         <dt>Bikeway miles</dt><dd>${bikewayMilesRow}</dd>
@@ -555,19 +546,6 @@
       </dl>${B.noticeHTML("dooring")}`);
     const a = document.getElementById("crashWard");
     if (a) a.addEventListener("click", e => { e.preventDefault(); showWard(p.ward, true); });
-  }
-
-  function showObstruction(p) {
-    setDetail(`
-      <h3>Obstruction ${B.badgeHTML("mock")}</h3>
-      <div class="notice">${B.esc(B.TIER_INFO.mock)}</div>
-      <dl>
-        <dt>Type</dt><dd>${B.esc(p.obstruction_type)}</dd>
-        <dt>When</dt><dd>${B.esc((p.occurred_at || "").replace("T", " "))}</dd>
-        <dt>Photos</dt><dd>${B.fmt(p.photo_count)}</dd>
-        <dt>Crash occurred</dt><dd>${p.crash_occurred ? "yes" : "no"}</dd>
-      </dl>
-      <p class="muted">See something real? <a href="${B.LINKS.blu}" target="_blank" rel="noopener">Report to Bike Lane Uprising</a> or <a href="${B.LINKS.threeOneOne}" target="_blank" rel="noopener">311</a>.</p>`);
   }
 
   function showSegment(p) {
@@ -658,7 +636,7 @@
       </dl>`);
   }
 
-  // Crossing DETAIL_ZOOM mid-session swaps crash/obstruction rendering
+  // Crossing DETAIL_ZOOM mid-session swaps crash rendering
   // between density dots and individual markers.
   map.on("zoomend", syncDensityMode);
 
