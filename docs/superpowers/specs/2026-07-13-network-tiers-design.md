@@ -128,3 +128,46 @@ All three tiers on · quality off · floor Any · nothing selected.
 Transportation map (index.html) untouched. Mellow stays available to any
 other page that reads it. Node derivation unchanged (nodes still computed
 from line intersections; capsules only at shared-track ends).
+
+## 12. Amendment (2026-07-13, later the same day): graded connectors
+
+Owner request + light re-convene of the research panel (same 5 personas,
+one follow-up pass; Option C below was unanimous). Amends §1's connector
+row and §5's connector clause.
+
+**Connectors carry a per-feature comfort grade** — same buckets as §3,
+derived client-side from `facility_category` via the existing
+`CONNECTOR_GRADE_MAP` (protected; buffered/painted → paint; greenway →
+mellow; unknown/sharrow → none), `mellow_connectors.geojson` → mellow,
+non-roster OSM trails → offstreet.
+
+**Styling (hybrid hue + pattern, "Option C"):** weight 2.5, opacity 0.75,
+identity-less — the subtle background effect is unchanged. Muted tints
+echo the §3 grade colors; dash pattern is the redundant (colorblind-safe)
+channel:
+
+| Grade | Line |
+|---|---|
+| `protected` | **solid**, muted green `#4d8873` |
+| `paint` | dashed 4,5, muted green `#4d8873` |
+| `mellow` | dashed 4,5, muted lavender `#9a8fc9` |
+| `none` | dashed 4,5, slate `#94a3b8` (today's look, unchanged) |
+| `offstreet` | **solid**, slate `#94a3b8` (pattern says calm; neutral hue makes no facility claim) |
+
+Tints are **always on** (owner call — the panel split 3–2 toward gating
+behind the Quality toggle; owner's explicit ask wins). The Quality
+legend (visible only while the toggle is on, per §3) gains a footnote:
+connector tints share the grade colors, and grades reflect **facility
+type, not a safety metric** (panel risk #1).
+
+**Comfort floor applies per-grade** (replaces §5's "hidden entirely"
+all-or-nothing): each connector hides when its grade is below the floor
+and stays visible at/above it (`meetsFloor`). Floors now *reveal* the
+qualifying background network instead of nuking the tier. Offstreet
+passes every floor; mellow hides at Paint+ — a muted caption under the
+floor control says so (panel risk #2): "floors hide connectors below
+your bar — greenway links need Any".
+
+Connector detail cards name the grade ("Protected connector", …) with
+the same facility-type caveat. Corridor labels keep their existing
+floor === any gate (a floored background is intentionally sparse).

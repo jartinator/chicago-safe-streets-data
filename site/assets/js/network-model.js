@@ -220,11 +220,40 @@
     return Math.max(0.6, Math.min(1, 0.6 + (z - 11) * 0.2));
   }
 
-  // Connectors (spec §1): everything rideable that isn't a roster trail or
-  // main route — non-roster bike_routes, deduped mellow geometry
-  // (mellow_connectors.geojson), and non-roster named OSM trails. One
-  // style for all three sources: thin, dashed, neutral, identity-less.
+  // Connectors (spec §1, amended §12): everything rideable that isn't a
+  // roster trail or main route — non-roster bike_routes, deduped mellow
+  // geometry (mellow_connectors.geojson), and non-roster named OSM trails.
+  // Weight/opacity/base geometry are one style for all three sources (thin,
+  // identity-less background mesh) — that part is unchanged. What §12
+  // changed: each feature now also carries a per-feature comfort grade,
+  // styled by connectorStyle() below with a muted hue + dash tint instead
+  // of one flat neutral look.
   const CONNECTOR_STYLE = { color: "#94a3b8", weight: 2.5, opacity: 0.75, dashArray: "4,5" };
+
+  // Per-grade connector tint (spec §12, "Option C" hybrid hue + pattern):
+  // muted tints echo the §3 grade colors; dash pattern is the redundant,
+  // colorblind-safe channel. Solid reads calm (protected, offstreet);
+  // dashed marks a partial/no claim (paint, mellow, none). `none`'s
+  // color/dash match CONNECTOR_STYLE's pre-existing look exactly —
+  // "today's look, unchanged" per the spec table.
+  const CONNECTOR_GRADE_TINTS = {
+    protected: { color: "#4d8873", dashArray: null },
+    paint: { color: "#4d8873", dashArray: "4,5" },
+    mellow: { color: "#9a8fc9", dashArray: "4,5" },
+    none: { color: "#94a3b8", dashArray: "4,5" },
+    offstreet: { color: "#94a3b8", dashArray: null },
+  };
+
+  // Connector style for a per-feature comfort grade (spec §12): inherits
+  // CONNECTOR_STYLE's weight/opacity (the subtle background effect is
+  // unchanged) and swaps in the grade's color/dash tint. Unrecognized
+  // grades fall back to the `none` treatment (loud-not-silent, same
+  // rationale as qualityBorderStyle) rather than drawing nothing.
+  function connectorStyle(grade) {
+    const known = Object.prototype.hasOwnProperty.call(CONNECTOR_GRADE_TINTS, grade);
+    const tint = CONNECTOR_GRADE_TINTS[known ? grade : "none"];
+    return { ...CONNECTOR_STYLE, color: tint.color, dashArray: tint.dashArray };
+  }
 
   // ---- Quality border (spec §3) ----
 
@@ -840,7 +869,7 @@
     LINE_COLORS, FALLBACK_LINE_COLOR, lineStyle,
     darkenColor, lightenColor, trailStyle, trailOutlineStyle,
     zoomWeightFactor, gapSegments, GAP_JOIN_TOLERANCE_METERS,
-    CONNECTOR_STYLE,
+    CONNECTOR_STYLE, CONNECTOR_GRADE_TINTS, connectorStyle,
     GRADE_COLORS, qualityBorderStyle,
     GRADE_RANK, gradeRank, FLOOR_IDS, parseFloor, meetsFloor,
     DRAINED_COLOR, DRAINED_STYLE,
