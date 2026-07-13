@@ -1,4 +1,15 @@
-# READY TO SEND — FOIA request: CDOT bicycle count data
+---
+status: ready
+initiative: foia
+to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → Transportation)
+subject: FOIA request — CDOT bicycle count data
+drafted: 2026-07-13
+sent: —
+tracking: —
+tracker: #33
+---
+
+# FOIA request: CDOT bicycle count data
 
 **How to submit** (same channels as the mileage-history request):
 - Online portal (GovQA): https://www.chicago.gov/publicrecords → Department

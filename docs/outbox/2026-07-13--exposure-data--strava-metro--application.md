@@ -1,3 +1,14 @@
+---
+status: ready
+initiative: exposure-data
+to: https://metro.strava.com (partner application form)
+subject: Strava Metro access application — On Your Left!
+drafted: 2026-07-13
+sent: —
+tracking: —
+tracker: #33
+---
+
 # Strava Metro application — draft answers
 
 Apply at https://metro.strava.com/ ("Request access" / partner application).
