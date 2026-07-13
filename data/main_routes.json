@@ -1,5 +1,5 @@
 {
-  "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-13-network-tiers-design.md §2; supersedes the 2026-07-12-main-routes-design.md roster note). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. 14 street lines + 5 trail lines = 19 lines. `roosevelt` and `vincennes` were demoted to connectors in the network-tiers-v2 re-cut (owner-signed count: 19) — their segments still flow into the network, just not as named roster lines. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`, optionally clipped to `clip_bbox` [south, west, north, east] by the segment's geometry midpoint; a segment listed by more than one line's `streets` belongs to all of them (line_ids on the built feature), with the first roster-order match kept as `line_id` for back-compat — the current roster has no such overlaps. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",
+  "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-13-network-tiers-design.md §2; supersedes the 2026-07-12-main-routes-design.md roster note). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. 14 street lines + 6 trail lines = 20 lines. `roosevelt` and `vincennes` were demoted to connectors in the network-tiers-v2 re-cut (owner-signed count: 19); `312-riverrun` was added as a 6th trail line (DECISIONS.md #26, owner-signed count: 20) — their segments still flow into the network, just not as named roster lines. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`, optionally clipped to `clip_bbox` [south, west, north, east] by the segment's geometry midpoint; a segment listed by more than one line's `streets` belongs to all of them (line_ids on the built feature), with the first roster-order match kept as `line_id` for back-compat — the current roster has no such overlaps. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",
   "lines": [
     {
       "id": "milwaukee",
@@ -133,6 +133,13 @@
       "termini": "Gompers Park ⇄ Botanic Garden",
       "source": "osm_trails",
       "name_tokens": ["north branch"]
+    },
+    {
+      "id": "312-riverrun",
+      "name": "312 RiverRun",
+      "termini": "Belmont ⇄ Montrose",
+      "source": "osm_trails",
+      "name_tokens": ["riverrun", "river run"]
     }
   ]
 }

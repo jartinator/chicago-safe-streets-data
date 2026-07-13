@@ -422,3 +422,16 @@ environment forced a deviation. Newest last.
     published note says the PDF is authoritative, and the only derived fields
     are two booleans (`safety_keyword_match`, `tracked`) computed in
     aggregate.py.
+
+26. **The 312 RiverRun joins the trail roster — owner-signed count moves to
+    14 street + 6 trail = 20 lines.** The trail shipped in `osm_trails.geojson`
+    since the first live Overpass pull, but the network map's Trails tier only
+    draws roster lines, so it rendered as an identity-less gray connector —
+    effectively invisible as a trail. It's a real piece of off-street
+    infrastructure (opened 2023, Belmont ⇄ Montrose along the Chicago River,
+    ~2 mi including the West spur), the same class of thing as the other five
+    roster trails, so it gets a roster entry (`312-riverrun`, `name_tokens`
+    `["riverrun", "river run"]` — matches both the "312 RiverRun" and "West
+    312 RiverRun" OSM features) and a line color (`#4f46e5`). Data edit only:
+    the `main_routes.json` format and `CONTRACT_VERSION` (1.11) are unchanged,
+    per SCHEMA.md's rule that only key adds/renames bump the contract.

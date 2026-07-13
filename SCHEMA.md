@@ -756,3 +756,13 @@ against the committed `site/data/mellow_connectors.geojson`).
   two boolean flags are the only derived fields. When any agenda was merged,
   the top-level `note` gains a sentence saying extraction is best-effort and
   the PDF is authoritative.
+
+## Roster addition under v1.11 (no contract change): 312 RiverRun
+
+`data/main_routes.json` gains a 6th trail line, `312-riverrun` (`name_tokens`
+`["riverrun", "river run"]`, matching the "312 RiverRun" and "West 312
+RiverRun" `osm_trails.geojson` features) — **14 street + 6 trail = 20 lines**,
+superseding the v1.10 re-cut's count of 19 (DECISIONS.md #26). Data edit only:
+no keys added or renamed anywhere, so `CONTRACT_VERSION` stays `"1.11"`.
+`meta.json`'s `main_routes.records` moves 19 → 20, and `main_routes.geojson`
+gains the line entry plus its two member features (288 features total).
