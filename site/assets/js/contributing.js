@@ -79,13 +79,18 @@
     {
       name: "main_routes.geojson", tier: "derived",
       title: "Main routes", sourceId: "main_routes", sourceName: "Main routes",
-      description: "The 21 marquee corridors — each named line's segments with a facility grade (off-street / protected / painted / none).",
+      description: "The 19 marquee corridors — each named line's segments with a facility grade (protected / paint / mellow / none; trails are off-street).",
       calc: "Hand-curated roster in data/main_routes.json; each pipeline run assigns real CDOT/OSM segments to lines and computes grade mileage."
     },
     {
       name: "network_nodes.json", tier: "derived",
       title: "Network nodes", sourceId: "network_nodes", sourceName: "Network nodes",
       description: "Interchange nodes where main routes cross (derived from geometry), plus hand-picked orientation points — wayfinding markers for the network map."
+    },
+    {
+      name: "mellow_connectors.geojson", tier: "crowdsourced",
+      title: "Mellow connectors (deduped)", sourceId: "mellow_connectors", sourceName: "Mellow connectors",
+      description: "Mellow Bike Map geometry minus anything within 25 m of an official CDOT bikeway — the quiet-street connector tier the network map draws."
     },
     {
       // The roster lives at the repo root (data/, not site/data/), so it isn't

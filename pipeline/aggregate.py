@@ -15,12 +15,13 @@ from datetime import datetime, timedelta, timezone
 import geopandas as gpd
 from shapely.geometry import Point, shape, LineString, MultiLineString
 from shapely.ops import unary_union
+from shapely.prepared import prep
 
 from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     METRIC_CRS, OUTPUT_CRS,
                     FACILITY_CATEGORY_MAP, FACILITY_CATEGORIES,
                     INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE,
-                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP,
+                    MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP, MELLOW_DEDUPE_BUFFER_M,
                     STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED,
                     CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH)
 from council_merge import load_all_council_records
@@ -321,6 +322,125 @@ def build_mellow(raw_gj):
     return {"type": "FeatureCollection", "features": feats}
 
 
+def build_mellow_connectors(mellow_gj, routes_gj, buffer_m=MELLOW_DEDUPE_BUFFER_M):
+    """Dedupe Mellow Bike Map geometry against the published bike_routes layer,
+    emitting the non-overlapping remainder as connector-tier features (network
+    tiers v2 design, spec §4, docs/superpowers/specs/2026-07-13-network-tiers-
+    design.md). The standalone mellow overlay is retired from the network map;
+    this is what replaces it there. `mellow_routes.geojson` itself is untouched
+    and keeps shipping for any other page that reads it.
+
+    Takes the PUBLISHED shapes (build_mellow's output + build_routes'/the
+    committed bike_routes.geojson's output), so aggregate.py's live path and
+    refresh_reporting.py's offline path share this one function and can never
+    drift on dedupe logic.
+
+    Mellow's MultiLineStrings arrive pre-chopped into thousands of parts at
+    roughly block length already (~25-45 m per part on the real pull — see
+    build_mellow's docstring); that's the atomic unit this function drops or
+    keeps whole, rather than clipping/splitting a part mid-geometry. A part is
+    dropped when it falls within `buffer_m` (projected to METRIC_CRS) of ANY
+    published bike_routes segment — bike_routes wins as the higher-provenance
+    layer. Performance: with ~60k+ total mellow parts across all route_types,
+    testing each part against ~1,000 individually-buffered bike segments would
+    be O(parts x segments); instead the buffered bike segments are unioned once
+    and wrapped in a shapely PreparedGeometry (`shapely.prepared.prep`), so
+    each part pays one fast indexed `.intersects()` call — this is what keeps
+    a full run under the ~60s target.
+
+    Output shape: connectors are identity-less by design (spec §1), so the
+    kept parts collapse into ONE feature whose geometry is a MultiLineString
+    of every surviving part — the same one-big-MultiLineString shape
+    mellow_routes.geojson itself uses (Leaflet draws it as one efficient
+    multi-part polyline; per-part features would be ~10 MB of mostly-JSON
+    property overhead for the same geometry). Coordinates are rounded to 6
+    decimal places (~0.1 m). The feature's `parts` property carries the kept
+    part count — that's what meta.json's mellow_connectors `records` reports
+    (see mellow_connector_records)."""
+    mellow_feats = mellow_gj.get("features", [])
+    if not mellow_feats:
+        # No mellow geometry to dedupe this run — emit the standard stub shape
+        # (spec's stub convention: empty FeatureCollection with
+        # properties.status/"no_data_yet" + properties.note), NOT a
+        # crowdsourced-tier envelope with a top-level data_tier claiming real
+        # content over zero features. Matches planned_routes.geojson / the
+        # osm_trails empty-stub tier / stub_layer()'s documented shape.
+        return stub_layer(
+            "No mellow route geometry was available to dedupe this run "
+            "(mellow_routes.geojson has no features this run) — see its own note.")
+
+    # Explode every mellow MultiLineString into its individual parts.
+    mellow_gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in mellow_feats],
+                                  crs=OUTPUT_CRS)
+    parts_m = (mellow_gdf.to_crs(METRIC_CRS).explode(index_parts=False)
+              .reset_index(drop=True).geometry)
+    total_before_m = float(parts_m.length.sum())
+
+    bike_feats = routes_gj.get("features", [])
+    if bike_feats:
+        bike_gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in bike_feats],
+                                    crs=OUTPUT_CRS)
+        buffered = bike_gdf.to_crs(METRIC_CRS).geometry.buffer(buffer_m)
+        bike_union = prep(unary_union(list(buffered)))
+        kept = [geom for geom in parts_m if not bike_union.intersects(geom)]
+    else:
+        kept = list(parts_m)
+
+    kept_gdf = gpd.GeoDataFrame(geometry=kept, crs=METRIC_CRS)
+    kept_lengths = kept_gdf.geometry.length
+    kept_ll = kept_gdf.to_crs(OUTPUT_CRS).geometry
+
+    total_after_m = float(kept_lengths.sum())
+    dropped_pct = (round(100 * (1 - total_after_m / total_before_m), 1)
+                  if total_before_m > 0 else 0.0)
+
+    # One identity-less feature: every kept part as one MultiLineString,
+    # coordinates rounded to 6 dp (~0.1 m — plenty for block-level geometry).
+    coords = [[[round(x, 6), round(y, 6)] for x, y in geom.coords] for geom in kept_ll]
+    feats = []
+    if coords:
+        feats.append({
+            "type": "Feature",
+            "geometry": {"type": "MultiLineString", "coordinates": coords},
+            "properties": {
+                "segment_id": "mellow-connectors",
+                "facility_category": "mellow",
+                "length_m": round(total_after_m, 1),
+                "parts": len(coords),
+                "data_tier": "crowdsourced",
+            },
+        })
+
+    return {
+        "type": "FeatureCollection",
+        "data_tier": "crowdsourced",
+        "note": (f"Mellow Bike Map's low-stress-street geometry, buffer-matched against the "
+                 f"published CDOT bike_routes layer ({buffer_m:.0f} m buffer, projected to "
+                 f"{METRIC_CRS}) and deduped: mellow ships pre-split into block-length parts, "
+                 f"and any part that falls within the buffer of a real bike_routes segment is "
+                 f"dropped as a duplicate (bike_routes wins). The remainder ships here as "
+                 f"connector-tier geometry (facility_category 'mellow', data_tier "
+                 f"crowdsourced) — the network map's replacement for the retired standalone "
+                 f"mellow overlay. Connectors are identity-less, so all surviving parts "
+                 f"collapse into ONE MultiLineString feature (same shape as "
+                 f"mellow_routes.geojson); its `parts` property is the kept-part count, "
+                 f"which is also what meta.json reports as this source's `records`. "
+                 f"mellow_routes.geojson itself is unchanged and keeps shipping for any "
+                 f"other page that reads it. This run dropped {dropped_pct}% of mellow "
+                 f"route miles as duplicates of on-street bike infrastructure."),
+        "features": feats,
+    }
+
+
+def mellow_connector_records(mellow_connectors_gj):
+    """meta.json `records` count for the mellow_connectors source: the kept
+    MultiLineString part count (the merged layer has only 1-ish features, so a
+    feature count would be meaningless). Shared by aggregate.main() and
+    refresh_reporting.upsert_meta_sources so the two paths agree."""
+    return sum(f["properties"].get("parts", 0)
+               for f in mellow_connectors_gj.get("features", []))
+
+
 def _slug(name):
     """Lowercase, non-alphanumeric runs -> single hyphen; trimmed. For segment ids."""
     out = []
@@ -489,79 +609,109 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
     Pure function over already-published feature shapes (bike_routes.geojson +
     osm_trails.geojson properties), so refresh_reporting.py can rebuild the
     layer from committed site data with the exact same code path as the live
-    aggregate run. Roster lines match in order; first match wins; a segment
-    joins at most one line. Corridor gaps are holes — geometry is never
-    fabricated, and every share is computed over member miles only. Street
-    lines aggregate real CDOT segments (line stats: derived); trail lines are
-    OSM crowdsourced throughout; the two tiers never blend.
+    aggregate run. Corridor gaps are holes — geometry is never fabricated, and
+    every share is computed over member miles only. Street lines aggregate
+    real CDOT segments (line stats: derived); trail lines are OSM crowdsourced
+    throughout; the two tiers never blend.
+
+    Shared-track membership (network-tiers-v2 design spec §6): a street
+    segment is claimed by EVERY roster line whose `streets` list matches it
+    (and whose `clip_bbox`, if any, contains the segment's midpoint) — no
+    longer first-match-wins. Each such segment is emitted as ONE feature
+    carrying `line_ids` (all matching line ids, in roster order) alongside
+    `line_id` (line_ids[0], kept for back-compat), and its length/crash counts
+    are folded into EVERY matching line's miles_total/miles_by_grade/
+    crashes_total. The current roster has no overlapping `streets` lists, so
+    on real data every line_ids is length 1 (see test fixtures for the
+    multi-membership behavior). Trail matching is unchanged — first-match-wins
+    over osm_trails features via `name_tokens` — spec §6 only lifts the
+    restriction for bike_routes street matchers.
     """
     street_feats = routes_gj.get("features", [])
     trail_feats = osm_trails_gj.get("features", [])
-    claimed = set()
+
+    # Pre-pass: every roster line id a street segment matches, in roster order.
+    matches_by_seg = defaultdict(list)
+    for line in roster["lines"]:
+        if line["source"] != "bike_routes":
+            continue
+        streets = set(line["streets"])
+        bbox = line.get("clip_bbox")
+        for f in street_feats:
+            p = f["properties"]
+            seg_id = p.get("segment_id")
+            if normalize_street(p.get("street")) not in streets:
+                continue
+            if bbox:
+                mid = _geometry_midpoint(f["geometry"])
+                if mid is None or not _in_bbox(mid, bbox):
+                    continue
+            matches_by_seg[seg_id].append(line["id"])
+
     out_feats = []
     lines_out = []
+    claimed_trails = set()
+    emitted_street_segs = set()
 
     for line in roster["lines"]:
         is_street = line["source"] == "bike_routes"
-        members = []  # (feature, grade, length_m, crashes)
+        members = []  # (grade, length_m, crashes)
         if is_street:
-            streets = set(line["streets"])
-            bbox = line.get("clip_bbox")
             for f in street_feats:
                 p = f["properties"]
                 seg_id = p.get("segment_id")
-                if seg_id in claimed:
+                line_ids = matches_by_seg.get(seg_id)
+                if not line_ids or line["id"] not in line_ids:
                     continue
-                if normalize_street(p.get("street")) not in streets:
-                    continue
-                if bbox:
-                    mid = _geometry_midpoint(f["geometry"])
-                    if mid is None or not _in_bbox(mid, bbox):
-                        continue
-                claimed.add(seg_id)
                 grade = MAIN_ROUTE_GRADE_MAP.get(p.get("facility_category"), "none")
                 length_m = float(p.get("length_m") or 0.0)
                 crashes = int(p.get("crashes_within_30m") or 0)
-                members.append(({
-                    "type": "Feature",
-                    "geometry": f["geometry"],
-                    "properties": {
-                        "segment_id": seg_id,
-                        "line_id": line["id"],
-                        "grade": grade,
-                        "facility_category": p.get("facility_category"),
-                        "length_m": length_m,
-                        "crashes_within_30m": crashes,
-                        "data_tier": "real",
-                    },
-                }, grade, length_m, crashes))
+                members.append((grade, length_m, crashes))
+                if seg_id not in emitted_street_segs:
+                    emitted_street_segs.add(seg_id)
+                    out_feats.append({
+                        "type": "Feature",
+                        "geometry": f["geometry"],
+                        "properties": {
+                            "segment_id": seg_id,
+                            "line_id": line_ids[0],
+                            "line_ids": list(line_ids),
+                            "grade": grade,
+                            "facility_category": p.get("facility_category"),
+                            "length_m": length_m,
+                            "crashes_within_30m": crashes,
+                            "data_tier": "real",
+                        },
+                    })
         else:  # osm_trails
             tokens = [t.lower() for t in line["name_tokens"]]
             for f in trail_feats:
                 p = f["properties"]
                 seg_id = p.get("segment_id")
-                if seg_id in claimed:
+                if seg_id in claimed_trails:
                     continue
                 trail_name = (p.get("name") or "").lower()
                 if not any(tok in trail_name for tok in tokens):
                     continue
-                claimed.add(seg_id)
+                claimed_trails.add(seg_id)
                 length_m = float(p.get("length_m") or 0.0)
-                members.append(({
+                members.append(("offstreet", length_m, None))
+                out_feats.append({
                     "type": "Feature",
                     "geometry": f["geometry"],
                     "properties": {
                         "segment_id": seg_id,
                         "line_id": line["id"],
+                        "line_ids": [line["id"]],
                         "grade": "offstreet",
                         "facility_category": "trail",
                         "length_m": length_m,
                         "data_tier": "crowdsourced",
                     },
-                }, "offstreet", length_m, None))
+                })
 
         miles_by_grade = defaultdict(float)
-        for _, grade, length_m, _ in members:
+        for grade, length_m, _ in members:
             miles_by_grade[grade] += length_m * _MILES_PER_M
         miles_total = sum(miles_by_grade.values())
         entry = {
@@ -576,11 +726,10 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
         if is_street:
             entry["pct_protected"] = (round(100 * miles_by_grade["protected"] / miles_total, 1)
                                       if miles_total > 0 else None)
-            entry["crashes_total"] = sum(c for _, _, _, c in members)
+            entry["crashes_total"] = sum(c for _, _, c in members)
         if not members:
             entry["no_data"] = True
         lines_out.append(entry)
-        out_feats.extend(f for f, _, _, _ in members)
 
     return {
         "type": "FeatureCollection",
@@ -591,7 +740,10 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
                  "Street lines aggregate real CDOT segments (stats: derived tier); trail "
                  "lines come from OpenStreetMap (crowdsourced tier) and never blend into "
                  "derived statistics. Corridor gaps are holes in the line — geometry is "
-                 "never fabricated — and grade shares are over existing member miles only."),
+                 "never fabricated — and grade shares are over existing member miles only. "
+                 "A street segment listed by more than one line's `streets` belongs to all "
+                 "of them (see `line_ids` on each feature); `line_id` is the first "
+                 "roster-order match, kept for back-compat."),
         "lines": lines_out,
         "features": out_feats,
     }
@@ -1477,6 +1629,12 @@ def main():
             "(pull_mellow.py didn't run, or the source was unreachable). "
             "See CONTRIBUTING.md.")
 
+    # Mellow layer retirement + dedupe (network-tiers-v2 spec §4): buffer-match
+    # mellow geometry against the just-built bike_routes layer; the deduped
+    # remainder ships as its own connector-tier product. mellow_routes.geojson
+    # itself is untouched (written unchanged below, for any other page).
+    mellow_connectors_gj = build_mellow_connectors(mellow_gj, routes_gj)
+
     # Priority order (spec §8): real Overpass pull, else the hand-traced curated
     # fallback (data/curated_trails.geojson), else the empty stub.
     osm_trails_gj = build_osm_trails_layer()
@@ -1508,6 +1666,10 @@ def main():
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
              if mellow_gj["features"] else []) + (
+            [{"id": "mellow_connectors", "name": "Mellow Connectors (deduped crowdsourced low-stress links)",
+              "tier": "crowdsourced", "records": mellow_connector_records(mellow_connectors_gj),
+              "date_range": None}]
+             if mellow_connectors_gj["features"] else []) + (
             [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
               "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
              if osm_trails_gj["features"] else []) + [
@@ -1557,6 +1719,7 @@ def main():
         "CDOT publishes planned bikeways only as PDF maps — no structured feed yet. "
         "See CONTRIBUTING.md to digitize and drop data in."))
     write_json(SITE_DATA_DIR / "mellow_routes.geojson", mellow_gj)
+    write_json(SITE_DATA_DIR / "mellow_connectors.geojson", mellow_connectors_gj)
     write_json(SITE_DATA_DIR / "osm_trails.geojson", osm_trails_gj)
     write_json(SITE_DATA_DIR / "main_routes.geojson", main_routes_gj)
     write_json(SITE_DATA_DIR / "network_nodes.json", network_nodes_out)

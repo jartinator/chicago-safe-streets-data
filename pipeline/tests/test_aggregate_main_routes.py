@@ -40,18 +40,20 @@ def _lines_by_id(out):
 
 
 def test_roster_shape_matches_spec():
-    # spec 2026-07-12-network-map-distinction.md §3: 16 street lines + 5 trail
-    # lines = 21; loop/belmont/31st dropped, 6 new lines added.
+    # network-tiers-v2 design spec §2 (2026-07-13-network-tiers-design.md):
+    # owner-signed count 14 street lines + 5 trail lines = 19; roosevelt and
+    # vincennes demoted to connectors.
     lines = ROSTER["lines"]
-    assert len(lines) == 21
+    assert len(lines) == 19
     street = [ln for ln in lines if ln["source"] == "bike_routes"]
     trail = [ln for ln in lines if ln["source"] == "osm_trails"]
-    assert len(street) == 16 and len(trail) == 5
+    assert len(street) == 14 and len(trail) == 5
     ids = [ln["id"] for ln in lines]
     assert not ({"loop", "belmont", "31st"} & set(ids)), "dropped lines must be gone"
-    assert {"california", "mlk-drive", "lawrence", "roosevelt", "marquette", "83rd"} <= set(ids)
+    assert not ({"roosevelt", "vincennes"} & set(ids)), "demoted-to-connector lines must be gone"
+    assert {"california", "mlk-drive", "lawrence", "marquette", "83rd"} <= set(ids)
     assert {"milwaukee", "halsted", "clark", "kedzie", "damen", "state-indiana",
-            "vincennes", "elston", "lake", "jackson-washington"} <= set(ids)
+            "elston", "lake", "jackson-washington"} <= set(ids)
     assert {"lakefront", "bloomingdale", "major-taylor",
             "north-shore-channel", "north-branch"} <= set(ids)
     # no line carries a clip_bbox anymore (that was loop-only)
@@ -68,19 +70,45 @@ def test_normalize_street_strips_type_suffix():
     assert aggregate.normalize_street("ST") == "ST"
 
 
-def test_first_match_wins_when_two_lines_share_a_street():
-    # First-match-wins policy, independent of any one real roster line (no two
-    # real roster lines currently share a street name): a synthetic 2-line
-    # roster where both list HALSTED — the earlier line claims the segment.
+def test_multi_membership_when_two_lines_share_a_street():
+    # network-tiers-v2 design spec §6 (shared tracks / interlining): a segment
+    # explicitly listed by MORE THAN ONE line's `streets` belongs to all of
+    # them — no two real roster lines currently share a street name, so this
+    # is a synthetic 2-line roster where both list HALSTED.
     mini_roster = {"lines": [
         {"id": "first", "name": "First", "termini": "a", "source": "bike_routes",
          "streets": ["HALSTED"]},
         {"id": "second", "name": "Second", "termini": "b", "source": "bike_routes",
          "streets": ["HALSTED"]},
     ]}
-    routes = _fc([_seg("h1", "HALSTED", "protected")])
+    routes = _fc([_seg("h1", "HALSTED", "protected", length_m=1609.34, crashes=2)])
     out = aggregate.build_main_routes(routes, STUB_TRAILS, mini_roster)
-    assert out["features"][0]["properties"]["line_id"] == "first"
+
+    # exactly ONE feature is emitted for the shared segment — not one per line
+    assert len(out["features"]) == 1
+    props = out["features"][0]["properties"]
+    assert props["segment_id"] == "h1"
+    # line_id (back-compat) is the first roster-order match; line_ids carries both
+    assert props["line_id"] == "first"
+    assert props["line_ids"] == ["first", "second"]
+
+    # both lines' mileage/crash totals include the shared segment
+    by_id = _lines_by_id(out)
+    assert by_id["first"]["miles_total"] == 1.0
+    assert by_id["second"]["miles_total"] == 1.0
+    assert by_id["first"]["miles_by_grade"] == {"protected": 1.0}
+    assert by_id["second"]["miles_by_grade"] == {"protected": 1.0}
+    assert by_id["first"]["crashes_total"] == 2
+    assert by_id["second"]["crashes_total"] == 2
+
+
+def test_single_membership_line_ids_is_length_one():
+    # On real (non-overlapping) roster data, line_ids always has length 1.
+    routes = _fc([_seg("m1", "MILWAUKEE", "protected")])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    props = out["features"][0]["properties"]
+    assert props["line_ids"] == ["milwaukee"]
+    assert props["line_id"] == "milwaukee"
 
 
 def test_clip_bbox_filters_by_segment_midpoint():
@@ -115,6 +143,9 @@ def test_street_suffix_variant_matches_roster():
 
 
 def test_grade_mapping_including_greenway_and_sharrow():
+    # network-tiers-v2 design spec §3: protected<-protected; paint<-buffered,
+    # painted; mellow<-greenway (its own grade, no longer lumped into paint);
+    # none<-sharrow, other/unmatched.
     routes = _fc([
         _seg("g1", "HALSTED", "protected"),
         _seg("g2", "ELSTON", "buffered"),
@@ -126,12 +157,12 @@ def test_grade_mapping_including_greenway_and_sharrow():
     out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
     grades = {f["properties"]["segment_id"]: f["properties"]["grade"]
               for f in out["features"]}
-    assert grades == {"g1": "protected", "g2": "painted", "g3": "painted",
-                      "g4": "none", "g5": "painted", "g6": "none"}
+    assert grades == {"g1": "protected", "g2": "paint", "g3": "mellow",
+                      "g4": "none", "g5": "paint", "g6": "none"}
 
 
 def test_pct_protected_over_member_miles_only():
-    # 1 mi protected + 2 mi painted = 33.3% — gaps are holes, never fabricated,
+    # 1 mi protected + 2 mi paint = 33.3% — gaps are holes, never fabricated,
     # so the denominator is member miles only.
     routes = _fc([
         _seg("l1", "LAKE", "protected", length_m=1609.34),
@@ -142,7 +173,7 @@ def test_pct_protected_over_member_miles_only():
     assert lake["data_tier"] == "derived"
     assert lake["miles_total"] == 3.0
     assert lake["pct_protected"] == 33.3
-    assert lake["miles_by_grade"] == {"protected": 1.0, "painted": 2.0}
+    assert lake["miles_by_grade"] == {"protected": 1.0, "paint": 2.0}
     assert "no_data" not in lake
 
 
@@ -200,4 +231,4 @@ def test_top_level_shape_is_derived_with_lines_key():
     assert out["type"] == "FeatureCollection"
     assert out["data_tier"] == "derived"
     assert "editorial" in out["note"]
-    assert len(out["lines"]) == 21
+    assert len(out["lines"]) == 19

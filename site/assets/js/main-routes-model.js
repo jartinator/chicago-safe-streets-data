@@ -13,19 +13,34 @@
     ? require("./common.js")
     : root.BSD;
 
-  // Grade taxonomy, user-ranked: off-street (prized) > protected > painted >
-  // none. Colors per design spec §4; `none` (sharrows/other) renders dashed.
-  const GRADE_ORDER = ["offstreet", "protected", "painted", "none"];
+  // Grade taxonomy, user-ranked: off-street (prized) > protected > paint >
+  // mellow > none. `none` (sharrows/other) renders dashed. `mellow`
+  // (greenway / mellow-derived geometry) is new in the v2 taxonomy —
+  // `painted` was renamed `paint` to match the pipeline's main_routes.geojson
+  // grade values exactly.
+  //
+  // These colors are intentionally independent from the network map's
+  // quality-border palette (BSDNet.GRADE_COLORS in network-model.js) — the
+  // two are not meant to match. This palette paints the transportation
+  // map's per-segment LINE stroke directly (gradeStyle below), so every
+  // grade including `none`/`offstreet` needs its own paint color. The
+  // network map instead paints a BORDER ring around an already
+  // solid-colored line (BSDNet.qualityBorderStyle) and only for four of the
+  // five grades (offstreet trails carry no border at all). Don't assume a
+  // grade reads the same color on both screens — it doesn't, by design.
+  const GRADE_ORDER = ["offstreet", "protected", "paint", "mellow", "none"];
   const GRADE_COLORS = {
     offstreet: "#0369a1",
     protected: "#0b6e4f",
-    painted: "#f59e0b",
+    paint: "#f59e0b",
+    mellow: "#7c3aed",
     none: "#94a3b8",
   };
   const GRADE_LABELS = {
     offstreet: "Off-street",
     protected: "Protected",
-    painted: "Paint only",
+    paint: "Paint only",
+    mellow: "Mellow (greenway)",
     none: "Nothing",
   };
 
@@ -48,21 +63,12 @@
   // Stacked completion-bar segments from a line's miles_by_grade: one entry
   // per non-zero grade, in GRADE_ORDER, with pct width of total member miles
   // (widths sum to exactly 100). Grade shares are over *existing* member
-  // mileage — corridor gaps are holes in the line, never fabricated.
+  // mileage — corridor gaps are holes in the line, never fabricated. Thin
+  // wrapper around the shared BSD.mixSegments (common.js), which also backs
+  // BSDNet.qualityMixSegments on the network map — same stacked-bar math,
+  // different grade order/colors/labels.
   function completionSegments(milesByGrade) {
-    if (!milesByGrade) return [];
-    const present = GRADE_ORDER
-      .map(g => ({ grade: g, miles: milesByGrade[g] || 0 }))
-      .filter(s => s.miles > 0);
-    const total = present.reduce((sum, s) => sum + s.miles, 0);
-    if (total <= 0) return [];
-    return present.map(s => ({
-      grade: s.grade,
-      miles: s.miles,
-      pct: (s.miles / total) * 100,
-      color: GRADE_COLORS[s.grade],
-      label: GRADE_LABELS[s.grade],
-    }));
+    return BSD.mixSegments(milesByGrade, GRADE_ORDER, { colors: GRADE_COLORS, labels: GRADE_LABELS });
   }
 
   // Roster panel ordering: keep the curated config order, but sink lines
