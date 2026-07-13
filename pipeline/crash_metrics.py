@@ -188,7 +188,7 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                        "miles; off-street trails are excluded from bikeway miles. "
                        "The street centerline layer was last updated in 2021 — the "
                        "grid changes slowly."),
-            "map_state": {"screen": "map", "layers": ["mainroutes"], "filters": {}},
+            "map_state": {"screen": "map", "layers": ["infrastructure"], "filters": {}},
             "data_tier": "real",
         })
 
