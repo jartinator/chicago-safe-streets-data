@@ -25,8 +25,11 @@ opening the URLs before filing.*
    SVP Jennifer Wolf quoted on making the data public) with CDOT involved
    in siting/approval — so the *raw feed* may live with AMLI/Eco-Counter,
    and the CDOT-FOIA-able records are the correspondence, agreements, and
-   any data shared with the city. Eco-Counter's public display map may
-   already expose the tallies. A second counter (Eco-Totem, 1237 N
+   any data shared with the city. Eco-Counter's public display map lists
+   the counter (site 300037197) but — checked 2026-07-13 — shows "last
+   published data 2/17/2026" and no accessible history: the feed went dark
+   after ~26 months and the public page is a dead end, so the data path is
+   CDOT records (FOIA item 3) or AMLI/Eco-Counter directly. A second counter (Eco-Totem, 1237 N
    Milwaukee, developer LG paying $30k of $40k) was council-approved in
    2017 and stalled in city process — its paper trail is FOIA-able.
 4. **CDOT's modern volume numbers come from Replica** (plus Divvy): the

@@ -33,7 +33,10 @@ native format is preferable to any newly created document.
 3. Records of bicycle count data received by CDOT from the permanent
    counter at Chicago Avenue & Wells Street (installed December 2022 in
    coordination with the adjacent development), and any agreement governing
-   that counter's data.
+   that counter's data. We note the counter's public Eco-Counter display
+   page (https://eco-display-map.eco-counter.com/site/300037197) last
+   published data on February 17, 2026; we additionally request any records
+   concerning the interruption or discontinuation of that public data feed.
 
 4. The agreement and deliverables for the CDOT-sponsored Replica / Sam
    Schwartz analysis of Chicago bicycling trends released in May 2024
@@ -77,9 +80,11 @@ hold up. Full citation list: `docs/foia-cdot-counter-crawl.md`.
 - [ ] **2022 counter story** (items 2–3):
   https://chi.streetsblog.org/2022/12/16/the-wait-is-over-chicago-now-now-has-a-bike-counter-at-chicago-wells-in-river-north
   — confirm AMLI funding detail and the 543-rider 2015 count reference.
-- [ ] **Eco-Counter public display map** — https://eco-display-map.eco-counter.com/
-  — if the Chicago/Wells tallies are public there, note it in `docs/foia-log.md`
-  and keep item 3 (the *agreement* is still worth having).
+- [x] **Eco-Counter public display map** — CHECKED 2026-07-13: the
+  Chicago/Wells counter is listed (site 300037197) but its feed shows
+  "last published data 2/17/2026" and exposes no historical data — the
+  public page is a dead end, which strengthens item 3 (now cites the feed
+  interruption).
 - [ ] **Replica analysis** (item 4):
   https://www.replicahq.com/post/measuring-chicagos-boost-in-biking and
   https://chicago.suntimes.com/transportation/2024/05/09/bicycle-chicago-safety-transportation-city-hall-roads-environment-commute-health
