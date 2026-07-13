@@ -41,6 +41,7 @@
     ["findings.html", "Findings"],
     ["table.html", "Explore Data"],
     ["sources.html", "Sources"],
+    ["methodology.html", "Methods"],
     ["action.html", "Take Action"],
     ["contributing.html", "Downloads & Docs"],
   ];
@@ -222,17 +223,38 @@
     history.replaceState(null, "", `${location.pathname}?${p}`);
   }
 
-  function downloadCSV(filename, rows, columns) {
+  // Pure CSV text builder (Node-testable). `provenance` lines, when given,
+  // are prepended as `# `-prefixed comment rows so exported files carry
+  // their own source/as-of/caveat even after leaving the site.
+  function csvText(rows, columns, provenance) {
     const cols = columns || Object.keys(rows[0] || {});
     const cell = v => {
       const s = v == null ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const csv = [cols.join(",")]
+    return (provenance || []).map(l => `# ${String(l).replace(/\n/g, " ")}`)
+      .concat([cols.join(",")])
       .concat(rows.map(r => cols.map(c => cell(r[c])).join(",")))
       .join("\n");
+  }
+
+  // Standard provenance comment block for exports: dataset label, tier in
+  // plain words, as-of date, and where the caveats live. Every export must
+  // identify itself once separated from the page (see methodology.html).
+  function provenanceLines(label, tier, asOfISO, caveat) {
+    const asOf = asOfISO ? String(asOfISO).slice(0, 10) : "unknown";
+    const lines = [
+      `On Your Left! (OYL) — ${label}`,
+      `Data tier: ${TIER_PLAIN[tier] || tier}. Data as of ${asOf}.`,
+    ];
+    if (caveat) lines.push(caveat);
+    lines.push("Methodology & caveats: methodology.html + sources.html on the site this was exported from.");
+    return lines;
+  }
+
+  function downloadCSV(filename, rows, columns, provenance) {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.href = URL.createObjectURL(new Blob([csvText(rows, columns, provenance)], { type: "text/csv" }));
     a.download = filename;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -370,6 +392,8 @@
     });
 
     // Provenance banner: fixture builds must never pass as real data.
+    // The same fetch feeds the site-wide "data last refreshed" footer line —
+    // freshness must be visible on every screen, not buried in meta.json.
     loadJSON("data/meta.json").then(meta => {
       if (meta.provenance !== "socrata") {
         const b = document.createElement("div");
@@ -377,6 +401,13 @@
         b.textContent = "Demo build: the data below is SYNTHETIC FIXTURE DATA (provenance: " +
           meta.provenance + "). Run the pipeline against the Chicago Data Portal to publish real data.";
         header.after(b);
+      }
+      if (meta.generated_at) {
+        const asOf = document.createElement("div");
+        asOf.className = "data-asof";
+        asOf.innerHTML = `Data last refreshed ${esc(String(meta.generated_at).slice(0, 10))} · ` +
+          `<a href="methodology.html">how these numbers are computed</a>`;
+        footer.prepend(asOf);
       }
     }).catch(() => {});
   }
@@ -386,7 +417,7 @@
     SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_COLORS,
     TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
-    downloadCSV, initPage, trendHTML, scoreColor, money, lineBadgeTier,
+    downloadCSV, csvText, provenanceLines, initPage, trendHTML, scoreColor, money, lineBadgeTier,
     rollingSums, trendChartSVG, icsForEvent, downloadICS, mixSegments,
   };
 
@@ -395,7 +426,7 @@
     // for surface parity — call it only in a browser).
     module.exports = {
       trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN, lineBadgeTier,
-      rollingSums, trendChartSVG, icsForEvent, downloadICS, mixSegments,
+      rollingSums, trendChartSVG, icsForEvent, downloadICS, csvText, provenanceLines, mixSegments,
     };
   }
 })();
