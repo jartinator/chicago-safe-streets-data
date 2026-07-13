@@ -6,8 +6,8 @@ import pytest
 import emit_api
 from config import CRASH_ID_PREFIX_LEN, SITE_BASE_URL, CONTRACT_VERSION
 from emit_api import (COMPARABLE_DANGER_SCORE_DESC, build_citywide, build_corridors_api,
-                      build_crash_slice, build_index, build_ward_file, build_wards_index,
-                      crash_id_prefixes, emit_all)
+                      build_crash_slice, build_index, build_news_api, build_proposed_api,
+                      build_ward_file, build_wards_index, crash_id_prefixes, emit_all)
 
 
 def _meta(provenance="socrata", generated_at="2026-07-01T00:00:00+00:00"):
@@ -128,6 +128,55 @@ def _ward_311(wards=None):
            "wards": wards}
 
 
+def _news_items(items=None):
+    if items is None:
+        items = [
+            {"title": "Ward 1 bike lane wins praise", "url": "https://example.com/a",
+             "source": "Example News", "published": "2026-07-01T00:00:00+00:00",
+             "matches": {
+                 "wards": [{"ward": "1", "via": "'Ward 1' in headline"}],
+                 "aldermen": [{"name": "Alder One", "ward": "1",
+                              "via": "'Alder One' in headline"}],
+                 "routes": [{"id": "halsted", "name": "Halsted Line",
+                            "via": "'Halsted' in headline"}],
+                 "projects": [{"id": "archer-avenue",
+                              "name": "Archer Avenue Traffic Safety Project",
+                              "via": "'Archer Avenue' in headline"}],
+             }},
+            {"title": "Unrelated safety story", "url": "https://example.com/b",
+             "source": "Example News", "published": "2026-06-01T00:00:00+00:00",
+             "matches": {"wards": [], "aldermen": [], "routes": [], "projects": []}},
+        ]
+    return {"data_tier": "real", "match_tier": "derived",
+           "as_of": "2026-07-13T16:10:11+00:00",
+           "note": "Recent public news coverage of Chicago bike/street safety.",
+           "items": items}
+
+
+def _proposed_projects(projects=None):
+    if projects is None:
+        projects = [
+            {"id": "archer-avenue", "name": "Archer Avenue Traffic Safety Project",
+             "status": "installed, being modified", "status_as_of": "2026-07-13",
+             "status_note": "Protected lanes installed; some parking restored.",
+             "description": "Complete Streets redesign of Archer Avenue.",
+             "wards": ["12"],
+             "official_links": [{"text": "CDOT page", "url": "https://example.com/cdot"}],
+             "news_phrases": ["Archer Avenue Traffic Safety"],
+             "citations": [{"title": "Cite title", "url": "https://example.com/cite",
+                           "source": "Block Club Chicago", "published": "2026-04-30"}],
+             "news_phrases_ctx": ["Archer Avenue", "Archer Ave"],
+             "coverage": [{"title": "Coverage headline", "url": "https://example.com/cov",
+                          "source": "Streetsblog Chicago",
+                          "published": "2026-07-02T04:10:00+00:00",
+                          "via": "'Archer Avenue' in headline"}]},
+        ]
+    return {"data_tier": "derived", "coverage_tier": "real", "match_tier": "derived",
+           "as_of": "2026-07-13T16:10:11+00:00",
+           "note": "Hand-curated roster of active Chicago bikeway/trail proposals.",
+           "projects": projects}
+
+
 def _crash_id(n):
     # 128-hex-char, matching the real crashes_cyclist.geojson crash_id shape.
     return hashlib.sha512(f"crash-{n}".encode()).hexdigest()
@@ -178,6 +227,9 @@ def _write_site_data(dir_, n_wards=50):
     crash_features.append(_crash_feature(_crash_id(9001), ward=None))
     (dir_ / "crashes_cyclist.geojson").write_text(
         json.dumps({"type": "FeatureCollection", "features": crash_features}))
+
+    (dir_ / "news_items.json").write_text(json.dumps(_news_items()))
+    (dir_ / "proposed_projects.json").write_text(json.dumps(_proposed_projects()))
 
 
 # --- 1. envelope propagation -------------------------------------------------
@@ -281,7 +333,8 @@ def test_build_corridors_api_envelope_is_real_no_tier_note():
 # --- 4. build_index ------------------------------------------------------------
 
 def _endpoint_bytes(**overrides):
-    bytes_ = {"citywide.json": 1234, "corridors.json": 5678, "wards/index.json": 999}
+    bytes_ = {"citywide.json": 1234, "corridors.json": 5678, "wards/index.json": 999,
+             "news.json": 2222, "proposed.json": 3333}
     bytes_.update(overrides)
     return bytes_
 
@@ -289,7 +342,8 @@ def _endpoint_bytes(**overrides):
 def test_build_index_lists_exactly_the_known_endpoints():
     out = build_index(_meta(), _endpoint_bytes())
     paths = [e["path"] for e in out["endpoints"]]
-    assert paths == ["citywide.json", "corridors.json", "wards/index.json"]
+    assert paths == ["citywide.json", "corridors.json", "wards/index.json",
+                     "news.json", "proposed.json"]
 
 
 def test_build_index_endpoint_urls_are_absolute_under_api_v1():
@@ -324,12 +378,24 @@ def test_build_index_fetch_recipes_reference_known_urls():
     allowed = {SITE_BASE_URL + "/api/v1/citywide.json",
               SITE_BASE_URL + "/api/v1/corridors.json",
               SITE_BASE_URL + "/api/v1/wards/ward-40.json",
-              SITE_BASE_URL + "/api/v1/crashes/ward-40.json"}
-    assert 4 <= len(out["fetch_recipes"]) <= 5
+              SITE_BASE_URL + "/api/v1/crashes/ward-40.json",
+              SITE_BASE_URL + "/api/v1/news.json",
+              SITE_BASE_URL + "/api/v1/proposed.json"}
+    assert 6 <= len(out["fetch_recipes"]) <= 7
     for recipe in out["fetch_recipes"]:
         assert recipe["question"] and recipe["then"]
         for url in recipe["fetch"]:
             assert url in allowed
+
+
+def test_build_index_news_and_proposed_fetch_recipes_present():
+    out = build_index(_meta(), _endpoint_bytes())
+    news_recipes = [r for r in out["fetch_recipes"]
+                    if SITE_BASE_URL + "/api/v1/news.json" in r["fetch"]]
+    proposed_recipes = [r for r in out["fetch_recipes"]
+                        if SITE_BASE_URL + "/api/v1/proposed.json" in r["fetch"]]
+    assert len(news_recipes) == 1
+    assert len(proposed_recipes) == 1
 
 
 def test_build_index_crashes_fetch_recipe_present():
@@ -434,9 +500,10 @@ def test_emit_all_writes_all_files(tmp_path, monkeypatch):
     written = emit_all()
 
     # phase-1 (2) + wards/index.json (1) + 50 ward files + 50 crash files
-    # + index.json (1) = 104
-    assert len(written) == 104
-    expected = {"citywide.json", "corridors.json", "index.json", "wards/index.json"}
+    # + news.json (1) + proposed.json (1) + index.json (1) = 106
+    assert len(written) == 106
+    expected = {"citywide.json", "corridors.json", "index.json", "wards/index.json",
+               "news.json", "proposed.json"}
     expected |= {f"wards/ward-{n:02d}.json" for n in range(1, 51)}
     expected |= {f"crashes/ward-{n:02d}.json" for n in range(1, 51)}
     assert set(written) == expected
@@ -942,3 +1009,136 @@ def test_emit_all_index_has_crash_family_planned_removed_and_fetch_recipe(
     crash_recipes = [r for r in index["fetch_recipes"]
                      if any("crashes/ward-40.json" in u for u in r["fetch"])]
     assert len(crash_recipes) == 1
+
+
+# --- 14. build_news_api ---------------------------------------------------------
+
+def test_build_news_api_trims_via_and_flattens_matches():
+    out = build_news_api(_meta(), _news_items())
+    item = out["items"][0]
+    assert item["title"] == "Ward 1 bike lane wins praise"
+    assert item["url"] == "https://example.com/a"
+    assert item["source"] == "Example News"
+    assert item["published"] == "2026-07-01T00:00:00+00:00"
+    assert item["wards"] == ["1"]
+    assert item["aldermen"] == ["Alder One"]
+    assert item["routes"] == ["halsted"]
+    assert item["projects"] == ["archer-avenue"]
+    assert "matches" not in item
+    assert "via" not in json.dumps(item)
+
+
+def test_build_news_api_keeps_empty_match_lists_as_empty_arrays():
+    out = build_news_api(_meta(), _news_items())
+    item = out["items"][1]
+    assert item["wards"] == []
+    assert item["aldermen"] == []
+    assert item["routes"] == []
+    assert item["projects"] == []
+
+
+def test_build_news_api_top_level_note_and_as_of():
+    news = _news_items()
+    out = build_news_api(_meta(), news)
+    assert out["as_of"] == news["as_of"]
+    assert out["note"] == news["note"]
+
+
+def test_build_news_api_envelope_is_mixed_with_tier_note():
+    out = build_news_api(_meta(), _news_items())
+    assert out["_meta"]["data_tier"] == "mixed"
+    assert "verbatim" in out["_meta"]["tier_note"]
+    assert "derived" in out["_meta"]["tier_note"]
+    assert out["_meta"]["human_page"] == SITE_BASE_URL + "/action.html"
+
+
+def test_build_news_api_item_count_matches_source():
+    news = _news_items()
+    out = build_news_api(_meta(), news)
+    assert len(out["items"]) == len(news["items"])
+
+
+# --- 15. build_proposed_api -----------------------------------------------------
+
+def test_build_proposed_api_drops_news_phrases_and_coverage_via():
+    out = build_proposed_api(_meta(), _proposed_projects())
+    project = out["projects"][0]
+    assert "news_phrases" not in project
+    assert "news_phrases_ctx" not in project
+    assert "via" not in json.dumps(project)
+
+
+def test_build_proposed_api_keeps_everything_else():
+    proposed = _proposed_projects()
+    out = build_proposed_api(_meta(), proposed)
+    project = out["projects"][0]
+    source = proposed["projects"][0]
+    assert project["id"] == source["id"]
+    assert project["name"] == source["name"]
+    assert project["status"] == source["status"]
+    assert project["status_as_of"] == source["status_as_of"]
+    assert project["status_note"] == source["status_note"]
+    assert project["description"] == source["description"]
+    assert project["wards"] == source["wards"]
+    assert project["official_links"] == source["official_links"]
+    assert project["citations"] == source["citations"]
+
+
+def test_build_proposed_api_coverage_keeps_fields_minus_via():
+    out = build_proposed_api(_meta(), _proposed_projects())
+    coverage = out["projects"][0]["coverage"][0]
+    assert coverage == {"title": "Coverage headline", "url": "https://example.com/cov",
+                        "source": "Streetsblog Chicago",
+                        "published": "2026-07-02T04:10:00+00:00"}
+
+
+def test_build_proposed_api_top_level_note_and_as_of():
+    proposed = _proposed_projects()
+    out = build_proposed_api(_meta(), proposed)
+    assert out["as_of"] == proposed["as_of"]
+    assert out["note"] == proposed["note"]
+
+
+def test_build_proposed_api_envelope_is_mixed_with_tier_note():
+    out = build_proposed_api(_meta(), _proposed_projects())
+    assert out["_meta"]["data_tier"] == "mixed"
+    assert "curated" in out["_meta"]["tier_note"].lower()
+    assert out["_meta"]["human_page"] == SITE_BASE_URL + "/action.html"
+
+
+# --- 16. emit_all writes news.json and proposed.json ----------------------------
+
+def test_emit_all_writes_news_and_proposed_under_budget(tmp_path, monkeypatch):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    written = emit_all()
+
+    assert "news.json" in written
+    assert "proposed.json" in written
+    assert (api_dir / "news.json").exists()
+    assert (api_dir / "proposed.json").exists()
+    assert written["news.json"] <= emit_api.API_SIZE_BUDGET_BYTES
+    assert written["proposed.json"] <= emit_api.API_SIZE_BUDGET_BYTES
+
+
+def test_emit_all_index_lists_news_and_proposed_with_example_questions(
+        tmp_path, monkeypatch):
+    site_data = tmp_path / "site_data"
+    api_dir = tmp_path / "api"
+    _write_site_data(site_data)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+
+    emit_all()
+
+    index = json.loads((api_dir / "index.json").read_text())
+    by_path = {e["path"]: e for e in index["endpoints"]}
+    assert "news.json" in by_path
+    assert "proposed.json" in by_path
+    for path in ("news.json", "proposed.json"):
+        assert 2 <= len(by_path[path]["example_questions"]) <= 3
+        assert by_path[path]["bytes_approx"] == (api_dir / path).stat().st_size

@@ -89,6 +89,28 @@ _ENDPOINTS = [
             "How does my ward's bikeway mileage compare to other wards?",
         ],
     },
+    {
+        "path": "news.json",
+        "description": ("Recent news coverage of Chicago bike/street safety, "
+                        "matched to wards, alderpersons, main routes, and "
+                        "proposed projects."),
+        "example_questions": [
+            "Is there recent news coverage about bike safety in a specific "
+            "Chicago ward?",
+            "What's the latest news about a Chicago bikeway project or corridor?",
+        ],
+    },
+    {
+        "path": "proposed.json",
+        "description": ("Curated roster of proposed and in-progress Chicago "
+                        "bikeway/trail projects with volunteer-reviewed status, "
+                        "official links, and recent news coverage."),
+        "example_questions": [
+            "What bike or trail projects are proposed or under construction "
+            "in Chicago?",
+            "What is the current status of the 606 / Bloomingdale Trail extension?",
+        ],
+    },
 ]
 
 
@@ -354,6 +376,85 @@ def build_crash_slice(meta, ward, features_for_ward, id_prefix_map):
     }
 
 
+def build_news_api(meta, news_items):
+    """news.json: the committed news_items roster, trimmed per item. Each
+    item's `matches` sub-lists (wards/aldermen/routes/projects) are flattened
+    to just the id/name an agent would filter or cite on — ward number,
+    alderman name, route id, project id — dropping each match's `via` audit
+    string (UI-facing provenance for the human site, not useful here). Every
+    match key is always emitted, even as an empty list, so an agent can rely
+    on the shape without a KeyError.
+    """
+    items = []
+    for item in news_items["items"]:
+        matches = item["matches"]
+        items.append({
+            "title": item["title"],
+            "url": item["url"],
+            "source": item["source"],
+            "published": item["published"],
+            "wards": [w["ward"] for w in matches["wards"]],
+            "aldermen": [a["name"] for a in matches["aldermen"]],
+            "routes": [r["id"] for r in matches["routes"]],
+            "projects": [p["id"] for p in matches["projects"]],
+        })
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("Headlines, links, dates, and outlet names are real "
+                  "(verbatim from the outlets' public RSS feeds); the entity "
+                  "matching (wards/aldermen/routes/projects) is derived and "
+                  "best-effort."),
+        human_page=f"{SITE_BASE_URL}/action.html")
+
+    return {
+        "_meta": envelope,
+        "as_of": news_items["as_of"],
+        "note": news_items["note"],
+        "items": items,
+    }
+
+
+def build_proposed_api(meta, proposed_projects):
+    """proposed.json: the committed proposed_projects roster, one record per
+    project, dropping `news_phrases`/`news_phrases_ctx` (the internal
+    matcher config used to attach `coverage` — meaningless to an agent) and
+    each coverage entry's `via` audit string. Everything else — including
+    `official_links` and `citations` — passes through verbatim.
+    """
+    projects = []
+    for p in proposed_projects["projects"]:
+        coverage = [{"title": c["title"], "url": c["url"], "source": c["source"],
+                    "published": c["published"]} for c in p["coverage"]]
+        projects.append({
+            "id": p["id"],
+            "name": p["name"],
+            "status": p["status"],
+            "status_as_of": p["status_as_of"],
+            "status_note": p["status_note"],
+            "description": p["description"],
+            "wards": p["wards"],
+            "official_links": p["official_links"],
+            "citations": p["citations"],
+            "coverage": coverage,
+        })
+
+    envelope = _envelope(
+        meta, data_tier="mixed",
+        tier_note=("The project roster and each status are curated/volunteer-"
+                  "reviewed (derived); the attached news coverage headlines "
+                  "are real (verbatim). The linked official page is "
+                  "authoritative."),
+        human_page=f"{SITE_BASE_URL}/action.html")
+
+    return {
+        "_meta": envelope,
+        "as_of": proposed_projects["as_of"],
+        "note": proposed_projects["note"],
+        "projects": projects,
+    }
+
+
 def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=None):
     """index.json: the discovery entry point. Hand-assembled manifest listing
     the endpoints and endpoint *families* that actually exist so far.
@@ -452,6 +553,21 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
             "fetch": [f"{API_BASE_URL}/crashes/ward-40.json"],
             "then": ("Rows are columnar; zip columns with each row. Dates are ISO "
                     "strings — sort/filter client-side."),
+        },
+        {
+            "question": "Is there recent news coverage about bike safety in a "
+                        "specific Chicago ward?",
+            "fetch": [f"{API_BASE_URL}/news.json"],
+            "then": ("Filter items where wards (or aldermen) includes the ward "
+                    "you care about; url is the outlet's own article link."),
+        },
+        {
+            "question": "What is the current status of a Chicago bikeway or "
+                        "trail project?",
+            "fetch": [f"{API_BASE_URL}/proposed.json"],
+            "then": ("Find the project by name in projects, then read status, "
+                    "status_as_of, and status_note; coverage carries recent "
+                    "news headlines about it."),
         },
     ]
 
@@ -580,6 +696,8 @@ def emit_all():
     menu_spending = _load("menu_spending.json")
     ward_311 = _load("ward_311.json")
     crashes = _load("crashes_cyclist.geojson")
+    news_items = _load("news_items.json")
+    proposed = _load("proposed_projects.json")
 
     written = {}
 
@@ -641,6 +759,14 @@ def emit_all():
         rel = f"crashes/ward-{padded}.json"
         written[rel] = path.stat().st_size
         crash_files_bytes[rel] = written[rel]
+
+    news_api = build_news_api(meta, news_items)
+    write_json(SITE_API_DIR / "news.json", news_api)
+    written["news.json"] = (SITE_API_DIR / "news.json").stat().st_size
+
+    proposed_api = build_proposed_api(meta, proposed)
+    write_json(SITE_API_DIR / "proposed.json", proposed_api)
+    written["proposed.json"] = (SITE_API_DIR / "proposed.json").stat().st_size
 
     index = build_index(meta, written, ward_files_bytes, crash_files_bytes)
     write_json(SITE_API_DIR / "index.json", index)
