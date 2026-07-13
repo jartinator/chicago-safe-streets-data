@@ -278,14 +278,27 @@
     if (o.fitBounds) fitLineBounds(lineId);
   }
 
-  function deselect() {
+  // Visual half of deselection only — halo, dimming, detail card, roster
+  // highlight — with no opinion on state.line/syncURL(). Shared by deselect()
+  // and every non-selection detail entry point (showSegmentDetail,
+  // showNodeDetail) so clicking a connector/segment/node while a roster line
+  // is selected never leaves a stale halo/dim/roster-highlight behind, even
+  // though each of those entry points manages its own state.line/syncURL()
+  // timing (and must call syncURL() itself, exactly once, to avoid a
+  // double-sync).
+  function clearSelectionVisuals() {
     if (!selectedLineIds) return;
     selectedLineIds = null;
-    state.line = "";
     restyleAll();
     updateHalo();
     updateDetailCard();
     highlightRosterRow(null);
+  }
+
+  function deselect() {
+    if (!selectedLineIds) return;
+    clearSelectionVisuals();
+    state.line = "";
     syncURL();
   }
 
@@ -301,15 +314,7 @@
       ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineId)
       : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineId);
     if (members.length === 0) return;
-    const bounds = members.map((f) => BSDNet.getPaddedBBox(f.geometry))
-      .reduce((acc, bbox) => {
-        if (acc.length === 0) return bbox;
-        return [
-          [Math.min(acc[0][0], bbox[0][0]), Math.min(acc[0][1], bbox[0][1])],
-          [Math.max(acc[1][0], bbox[1][0]), Math.max(acc[1][1], bbox[1][1])],
-        ];
-      }, []);
-    map.fitBounds(bounds, { padding: [50, 50], animate: false });
+    map.fitBounds(BSDNet.unionBBox(members), { padding: [50, 50], animate: false });
   }
 
   /* ---------------- draw: main routes (spec §1/§3/§6) ---------------- */
@@ -555,13 +560,19 @@
 
   /* ---------------- mount layers per state.overlays ---------------- */
 
-  layers.casing.addTo(map);
-  layers.lines.addTo(map);
-  layers.capsules.addTo(map);
-  layers.lineLabelsTrails.addTo(map);
+  // Selection halo (spec §7) has no tier toggle of its own — it's driven
+  // purely by selectedLineIds (updateHalo()/clearSelectionVisuals()), which
+  // a roster-row click can set regardless of the main/trails tier toggles.
+  // Always mounted; addLayer()/clearLayers() populate it, never map.hasLayer.
+  layers.halo.addTo(map);
+
+  // Gated on state.overlays so a ?overlays= that excludes "main"/"trails"
+  // actually hides these — and so the checkboxes below (rendered from the
+  // same state.overlays) agree with what's on the map at load.
+  if (state.overlays.has("main")) { layers.casing.addTo(map); layers.lines.addTo(map); layers.capsules.addTo(map); }
   // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
-  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.trails.addTo(map); }
+  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
   if (state.overlays.has("connectors") && state.floor === "any") layers.connectors.addTo(map);
   if (state.overlays.has("planned")) { layers.planned.addTo(map); layers.plannedCasing.addTo(map); }
 
@@ -576,11 +587,14 @@
   // Comfort floor (spec §5): connectors have no identity to preserve below
   // a floor, so the whole tier hides whenever a floor is set, regardless of
   // its own toggle state. Main-route stretches below the floor drain in
-  // place via restyleMainRoute/restyleAll (setStyle, not rebuild). Trails
-  // are always lit — never touched here.
+  // place via restyleMainRoute (setStyle, not rebuild) — only mainRouteRecords
+  // need restyling here; trails are floor-immune (comfort floor only judges
+  // on-street facility grade) so restyleAll()'s trail pass would be wasted
+  // work. restyleAll() is still used for selection changes, which DO affect
+  // trail dimming/highlighting.
   function applyFloor() {
     setLayerVisible(layers.connectors, state.overlays.has("connectors") && state.floor === "any");
-    restyleAll();
+    mainRouteRecords.forEach(restyleMainRoute);
   }
 
   function updateDeclutter() {
@@ -588,20 +602,17 @@
     setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
     setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z >= BSDNet.ZOOM.interchangeNodes);
     setLayerVisible(layers.nodesOrientation, state.overlays.has("nodes") && z >= BSDNet.ZOOM.corridorLabels);
-    setLayerVisible(layers.labels, state.overlays.has("connectors") && z >= BSDNet.ZOOM.corridorLabels);
+    // Corridor labels are for connector-tier streets specifically, so they
+    // share applyFloor's exact "connectors tier is actually showing" gate
+    // (overlay on AND floor === "any") on top of their own zoom threshold —
+    // otherwise a floor hides the connectors layer but its labels linger.
+    setLayerVisible(layers.labels, state.overlays.has("connectors") && state.floor === "any" && z >= BSDNet.ZOOM.corridorLabels);
   }
   map.on("zoomend", updateDeclutter);
 
   // Fit bounds to bike network
   if (routeFeatures.length > 0) {
-    const allBounds = routeFeatures.map(f => BSDNet.getPaddedBBox(f.geometry))
-      .reduce((acc, bbox) => {
-        if (acc.length === 0) return bbox;
-        return [
-          [Math.min(acc[0][0], bbox[0][0]), Math.min(acc[0][1], bbox[0][1])],
-          [Math.max(acc[1][0], bbox[1][0]), Math.max(acc[1][1], bbox[1][1])],
-        ];
-      }, []);
+    const allBounds = BSDNet.unionBBox(routeFeatures);
     // animate: false — this citywide fit must apply synchronously so a
     // ?corridor=/?line= restore further down can override it. Animated,
     // its zoom animation lands a frame later and silently undoes the
@@ -624,11 +635,30 @@
     ? "stub"
     : (plannedData.features[0]?.properties?.data_tier || "real");
 
+  // tiers: data_tier(s) backing this row (spec/CONTRIBUTING.md — "all tier
+  // labeling must go through BSD.badgeHTML()"). Trails are crowdsourced OSM
+  // data; main routes are derived from CDOT source data; connectors blend
+  // real CDOT streets (the demoted local network) with crowdsourced sources
+  // (mellow_connectors + non-roster OSM trails), so that row carries both.
   const TIER_ROWS = [
-    { id: "trails", name: "Trails", desc: "off-street paths", swatchClass: "swatch-trail" },
-    { id: "main", name: "Main routes", desc: "major on-street routes", swatchClass: "swatch-main" },
-    { id: "connectors", name: "Connectors", desc: "short rideable links between routes", swatchClass: "swatch-connector" },
+    { id: "trails", name: "Trails", desc: "off-street paths", swatchClass: "swatch-trail", tiers: ["crowdsourced"] },
+    { id: "main", name: "Main routes", desc: "major on-street routes", swatchClass: "swatch-main", tiers: ["derived"] },
+    { id: "connectors", name: "Connectors", desc: "short rideable links between routes", swatchClass: "swatch-connector", tiers: ["real", "crowdsourced"] },
   ];
+  // Single badge inline (fits next to the swatch+text with room to spare —
+  // .tier-label carries flex:1 1 0; min-width:0 in style.css, so it absorbs
+  // the squeeze). Two badges (connectors) are too wide to sit inline next to
+  // a swatch *and* a full description in the 320px side panel without
+  // crushing the label text down to a couple of characters per line, so that
+  // pair gets flex: 1 0 100% instead of the single-badge's inline flex:none
+  // — same "wrap the pair in its own span" idea as the pre-v2 connecting-
+  // infrastructure row's dual badge (see this file's git history), adapted
+  // with a full-width flex-basis so the pair drops to its own line below the
+  // label rather than squeezing it.
+  function tierBadgesHTML(tiers) {
+    if (tiers.length === 1) return BSD.badgeHTML(tiers[0]);
+    return `<span class="tier-badges-wrap">${tiers.map((t) => BSD.badgeHTML(t)).join("")}</span>`;
+  }
   function tierRowHTML(t) {
     return `
       <div class="filter-row">
@@ -637,6 +667,7 @@
           <span class="tier-swatch ${t.swatchClass}"></span>
           <span class="tier-text"><span class="tier-name">${BSD.esc(t.name)}</span><span class="muted tier-desc">${BSD.esc(t.desc)}</span></span>
         </label>
+        ${tierBadgesHTML(t.tiers)}
       </div>
     `;
   }
@@ -696,9 +727,14 @@
   const allLines = mainRoutesData.lines || [];
   const trailLines = allLines.filter((l) => l.source === "osm_trails");
   const streetLines = allLines.filter((l) => l.source !== "osm_trails");
-  function rosterGroupHTML(title, lines) {
+  // One badge per GROUP header rather than per roster row: tier is uniform
+  // within each group (every trail line is crowdsourced, every street line
+  // is derived — see LINE_COLORS/data_tier in main_routes.geojson), so a
+  // 19-row roster carrying 19 identical per-row badges would be noise; the
+  // group-level badge satisfies the visible-badge rule just as well.
+  function rosterGroupHTML(title, lines, tier) {
     if (lines.length === 0) return "";
-    return `<div class="roster-group-title">${BSD.esc(title)}</div>${lines.map(rosterRowHTML).join("")}`;
+    return `<div class="roster-group-title">${BSD.esc(title)} ${BSD.badgeHTML(tier)}</div>${lines.map(rosterRowHTML).join("")}`;
   }
 
   const side = document.getElementById("side");
@@ -746,8 +782,8 @@
 
       <div class="roster-title">All routes</div>
       <div class="roster-list">
-        ${rosterGroupHTML("Trails", trailLines)}
-        ${rosterGroupHTML("Main routes", streetLines)}
+        ${rosterGroupHTML("Trails", trailLines, "crowdsourced")}
+        ${rosterGroupHTML("Main routes", streetLines, "derived")}
       </div>
 
       ${BSD.noticeHTML("directional")}
@@ -774,7 +810,7 @@
   TIER_ROWS.forEach((t) => {
     document.getElementById(`${t.id}-toggle`).addEventListener("change", (e) => {
       if (e.target.checked) state.overlays.add(t.id); else state.overlays.delete(t.id);
-      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.trails, e.target.checked); }
+      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
       if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
       if (t.id === "connectors") { setLayerVisible(layers.connectors, e.target.checked && state.floor === "any"); updateDeclutter(); }
       syncURL();
@@ -813,6 +849,7 @@
       state.floor = btn.dataset.floor;
       document.querySelectorAll(".segmented-opt").forEach((b) => b.classList.toggle("active", b === btn));
       applyFloor();
+      updateDeclutter(); // corridor labels' visibility depends on state.floor too (see updateDeclutter)
       syncURL();
     });
   });
@@ -873,6 +910,10 @@
     }
 
     const streetLabel = props.street || "(unnamed)";
+    // A connector/segment click clears the current roster-line selection
+    // (it belongs to none) — reset halo/dim/roster-highlight first so they
+    // never disagree with state.line/the URL this function is about to sync.
+    clearSelectionVisuals();
     state.corridor = streetLabel;
     state.line = "";
     const corridorFeats = corridorGroups.get(streetLabel) || [feature];
@@ -903,6 +944,15 @@
   }
 
   function showNodeDetail(n) {
+    // Same selection-desync fix as showSegmentDetail: a node click also
+    // moves focus away from any selected roster line, so clear its
+    // halo/dim/roster-highlight and state.line/URL together rather than
+    // leaving the old line's halo lit under the node detail.
+    if (selectedLineIds) {
+      clearSelectionVisuals();
+      state.line = "";
+      syncURL();
+    }
     const detail = document.getElementById("detail");
     const lineNames = (n.lines || []).map((id) => (linesMeta.get(id) || {}).name || id).join(" × ");
     detail.innerHTML = `
@@ -934,15 +984,7 @@
       } else {
         showSegmentDetail(longest);
       }
-      const corridorBounds = corridorFeats.map(f => BSDNet.getPaddedBBox(f.geometry))
-        .reduce((acc, bbox) => {
-          if (acc.length === 0) return bbox;
-          return [
-            [Math.min(acc[0][0], bbox[0][0]), Math.min(acc[0][1], bbox[0][1])],
-            [Math.max(acc[1][0], bbox[1][0]), Math.max(acc[1][1], bbox[1][1])],
-          ];
-        }, []);
-      map.fitBounds(corridorBounds, { padding: [50, 50], animate: false });
+      map.fitBounds(BSDNet.unionBBox(corridorFeats), { padding: [50, 50], animate: false });
     }
   } else if (state.line) {
     const lineMeta = linesMeta.get(state.line);
@@ -952,6 +994,14 @@
       selectedLineIds = new Set([state.line]);
       updateDetailCard();
       highlightRosterRow(state.line);
+    } else {
+      // Legacy/dead line id (e.g. roosevelt/vincennes, demoted off the
+      // roster to connectors — spec §2): linesMeta has no entry, so there's
+      // nothing to select or show. Silently ignore it (no error notice —
+      // same UX as an unrecognized overlay id), but do drop it from the URL
+      // rather than leaving a permanently-dead ?line= sitting there.
+      state.line = "";
+      syncURL();
     }
   }
 })();

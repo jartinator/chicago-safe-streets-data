@@ -11,6 +11,14 @@
  * safety data lives here — that's the transportation map's job (index.html
  * / map.js). */
 (function (root) {
+  // BSD.mixSegments (common.js) backs qualityMixSegments below — common.js is
+  // loaded before this file in every page that uses it (network.html); in
+  // Node, common.js isn't required by the test harness ahead of time, so
+  // pull it in directly there (same pattern main-routes-model.js uses).
+  const BSD = (typeof module !== "undefined" && module.exports)
+    ? require("./common.js")
+    : root.BSD;
+
   // Flatten LineString or MultiLineString coordinates to one list of [lng, lat]
   // pairs. The live CDOT bike-routes feed is MultiLineString (each feature can
   // hold multiple disjoint parts); other layers may still be plain LineString.
@@ -47,11 +55,20 @@
     ];
   }
 
-  // Point-in-bbox test. `point` is a GeoJSON Feature<Point>.
-  function pointInBBox(point, bbox) {
-    const [lng, lat] = point.geometry.coordinates;
-    return lat >= bbox[0][0] && lat <= bbox[1][0] &&
-           lng >= bbox[0][1] && lng <= bbox[1][1];
+  // Union of getPaddedBBox across a feature list, merged into one
+  // [[minLat, minLng], [maxLat, maxLng]] bbox — the same reduce network.js
+  // repeated at three fitBounds call sites (single line, full network,
+  // corridor deep link). Empty input -> [] (matches the bare reduce's
+  // behavior with no initial value's equivalent no-op).
+  function unionBBox(features) {
+    return (features || []).map((f) => getPaddedBBox(f.geometry))
+      .reduce((acc, bbox) => {
+        if (acc.length === 0) return bbox;
+        return [
+          [Math.min(acc[0][0], bbox[0][0]), Math.min(acc[0][1], bbox[0][1])],
+          [Math.max(acc[1][0], bbox[1][0]), Math.max(acc[1][1], bbox[1][1])],
+        ];
+      }, []);
   }
 
   // Group route features by corridor (street name). A missing/empty street
@@ -251,21 +268,12 @@
 
   // Stacked mix-bar segments from a line's miles_by_grade: one entry per
   // non-zero grade among QUALITY_MIX_ORDER, with pct width of *that* total
-  // (widths sum to 100). Mirrors BSDMainRoutes.completionSegments but
-  // scoped to the four bordered grades only.
+  // (widths sum to 100). Scoped to the four bordered grades only. Thin
+  // wrapper around the shared BSD.mixSegments (common.js), which also backs
+  // BSDMainRoutes.completionSegments — same stacked-bar math, different
+  // grade order/colors/no per-segment label.
   function qualityMixSegments(milesByGrade) {
-    if (!milesByGrade) return [];
-    const present = QUALITY_MIX_ORDER
-      .map((g) => ({ grade: g, miles: milesByGrade[g] || 0 }))
-      .filter((s) => s.miles > 0);
-    const total = present.reduce((sum, s) => sum + s.miles, 0);
-    if (total <= 0) return [];
-    return present.map((s) => ({
-      grade: s.grade,
-      miles: s.miles,
-      pct: (s.miles / total) * 100,
-      color: GRADE_COLORS[s.grade],
-    }));
+    return BSD.mixSegments(milesByGrade, QUALITY_MIX_ORDER, { colors: GRADE_COLORS });
   }
 
   // Index main_routes.geojson member features: Map<segment_id, {lineIds, lineId, grade}>.
@@ -421,7 +429,7 @@
   }
 
   const api = {
-    flattenCoords, toLatLngs, getPaddedBBox, pointInBBox,
+    flattenCoords, toLatLngs, getPaddedBBox, unionBBox,
     groupByCorridor,
     ZOOM,
     DEFAULT_OVERLAYS, parseOverlays, serializeOverlays,

@@ -99,4 +99,29 @@ assert.ok(ics.includes("\r\n"), "uses CRLF line endings");
 // downloadICS is DOM-bound but must be exported alongside the pure helpers.
 assert.strictEqual(typeof B.downloadICS, "function");
 
+// mixSegments: shared stacked-bar helper behind BSDMainRoutes.completionSegments
+// (main routes report card) and BSDNet.qualityMixSegments (network map mix bar).
+const mix1 = B.mixSegments({ a: 3, b: 1 }, ["a", "b"], { colors: { a: "#111111", b: "#222222" } });
+assert.deepStrictEqual(mix1.map(s => s.grade), ["a", "b"], "mixSegments: one entry per non-zero grade, in `order`");
+assert.ok(Math.abs(mix1[0].pct - 75) < 1e-9, "mixSegments: pct is share of the present-grade total");
+assert.ok(Math.abs(mix1[1].pct - 25) < 1e-9, "mixSegments: second entry's pct");
+assert.strictEqual(mix1[0].color, "#111111", "mixSegments: color from opts.colors");
+assert.strictEqual(mix1[0].miles, 3, "mixSegments: raw miles carried through");
+assert.strictEqual(mix1[0].label, undefined, "mixSegments: no label field when opts.labels omitted");
+
+const mix2 = B.mixSegments({ a: 1, b: 1 }, ["a", "b"], { colors: { a: "#111111", b: "#222222" }, labels: { a: "Alpha", b: "Beta" } });
+assert.strictEqual(mix2[0].label, "Alpha", "mixSegments: label from opts.labels when supplied");
+assert.strictEqual(mix2[1].label, "Beta", "mixSegments: label for second entry");
+
+// Grade order in `order` controls output order, not input key order.
+const mix3 = B.mixSegments({ b: 1, a: 1 }, ["a", "b"], { colors: {} });
+assert.deepStrictEqual(mix3.map(s => s.grade), ["a", "b"], "mixSegments: output follows `order`, not input key order");
+
+// Zero-value and absent grades are omitted; totally-empty input -> [].
+assert.deepStrictEqual(B.mixSegments({ a: 0, b: 2 }, ["a", "b"], { colors: {} }).map(s => s.grade), ["b"],
+  "mixSegments: zero-mile grades omitted");
+assert.deepStrictEqual(B.mixSegments(null, ["a"], {}), [], "mixSegments: null input -> []");
+assert.deepStrictEqual(B.mixSegments({}, ["a"], {}), [], "mixSegments: empty input -> []");
+assert.deepStrictEqual(B.mixSegments({ a: 0 }, ["a"], {}), [], "mixSegments: all-zero input -> []");
+
 console.log("common-helpers OK");

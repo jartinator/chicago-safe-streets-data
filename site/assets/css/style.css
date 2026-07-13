@@ -167,6 +167,15 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 .tier-name { font-size: 0.9rem; }
 .tier-desc { font-size: 0.78rem; }
 
+/* Multi-badge tier rows (connectors: real + crowdsourced): too wide to sit
+ * inline next to a swatch + full description in the 320px side panel, so
+ * this drops to its own full-width line below the label instead of
+ * crushing tier-text down to a couple of characters per line. */
+.tier-badges-wrap {
+  display: flex; flex: 1 0 100%; gap: 0.3rem; margin-top: 0.3rem;
+  padding-left: 2rem; box-sizing: border-box;
+}
+
 /* Quality-border grade legend (spec §3). */
 .quality-legend { margin: 0 0 0.5rem 1.6rem; }
 .quality-legend-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }

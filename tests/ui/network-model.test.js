@@ -67,21 +67,30 @@ assert.deepStrictEqual(
   "flattenCoords: LineString returns coordinates as-is"
 );
 
-// ---- getPaddedBBox / pointInBBox ----
+// ---- getPaddedBBox ----
 const bbox = N.getPaddedBBox(singleLine, 0.001);
 assert.deepStrictEqual(
   bbox,
   [[41.90 - 0.001, -87.65 - 0.001], [41.91 + 0.001, -87.64 + 0.001]],
   "getPaddedBBox: pads min/max lat/lng"
 );
-assert.ok(
-  N.pointInBBox({ geometry: { coordinates: [-87.645, 41.905] } }, bbox),
-  "pointInBBox: point inside bbox"
+
+// ---- unionBBox (dedup: fitLineBounds / citywide fit / corridor deep link) ----
+assert.deepStrictEqual(N.unionBBox([]), [], "unionBBox: empty input -> []");
+assert.deepStrictEqual(N.unionBBox(undefined), [], "unionBBox: missing input -> []");
+assert.deepStrictEqual(
+  N.unionBBox([{ geometry: singleLine }]),
+  N.getPaddedBBox(singleLine),
+  "unionBBox: single feature matches its own getPaddedBBox (default pad)"
 );
-assert.ok(
-  !N.pointInBBox({ geometry: { coordinates: [-87.9, 42.5] } }, bbox),
-  "pointInBBox: point outside bbox"
-);
+const secondLine = { type: "LineString", coordinates: [[-87.70, 41.70], [-87.69, 41.72]] };
+const unioned = N.unionBBox([{ geometry: singleLine }, { geometry: secondLine }]);
+const bboxA = N.getPaddedBBox(singleLine);
+const bboxB = N.getPaddedBBox(secondLine);
+assert.strictEqual(unioned[0][0], Math.min(bboxA[0][0], bboxB[0][0]), "unionBBox: min lat across features");
+assert.strictEqual(unioned[0][1], Math.min(bboxA[0][1], bboxB[0][1]), "unionBBox: min lng across features");
+assert.strictEqual(unioned[1][0], Math.max(bboxA[1][0], bboxB[1][0]), "unionBBox: max lat across features");
+assert.strictEqual(unioned[1][1], Math.max(bboxA[1][1], bboxB[1][1]), "unionBBox: max lng across features");
 
 // ---- ZOOM thresholds ----
 assert.deepStrictEqual(
