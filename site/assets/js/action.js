@@ -426,6 +426,10 @@
 
     if (matched) {
       html += `<div><span class="stat">${BSD.fmt(matched.safety_sponsorships)}</span> <span class="muted">tagged bike/traffic-safety sponsorships (all records on file)</span></div>`;
+      // Loud, not a footnote (P6b): presenting sponsorship as a voting record
+      // is the exact error that burns advocates in front of an alderperson.
+      html += `<div class="notice" style="margin:.4rem 0;">Sponsorships are <strong>not votes</strong> — ` +
+        `most safety measures pass by voice vote with no individual record.</div>`;
 
       const noVotes = matched.recorded_no_votes ?? 0;
       if (noVotes > 0) {
@@ -538,6 +542,7 @@
       `<div class="report-section">${aldermanRecordSectionHTML(ward)}</div>` +
       `<div class="report-section">${menuSpendingSectionHTML(ward)}</div>` +
       `<footer class="report-foot">` +
+      `<a class="btn primary" href="ward.html?ward=${encodeURIComponent(ward)}">Printable one-pager →</a> ` +
       `<button type="button" class="linklike" id="ward-provenance">Where does this data come from?</button>` +
       `</footer>`;
 

@@ -50,9 +50,11 @@ badge at all times. Full field documentation: [SCHEMA.md](SCHEMA.md).
 ```
 pipeline/    Python: Socrata pulls -> spatial join (crash -> nearest bikeway
              segment + containing ward) -> aggregation -> site/data/*.json|geojson
-site/        Static front-end (vanilla JS + vendored Leaflet), 7 screens:
+site/        Static front-end (vanilla JS + vendored Leaflet):
              index (geographic map), network (schematic map), findings,
-             table (+ CSV export), sources, action, contributing
+             table (+ CSV export), sources, methodology, action, ward
+             (printable one-pager, brief/plain registers), contributing,
+             obstructions-preview (gated synthetic demo)
 data/snapshots/   Dated copies of the CDOT Bike Routes layer
 SCHEMA.md    Published data contracts (the site's data/ files ARE the dataset)
 DECISIONS.md Reasoned calls where the project docs were silent

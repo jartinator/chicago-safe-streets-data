@@ -502,6 +502,7 @@
       ${top.map(([s, v]) => `<div><a href="#" data-corridor="${B.esc(s)}">${B.esc(s)}</a>
         <span class="muted">${B.fmt(v.crashes)} crashes near ${(v.length / 1000).toFixed(1)} km</span></div>`).join("") || '<p class="muted">No bikeways intersect this ward.</p>'}
       <p style="margin-top:0.6rem"><a class="btn" href="table.html?ward=${encodeURIComponent(w)}">Ward data table</a>
+      <a class="btn" href="ward.html?ward=${encodeURIComponent(w)}">One-pager</a>
       <a class="btn primary" href="action.html?ward=${encodeURIComponent(w)}">Ward report &amp; take action</a></p>`);
     syncLayers();
   }
