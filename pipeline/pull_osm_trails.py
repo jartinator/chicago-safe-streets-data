@@ -16,7 +16,7 @@ import sys
 
 import requests
 
-from config import OVERPASS_API_URL, OSM_TRAILS_QUERY, RAW_DIR
+from config import OVERPASS_API_URL, OSM_TRAILS_QUERY, OSM_USER_AGENT, RAW_DIR
 from socrata import write_json
 
 
@@ -26,7 +26,8 @@ def main():
     parser.parse_args()
 
     try:
-        resp = requests.post(OVERPASS_API_URL, data={"data": OSM_TRAILS_QUERY}, timeout=120)
+        resp = requests.post(OVERPASS_API_URL, data={"data": OSM_TRAILS_QUERY},
+                             headers={"User-Agent": OSM_USER_AGENT}, timeout=120)
         resp.raise_for_status()
         payload = resp.json()
     except (requests.RequestException, ValueError) as exc:
