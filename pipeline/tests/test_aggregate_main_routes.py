@@ -42,12 +42,13 @@ def _lines_by_id(out):
 def test_roster_shape_matches_spec():
     # network-tiers-v2 design spec §2 (2026-07-13-network-tiers-design.md):
     # owner-signed count 14 street lines + 5 trail lines = 19; roosevelt and
-    # vincennes demoted to connectors.
+    # vincennes demoted to connectors. DECISIONS.md #26 adds 312-riverrun,
+    # #27 adds green-bay -> 14 street + 7 trail = 21.
     lines = ROSTER["lines"]
-    assert len(lines) == 19
+    assert len(lines) == 21
     street = [ln for ln in lines if ln["source"] == "bike_routes"]
     trail = [ln for ln in lines if ln["source"] == "osm_trails"]
-    assert len(street) == 14 and len(trail) == 5
+    assert len(street) == 14 and len(trail) == 7
     ids = [ln["id"] for ln in lines]
     assert not ({"loop", "belmont", "31st"} & set(ids)), "dropped lines must be gone"
     assert not ({"roosevelt", "vincennes"} & set(ids)), "demoted-to-connector lines must be gone"
@@ -55,7 +56,8 @@ def test_roster_shape_matches_spec():
     assert {"milwaukee", "halsted", "clark", "kedzie", "damen", "state-indiana",
             "elston", "lake", "jackson-washington"} <= set(ids)
     assert {"lakefront", "bloomingdale", "major-taylor",
-            "north-shore-channel", "north-branch"} <= set(ids)
+            "north-shore-channel", "north-branch", "312-riverrun",
+            "green-bay"} <= set(ids)
     # no line carries a clip_bbox anymore (that was loop-only)
     assert not any(ln.get("clip_bbox") for ln in lines)
 
@@ -135,6 +137,43 @@ def test_clip_bbox_filters_by_segment_midpoint():
     assert len(seg_ids) == len(set(seg_ids)) == 2
 
 
+def test_per_street_clip_bbox_claims_only_part_of_a_street():
+    # streets entries may be {"name", "clip_bbox"}: a per-street bbox clips
+    # that street alone, leaving the line's other streets unclipped.
+    mini_roster = {"lines": [
+        {"id": "diag", "name": "Diag", "termini": "a", "source": "bike_routes",
+         "streets": ["MILWAUKEE",
+                     {"name": "RANDOLPH", "clip_bbox": [41.88, -87.65, 41.89, -87.61]}]},
+    ]}
+    routes = _fc([
+        _seg("m-far", "MILWAUKEE", "protected", mid=(41.95, -87.70)),   # unclipped street: kept anywhere
+        _seg("r-loop", "RANDOLPH", "protected", mid=(41.884, -87.63)),  # inside the street bbox: kept
+        _seg("r-west", "RANDOLPH", "painted", mid=(41.884, -87.72)),    # outside it: dropped
+    ])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, mini_roster)
+    seg_ids = {f["properties"]["segment_id"] for f in out["features"]}
+    assert seg_ids == {"m-far", "r-loop"}
+
+
+def test_downtown_trunk_is_shared_by_four_lines():
+    # The shipped roster interlines the Loop stretch of RANDOLPH across
+    # milwaukee/clark/lake/jackson-washington (in roster order) so those
+    # four connect downtown and lead to the Lakefront Trail.
+    routes = _fc([_seg("r-trunk", "RANDOLPH", "protected", mid=(41.8845, -87.622))])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    props = out["features"][0]["properties"]
+    assert props["line_ids"] == ["milwaukee", "clark", "lake", "jackson-washington"]
+    assert props["line_id"] == "milwaukee"
+
+
+def test_street_property_emitted_on_members():
+    # The UI chains gap fills per source street (couplet lines like
+    # Jackson–Washington must not zigzag between their two streets).
+    routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    assert out["features"][0]["properties"]["street"] == "MILWAUKEE"
+
+
 def test_street_suffix_variant_matches_roster():
     # the raw data carries both MILWAUKEE and MILWAUKEE AVE (spec §5)
     routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])
@@ -199,6 +238,20 @@ def test_trail_matching_by_name_token():
     assert "crashes_within_30m" not in lf["properties"]
 
 
+def test_trail_exclude_tokens_veto_a_name_match():
+    # OSM's "Evanston Lakefront Trail" is a distinct suburban trail whose
+    # name embeds "lakefront" — the roster's exclude_tokens must keep it
+    # out of Chicago's Lakefront Trail line (which ends at Ardmore).
+    trails = _fc([_trail("Lakefront Trail"),
+                  _trail("Evanston Lakefront Trail")])
+    out = aggregate.build_main_routes(_fc([]), trails, ROSTER)
+    member_names = {f["properties"]["segment_id"] for f in out["features"]}
+    assert "osm-trail-lakefront-trail" in member_names
+    assert "osm-trail-evanston-lakefront-trail" not in member_names
+    # the excluded trail's mileage stays out of the line stats too
+    assert _lines_by_id(out)["lakefront"]["miles_total"] == 10.0
+
+
 def test_stub_trails_produce_no_data_lines_with_zero_features():
     out = aggregate.build_main_routes(_fc([]), STUB_TRAILS, ROSTER)
     assert out["features"] == []
@@ -231,4 +284,4 @@ def test_top_level_shape_is_derived_with_lines_key():
     assert out["type"] == "FeatureCollection"
     assert out["data_tier"] == "derived"
     assert "editorial" in out["note"]
-    assert len(out["lines"]) == 19
+    assert len(out["lines"]) == 21

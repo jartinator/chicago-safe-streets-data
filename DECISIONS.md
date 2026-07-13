@@ -59,6 +59,21 @@ environment forced a deviation. Newest last.
     distorted schematic — a genuine DC-Metro-style schematization is a design
     project of its own; this keeps the "read the network" job without inventing
     geography.
+    - *2026-07-13:* geometry-faithful, but straightened at render time. Raw
+      CDOT/OSM vertices every few meters made lines read smudgy/squiggly at
+      metro-map stroke widths, so the network screen now runs all drawn
+      geometry through Ramer–Douglas–Peucker (40 m tolerance,
+      `BSDNet.schematicLatLngs`). Vertices are only dropped, never moved or
+      invented, and endpoints survive so segments stay connected — still not
+      a distorted schematic.
+    - *2026-07-13 (same day, metro-map pass 2):* trail strokes slimmed to the
+      main routes' 6/9 px (tiers now read by outline color, not bulk), all
+      stroke weights scale with zoom (`BSDNet.zoomWeightFactor`, 0.6 at the
+      citywide fit → 1 at street zoom), and holes inside a roster line are
+      bridged with straight strokes in a lightened line color
+      (`BSDNet.gapSegments` + `lightenColor`) so every line reads connected.
+      The pale shade is the honesty marker: inferred continuity, never
+      presented as surveyed geometry.
 
 11. **Spatial params.** Nearest-bikeway threshold 30 m in EPSG:26916 (UTM 16N);
     intersection hotspots are ~100 m grid clusters (≥2 crashes), top 25
@@ -422,3 +437,46 @@ environment forced a deviation. Newest last.
     published note says the PDF is authoritative, and the only derived fields
     are two booleans (`safety_keyword_match`, `tracked`) computed in
     aggregate.py.
+
+26. **The 312 RiverRun joins the trail roster — owner-signed count moves to
+    14 street + 6 trail = 20 lines.** The trail shipped in `osm_trails.geojson`
+    since the first live Overpass pull, but the network map's Trails tier only
+    draws roster lines, so it rendered as an identity-less gray connector —
+    effectively invisible as a trail. It's a real piece of off-street
+    infrastructure (opened 2023, Belmont ⇄ Montrose along the Chicago River,
+    ~2 mi including the West spur), the same class of thing as the other five
+    roster trails, so it gets a roster entry (`312-riverrun`, `name_tokens`
+    `["riverrun", "river run"]` — matches both the "312 RiverRun" and "West
+    312 RiverRun" OSM features) and a line color (`#4f46e5`). Data edit only:
+    the `main_routes.json` format and `CONTRACT_VERSION` (1.11) are unchanged,
+    per SCHEMA.md's rule that only key adds/renames bump the contract.
+
+27. **The Green Bay Trail joins the trail roster too — 14 street + 7 trail =
+    21 lines — accepting a fully-suburban line onto an otherwise Chicago
+    roster.** Unlike every other roster trail, its geometry (Wilmette ⇄
+    Braeside, 7.19 mi) lies entirely outside the city line; the owner signed
+    it anyway because it functionally continues the North Shore Channel
+    corridor northward (its south end meets the Channel trail's north end in
+    Wilmette), so on the map it reads as the next leg of an existing named
+    route rather than an orphan suburban line. Roster entry `green-bay`
+    (`name_tokens` `["green bay"]`, one matching OSM feature), line color
+    `#a21caf`. Same no-contract-bump posture as #26; the derived node layer
+    picked up one new interchange (North Branch Trail × Green Bay Trail at
+    Braeside) automatically.
+
+28. **Downtown convergence: four lines interline into a Loop trunk that leads
+    to the Lakefront Trail.** The Milwaukee, Clark, Lake Street, and
+    Jackson–Washington lines previously stubbed out at scattered downtown
+    ends. The roster now routes all four onto real shared facilities —
+    Randolph (protected/buffered, Desplaines to the lakefront at ~-87.6135),
+    Washington east of Halsted, the one-block protected Michigan link, and
+    Clark's tail via Dearborn's protected two-way lane (not the Walton stub) —
+    using per-street `clip_bbox` entries so a line claims only its stretch of
+    a shared street. Shared segments render as pixel-spaced parallel strands
+    (interlining, spec §6), so the trunk reads DC-metro style at every zoom.
+    Couplet/multi-street lines chain gap fills per source street with at most
+    one feeder bridge per street pair, and every gap bridge prefers routing
+    over the connector mesh (mellowest grade first, detour-capped, straight
+    fallback) — the lightened color still marks all of it as inferred
+    continuity. Connectors default off on the network map; the toggle brings
+    the mesh back.

@@ -56,6 +56,8 @@
     quality: L.layerGroup(),         // quality border, toggle "quality"
     trailsOutline: L.layerGroup(),   // trails: darkened outline
     trails: L.layerGroup(),          // trails: core stroke
+    gapsTrails: L.layerGroup(),      // trails: lighter gap-filler strokes
+    gapsMain: L.layerGroup(),        // main routes: lighter gap-filler strokes
     connectors: L.layerGroup(),      // connectors tier: non-roster bike_routes + mellow_connectors + non-roster osm_trails
     halo: L.layerGroup(),            // selection halo (spec §7)
     capsules: L.layerGroup(),        // interlining transfer-capsule markers (spec §6)
@@ -136,11 +138,19 @@
 
   let selectedLineIds = null; // Set<line id> | null
 
+  // All stroke weights scale with zoom (BSDNet.zoomWeightFactor — 0.6 at
+  // the citywide fit up to 1 at street zoom) so the metro lines stay slim
+  // when zoomed out instead of crowding into a smudge. Every restyle path
+  // multiplies its base weights by this; the zoomend handler below updates
+  // it and restyles when it changes.
+  let weightFactor = BSDNet.zoomWeightFactor(map.getZoom());
+
   // Per-feature layer records so floor/selection restyles can be applied
   // without rebuilding geometry (spec §5: "restyle existing polylines
   // (setStyle) not rebuilding").
-  const mainRouteRecords = []; // { grade, lineIds, casingLayer, borderLayer, strandLayers: [{lineId, layer}] }
+  const mainRouteRecords = []; // { grade, lineIds, casingLayer, casingBaseWeight, borderLayer, strandLayers: [{lineId, layer}] }
   const trailRecords = [];     // { lineId, coreLayer, outlineLayer }
+  const gapRecords = [];       // { lineId, layer, baseWeight } — lighter continuity strokes
 
   function isLineSelected(lineId) {
     return selectedLineIds != null && selectedLineIds.has(lineId);
@@ -157,20 +167,29 @@
       rec.casingLayer.setStyle({ opacity: 0 });
       if (rec.borderLayer) rec.borderLayer.setStyle({ opacity: 0 });
       rec.strandLayers.forEach((s) => {
-        s.layer.setStyle({ ...BSDNet.DRAINED_STYLE, dashArray: null, opacity: dimOpacity });
+        s.layer.setStyle({
+          ...BSDNet.DRAINED_STYLE,
+          weight: BSDNet.DRAINED_STYLE.weight * weightFactor,
+          dashArray: null, opacity: dimOpacity,
+        });
       });
     } else {
-      rec.casingLayer.setStyle({ opacity: dimOpacity });
+      // Interlined braids widen the casing/border by the extra strands'
+      // pixel span; single-strand records get plain zoom-scaled weights.
+      const extraPx = (rec.strandLayers.length - 1) * strandGapPx();
+      rec.casingLayer.setStyle({ opacity: dimOpacity, weight: rec.casingBaseWeight * weightFactor + extraPx });
       const borderStyle = BSDNet.qualityBorderStyle(rec.grade);
       if (rec.borderLayer) {
-        rec.borderLayer.setStyle(borderStyle ? { ...borderStyle, opacity: dimOpacity } : { opacity: 0 });
+        rec.borderLayer.setStyle(borderStyle
+          ? { ...borderStyle, weight: borderStyle.weight * weightFactor + extraPx, opacity: dimOpacity }
+          : { opacity: 0 });
       }
       rec.strandLayers.forEach((s) => {
         const selected = isLineSelected(s.lineId);
         const base = BSDNet.lineStyle(s.lineId);
         s.layer.setStyle({
           ...base,
-          weight: selected ? base.weight + 2 : base.weight,
+          weight: base.weight * weightFactor + (selected ? 2 : 0),
           opacity: dimOpacity,
         });
       });
@@ -182,13 +201,31 @@
     const dimmed = isDimmed([rec.lineId]);
     const dimOpacity = dimmed ? 0.6 : 1;
     const base = BSDNet.trailStyle(rec.lineId);
-    rec.coreLayer.setStyle({ ...base, weight: selected ? base.weight + 2 : base.weight, opacity: dimOpacity });
-    rec.outlineLayer.setStyle({ opacity: dimOpacity });
+    const outlineBase = BSDNet.trailOutlineStyle(rec.lineId);
+    rec.coreLayer.setStyle({
+      ...base,
+      weight: base.weight * weightFactor + (selected ? 2 : 0),
+      opacity: dimOpacity,
+    });
+    rec.outlineLayer.setStyle({ weight: outlineBase.weight * weightFactor, opacity: dimOpacity });
+  }
+
+  // Gap fillers dim with their line and scale with zoom like every other
+  // stroke; they carry no selection weight bump (they're continuity hints,
+  // not the line itself).
+  function restyleGaps() {
+    gapRecords.forEach((g) => {
+      g.layer.setStyle({
+        weight: g.baseWeight * weightFactor,
+        opacity: isDimmed([g.lineId]) ? 0.6 : 1,
+      });
+    });
   }
 
   function restyleAll() {
     mainRouteRecords.forEach(restyleMainRoute);
     trailRecords.forEach(restyleTrail);
+    restyleGaps();
   }
 
   // Selection halo (spec §7): a soft glow polyline (~16px, 25% opacity of
@@ -208,8 +245,8 @@
         const key = feature.properties.segment_id + "|" + lineId;
         if (seen.has(key)) return;
         seen.add(key);
-        layers.halo.addLayer(L.polyline(BSDNet.toLatLngs(feature.geometry), {
-          pane: "haloPane", color, weight: 16, opacity: 0.25, lineCap: "round", lineJoin: "round",
+        layers.halo.addLayer(L.polyline(BSDNet.schematicLatLngs(feature.geometry), {
+          pane: "haloPane", color, weight: 16 * weightFactor, opacity: 0.25, lineCap: "round", lineJoin: "round",
         }));
       });
     });
@@ -324,7 +361,7 @@
   // map's own "click" handler (wired below for deselect-on-empty-click),
   // which would immediately undo the selection this very click just made.
   function drawSimpleMainRoute(feature, entry) {
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
     const lineId = entry.lineId;
 
     const borderStyle = BSDNet.qualityBorderStyle(entry.grade);
@@ -347,7 +384,7 @@
 
     mainRouteRecords.push({
       feature, grade: entry.grade, lineIds: entry.lineIds,
-      casingLayer, borderLayer, strandLayers: [{ lineId, layer: line }],
+      casingLayer, casingBaseWeight: 9, borderLayer, strandLayers: [{ lineId, layer: line }],
     });
   }
 
@@ -366,21 +403,45 @@
     }
     return 0;
   }
-  function capsuleIcon(bearingRad) {
+  function capsuleIcon(bearingRad, strandCount) {
     const deg = (bearingRad * 180) / Math.PI + 90; // perpendicular to travel
+    // The pill spans the whole braid (plus a lip each side), whatever the
+    // current zoom's strand spacing is.
+    const w = Math.max(16, Math.round(braidWidthPx(strandCount) + 6));
+    const topPad = Math.round((w - 8) / 2); // center the 8px-tall pill in the square icon box
     return L.divIcon({
       className: "capsule-marker",
-      html: `<span style="transform: rotate(${deg.toFixed(1)}deg)"></span>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      html: `<span style="transform: rotate(${deg.toFixed(1)}deg); width: ${w}px; margin-top: ${topPad}px"></span>`,
+      iconSize: [w, w],
+      iconAnchor: [w / 2, w / 2],
     });
   }
 
+  // Interlined strands are spaced a fixed number of PIXELS apart: the
+  // meter gap is derived from the current zoom at draw time and re-derived
+  // on zoomend (applyStrandOffsets), so shared runs read as parallel
+  // colored strands at every zoom instead of collapsing into whichever
+  // strand drew last. The pixel gap tracks the zoom-scaled strand width
+  // (plus a sliver of casing) so neighbors never cover each other.
+  function strandGapPx() {
+    return 6 * weightFactor + 1.5;
+  }
+  function braidWidthPx(strandCount) {
+    return (strandCount - 1) * strandGapPx() + 6 * weightFactor;
+  }
+  function strandGapMeters(latlngs) {
+    const refLat = BSDNet.pathEndpoints(latlngs)[0][0];
+    return strandGapPx() * BSDNet.metersPerPixel(refLat, map.getZoom());
+  }
+
   function drawInterlinedMainRoute(feature, entry) {
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    // Straighten before offsetting so the parallel strands are offset from
+    // the same decluttered path (offsetting first would re-wiggle them).
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
     const plan = BSDNet.planInterlinedRoute(
       latlngs, entry.lineIds, entry.grade,
-      (id) => BSDNet.LINE_COLORS[id] || BSDNet.FALLBACK_LINE_COLOR
+      (id) => BSDNet.LINE_COLORS[id] || BSDNet.FALLBACK_LINE_COLOR,
+      strandGapMeters(latlngs)
     );
 
     const borderLayer = plan.border
@@ -388,8 +449,12 @@
       : null;
     if (borderLayer) layers.quality.addLayer(borderLayer);
 
+    // Base casing weight matches the single-strand case; restyleMainRoute
+    // adds the extra strands' pixel span on top (strand offsets are
+    // pixel-constant, so the braid width is known in px at any zoom).
+    const casingBaseWeight = 9;
     const casingLayer = L.polyline(plan.casing.latlngs, {
-      pane: "casingPane", weight: 9 + (plan.strands.length - 1) * 4, color: "#ffffff", opacity: 1,
+      pane: "casingPane", weight: casingBaseWeight, color: "#ffffff", opacity: 1,
       lineCap: "round", lineJoin: "round",
     });
     layers.casing.addLayer(casingLayer);
@@ -404,12 +469,39 @@
       return { lineId: strand.lineId, layer: line };
     });
 
+    // Capsule markers are deduped after ALL interlined features are drawn:
+    // a shared run is usually several roster segments, and a capsule at
+    // every interior joint reads as noise — only the run's true ends
+    // should carry one. Collect candidates here; drawCapsules() below
+    // drops any point where two segments of the same line set meet.
     plan.capsules.forEach((pt) => {
-      const marker = L.marker(pt, { pane: "capsulesPane", icon: capsuleIcon(bearingAt(latlngs, pt)), interactive: false });
-      layers.capsules.addLayer(marker);
+      capsuleCandidates.push({
+        pt,
+        bearing: bearingAt(latlngs, pt),
+        setKey: entry.lineIds.slice().sort().join("|"),
+        count: plan.strands.length,
+      });
     });
 
-    mainRouteRecords.push({ feature, grade: entry.grade, lineIds: entry.lineIds, casingLayer, borderLayer, strandLayers });
+    mainRouteRecords.push({
+      feature, grade: entry.grade, lineIds: entry.lineIds,
+      casingLayer, casingBaseWeight, borderLayer, strandLayers,
+      interlinedLatLngs: latlngs, // base (un-offset) path for re-offsetting on zoom
+    });
+  }
+
+  // Re-derive interlined strand offsets for the current zoom (pixel-constant
+  // spacing). Only multi-strand records carry interlinedLatLngs. Capsules
+  // re-size with the braid.
+  function applyStrandOffsets() {
+    mainRouteRecords.forEach((rec) => {
+      if (!rec.interlinedLatLngs || rec.strandLayers.length < 2) return;
+      const offsets = BSDNet.strandOffsets(rec.strandLayers.length, strandGapMeters(rec.interlinedLatLngs));
+      rec.strandLayers.forEach((s, i) => {
+        s.layer.setLatLngs(BSDNet.offsetLatLngs(rec.interlinedLatLngs, offsets[i]));
+      });
+    });
+    capsuleRecords.forEach((c) => c.marker.setIcon(capsuleIcon(c.bearing, c.count)));
   }
 
   function onLineClick(lineId) {
@@ -420,6 +512,9 @@
     }
   }
 
+  const capsuleCandidates = []; // { pt, bearing, setKey, count }
+  const capsuleRecords = [];    // { marker, bearing, count } — for zoom re-sizing
+
   rosterFeatures.forEach((feature) => {
     const entry = rosterIndex.get(String(feature.properties.segment_id));
     if (!entry) return;
@@ -427,11 +522,33 @@
     else drawSimpleMainRoute(feature, entry);
   });
 
+  // Dedupe capsules to the shared runs' true ends: quantize each candidate
+  // to a ~60 m cell (per line set) — interior joints land two candidates in
+  // one cell (this segment's end + the next one's start) and are dropped.
+  (function drawCapsules() {
+    const cells = new Map();
+    capsuleCandidates.forEach((c) => {
+      const mLng = 111320 * Math.cos((c.pt[0] * Math.PI) / 180);
+      const cell = c.setKey + ":" + Math.round((c.pt[0] * 111320) / 60) + ":" + Math.round((c.pt[1] * mLng) / 60);
+      if (!cells.has(cell)) cells.set(cell, []);
+      cells.get(cell).push(c);
+    });
+    cells.forEach((cands) => {
+      if (cands.length !== 1) return; // interior joint of a longer shared run
+      const c = cands[0];
+      const marker = L.marker(c.pt, {
+        pane: "capsulesPane", icon: capsuleIcon(c.bearing, c.count), interactive: false,
+      });
+      layers.capsules.addLayer(marker);
+      capsuleRecords.push({ marker, bearing: c.bearing, count: c.count });
+    });
+  })();
+
   /* ---------------- draw: trails (spec §1) ---------------- */
 
   rosterTrailFeatures.forEach((feature) => {
     const lineId = feature.properties.line_id;
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
 
     const outlineLayer = L.polyline(latlngs, {
       pane: "trailsOutlinePane", lineCap: "round", lineJoin: "round", ...BSDNet.trailOutlineStyle(lineId),
@@ -467,7 +584,7 @@
   function drawConnector(feature, pane, extraProps, renderer) {
     const opts = { pane, lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTOR_STYLE };
     if (renderer) opts.renderer = renderer;
-    const line = L.polyline(BSDNet.toLatLngs(feature.geometry), opts);
+    const line = L.polyline(BSDNet.schematicLatLngs(feature.geometry), opts);
     line.feature = feature;
     line._connectorGrade = (extraProps && extraProps.grade) || null;
     line.on("click", (e) => { L.DomEvent.stop(e); showSegmentDetail({ ...feature, ...extraProps }); });
@@ -481,6 +598,75 @@
     (f) => !rosterIndex.has(String(f.properties.segment_id))
   );
   nonRosterTrailFeatures.forEach((feature) => drawConnector(feature, "connectorsPane", { _trail: true }));
+
+  /* ---------------- draw: gap fillers (metro-map continuity) ---------------- */
+  // A roster line's member segments don't always touch — the source data
+  // has real holes, so a line can render as dashes of itself. Bridge every
+  // hole with a stroke in a lighter shade of the line color: reads as one
+  // connected metro line, while the paler shade keeps it honest as
+  // inferred continuity rather than surveyed geometry. Non-interactive,
+  // and mounted to the map *before* the real strokes in the same pane so
+  // it always sits underneath them.
+  //
+  // Two refinements over a naive whole-line chain:
+  // - gaps chain PER SOURCE STREET, then streets connect with at most one
+  //   feeder per pair (BSDNet.crossStreetGaps) — so a couplet line like
+  //   Jackson–Washington reads as two clean parallels, not a zigzag;
+  // - each bridge prefers routing over the connector mesh (mellowest
+  //   grade first, detour-capped) and only falls back to a straight
+  //   stroke when nothing rideable is nearby.
+
+  const GAP_LIGHTEN = 0.55;
+  const GAP_BASE_WEIGHT = 6; // matches the core stroke weight of both tiers
+
+  // Router edges over the whole connector tier (drawn or not — the data is
+  // loaded regardless of the connectors toggle).
+  const routerEdges = [];
+  localFeatures.forEach((f) => {
+    const grade = BSDNet.CONNECTOR_GRADE_MAP[f.properties.facility_category] || "none";
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), grade));
+  });
+  (mellowConnectorsData.features || []).forEach((f) => {
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), "mellow"));
+  });
+  nonRosterTrailFeatures.forEach((f) => {
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), "offstreet"));
+  });
+
+  function drawLineGaps(lineId, features, pane, group) {
+    const byStreet = new Map();
+    features.forEach((f) => {
+      const street = f.properties.street || "";
+      const ll = BSDNet.schematicLatLngs(f.geometry);
+      if (!byStreet.has(street)) byStreet.set(street, []);
+      byStreet.get(street).push(...(BSDNet.isMultiPart(ll) ? ll : [ll]));
+    });
+    const gaps = [];
+    byStreet.forEach((parts) => gaps.push(...BSDNet.chainPlan(parts).gaps));
+    gaps.push(...BSDNet.crossStreetGaps([...byStreet.values()]));
+
+    const color = BSDNet.lightenColor(
+      BSDNet.LINE_COLORS[lineId] || BSDNet.FALLBACK_LINE_COLOR, GAP_LIGHTEN);
+    gaps.forEach(([a, b]) => {
+      const path = BSDNet.routeGapThroughConnectors(a, b, routerEdges) || [a, b];
+      const layer = L.polyline(path, {
+        pane, interactive: false, lineCap: "round", lineJoin: "round",
+        color, weight: GAP_BASE_WEIGHT, opacity: 1,
+      });
+      group.addLayer(layer);
+      gapRecords.push({ lineId, layer, baseWeight: GAP_BASE_WEIGHT });
+    });
+  }
+
+  (mainRoutesData.lines || []).forEach((lineMeta) => {
+    const isTrail = lineMeta.source === "osm_trails";
+    const members = isTrail
+      ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineMeta.id)
+      : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineMeta.id);
+    if (members.length === 0) return; // no_data lines: nothing to bridge, never fabricate
+    if (isTrail) drawLineGaps(lineMeta.id, members, "trailsPane", layers.gapsTrails);
+    else drawLineGaps(lineMeta.id, members, "linesPane", layers.gapsMain);
+  });
 
   /* ---------------- labels ---------------- */
 
@@ -517,7 +703,7 @@
 
   if (plannedData.features.length > 0) {
     plannedData.features.forEach((feature) => {
-      const latlngs = BSDNet.toLatLngs(feature.geometry);
+      const latlngs = BSDNet.schematicLatLngs(feature.geometry);
       const props = feature.properties;
       const color = BSD.FACILITY_COLORS[props.facility_category] || BSD.FACILITY_COLORS.other;
 
@@ -569,10 +755,12 @@
   // Gated on state.overlays so a ?overlays= that excludes "main"/"trails"
   // actually hides these — and so the checkboxes below (rendered from the
   // same state.overlays) agree with what's on the map at load.
-  if (state.overlays.has("main")) { layers.casing.addTo(map); layers.lines.addTo(map); layers.capsules.addTo(map); }
+  // Within a tier, gap fillers mount before the core strokes: same pane,
+  // earlier in the SVG, so the lighter bridges render underneath.
+  if (state.overlays.has("main")) { layers.casing.addTo(map); layers.gapsMain.addTo(map); layers.lines.addTo(map); layers.capsules.addTo(map); }
   // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
-  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
+  if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.gapsTrails.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
   if (state.overlays.has("connectors") && state.floor === "any") layers.connectors.addTo(map);
   if (state.overlays.has("planned")) { layers.planned.addTo(map); layers.plannedCasing.addTo(map); }
 
@@ -597,6 +785,27 @@
     mainRouteRecords.forEach(restyleMainRoute);
   }
 
+  // Connectors and planned routes have no per-feature records — scale
+  // their fixed base weights directly whenever the zoom factor changes.
+  function restyleStaticWeights() {
+    layers.connectors.eachLayer((l) => l.setStyle({ weight: BSDNet.CONNECTOR_STYLE.weight * weightFactor }));
+    layers.planned.eachLayer((l) => l.setStyle({ weight: 5 * weightFactor }));
+    layers.plannedCasing.eachLayer((l) => l.setStyle({ weight: 8 * weightFactor }));
+  }
+
+  function applyZoomWeights() {
+    const f = BSDNet.zoomWeightFactor(map.getZoom());
+    if (f !== weightFactor) {
+      weightFactor = f;
+      restyleAll();
+      updateHalo();
+      restyleStaticWeights();
+    }
+    // Strand spacing is pixel-constant, so it changes on EVERY zoom step,
+    // not just when the weight factor bucket does.
+    applyStrandOffsets();
+  }
+
   function updateDeclutter() {
     const z = map.getZoom();
     setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
@@ -608,7 +817,10 @@
     // otherwise a floor hides the connectors layer but its labels linger.
     setLayerVisible(layers.labels, state.overlays.has("connectors") && state.floor === "any" && z >= BSDNet.ZOOM.corridorLabels);
   }
-  map.on("zoomend", updateDeclutter);
+  map.on("zoomend", () => {
+    applyZoomWeights();
+    updateDeclutter();
+  });
 
   // Fit bounds to bike network
   if (routeFeatures.length > 0) {
@@ -620,6 +832,13 @@
     map.fitBounds(allBounds, { padding: [50, 50], animate: false });
   }
   updateDeclutter();
+  // Layers are drawn with unscaled base weights; apply the current zoom's
+  // weight factor and strand spacing once now (the zoomend path only
+  // restyles on *changes*).
+  weightFactor = BSDNet.zoomWeightFactor(map.getZoom());
+  restyleAll();
+  restyleStaticWeights();
+  applyStrandOffsets();
 
   /* ---------------- deselect triggers (spec §7, click-bug fix) ---------------- */
   // Every feature click handler above calls L.DomEvent.stop(e), so this
@@ -730,7 +949,7 @@
   // One badge per GROUP header rather than per roster row: tier is uniform
   // within each group (every trail line is crowdsourced, every street line
   // is derived — see LINE_COLORS/data_tier in main_routes.geojson), so a
-  // 19-row roster carrying 19 identical per-row badges would be noise; the
+  // 21-row roster carrying 21 identical per-row badges would be noise; the
   // group-level badge satisfies the visible-badge rule just as well.
   function rosterGroupHTML(title, lines, tier) {
     if (lines.length === 0) return "";
@@ -741,7 +960,6 @@
   side.innerHTML = `
     <div>
       <h2>Route tiers</h2>
-      <p class="muted">Route-planning view: how to get from area A to area B. Filter by tier, set a comfort floor to see only the network that meets your bar, and click any route for detail. For crash and infrastructure-condition data by location, see the <a href="index.html">Map</a>.</p>
 
       <div class="layer-control tier-toggles">
         ${TIER_ROWS.map(tierRowHTML).join("")}
@@ -810,8 +1028,8 @@
   TIER_ROWS.forEach((t) => {
     document.getElementById(`${t.id}-toggle`).addEventListener("change", (e) => {
       if (e.target.checked) state.overlays.add(t.id); else state.overlays.delete(t.id);
-      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
-      if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
+      if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.gapsTrails, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
+      if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.gapsMain, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
       if (t.id === "connectors") { setLayerVisible(layers.connectors, e.target.checked && state.floor === "any"); updateDeclutter(); }
       syncURL();
     });

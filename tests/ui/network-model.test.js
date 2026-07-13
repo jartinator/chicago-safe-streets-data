@@ -98,19 +98,19 @@ assert.deepStrictEqual(
   "ZOOM: interchange/line-label thresholds at 11, corridor/orientation-label threshold at 13"
 );
 
-// ---- DEFAULT_OVERLAYS (design v2 §10: all three tiers + nodes on, quality/planned off) ----
+// ---- DEFAULT_OVERLAYS: trails+main+nodes on; connectors/quality/planned off ----
 assert.deepStrictEqual(
-  N.DEFAULT_OVERLAYS, ["trails", "main", "connectors", "nodes"],
-  "DEFAULT_OVERLAYS: trails+main+connectors+nodes on by default, quality/planned off"
+  N.DEFAULT_OVERLAYS, ["trails", "main", "nodes"],
+  "DEFAULT_OVERLAYS: trails+main+nodes on by default; connectors mesh, quality, planned off"
 );
 
 // ---- parseOverlays / serializeOverlays (network.html URL state) ----
 assert.deepStrictEqual(
-  [...N.parseOverlays(null)], ["trails", "main", "connectors", "nodes"],
+  [...N.parseOverlays(null)], ["trails", "main", "nodes"],
   "parseOverlays: null (param absent) falls back to defaults"
 );
 assert.deepStrictEqual(
-  [...N.parseOverlays(undefined)], ["trails", "main", "connectors", "nodes"],
+  [...N.parseOverlays(undefined)], ["trails", "main", "nodes"],
   "parseOverlays: undefined falls back to defaults"
 );
 assert.strictEqual(
@@ -136,8 +136,8 @@ assert.strictEqual(
 );
 assert.strictEqual(
   N.serializeOverlays(N.parseOverlays(null)),
-  "trails,main,connectors,nodes",
-  "round-trip: absent param -> defaults -> 'trails,main,connectors,nodes'"
+  "trails,main,nodes",
+  "round-trip: absent param -> defaults -> 'trails,main,nodes'"
 );
 
 // Empty set must survive the URL: BSD.setParams deletes empty-string params
@@ -168,10 +168,12 @@ const EXPECTED_LINE_COLORS = {
   marquette: "#1e40af", lake: "#a16207", "83rd": "#15803d",
   lakefront: "#0369a1", bloomingdale: "#16a34a", "major-taylor": "#ca8a04",
   "north-shore-channel": "#0d9488", "north-branch": "#3f6212",
+  "312-riverrun": "#4f46e5",
+  "green-bay": "#a21caf",
 };
 assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS,
-  "LINE_COLORS: exactly the 19 spec §9 entries (roosevelt/vincennes dropped)");
-assert.strictEqual(Object.keys(N.LINE_COLORS).length, 19, "LINE_COLORS: exactly 19 entries (14 street + 5 trail)");
+  "LINE_COLORS: exactly the 21 roster entries (spec §9 + DECISIONS.md #26/#27 additions)");
+assert.strictEqual(Object.keys(N.LINE_COLORS).length, 21, "LINE_COLORS: exactly 21 entries (14 street + 7 trail)");
 assert.ok(!("roosevelt" in N.LINE_COLORS), "LINE_COLORS: roosevelt demoted off the roster");
 assert.ok(!("vincennes" in N.LINE_COLORS), "LINE_COLORS: vincennes demoted off the roster");
 assert.match(N.FALLBACK_LINE_COLOR, /^#[0-9a-f]{6}$/i, "FALLBACK_LINE_COLOR is a 7-char hex color");
@@ -189,7 +191,8 @@ assert.strictEqual(N.darkenColor("#ffffff", 1), "#000000", "darkenColor: amount 
 assert.strictEqual(N.darkenColor("#c8c8c8", 0.5), "#646464", "darkenColor: halves each channel");
 assert.strictEqual(N.darkenColor("not-a-color", 0.5), "not-a-color", "darkenColor: bad input passes through unchanged");
 
-assert.strictEqual(N.trailStyle("lakefront").weight, 11, "trailStyle: weight 11 (spec §1)");
+assert.strictEqual(N.trailStyle("lakefront").weight, 6,
+  "trailStyle: weight 6 — uniform with main routes, DC-metro style; tier reads by outline color");
 assert.strictEqual(N.trailStyle("lakefront").color, N.LINE_COLORS.lakefront, "trailStyle: uses the line color");
 const outline = N.trailOutlineStyle("lakefront");
 assert.strictEqual(outline.color, N.darkenColor(N.LINE_COLORS.lakefront, 0.35),
@@ -434,5 +437,203 @@ assert.deepStrictEqual(plan.capsules, [sharedLatLngs[0], sharedLatLngs[2]],
 // but the plan must stay well-defined) -> no border, matching qualityBorderStyle.
 const planOffstreet = N.planInterlinedRoute(sharedLatLngs, ["milwaukee", "damen"], "offstreet", colorFor);
 assert.strictEqual(planOffstreet.border, null, "planInterlinedRoute: offstreet grade -> no shared border");
+
+// ---- simplifyPart / simplifyLatLngs / schematicLatLngs ----
+
+// Collinear jitter well under tolerance collapses to just the endpoints.
+// ~0.0001 deg lat ≈ 11 m of wobble around a straight north-south run.
+const wobbly = [
+  [41.90, -87.65],
+  [41.91, -87.65009],
+  [41.92, -87.64991],
+  [41.93, -87.65005],
+  [41.94, -87.65],
+];
+assert.deepStrictEqual(
+  N.simplifyPart(wobbly, 40),
+  [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyPart: sub-tolerance wobble collapses to endpoints"
+);
+
+// A genuine bend (way beyond tolerance) survives. 0.01 deg lng ≈ 830 m.
+const bent = [
+  [41.90, -87.65],
+  [41.92, -87.64],
+  [41.94, -87.65],
+];
+assert.deepStrictEqual(N.simplifyPart(bent, 40), bent,
+  "simplifyPart: real bends above tolerance are kept");
+
+// Endpoints always survive, so adjacent segments sharing an endpoint stay
+// connected after simplification.
+const simplified = N.simplifyPart(wobbly, 40);
+assert.deepStrictEqual(simplified[0], wobbly[0], "simplifyPart: first vertex preserved");
+assert.deepStrictEqual(simplified[simplified.length - 1], wobbly[wobbly.length - 1],
+  "simplifyPart: last vertex preserved");
+
+// Degenerate inputs pass through untouched (as copies).
+assert.deepStrictEqual(N.simplifyPart([], 40), [], "simplifyPart: empty part");
+assert.deepStrictEqual(N.simplifyPart([[41.9, -87.65]], 40), [[41.9, -87.65]],
+  "simplifyPart: single point");
+assert.deepStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
+  "simplifyPart: zero tolerance is a no-op copy");
+assert.notStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
+  "simplifyPart: returns a new array, not the input itself");
+
+// Multi-part input keeps its nesting; flat input stays flat.
+const multiIn = [wobbly, bent];
+const multiOut = N.simplifyLatLngs(multiIn, 40);
+assert.strictEqual(multiOut.length, 2, "simplifyLatLngs: multi-part shape preserved");
+assert.deepStrictEqual(multiOut[0], [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyLatLngs: each part simplified independently");
+assert.deepStrictEqual(multiOut[1], bent, "simplifyLatLngs: bend part untouched");
+assert.deepStrictEqual(N.simplifyLatLngs(wobbly, 40), [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyLatLngs: flat input stays flat");
+
+// schematicLatLngs = toLatLngs + simplify at the default tolerance.
+const wobblyGeom = {
+  type: "LineString",
+  coordinates: wobbly.map(([lat, lng]) => [lng, lat]),
+};
+assert.deepStrictEqual(
+  N.schematicLatLngs(wobblyGeom),
+  N.simplifyLatLngs(N.toLatLngs(wobblyGeom), N.SIMPLIFY_TOLERANCE_METERS),
+  "schematicLatLngs: composes toLatLngs + simplifyLatLngs at the default tolerance"
+);
+assert.ok(N.SIMPLIFY_TOLERANCE_METERS > 0, "SIMPLIFY_TOLERANCE_METERS: positive");
+
+// ---- lightenColor ----
+assert.strictEqual(N.lightenColor("#1d4ed8", 0), "#1d4ed8", "lightenColor: amount 0 -> unchanged");
+assert.strictEqual(N.lightenColor("#000000", 1), "#ffffff", "lightenColor: amount 1 -> white");
+assert.strictEqual(N.lightenColor("#006464", 0.5), "#80b2b2", "lightenColor: halves the distance to white");
+assert.strictEqual(N.lightenColor("nope", 0.5), "nope", "lightenColor: bad input passes through unchanged");
+
+// ---- zoomWeightFactor ----
+assert.strictEqual(N.zoomWeightFactor(10), 0.6, "zoomWeightFactor: clamped at 0.6 below z11");
+assert.strictEqual(N.zoomWeightFactor(11), 0.6, "zoomWeightFactor: 0.6 at the citywide fit");
+assert.strictEqual(N.zoomWeightFactor(12), 0.8, "zoomWeightFactor: midpoint at z12");
+assert.strictEqual(N.zoomWeightFactor(13), 1, "zoomWeightFactor: full weight from z13");
+assert.strictEqual(N.zoomWeightFactor(16), 1, "zoomWeightFactor: clamped at 1 above z13");
+assert.strictEqual(N.zoomWeightFactor(NaN), 1, "zoomWeightFactor: non-finite zoom -> 1");
+
+// ---- gapSegments ----
+// Three collinear north-south parts with two holes between them. Parts are
+// given out of order and the middle one reversed — chaining must sort that
+// out. 0.01 deg lat ≈ 1113 m.
+const partA = [[41.90, -87.65], [41.91, -87.65]];
+const partB = [[41.93, -87.65], [41.92, -87.65]]; // reversed
+const partC = [[41.94, -87.65], [41.95, -87.65]];
+const gaps = N.gapSegments([partC, partA, partB]);
+assert.strictEqual(gaps.length, 2, "gapSegments: two holes -> two bridges");
+const gapKeys = gaps.map((g) => g.map((pt) => pt.join(",")).sort().join(" ")).sort();
+assert.deepStrictEqual(gapKeys, [
+  "41.91,-87.65 41.92,-87.65",
+  "41.93,-87.65 41.94,-87.65",
+], "gapSegments: bridges span exactly the two holes, regardless of part order/orientation");
+
+// Touching parts produce no bridges (join distance under tolerance).
+assert.deepStrictEqual(
+  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.91, -87.65], [41.92, -87.65]]]),
+  [],
+  "gapSegments: contiguous parts need no bridge"
+);
+
+// Near-touching parts under the join tolerance (~30 m) also need no bridge.
+assert.deepStrictEqual(
+  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.9101, -87.65], [41.92, -87.65]]]),
+  [],
+  "gapSegments: sub-tolerance joins (~11 m) are already 'connected'"
+);
+
+// Degenerate inputs: nothing to chain.
+assert.deepStrictEqual(N.gapSegments([]), [], "gapSegments: no parts");
+assert.deepStrictEqual(N.gapSegments([partA]), [], "gapSegments: single part");
+assert.deepStrictEqual(N.gapSegments([partA, [[41.99, -87.60]]]), [],
+  "gapSegments: sub-2-vertex parts are ignored");
+assert.ok(N.GAP_JOIN_TOLERANCE_METERS > 0, "GAP_JOIN_TOLERANCE_METERS: positive");
+
+// ---- chainPlan termini ----
+assert.deepStrictEqual(N.chainPlan([partA]).termini, [[41.90, -87.65], [41.91, -87.65]],
+  "chainPlan: single part -> its own endpoints");
+assert.strictEqual(N.chainPlan([]).termini, null, "chainPlan: no parts -> no termini");
+const planABC = N.chainPlan([partC, partA, partB]);
+const termKeys = planABC.termini.map((p) => p.join(",")).sort();
+assert.deepStrictEqual(termKeys, ["41.9,-87.65", "41.95,-87.65"],
+  "chainPlan: termini are the chain's outermost endpoints regardless of input order");
+assert.strictEqual(planABC.gaps.length, 2, "chainPlan: gaps match gapSegments");
+
+// ---- crossStreetGaps ----
+// Couplet: two parallel north-south streets ~890 m apart, not touching.
+// Exactly ONE feeder bridge per pair, terminus -> nearest point on the
+// other chain (a projection, not necessarily the other chain's terminus).
+const streetWest = [[[41.90, -87.66], [41.94, -87.66]]];
+const streetEast = [[[41.88, -87.65], [41.92, -87.65]]];
+const feeders = N.crossStreetGaps([streetWest, streetEast]);
+assert.strictEqual(feeders.length, 1, "crossStreetGaps: one feeder per street pair");
+const feederLen = feeders[0] && Math.round(Math.hypot(
+  (feeders[0][0][0] - feeders[0][1][0]) * 111320,
+  (feeders[0][0][1] - feeders[0][1][1]) * 111320 * Math.cos(41.9 * Math.PI / 180)));
+assert.ok(feederLen < 900, "crossStreetGaps: feeder takes the shortest terminus->chain hop, ~830 m here, got " + feederLen);
+
+// Crossing chains are already connected — no feeder.
+const northSouth = [[[41.88, -87.65], [41.92, -87.65]]];
+const eastWest = [[[41.90, -87.66], [41.90, -87.64]]];
+assert.deepStrictEqual(N.crossStreetGaps([northSouth, eastWest]), [],
+  "crossStreetGaps: chains that cross need no feeder");
+
+// Far-apart parallels (beyond maxFeeder) stay unbridged.
+const farEast = [[[41.88, -87.60], [41.92, -87.60]]];
+assert.deepStrictEqual(N.crossStreetGaps([streetWest, farEast]), [],
+  "crossStreetGaps: no phantom crosstown rung beyond the feeder cap");
+
+// Touching chains (shared endpoint) need no feeder.
+const touchA = [[[41.90, -87.65], [41.91, -87.65]]];
+const touchB = [[[41.91, -87.65], [41.91, -87.64]]];
+assert.deepStrictEqual(N.crossStreetGaps([touchA, touchB]), [],
+  "crossStreetGaps: touching chains need no feeder");
+
+// ---- connectorEdges / pathLengthMeters ----
+const edgePart = [[41.90, -87.65], [41.91, -87.65], [41.91, -87.64]];
+assert.strictEqual(Math.round(N.pathLengthMeters(edgePart)), Math.round(1113.2 + 829),
+  "pathLengthMeters: sums vertex-to-vertex meters");
+const edges1 = N.connectorEdges(edgePart, "mellow");
+assert.strictEqual(edges1.length, 1, "connectorEdges: flat part -> one edge");
+assert.deepStrictEqual(edges1[0].a, [41.90, -87.65], "connectorEdges: edge endpoints");
+assert.strictEqual(edges1[0].grade, "mellow", "connectorEdges: carries grade");
+assert.strictEqual(N.connectorEdges([edgePart, [[41.0, -87.0]]], "none").length, 1,
+  "connectorEdges: multi-part input, sub-2-vertex parts dropped");
+
+// ---- routeGapThroughConnectors ----
+// Gap from (41.900,-87.650) to (41.910,-87.640): straight ~1385 m. A mellow
+// L-shaped connector runs right along it, its corner at (41.910,-87.650),
+// endpoints within snap radius of the gap ends.
+const gapA = [41.900, -87.650], gapB = [41.910, -87.640];
+const LConn = [
+  { part: [[41.9003, -87.650], [41.910, -87.650]], grade: "mellow" },  // north leg
+  { part: [[41.910, -87.650], [41.910, -87.6403]], grade: "mellow" },  // east leg
+];
+const meshEdges = LConn.flatMap((c) => N.connectorEdges(c.part, c.grade));
+const routed = N.routeGapThroughConnectors(gapA, gapB, meshEdges);
+assert.ok(routed, "routeGap: nearby mellow connector is used");
+assert.deepStrictEqual(routed[0], gapA, "routeGap: path starts at the gap start");
+assert.deepStrictEqual(routed[routed.length - 1], gapB, "routeGap: path ends at the gap end");
+assert.ok(routed.some((p) => p[0] === 41.910 && p[1] === -87.650),
+  "routeGap: path passes through the connector's corner");
+
+// Short gaps stay straight (null -> caller draws [a, b]).
+assert.strictEqual(N.routeGapThroughConnectors([41.900, -87.650], [41.9008, -87.650], meshEdges), null,
+  "routeGap: sub-150 m gaps don't route");
+
+// No mesh nearby -> null (straight fallback).
+assert.strictEqual(N.routeGapThroughConnectors([41.70, -87.70], [41.72, -87.70], meshEdges), null,
+  "routeGap: no nearby connectors -> straight fallback");
+
+// Mellow beats a shorter 'none' path when penalties say so: same L-gap,
+// but add a direct 'none' diagonal whose penalized cost (1385*1.8=2493)
+// exceeds the mellow L (2214*1.05=2325).
+const diagonal = N.connectorEdges([[41.9003, -87.650], [41.9099, -87.6402]], "none");
+const routedPreferMellow = N.routeGapThroughConnectors(gapA, gapB, meshEdges.concat(diagonal));
+assert.ok(routedPreferMellow.some((p) => p[0] === 41.910 && p[1] === -87.650),
+  "routeGap: prefers the mellow L over a shorter high-stress diagonal");
 
 console.log("network-model OK");

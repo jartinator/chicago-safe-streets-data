@@ -1,12 +1,14 @@
 # FOIA requests — index
 
-All open-records work lives in this folder: one file per request (rationale
-+ ready-to-send body + verification), the supporting research, and the log.
+All open-records work lives in this folder: per-request rationale/dossier
+files, the supporting research, and the log. **Send-ready request bodies
+live in `docs/outbox/`** (one file per outbound message, front-matter
+tracked) — this folder links to them.
 
 | Request | File | Status |
 |---|---|---|
 | CDOT historical Bike Lane Mileage Tracker (+ City Clerk fallback) | `cdot-bikeway-mileage-history.md` | Drafts in Gmail (2026-07-12), not yet sent |
-| CDOT bicycle count data (2009 study, counters, Replica, 2023 ridership claims) | `cdot-counter-data.md` | Ready to send — anchors verified 2026-07-13 |
+| CDOT bicycle count data (2009 study, counters, Replica, 2023 ridership claims) | [`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`](../outbox/2026-07-13--foia--cdot--bicycle-count-data.md) | Ready to send — anchors verified 2026-07-13 |
 
 - **`log.md`** — one row per request: date sent, tracking #, statutory due
   date, status. Update it the day anything is sent or answered.
