@@ -303,3 +303,74 @@ environment forced a deviation. Newest last.
     and the `trail` facility category is excluded from every numerator — the
     same off-street-trails-are-not-roads rule used elsewhere in this project
     (protected-share, main routes) applies here too.
+
+22. **Network map v2: three tiers replace the major/connecting split, and
+    quality becomes four independent grades instead of a ranked ladder.**
+    #20's redesign shipped "major vs. connecting" as a binary; a follow-on
+    design cycle (owner feedback rounds + a 5-persona research panel — see
+    `docs/superpowers/specs/2026-07-13-network-tiers-design.md`, which
+    supersedes #20's layer/toggle/coloring decisions while keeping its node
+    derivation and pane plumbing) replaced it with a **Trails / Main routes /
+    Connectors** tier model, each independently toggleable with its own
+    weight and texture (trails: weight 11, "express" look; main routes:
+    weight 6, white casing, solid line color; connectors: weight 2.5,
+    dashed, neutral `#94a3b8`, identity-less — no route name, just "rideable
+    link"). The roster backing the "Main routes" tier is now an
+    **owner-signed 14 street + 5 trail = 19 lines**, down from 21: `roosevelt`
+    and `vincennes` are demoted out of the named roster entirely (their
+    segments still flow through the pipeline, just landing in the connector
+    tier rather than as a named line) — a real edit to `data/main_routes.json`,
+    not just a rendering change.
+    - **Quality regrade: four independent border levels, not a ladder.**
+      The old `offstreet > painted > none` ranking is replaced by four
+      grades that don't rank each other — `protected` (solid green
+      `#0b6e4f`), `paint` (dashed green `#0b6e4f`, buffered/painted lanes),
+      `mellow` (solid purple `#7c3aed` — greenways get their own grade now,
+      pulled out of `paint`, because a traffic-calmed street is a different
+      claim than "there is paint on this road"), and `none` (dashed red
+      `#dc2626`, legend copy "ride with traffic"). Trails stay exempt from
+      any border (they're off-street by definition — a border layer would
+      just be noise). The border geometry is uniform everywhere (same
+      weight, same dash rhythm); only the color/dash pattern encodes grade.
+    - **The standalone mellow overlay retires into two things, not one.**
+      Rather than keep mellow as its own always-separate toggle, greenways
+      already in the roster get folded into the `mellow` quality grade
+      above, and the rest of the crowdsourced Mellow Bike Map layer —
+      whatever doesn't already overlap real CDOT infrastructure — ships as
+      deduped connector-tier geometry (`build_mellow_connectors`, buffer-
+      match at 25 m against `bike_routes`, bike_routes wins on overlap;
+      `site/data/mellow_connectors.geojson`, one identity-less MultiLineString
+      feature since connectors carry no per-segment identity to preserve).
+      `mellow_routes.geojson` itself is untouched and keeps shipping for any
+      other page that still reads the raw layer.
+    - **Comfort floor: routes drain, they never break.** The headline
+      research-panel finding was that riders want to filter by their comfort
+      bar, but a naive "hide anything below my bar" would fragment a named
+      line into disconnected stubs and undermine the whole "this is a
+      continuous, nameable route" premise of the Main-routes tier. The
+      chosen semantics instead **drain** below-floor stretches to a thin
+      (3px), neutral gray (`#b6bec9`), border removed — the geometry stays
+      exactly as continuous as it was, it just stops being colored. Trails
+      are always above any floor (never drain); connectors have no identity
+      worth preserving below a floor, so they hide outright instead of
+      draining. Floor state round-trips through `?floor=paint|protected`
+      (default `any`).
+    - **Click-bug fix: an invisible marker was eating clicks near the map
+      center — a Leaflet gotcha worth recording.** The owner reported "some
+      sort of opening click issue" on the pre-v2 network map. Root cause:
+      earlier code dropped zero-opacity Leaflet `Marker`s onto the map as a
+      "keep this layer group non-empty" placeholder pattern. **Leaflet
+      markers default to `interactive: true`, and CSS `opacity: 0` does not
+      disable pointer events** — the invisible marker still sat in the
+      default `markerPane` (above every custom pane in z-order) and silently
+      swallowed clicks anywhere near the map's initial center, including
+      clicks meant for routes rendered underneath it. The fix has two parts,
+      both now load-bearing conventions in `network.js`: stub/no-data
+      notices are driven by plain feature-count checks instead of a phantom
+      marker, and every purely-decorative custom pane (halo, quality border,
+      casing, trail outline, planned-route casing) gets
+      `pane.style.pointerEvents = "none"` explicitly, so a future visual-only
+      layer can't accidentally start stealing clicks from the interactive
+      stroke drawn above it. General lesson for any Leaflet map: opacity is
+      not a substitute for `interactive: false` (or removing the layer), and
+      default panes/markers are interactive unless told otherwise.
