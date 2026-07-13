@@ -103,6 +103,7 @@ const hearingsWithAgenda = {
 };
 const nmAgenda = W.nextMeeting(hearingsWithAgenda, "2026-07-13");
 assert.strictEqual(nmAgenda.agenda_items.length, 1, "agenda_items passed through");
+assert.strictEqual(nmAgenda.agenda_amended, false, "agenda_amended always present as bool");
 assert.strictEqual(nmAgenda.agenda_items[0].title, "Vacation of alley");
 assert.strictEqual(W.nextMeeting(hearings, "2026-07-13").agenda_items, null,
   "meetings without parsed agendas carry null, not a fabricated empty list");

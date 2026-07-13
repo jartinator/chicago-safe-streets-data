@@ -86,6 +86,13 @@ def _split_heading(lines):
     running straight into the first item with no blank line between. A leading
     caps line counts as heading when it ends with ":", is a single word, or
     the first non-caps-run line starts with a ward "(…)" tag.
+
+    Known limitation: a multi-word, colon-less heading glued (no blank line)
+    to an item that has no ward tag matches none of those terminators, so the
+    heading text stays prepended to that item's verbatim agenda_text and
+    `section` keeps its previous value — a cosmetic degradation, never
+    invented text. Every heading style observed on real eLMS agendas so far
+    is covered by the three rules above.
     """
     caps_run = 0
     while (caps_run < len(lines) and _is_all_caps(lines[caps_run])

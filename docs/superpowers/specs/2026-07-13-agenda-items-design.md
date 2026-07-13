@@ -126,3 +126,9 @@ agenda for this ward"), reusing the same item shape.
 - Historic agendas — only the already-pulled upcoming meetings are parsed.
 - LLM summaries of agenda items — revisit only with the classify-style
   cached/overridable pattern if verbatim titles prove insufficient.
+
+---
+*Post-merge note (2026-07-13): main's network-tiers work claimed contract
+v1.10 while this branch was open, so the published contract bump for agenda
+items is **v1.11** (and the DECISIONS.md entry is #25). The design above
+predates the renumber.*

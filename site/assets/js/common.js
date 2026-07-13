@@ -342,7 +342,7 @@
     return lines.join("\r\n").replace(/\r?\n/g, "\r\n") + "\r\n";
   }
 
-  // Short display lines for a meeting's parsed agenda items (contract v1.10):
+  // Short display lines for a meeting's parsed agenda items (contract v1.11):
   // items tagged for `ward` first, then safety-keyword matches, then items
   // with a record number (the votable matters, with clerk-verified titles),
   // then the rest in printed-agenda order, capped at `max`. Labels are the official record

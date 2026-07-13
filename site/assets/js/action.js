@@ -318,7 +318,7 @@
     return html;
   }
 
-  // "On the agenda" sub-list for one meeting (contract v1.10 agenda_items).
+  // "On the agenda" sub-list for one meeting (contract v1.11 agenda_items).
   // Everything shown is verbatim official text (PDF or City Clerk record);
   // ward-tagged and safety-keyword items surface first via BSD.agendaHighlights.
   function agendaItemsHTML(m, ward, max) {
