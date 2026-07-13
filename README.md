@@ -74,22 +74,29 @@ cd ../site
 python3 -m http.server 8000      # http://localhost:8000
 ```
 
-> **Current data is fixture data.** The committed `site/data/` was built with
-> `--fixtures` because the build sandbox could not reach
-> `data.cityofchicago.org`. Every page shows a "demo build" banner until
-> someone runs `python3 run_all.py` for real and commits the refreshed
-> `site/data/`. The pipeline code paths are identical either way.
+> The committed `site/data/` is a real Chicago Data Portal pull (see
+> `meta.json.provenance`). If a fixtures build ever lands instead, every page
+> shows a "demo build" banner and `check_provenance.py`/data-guard fail.
 
 ## Weekly refresh
 
-1. `python3 pipeline/run_all.py`
+Automated: `.github/workflows/data-refresh.yml` runs the live pipeline every
+Monday on a GitHub runner and opens a **reviewed PR** (`data/auto-refresh`)
+with the sanity output in its body — skim row counts, date ranges, and match
+rates, then merge. Trigger it manually anytime from the Actions tab
+(workflow_dispatch). One-time setup: repo **Settings → Actions → General →
+Workflow permissions → allow GitHub Actions to create pull requests**.
+
+Manual fallback (works from any machine that can reach the portal):
+
+1. `python3 pipeline/run_all.py` (from `pipeline/`)
 2. Review the printed sanity output (row counts, date ranges, % of crashes
-   matched to a ward/bikeway).
-3. Commit the changed `site/data/` and `data/snapshots/`, merge to `main`.
+   matched to a ward/bikeway); run `python3 pipeline/check_provenance.py`.
+3. Commit the changed `site/data/` and `data/snapshots/`, PR to `main`.
 
 ## Deploy
 
 Merging to `main` triggers `.github/workflows/deploy.yml`
 (repo root), which publishes `site/` to GitHub Pages. One-time setup:
-repo **Settings → Pages → Source: "GitHub Actions"**. Data refresh is
-deliberately a local, human-reviewed step — CI only ships what was committed.
+repo **Settings → Pages → Source: "GitHub Actions"**. Data refresh arrives
+via reviewed PRs (scheduled or manual) — CI only ships what was committed.

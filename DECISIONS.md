@@ -322,3 +322,15 @@ environment forced a deviation. Newest last.
     the ward "danger score" is re-presented as a **concern rank** (relative,
     higher = worse) with its two component rates first-class and its math on
     the new `methodology.html`.
+
+23. **The weekly refresh moves to a scheduled Action that opens a PR — the
+    human review stays, the local machine goes.** #2 made refresh "a local,
+    human-reviewed step" because CI must never silently publish a bad pull.
+    That rationale was really two rules fused: (a) a human reviews the
+    sanity output before real numbers ship, and (b) the pull runs on
+    somebody's laptop. (a) is load-bearing; (b) was an accident of the
+    original sandbox's egress block. `data-refresh.yml` keeps (a) and drops
+    (b): a Monday cron runs `run_all.py` + `check_provenance.py` on a GitHub
+    runner and opens a `data/auto-refresh` PR carrying the sanity table —
+    never pushing to main. Review shrinks from "run a pipeline locally" to
+    "skim the PR, merge". The documented local run remains as a fallback.

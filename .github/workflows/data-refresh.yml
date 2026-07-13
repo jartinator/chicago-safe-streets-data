@@ -1,0 +1,77 @@
+# Weekly scheduled data refresh: runs the real pipeline on a GitHub runner
+# (which, unlike the dev sandboxes, can reach data.cityofchicago.org) and
+# opens a PR instead of pushing — the human-review ethos of DECISIONS.md #2
+# is preserved, the review just shrinks to "skim the sanity table, merge".
+# See DECISIONS.md #23. Manual runs: the workflow_dispatch button, or the
+# documented local run in README.md (still supported as a fallback).
+#
+# One-time repo setting required for the PR step:
+#   Settings -> Actions -> General -> Workflow permissions ->
+#   check "Allow GitHub Actions to create and approve pull requests".
+name: Scheduled data refresh
+
+on:
+  schedule:
+    - cron: "0 11 * * 1" # Mondays 11:00 UTC (~6am Chicago)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install pipeline dependencies
+        run: python -m pip install -r pipeline/requirements.txt
+
+      - name: Run the live pipeline
+        working-directory: pipeline
+        run: python run_all.py 2>&1 | tee ../refresh-log.txt
+
+      - name: Verify provenance (never PR a fixtures build)
+        run: python pipeline/check_provenance.py
+
+      - name: Build PR body from the sanity output
+        run: |
+          {
+            echo "Automated weekly pull from the Chicago Data Portal."
+            echo
+            echo "**Review checklist (from README's weekly-refresh steps):** row counts look sane,"
+            echo "date ranges end recently, ward/bikeway match rates high, no stage failed."
+            echo "\`check_provenance.py\` already passed in this run; the data-guard workflow"
+            echo "re-checks this PR independently."
+            echo
+            echo "<details><summary>Pipeline sanity output (last 100 lines)</summary>"
+            echo
+            echo '```'
+            tail -n 100 refresh-log.txt
+            echo '```'
+            echo
+            echo "</details>"
+          } > pr-body.md
+
+      - name: Open or update the refresh PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: |
+            site/data/**
+            data/snapshots/**
+          branch: data/auto-refresh
+          delete-branch: true
+          commit-message: "data: scheduled refresh from Chicago Data Portal"
+          title: "data: scheduled weekly refresh"
+          body-path: pr-body.md
