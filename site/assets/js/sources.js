@@ -187,12 +187,12 @@
     },
     {
       id: "ward_safety_index",
-      name: "Ward Safety Index (comparable danger score)",
-      short: "Danger score",
+      name: "Ward Safety Index (concern rank)",
+      short: "Concern rank",
       origin: "Computed from crash data + ACS 5-Year by Ward population + CDOT Bike Routes",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "A 0-100 relative danger ranking per ward, blending crashes-per-capita and crashes-per-bikeway-mile so wards can be compared fairly rather than by raw crash count, plus year-over-year crash trend and bikeway-mile growth trend.",
+      description: "A 0-100 relative concern rank per ward (higher = worse), blending crashes-per-capita and crashes-per-bikeway-mile so wards can be compared fairly rather than by raw crash count, plus year-over-year crash trend and bikeway-mile growth trend.",
       limitations: "A relative ranking across wards, not an absolute risk measure. Population comes from Census ACS estimates (sampling error applies). Infrastructure growth trend is null until at least two dated bike-route snapshots exist.",
       links: [
         { text: "ACS 5-Year Data by Ward", url: "https://data.cityofchicago.org/Community-Economic-Development/ACS-5-Year-Data-by-Ward-Most-Recent-Year/k5pk-wpt9" }
