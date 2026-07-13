@@ -223,7 +223,7 @@
 
   // Ward fill depends on state.shade: "density" (real, current default) uses
   // the wards.geojson density_band; "danger" (derived) uses the comparable
-  // danger score from ward_safety_index.json, null-safe via B.scoreColor.
+  // concern rank from ward_safety_index.json, null-safe via B.scoreColor.
   function wardFill(p) {
     if (state.shade === "danger") {
       const s = data.safetyByWard[String(p.ward)];
