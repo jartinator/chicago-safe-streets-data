@@ -83,6 +83,13 @@ assert.ok(
   "pointInBBox: point outside bbox"
 );
 
+// ---- ZOOM thresholds (spec §5): interchanges read at city scale,
+// orientation nodes wait for street level ----
+assert.deepStrictEqual(
+  N.ZOOM, { interchangeNodes: 11, lineLabels: 11, corridorLabels: 13 },
+  "ZOOM: interchange/line-label thresholds at 11, corridor/orientation-label threshold at 13"
+);
+
 // ---- DEFAULT_OVERLAYS (spec §5) ----
 assert.deepStrictEqual(
   N.DEFAULT_OVERLAYS, ["connecting", "mellow", "nodes"],

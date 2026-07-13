@@ -1,3 +1,5 @@
+from shapely.geometry import LineString, Point
+
 import aggregate
 
 
@@ -102,8 +104,8 @@ def test_build_network_nodes_no_orientation_points_is_fine():
 
 
 def test_line_bbox_padded_by_150m_merge_distance():
-    segs = [((-87.65, 41.80), (-87.65, 41.90))]
-    bbox = aggregate._line_bbox(segs)
+    geom = LineString([(-87.65, 41.80), (-87.65, 41.90)])
+    bbox = aggregate._line_bbox(geom)
     assert bbox is not None
     min_lon, min_lat, max_lon, max_lat = bbox
     # padding should be positive but small (150 m in degrees, not a huge margin)
@@ -112,8 +114,12 @@ def test_line_bbox_padded_by_150m_merge_distance():
     assert min_lat < 41.80 and max_lat > 41.90
 
 
-def test_line_bbox_empty_segments_is_none():
-    assert aggregate._line_bbox([]) is None
+def test_line_bbox_none_geometry_is_none():
+    assert aggregate._line_bbox(None) is None
+
+
+def test_line_bbox_empty_geometry_is_none():
+    assert aggregate._line_bbox(LineString()) is None
 
 
 def test_line_bboxes_disjoint():
@@ -142,3 +148,56 @@ def test_build_network_nodes_skips_far_apart_line_pair_via_bbox_prefilter():
     interchanges = [n for n in out["nodes"] if n["kind"] == "interchange"]
     assert len(interchanges) == 1
     assert interchanges[0]["lines"] == ["near-a", "near-b"]
+
+
+def test_build_network_nodes_collinear_overlap_yields_node_at_overlap_midpoint():
+    """Two lines sharing a block (running along the same street for a stretch,
+    rather than crossing at a point) must still produce one interchange node, at
+    the midpoint of the shared block. The old hand-rolled _segment_intersection
+    only solved for point crossings between two straight segments and had no
+    branch for a collinear overlap — this was a documented known miss (see the
+    old docstring's "None covers parallel/collinear segments" note) that the
+    shapely-based rewrite fixes via shapely .intersection() returning a
+    LineString/MultiLineString for a collinear shared span (see _crossing_points).
+    """
+    main_routes_gj = {
+        "lines": [{"id": "westline", "name": "West Line"}, {"id": "eastline", "name": "East Line"}],
+        "features": [
+            # both run along lat 41.85; westline spans lon -87.70 to -87.60,
+            # eastline spans lon -87.65 to -87.55 -> shared block is -87.65..-87.60,
+            # true midpoint (-87.625, 41.85).
+            _line_feat("westline", [[-87.70, 41.85], [-87.60, 41.85]]),
+            _line_feat("eastline", [[-87.65, 41.85], [-87.55, 41.85]]),
+        ],
+    }
+    out = aggregate.build_network_nodes(main_routes_gj, [])
+    interchanges = [n for n in out["nodes"] if n["kind"] == "interchange"]
+    assert len(interchanges) == 1
+    node = interchanges[0]
+    assert node["lines"] == ["westline", "eastline"]
+    assert node["lat"] == 41.85
+    assert abs(node["lng"] - (-87.625)) < 1e-6
+
+
+def test_crossing_points_point_result():
+    pts = list(aggregate._crossing_points(Point(-87.65, 41.85)))
+    assert pts == [(-87.65, 41.85)]
+
+
+def test_crossing_points_multipoint_result():
+    from shapely.geometry import MultiPoint
+    geom = MultiPoint([(-87.65, 41.85), (-87.60, 41.80)])
+    pts = set(aggregate._crossing_points(geom))
+    assert pts == {(-87.65, 41.85), (-87.60, 41.80)}
+
+
+def test_crossing_points_linestring_result_yields_midpoint():
+    geom = LineString([(-87.65, 41.85), (-87.60, 41.85)])
+    pts = list(aggregate._crossing_points(geom))
+    assert len(pts) == 1
+    assert pts[0] == (-87.625, 41.85)
+
+
+def test_crossing_points_empty_geometry_yields_nothing():
+    assert list(aggregate._crossing_points(LineString())) == []
+    assert list(aggregate._crossing_points(None)) == []

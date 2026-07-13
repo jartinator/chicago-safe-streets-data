@@ -12,12 +12,10 @@
     center: [41.8781, -87.6298],
   });
 
-  // Node visibility thresholds (spec §5): interchanges read at city scale,
-  // orientation points only once you're zoomed to street level. Corridor
-  // labels for the demoted local network share the orientation threshold.
-  const NODE_INTERCHANGE_MIN_ZOOM = 11;
-  const LINE_LABEL_MIN_ZOOM = 11; // street-line labels collide at citywide zoom; trails stay labeled
-  const LABEL_MIN_ZOOM = 13;
+  // Node/label visibility thresholds live in network-model.js as BSDNet.ZOOM
+  // (spec §5): interchanges read at city scale, orientation points only once
+  // you're zoomed to street level. Corridor labels for the demoted local
+  // network share the orientation threshold.
 
   // Explicit panes (not DOM insertion order) so z-order is stable no matter
   // which toggles are on at load vs. flipped later. Bottom -> top per spec
@@ -45,7 +43,7 @@
     nodesOrientation: L.layerGroup(), // orientation nodes, toggle "nodes" + z >= 13
     labels: L.layerGroup(),        // corridor labels for local streets, z >= 13
     lineLabelsTrails: L.layerGroup(),  // trail-line name labels: peripheral, shown at all zooms
-    lineLabelsStreets: L.layerGroup(), // street-line name labels: central and collision-prone, z >= LINE_LABEL_MIN_ZOOM
+    lineLabelsStreets: L.layerGroup(), // street-line name labels: central and collision-prone, z >= BSDNet.ZOOM.lineLabels
     planned: L.layerGroup(),
     plannedCasing: L.layerGroup(),
   };
@@ -212,7 +210,7 @@
       .setLatLng(labelAnchor(members))
       .setContent(`<span style="color:${color}">${BSD.esc(lineMeta.name)}</span>`);
     // Trail labels sit at the city's edges and read fine citywide; the street
-    // lines cluster downtown and their labels pile up below LINE_LABEL_MIN_ZOOM.
+    // lines cluster downtown and their labels pile up below BSDNet.ZOOM.lineLabels.
     if (lineMeta.source === "osm_trails") layers.lineLabelsTrails.addLayer(tooltip);
     else layers.lineLabelsStreets.addLayer(tooltip);
   });
@@ -278,29 +276,30 @@
   // Nodes (spec §7): interchanges (derived intersections between distinct
   // lines) and orientation points (curated major-road crossings). No crash
   // scaling anywhere — these are wayfinding markers, not safety data.
-  function makeInterchangeMarker(n) {
+  // Interchanges get the bolder marker + hover-only tooltip (they carry
+  // their own weight at city scale); orientation points get a smaller,
+  // muted marker with a permanent label (they only appear once zoomed in,
+  // so the label can stay on without cluttering the view).
+  const NODE_MARKER_STYLE = {
+    interchange: { radius: 5, color: "#1a2330", weight: 2.5 },
+    orientation: { radius: 3.5, color: "#64748b", weight: 2 },
+  };
+  function makeNodeMarker(n) {
+    const style = NODE_MARKER_STYLE[n.kind];
     const marker = L.circleMarker([n.lat, n.lng], {
-      pane: "nodesPane", radius: 5, color: "#1a2330", weight: 2.5,
+      pane: "nodesPane", radius: style.radius, color: style.color, weight: style.weight,
       fillColor: "#ffffff", fillOpacity: 1,
     });
-    marker.bindTooltip(BSD.esc(n.label), { direction: "top", offset: [0, -8] });
-    marker.on("click", () => showNodeDetail(n));
-    return marker;
-  }
-  function makeOrientationMarker(n) {
-    const marker = L.circleMarker([n.lat, n.lng], {
-      pane: "nodesPane", radius: 3.5, color: "#64748b", weight: 2,
-      fillColor: "#ffffff", fillOpacity: 1,
-    });
-    marker.bindTooltip(BSD.esc(n.label), {
-      permanent: true, direction: "top", className: "node-label", offset: [0, -6],
-    });
+    const tooltipOpts = n.kind === "orientation"
+      ? { permanent: true, direction: "top", className: "node-label", offset: [0, -6] }
+      : { direction: "top", offset: [0, -8] };
+    marker.bindTooltip(BSD.esc(n.label), tooltipOpts);
     marker.on("click", () => showNodeDetail(n));
     return marker;
   }
   (nodesData.nodes || []).forEach((n) => {
-    if (n.kind === "interchange") layers.nodesInterchange.addLayer(makeInterchangeMarker(n));
-    else if (n.kind === "orientation") layers.nodesOrientation.addLayer(makeOrientationMarker(n));
+    if (n.kind === "interchange") layers.nodesInterchange.addLayer(makeNodeMarker(n));
+    else if (n.kind === "orientation") layers.nodesOrientation.addLayer(makeNodeMarker(n));
   });
 
   // Always-on layers (major routes: casing under colored line, line-name
@@ -308,7 +307,7 @@
   layers.casing.addTo(map);
   layers.lines.addTo(map);
   layers.lineLabelsTrails.addTo(map);
-  // lineLabelsStreets mounts via updateDeclutter() once zoomed past LINE_LABEL_MIN_ZOOM.
+  // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
   if (state.overlays.has("connecting")) {
     layers.local.addTo(map);
@@ -323,30 +322,21 @@
   // Zoom-dependent declutter: node markers and corridor labels are dense at
   // city scale, so they're only shown once zoomed in enough to read them.
   // Simplest compliant approach: add/remove the whole group. Interchange
-  // nodes read at NODE_INTERCHANGE_MIN_ZOOM; orientation nodes and the
-  // demoted local network's corridor labels wait for LABEL_MIN_ZOOM.
+  // nodes read at BSDNet.ZOOM.interchangeNodes; orientation nodes and the
+  // demoted local network's corridor labels wait for BSDNet.ZOOM.corridorLabels.
+  function setLayerVisible(layer, visible) {
+    if (visible) {
+      if (!map.hasLayer(layer)) layer.addTo(map);
+    } else if (map.hasLayer(layer)) {
+      map.removeLayer(layer);
+    }
+  }
   function updateDeclutter() {
     const z = map.getZoom();
-    if (z >= LINE_LABEL_MIN_ZOOM) {
-      if (!map.hasLayer(layers.lineLabelsStreets)) layers.lineLabelsStreets.addTo(map);
-    } else if (map.hasLayer(layers.lineLabelsStreets)) {
-      map.removeLayer(layers.lineLabelsStreets);
-    }
-    if (state.overlays.has("nodes") && z >= NODE_INTERCHANGE_MIN_ZOOM) {
-      if (!map.hasLayer(layers.nodesInterchange)) layers.nodesInterchange.addTo(map);
-    } else if (map.hasLayer(layers.nodesInterchange)) {
-      map.removeLayer(layers.nodesInterchange);
-    }
-    if (state.overlays.has("nodes") && z >= LABEL_MIN_ZOOM) {
-      if (!map.hasLayer(layers.nodesOrientation)) layers.nodesOrientation.addTo(map);
-    } else if (map.hasLayer(layers.nodesOrientation)) {
-      map.removeLayer(layers.nodesOrientation);
-    }
-    if (state.overlays.has("connecting") && z >= LABEL_MIN_ZOOM) {
-      if (!map.hasLayer(layers.labels)) layers.labels.addTo(map);
-    } else if (map.hasLayer(layers.labels)) {
-      map.removeLayer(layers.labels);
-    }
+    setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
+    setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z >= BSDNet.ZOOM.interchangeNodes);
+    setLayerVisible(layers.nodesOrientation, state.overlays.has("nodes") && z >= BSDNet.ZOOM.corridorLabels);
+    setLayerVisible(layers.labels, state.overlays.has("connecting") && z >= BSDNet.ZOOM.corridorLabels);
   }
   map.on("zoomend", updateDeclutter);
 
@@ -413,7 +403,7 @@
   // termini, sourced from main_routes.geojson's `lines` array.
   function legendRow(line) {
     const color = BSDNet.LINE_COLORS[line.id] || BSDNet.FALLBACK_LINE_COLOR;
-    const tier = line.no_data ? "stub" : line.data_tier;
+    const tier = BSD.lineBadgeTier(line);
     // Name row and termini row are separate lines: with the tier badge in the
     // flex row there isn't enough width left for "name — termini" without
     // one-word-per-line wrapping in the 300px panel.
