@@ -230,6 +230,16 @@ def _minimal_offline_fixture(site_data_dir, osm_trails_features):
     (site_data_dir / "ward_311.json").write_text(json.dumps({
         "data_tier": "proxy", "note": "test 311 note.", "wards": [],
     }))
+    # emit_api (run at the end of refresh_reporting.main) loads these two
+    # unconditionally, same as every other site/data file — mirror them here.
+    (site_data_dir / "news_items.json").write_text(json.dumps({
+        "data_tier": "real", "match_tier": "derived", "as_of": None,
+        "note": "test news note.", "items": [],
+    }))
+    (site_data_dir / "proposed_projects.json").write_text(json.dumps({
+        "data_tier": "derived", "coverage_tier": "real", "match_tier": "derived",
+        "as_of": None, "note": "test proposed note.", "projects": [],
+    }))
     (site_data_dir / "bike_routes.geojson").write_text(json.dumps({
         "type": "FeatureCollection", "features": [],
     }))
