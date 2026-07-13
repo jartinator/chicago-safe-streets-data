@@ -95,9 +95,11 @@
     corridorLabels: 13,
   };
 
-  // Default overlay ids enabled when network.html has no ?overlays= param
-  // (design v2 §10): all three tiers on, quality off, nodes on, planned off.
-  const DEFAULT_OVERLAYS = ["trails", "main", "connectors", "nodes"];
+  // Default overlay ids enabled when network.html has no ?overlays= param:
+  // trails + main + nodes on; connectors (background mesh), quality and
+  // planned off. Connectors default off so the metro lines read clean —
+  // the toggle brings the mesh back.
+  const DEFAULT_OVERLAYS = ["trails", "main", "nodes"];
 
   // Sentinel for "explicitly no overlays": BSD.setParams deletes params
   // whose value is "", so an empty set serialized as "" would vanish from
@@ -442,7 +444,8 @@
   // endpoint farthest from the endpoint centroid (terminus-to-terminus,
   // not out from the middle). Handles a trail's parallel/overlapping side
   // branches well (walks up one branch and back down the other), but can
-  // ping-pong on long diagonal corridors.
+  // ping-pong on long diagonal corridors. Returns the joins plus the
+  // chain's two overall termini.
   function chainGreedy(usable) {
     const endpoints = [];
     usable.forEach((p, i) => {
@@ -475,7 +478,7 @@
       end = bestFlip ? p[0] : p[p.length - 1];
       used[bestI] = true;
     }
-    return joins;
+    return { joins, head: start.pt, tail: end };
   }
 
   // Chain parts by their projection onto the endpoint cloud's principal
@@ -506,24 +509,221 @@
     for (let i = 1; i < ordered.length; i++) {
       joins.push([ordered[i - 1].tail, ordered[i].head]);
     }
-    return joins;
+    return { joins, head: ordered[0].head, tail: ordered[ordered.length - 1].tail };
   }
 
   // Neither chaining strategy wins everywhere, so run both and keep
   // whichever bridges the line with less total added ink (tie: fewer
   // bridges). On this repo's data the two agree on every straightforward
-  // street line and each covers the other's failure mode.
-  function gapSegments(parts, joinToleranceMeters) {
+  // street line and each covers the other's failure mode. Returns
+  // { gaps, termini: [chainStart, chainEnd] }.
+  function chainPlan(parts, joinToleranceMeters) {
     const tol = joinToleranceMeters == null ? GAP_JOIN_TOLERANCE_METERS : joinToleranceMeters;
     const usable = (parts || []).filter((p) => p && p.length >= 2);
-    if (usable.length <= 1) return [];
-    const candidates = [chainGreedy(usable), chainByAxis(usable)].map((joins) => {
-      const gaps = joins.filter(([a, b]) => distMeters(a, b) > tol);
+    if (usable.length === 0) return { gaps: [], termini: null };
+    if (usable.length === 1) {
+      const p = usable[0];
+      return { gaps: [], termini: [p[0], p[p.length - 1]] };
+    }
+    const candidates = [chainGreedy(usable), chainByAxis(usable)].map((chain) => {
+      const gaps = chain.joins.filter(([a, b]) => distMeters(a, b) > tol);
       const total = gaps.reduce((s, [a, b]) => s + distMeters(a, b), 0);
-      return { gaps, total };
+      return { gaps, total, termini: [chain.head, chain.tail] };
     });
     candidates.sort((a, b) => a.total - b.total || a.gaps.length - b.gaps.length);
-    return candidates[0].gaps;
+    return { gaps: candidates[0].gaps, termini: candidates[0].termini };
+  }
+
+  function gapSegments(parts, joinToleranceMeters) {
+    return chainPlan(parts, joinToleranceMeters).gaps;
+  }
+
+  // ---- Cross-street continuity for multi-street lines ----
+  // A line built from several streets (the Jackson–Washington couplet,
+  // Clark's Dearborn tail, the downtown Randolph trunk approaches) chains
+  // gaps per street, so the couplet never zigzags between its two
+  // parallels. Streets then connect to each other with at most ONE feeder
+  // bridge per street pair — terminus of one street to the nearest point
+  // on the other — and only when the two chains don't already touch or
+  // cross, and the feeder isn't longer than `maxFeederMeters` (a couplet's
+  // far-apart western ends shouldn't get a phantom crosstown rung).
+
+  function segsCross(p1, p2, p3, p4) {
+    const ccw = (a, b, c) => (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const d1 = ccw(p3, p4, p1), d2 = ccw(p3, p4, p2);
+    const d3 = ccw(p1, p2, p3), d4 = ccw(p1, p2, p4);
+    return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+  }
+
+  // Nearest point on any of `segs` (list of [[lat,lng],[lat,lng]]) to `pt`,
+  // as { pt: [lat,lng], dist: meters } — meter-space projection around pt.
+  function nearestOnChain(pt, segs) {
+    const mLng = metersPerDegLng(pt[0]);
+    const toM = (p) => [p[1] * mLng, p[0] * METERS_PER_DEG_LAT];
+    const pm = toM(pt);
+    let best = null;
+    segs.forEach(([a, b]) => {
+      const am = toM(a), bm = toM(b);
+      const dx = bm[0] - am[0], dy = bm[1] - am[1];
+      const lenSq = dx * dx + dy * dy;
+      let t = lenSq === 0 ? 0 : ((pm[0] - am[0]) * dx + (pm[1] - am[1]) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const qx = am[0] + t * dx, qy = am[1] + t * dy;
+      const dist = Math.hypot(pm[0] - qx, pm[1] - qy);
+      if (best == null || dist < best.dist) {
+        best = { dist, pt: [qy / METERS_PER_DEG_LAT, qx / mLng] };
+      }
+    });
+    return best;
+  }
+
+  const CROSS_STREET_MAX_FEEDER_METERS = 1200;
+
+  // partsByStreet: array of part-lists, one per street of the line.
+  // Returns feeder gap segments [[lat,lng],[lat,lng]].
+  function crossStreetGaps(partsByStreet, joinToleranceMeters, maxFeederMeters) {
+    const tol = joinToleranceMeters == null ? GAP_JOIN_TOLERANCE_METERS : joinToleranceMeters;
+    const maxFeeder = maxFeederMeters == null ? CROSS_STREET_MAX_FEEDER_METERS : maxFeederMeters;
+    const chains = (partsByStreet || []).map((parts) => {
+      const usable = (parts || []).filter((p) => p && p.length >= 2);
+      if (usable.length === 0) return null;
+      const segs = [];
+      usable.forEach((p) => {
+        for (let i = 0; i < p.length - 1; i++) segs.push([p[i], p[i + 1]]);
+      });
+      return { termini: chainPlan(usable, tol).termini, segs };
+    }).filter(Boolean);
+    if (chains.length <= 1) return [];
+
+    const gaps = [];
+    for (let i = 0; i < chains.length; i++) {
+      for (let j = i + 1; j < chains.length; j++) {
+        const A = chains[i], B = chains[j];
+        let best = null;
+        [[A, B], [B, A]].forEach(([from, to]) => {
+          from.termini.forEach((t) => {
+            const hit = nearestOnChain(t, to.segs);
+            if (hit && (best == null || hit.dist < best.dist)) {
+              best = { dist: hit.dist, gap: [t, hit.pt] };
+            }
+          });
+        });
+        if (!best || best.dist <= tol || best.dist > maxFeeder) continue;
+        const cross = A.segs.some(([a1, a2]) => B.segs.some(([b1, b2]) => segsCross(a1, a2, b1, b2)));
+        if (cross) continue; // chains intersect — already connected
+        gaps.push(best.gap);
+      }
+    }
+    return gaps;
+  }
+
+  // ---- Gap routing over the connector mesh ----
+  // A gap bridge shouldn't cut across blocks when a real low-stress link
+  // exists nearby: route it over the connector tier (Dijkstra over part
+  // endpoints), preferring the mellowest grades, and fall back to the
+  // straight bridge when nothing rideable is close or the detour is too
+  // long. Cost = meters x grade penalty, so cost <= budget also bounds the
+  // geometric detour (penalties are all >= 1).
+
+  // facility_category -> comfort grade for connector-tier bike_routes
+  // segments (same buckets the pipeline's MAIN_ROUTE_GRADE_MAP uses).
+  const CONNECTOR_GRADE_MAP = {
+    protected: "protected", buffered: "paint", painted: "paint",
+    greenway: "mellow", trail: "offstreet",
+  };
+  const ROUTE_GRADE_PENALTY = { offstreet: 1, mellow: 1.05, protected: 1.2, paint: 1.4, none: 1.8 };
+  const ROUTE_SNAP_PENALTY = 1.6; // off-mesh crawl to reach the mesh
+
+  function pathLengthMeters(part) {
+    let sum = 0;
+    for (let i = 1; i < part.length; i++) sum += distMeters(part[i - 1], part[i]);
+    return sum;
+  }
+
+  // Flatten connector-tier latlngs (flat or multi-part) into router edges.
+  function connectorEdges(latlngs, grade) {
+    const parts = isMultiPart(latlngs) ? latlngs : [latlngs];
+    return parts.filter((p) => p && p.length >= 2).map((p) => ({
+      a: p[0], b: p[p.length - 1], latlngs: p,
+      lengthM: pathLengthMeters(p), grade,
+    }));
+  }
+
+  function routeGapThroughConnectors(a, b, edges, opts) {
+    const o = opts || {};
+    const straight = distMeters(a, b);
+    const minRoute = o.minRouteMeters == null ? 150 : o.minRouteMeters;
+    if (straight < minRoute) return null; // short hop: straight is honest enough
+    const detourFactor = o.detourFactor == null ? 1.8 : o.detourFactor;
+    const snapRadius = o.snapRadiusMeters == null ? 100 : o.snapRadiusMeters;
+    const budget = straight * detourFactor + 100;
+
+    // Local subgraph: only edges with an endpoint near the gap.
+    const marginM = straight * 0.6 + 300;
+    const refLat = (a[0] + b[0]) / 2;
+    const mLng = metersPerDegLng(refLat);
+    const dLat = marginM / METERS_PER_DEG_LAT, dLng = marginM / mLng;
+    const loLat = Math.min(a[0], b[0]) - dLat, hiLat = Math.max(a[0], b[0]) + dLat;
+    const loLng = Math.min(a[1], b[1]) - dLng, hiLng = Math.max(a[1], b[1]) + dLng;
+    const near = (p) => p[0] >= loLat && p[0] <= hiLat && p[1] >= loLng && p[1] <= hiLng;
+    const local = (edges || []).filter((e) => near(e.a) || near(e.b));
+    if (local.length === 0) return null;
+
+    // Nodes: part endpoints quantized to ~30 m cells so touching parts join.
+    const CELL = 30;
+    const keyOf = (p) => Math.round((p[0] * METERS_PER_DEG_LAT) / CELL) + ":" + Math.round((p[1] * mLng) / CELL);
+    const nodePt = new Map(); // key -> representative [lat,lng]
+    const adj = new Map();    // key -> [{to, cost, latlngs}]
+    const addNode = (p) => {
+      const k = keyOf(p);
+      if (!nodePt.has(k)) { nodePt.set(k, p); adj.set(k, []); }
+      return k;
+    };
+    local.forEach((e) => {
+      const kA = addNode(e.a), kB = addNode(e.b);
+      if (kA === kB) return; // loop part — useless for routing
+      const cost = e.lengthM * (ROUTE_GRADE_PENALTY[e.grade] || ROUTE_GRADE_PENALTY.none);
+      adj.get(kA).push({ to: kB, cost, latlngs: e.latlngs });
+      adj.get(kB).push({ to: kA, cost, latlngs: e.latlngs.slice().reverse() });
+    });
+
+    // Snap the gap endpoints onto nearby mesh nodes.
+    const START = "@a", GOAL = "@b";
+    adj.set(START, []);
+    adj.set(GOAL, []);
+    nodePt.forEach((p, k) => {
+      const dA = distMeters(a, p);
+      if (dA <= snapRadius) adj.get(START).push({ to: k, cost: dA * ROUTE_SNAP_PENALTY, latlngs: [a, p] });
+      const dB = distMeters(b, p);
+      if (dB <= snapRadius) adj.get(k).push({ to: GOAL, cost: dB * ROUTE_SNAP_PENALTY, latlngs: [p, b] });
+    });
+    if (adj.get(START).length === 0) return null;
+
+    // Dijkstra (linear-min extraction — local graphs are small).
+    const dist = new Map([[START, 0]]);
+    const prev = new Map(); // key -> {from, latlngs}
+    const done = new Set();
+    for (;;) {
+      let cur = null, curD = Infinity;
+      dist.forEach((d, k) => { if (!done.has(k) && d < curD) { curD = d; cur = k; } });
+      if (cur == null || curD > budget) return null;
+      if (cur === GOAL) break;
+      done.add(cur);
+      (adj.get(cur) || []).forEach((e) => {
+        const nd = curD + e.cost;
+        if (nd < (dist.has(e.to) ? dist.get(e.to) : Infinity)) {
+          dist.set(e.to, nd);
+          prev.set(e.to, { from: cur, latlngs: e.latlngs });
+        }
+      });
+    }
+
+    // Reconstruct: concatenate edge geometries START -> GOAL.
+    const hops = [];
+    for (let k = GOAL; k !== START; k = prev.get(k).from) hops.unshift(prev.get(k).latlngs);
+    const path = [a];
+    hops.forEach((ll) => { ll.forEach((p, i) => { if (!(i === 0)) path.push(p); }); });
+    return path;
   }
 
   // ---- Interlining (spec §6): shared-track render-plan helpers ----
@@ -577,6 +777,16 @@
   }
 
   const INTERLINE_GAP_METERS = 2.2;
+
+  // Interlined strands must stay visually separated at every zoom, so the
+  // render-time strand gap is set in PIXELS and converted to meters at the
+  // current zoom (network.js re-offsets on zoomend). This deliberately
+  // widens shared runs beyond their true geography at overview zooms —
+  // the DC-metro read the network screen aims for.
+  const INTERLINE_GAP_PX = 3;
+  function metersPerPixel(lat, zoom) {
+    return (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+  }
 
   // Symmetric per-strand offsets (meters), one per parallel strand sharing
   // a track, spaced `gapMeters` apart center-to-center and centered on 0
@@ -634,8 +844,10 @@
     QUALITY_MIX_ORDER, qualityMixSegments,
     buildRosterIndex, linesById, splitByRoster, membersOfLine, rosterStreets,
     simplifyPart, simplifyLatLngs, schematicLatLngs, SIMPLIFY_TOLERANCE_METERS,
+    chainPlan, crossStreetGaps, CROSS_STREET_MAX_FEEDER_METERS,
+    CONNECTOR_GRADE_MAP, connectorEdges, pathLengthMeters, routeGapThroughConnectors,
     isMultiPart, offsetPart, offsetLatLngs, strandOffsets, pathEndpoints,
-    planInterlinedRoute, INTERLINE_GAP_METERS,
+    planInterlinedRoute, INTERLINE_GAP_METERS, INTERLINE_GAP_PX, metersPerPixel,
   };
 
   root.BSDNet = api;

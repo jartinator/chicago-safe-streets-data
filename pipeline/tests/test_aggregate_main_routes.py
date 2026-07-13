@@ -135,6 +135,43 @@ def test_clip_bbox_filters_by_segment_midpoint():
     assert len(seg_ids) == len(set(seg_ids)) == 2
 
 
+def test_per_street_clip_bbox_claims_only_part_of_a_street():
+    # streets entries may be {"name", "clip_bbox"}: a per-street bbox clips
+    # that street alone, leaving the line's other streets unclipped.
+    mini_roster = {"lines": [
+        {"id": "diag", "name": "Diag", "termini": "a", "source": "bike_routes",
+         "streets": ["MILWAUKEE",
+                     {"name": "RANDOLPH", "clip_bbox": [41.88, -87.65, 41.89, -87.61]}]},
+    ]}
+    routes = _fc([
+        _seg("m-far", "MILWAUKEE", "protected", mid=(41.95, -87.70)),   # unclipped street: kept anywhere
+        _seg("r-loop", "RANDOLPH", "protected", mid=(41.884, -87.63)),  # inside the street bbox: kept
+        _seg("r-west", "RANDOLPH", "painted", mid=(41.884, -87.72)),    # outside it: dropped
+    ])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, mini_roster)
+    seg_ids = {f["properties"]["segment_id"] for f in out["features"]}
+    assert seg_ids == {"m-far", "r-loop"}
+
+
+def test_downtown_trunk_is_shared_by_four_lines():
+    # The shipped roster interlines the Loop stretch of RANDOLPH across
+    # milwaukee/clark/lake/jackson-washington (in roster order) so those
+    # four connect downtown and lead to the Lakefront Trail.
+    routes = _fc([_seg("r-trunk", "RANDOLPH", "protected", mid=(41.8845, -87.622))])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    props = out["features"][0]["properties"]
+    assert props["line_ids"] == ["milwaukee", "clark", "lake", "jackson-washington"]
+    assert props["line_id"] == "milwaukee"
+
+
+def test_street_property_emitted_on_members():
+    # The UI chains gap fills per source street (couplet lines like
+    # Jackson–Washington must not zigzag between their two streets).
+    routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])
+    out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
+    assert out["features"][0]["properties"]["street"] == "MILWAUKEE"
+
+
 def test_street_suffix_variant_matches_roster():
     # the raw data carries both MILWAUKEE and MILWAUKEE AVE (spec §5)
     routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])

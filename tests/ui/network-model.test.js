@@ -98,19 +98,19 @@ assert.deepStrictEqual(
   "ZOOM: interchange/line-label thresholds at 11, corridor/orientation-label threshold at 13"
 );
 
-// ---- DEFAULT_OVERLAYS (design v2 §10: all three tiers + nodes on, quality/planned off) ----
+// ---- DEFAULT_OVERLAYS: trails+main+nodes on; connectors/quality/planned off ----
 assert.deepStrictEqual(
-  N.DEFAULT_OVERLAYS, ["trails", "main", "connectors", "nodes"],
-  "DEFAULT_OVERLAYS: trails+main+connectors+nodes on by default, quality/planned off"
+  N.DEFAULT_OVERLAYS, ["trails", "main", "nodes"],
+  "DEFAULT_OVERLAYS: trails+main+nodes on by default; connectors mesh, quality, planned off"
 );
 
 // ---- parseOverlays / serializeOverlays (network.html URL state) ----
 assert.deepStrictEqual(
-  [...N.parseOverlays(null)], ["trails", "main", "connectors", "nodes"],
+  [...N.parseOverlays(null)], ["trails", "main", "nodes"],
   "parseOverlays: null (param absent) falls back to defaults"
 );
 assert.deepStrictEqual(
-  [...N.parseOverlays(undefined)], ["trails", "main", "connectors", "nodes"],
+  [...N.parseOverlays(undefined)], ["trails", "main", "nodes"],
   "parseOverlays: undefined falls back to defaults"
 );
 assert.strictEqual(
@@ -136,8 +136,8 @@ assert.strictEqual(
 );
 assert.strictEqual(
   N.serializeOverlays(N.parseOverlays(null)),
-  "trails,main,connectors,nodes",
-  "round-trip: absent param -> defaults -> 'trails,main,connectors,nodes'"
+  "trails,main,nodes",
+  "round-trip: absent param -> defaults -> 'trails,main,nodes'"
 );
 
 // Empty set must survive the URL: BSD.setParams deletes empty-string params
@@ -549,5 +549,89 @@ assert.deepStrictEqual(N.gapSegments([partA]), [], "gapSegments: single part");
 assert.deepStrictEqual(N.gapSegments([partA, [[41.99, -87.60]]]), [],
   "gapSegments: sub-2-vertex parts are ignored");
 assert.ok(N.GAP_JOIN_TOLERANCE_METERS > 0, "GAP_JOIN_TOLERANCE_METERS: positive");
+
+// ---- chainPlan termini ----
+assert.deepStrictEqual(N.chainPlan([partA]).termini, [[41.90, -87.65], [41.91, -87.65]],
+  "chainPlan: single part -> its own endpoints");
+assert.strictEqual(N.chainPlan([]).termini, null, "chainPlan: no parts -> no termini");
+const planABC = N.chainPlan([partC, partA, partB]);
+const termKeys = planABC.termini.map((p) => p.join(",")).sort();
+assert.deepStrictEqual(termKeys, ["41.9,-87.65", "41.95,-87.65"],
+  "chainPlan: termini are the chain's outermost endpoints regardless of input order");
+assert.strictEqual(planABC.gaps.length, 2, "chainPlan: gaps match gapSegments");
+
+// ---- crossStreetGaps ----
+// Couplet: two parallel north-south streets ~890 m apart, not touching.
+// Exactly ONE feeder bridge per pair, terminus -> nearest point on the
+// other chain (a projection, not necessarily the other chain's terminus).
+const streetWest = [[[41.90, -87.66], [41.94, -87.66]]];
+const streetEast = [[[41.88, -87.65], [41.92, -87.65]]];
+const feeders = N.crossStreetGaps([streetWest, streetEast]);
+assert.strictEqual(feeders.length, 1, "crossStreetGaps: one feeder per street pair");
+const feederLen = feeders[0] && Math.round(Math.hypot(
+  (feeders[0][0][0] - feeders[0][1][0]) * 111320,
+  (feeders[0][0][1] - feeders[0][1][1]) * 111320 * Math.cos(41.9 * Math.PI / 180)));
+assert.ok(feederLen < 900, "crossStreetGaps: feeder takes the shortest terminus->chain hop, ~830 m here, got " + feederLen);
+
+// Crossing chains are already connected — no feeder.
+const northSouth = [[[41.88, -87.65], [41.92, -87.65]]];
+const eastWest = [[[41.90, -87.66], [41.90, -87.64]]];
+assert.deepStrictEqual(N.crossStreetGaps([northSouth, eastWest]), [],
+  "crossStreetGaps: chains that cross need no feeder");
+
+// Far-apart parallels (beyond maxFeeder) stay unbridged.
+const farEast = [[[41.88, -87.60], [41.92, -87.60]]];
+assert.deepStrictEqual(N.crossStreetGaps([streetWest, farEast]), [],
+  "crossStreetGaps: no phantom crosstown rung beyond the feeder cap");
+
+// Touching chains (shared endpoint) need no feeder.
+const touchA = [[[41.90, -87.65], [41.91, -87.65]]];
+const touchB = [[[41.91, -87.65], [41.91, -87.64]]];
+assert.deepStrictEqual(N.crossStreetGaps([touchA, touchB]), [],
+  "crossStreetGaps: touching chains need no feeder");
+
+// ---- connectorEdges / pathLengthMeters ----
+const edgePart = [[41.90, -87.65], [41.91, -87.65], [41.91, -87.64]];
+assert.strictEqual(Math.round(N.pathLengthMeters(edgePart)), Math.round(1113.2 + 829),
+  "pathLengthMeters: sums vertex-to-vertex meters");
+const edges1 = N.connectorEdges(edgePart, "mellow");
+assert.strictEqual(edges1.length, 1, "connectorEdges: flat part -> one edge");
+assert.deepStrictEqual(edges1[0].a, [41.90, -87.65], "connectorEdges: edge endpoints");
+assert.strictEqual(edges1[0].grade, "mellow", "connectorEdges: carries grade");
+assert.strictEqual(N.connectorEdges([edgePart, [[41.0, -87.0]]], "none").length, 1,
+  "connectorEdges: multi-part input, sub-2-vertex parts dropped");
+
+// ---- routeGapThroughConnectors ----
+// Gap from (41.900,-87.650) to (41.910,-87.640): straight ~1385 m. A mellow
+// L-shaped connector runs right along it, its corner at (41.910,-87.650),
+// endpoints within snap radius of the gap ends.
+const gapA = [41.900, -87.650], gapB = [41.910, -87.640];
+const LConn = [
+  { part: [[41.9003, -87.650], [41.910, -87.650]], grade: "mellow" },  // north leg
+  { part: [[41.910, -87.650], [41.910, -87.6403]], grade: "mellow" },  // east leg
+];
+const meshEdges = LConn.flatMap((c) => N.connectorEdges(c.part, c.grade));
+const routed = N.routeGapThroughConnectors(gapA, gapB, meshEdges);
+assert.ok(routed, "routeGap: nearby mellow connector is used");
+assert.deepStrictEqual(routed[0], gapA, "routeGap: path starts at the gap start");
+assert.deepStrictEqual(routed[routed.length - 1], gapB, "routeGap: path ends at the gap end");
+assert.ok(routed.some((p) => p[0] === 41.910 && p[1] === -87.650),
+  "routeGap: path passes through the connector's corner");
+
+// Short gaps stay straight (null -> caller draws [a, b]).
+assert.strictEqual(N.routeGapThroughConnectors([41.900, -87.650], [41.9008, -87.650], meshEdges), null,
+  "routeGap: sub-150 m gaps don't route");
+
+// No mesh nearby -> null (straight fallback).
+assert.strictEqual(N.routeGapThroughConnectors([41.70, -87.70], [41.72, -87.70], meshEdges), null,
+  "routeGap: no nearby connectors -> straight fallback");
+
+// Mellow beats a shorter 'none' path when penalties say so: same L-gap,
+// but add a direct 'none' diagonal whose penalized cost (1385*1.8=2493)
+// exceeds the mellow L (2214*1.05=2325).
+const diagonal = N.connectorEdges([[41.9003, -87.650], [41.9099, -87.6402]], "none");
+const routedPreferMellow = N.routeGapThroughConnectors(gapA, gapB, meshEdges.concat(diagonal));
+assert.ok(routedPreferMellow.some((p) => p[0] === 41.910 && p[1] === -87.650),
+  "routeGap: prefers the mellow L over a shorter high-stress diagonal");
 
 console.log("network-model OK");

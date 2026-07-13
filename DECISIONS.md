@@ -437,3 +437,20 @@ environment forced a deviation. Newest last.
     published note says the PDF is authoritative, and the only derived fields
     are two booleans (`safety_keyword_match`, `tracked`) computed in
     aggregate.py.
+
+26. **Downtown convergence: four lines interline into a Loop trunk that leads
+    to the Lakefront Trail.** The Milwaukee, Clark, Lake Street, and
+    Jackson–Washington lines previously stubbed out at scattered downtown
+    ends. The roster now routes all four onto real shared facilities —
+    Randolph (protected/buffered, Desplaines to the lakefront at ~-87.6135),
+    Washington east of Halsted, the one-block protected Michigan link, and
+    Clark's tail via Dearborn's protected two-way lane (not the Walton stub) —
+    using per-street `clip_bbox` entries so a line claims only its stretch of
+    a shared street. Shared segments render as pixel-spaced parallel strands
+    (interlining, spec §6), so the trunk reads DC-metro style at every zoom.
+    Couplet/multi-street lines chain gap fills per source street with at most
+    one feeder bridge per street pair, and every gap bridge prefers routing
+    over the connector mesh (mellowest grade first, detour-capped, straight
+    fallback) — the lightened color still marks all of it as inferred
+    continuity. Connectors default off on the network map; the toggle brings
+    the mesh back.

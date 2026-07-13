@@ -174,11 +174,14 @@
         });
       });
     } else {
-      rec.casingLayer.setStyle({ opacity: dimOpacity, weight: rec.casingBaseWeight * weightFactor });
+      // Interlined braids widen the casing/border by the extra strands'
+      // pixel span; single-strand records get plain zoom-scaled weights.
+      const extraPx = (rec.strandLayers.length - 1) * strandGapPx();
+      rec.casingLayer.setStyle({ opacity: dimOpacity, weight: rec.casingBaseWeight * weightFactor + extraPx });
       const borderStyle = BSDNet.qualityBorderStyle(rec.grade);
       if (rec.borderLayer) {
         rec.borderLayer.setStyle(borderStyle
-          ? { ...borderStyle, weight: borderStyle.weight * weightFactor, opacity: dimOpacity }
+          ? { ...borderStyle, weight: borderStyle.weight * weightFactor + extraPx, opacity: dimOpacity }
           : { opacity: 0 });
       }
       rec.strandLayers.forEach((s) => {
@@ -400,14 +403,35 @@
     }
     return 0;
   }
-  function capsuleIcon(bearingRad) {
+  function capsuleIcon(bearingRad, strandCount) {
     const deg = (bearingRad * 180) / Math.PI + 90; // perpendicular to travel
+    // The pill spans the whole braid (plus a lip each side), whatever the
+    // current zoom's strand spacing is.
+    const w = Math.max(16, Math.round(braidWidthPx(strandCount) + 6));
+    const topPad = Math.round((w - 8) / 2); // center the 8px-tall pill in the square icon box
     return L.divIcon({
       className: "capsule-marker",
-      html: `<span style="transform: rotate(${deg.toFixed(1)}deg)"></span>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      html: `<span style="transform: rotate(${deg.toFixed(1)}deg); width: ${w}px; margin-top: ${topPad}px"></span>`,
+      iconSize: [w, w],
+      iconAnchor: [w / 2, w / 2],
     });
+  }
+
+  // Interlined strands are spaced a fixed number of PIXELS apart: the
+  // meter gap is derived from the current zoom at draw time and re-derived
+  // on zoomend (applyStrandOffsets), so shared runs read as parallel
+  // colored strands at every zoom instead of collapsing into whichever
+  // strand drew last. The pixel gap tracks the zoom-scaled strand width
+  // (plus a sliver of casing) so neighbors never cover each other.
+  function strandGapPx() {
+    return 6 * weightFactor + 1.5;
+  }
+  function braidWidthPx(strandCount) {
+    return (strandCount - 1) * strandGapPx() + 6 * weightFactor;
+  }
+  function strandGapMeters(latlngs) {
+    const refLat = BSDNet.pathEndpoints(latlngs)[0][0];
+    return strandGapPx() * BSDNet.metersPerPixel(refLat, map.getZoom());
   }
 
   function drawInterlinedMainRoute(feature, entry) {
@@ -416,7 +440,8 @@
     const latlngs = BSDNet.schematicLatLngs(feature.geometry);
     const plan = BSDNet.planInterlinedRoute(
       latlngs, entry.lineIds, entry.grade,
-      (id) => BSDNet.LINE_COLORS[id] || BSDNet.FALLBACK_LINE_COLOR
+      (id) => BSDNet.LINE_COLORS[id] || BSDNet.FALLBACK_LINE_COLOR,
+      strandGapMeters(latlngs)
     );
 
     const borderLayer = plan.border
@@ -424,7 +449,10 @@
       : null;
     if (borderLayer) layers.quality.addLayer(borderLayer);
 
-    const casingBaseWeight = 9 + (plan.strands.length - 1) * 4;
+    // Base casing weight matches the single-strand case; restyleMainRoute
+    // adds the extra strands' pixel span on top (strand offsets are
+    // pixel-constant, so the braid width is known in px at any zoom).
+    const casingBaseWeight = 9;
     const casingLayer = L.polyline(plan.casing.latlngs, {
       pane: "casingPane", weight: casingBaseWeight, color: "#ffffff", opacity: 1,
       lineCap: "round", lineJoin: "round",
@@ -441,12 +469,39 @@
       return { lineId: strand.lineId, layer: line };
     });
 
+    // Capsule markers are deduped after ALL interlined features are drawn:
+    // a shared run is usually several roster segments, and a capsule at
+    // every interior joint reads as noise — only the run's true ends
+    // should carry one. Collect candidates here; drawCapsules() below
+    // drops any point where two segments of the same line set meet.
     plan.capsules.forEach((pt) => {
-      const marker = L.marker(pt, { pane: "capsulesPane", icon: capsuleIcon(bearingAt(latlngs, pt)), interactive: false });
-      layers.capsules.addLayer(marker);
+      capsuleCandidates.push({
+        pt,
+        bearing: bearingAt(latlngs, pt),
+        setKey: entry.lineIds.slice().sort().join("|"),
+        count: plan.strands.length,
+      });
     });
 
-    mainRouteRecords.push({ feature, grade: entry.grade, lineIds: entry.lineIds, casingLayer, casingBaseWeight, borderLayer, strandLayers });
+    mainRouteRecords.push({
+      feature, grade: entry.grade, lineIds: entry.lineIds,
+      casingLayer, casingBaseWeight, borderLayer, strandLayers,
+      interlinedLatLngs: latlngs, // base (un-offset) path for re-offsetting on zoom
+    });
+  }
+
+  // Re-derive interlined strand offsets for the current zoom (pixel-constant
+  // spacing). Only multi-strand records carry interlinedLatLngs. Capsules
+  // re-size with the braid.
+  function applyStrandOffsets() {
+    mainRouteRecords.forEach((rec) => {
+      if (!rec.interlinedLatLngs || rec.strandLayers.length < 2) return;
+      const offsets = BSDNet.strandOffsets(rec.strandLayers.length, strandGapMeters(rec.interlinedLatLngs));
+      rec.strandLayers.forEach((s, i) => {
+        s.layer.setLatLngs(BSDNet.offsetLatLngs(rec.interlinedLatLngs, offsets[i]));
+      });
+    });
+    capsuleRecords.forEach((c) => c.marker.setIcon(capsuleIcon(c.bearing, c.count)));
   }
 
   function onLineClick(lineId) {
@@ -457,12 +512,37 @@
     }
   }
 
+  const capsuleCandidates = []; // { pt, bearing, setKey, count }
+  const capsuleRecords = [];    // { marker, bearing, count } — for zoom re-sizing
+
   rosterFeatures.forEach((feature) => {
     const entry = rosterIndex.get(String(feature.properties.segment_id));
     if (!entry) return;
     if (entry.lineIds.length >= 2) drawInterlinedMainRoute(feature, entry);
     else drawSimpleMainRoute(feature, entry);
   });
+
+  // Dedupe capsules to the shared runs' true ends: quantize each candidate
+  // to a ~60 m cell (per line set) — interior joints land two candidates in
+  // one cell (this segment's end + the next one's start) and are dropped.
+  (function drawCapsules() {
+    const cells = new Map();
+    capsuleCandidates.forEach((c) => {
+      const mLng = 111320 * Math.cos((c.pt[0] * Math.PI) / 180);
+      const cell = c.setKey + ":" + Math.round((c.pt[0] * 111320) / 60) + ":" + Math.round((c.pt[1] * mLng) / 60);
+      if (!cells.has(cell)) cells.set(cell, []);
+      cells.get(cell).push(c);
+    });
+    cells.forEach((cands) => {
+      if (cands.length !== 1) return; // interior joint of a longer shared run
+      const c = cands[0];
+      const marker = L.marker(c.pt, {
+        pane: "capsulesPane", icon: capsuleIcon(c.bearing, c.count), interactive: false,
+      });
+      layers.capsules.addLayer(marker);
+      capsuleRecords.push({ marker, bearing: c.bearing, count: c.count });
+    });
+  })();
 
   /* ---------------- draw: trails (spec §1) ---------------- */
 
@@ -483,46 +563,6 @@
     layers.trails.addLayer(coreLayer);
 
     trailRecords.push({ lineId, coreLayer, outlineLayer });
-  });
-
-  /* ---------------- draw: gap fillers (metro-map continuity) ---------------- */
-  // A roster line's member segments don't always touch — the source data
-  // has real holes, so a line can render as dashes of itself. Bridge every
-  // hole with a straight stroke in a lighter shade of the line color:
-  // reads as one connected metro line, while the paler shade keeps it
-  // honest as inferred continuity rather than surveyed geometry.
-  // Non-interactive, and mounted to the map *before* the real strokes in
-  // the same pane so it always sits underneath them.
-
-  const GAP_LIGHTEN = 0.55;
-  const GAP_BASE_WEIGHT = 6; // matches the core stroke weight of both tiers
-
-  function drawLineGaps(lineId, features, pane, group) {
-    const parts = [];
-    features.forEach((f) => {
-      const ll = BSDNet.schematicLatLngs(f.geometry);
-      (BSDNet.isMultiPart(ll) ? ll : [ll]).forEach((p) => parts.push(p));
-    });
-    const color = BSDNet.lightenColor(
-      BSDNet.LINE_COLORS[lineId] || BSDNet.FALLBACK_LINE_COLOR, GAP_LIGHTEN);
-    BSDNet.gapSegments(parts).forEach((seg) => {
-      const layer = L.polyline(seg, {
-        pane, interactive: false, lineCap: "round",
-        color, weight: GAP_BASE_WEIGHT, opacity: 1,
-      });
-      group.addLayer(layer);
-      gapRecords.push({ lineId, layer, baseWeight: GAP_BASE_WEIGHT });
-    });
-  }
-
-  (mainRoutesData.lines || []).forEach((lineMeta) => {
-    const isTrail = lineMeta.source === "osm_trails";
-    const members = isTrail
-      ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineMeta.id)
-      : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineMeta.id);
-    if (members.length === 0) return; // no_data lines: nothing to bridge, never fabricate
-    if (isTrail) drawLineGaps(lineMeta.id, members, "trailsPane", layers.gapsTrails);
-    else drawLineGaps(lineMeta.id, members, "linesPane", layers.gapsMain);
   });
 
   /* ---------------- draw: connectors (spec §1) ---------------- */
@@ -558,6 +598,75 @@
     (f) => !rosterIndex.has(String(f.properties.segment_id))
   );
   nonRosterTrailFeatures.forEach((feature) => drawConnector(feature, "connectorsPane", { _trail: true }));
+
+  /* ---------------- draw: gap fillers (metro-map continuity) ---------------- */
+  // A roster line's member segments don't always touch — the source data
+  // has real holes, so a line can render as dashes of itself. Bridge every
+  // hole with a stroke in a lighter shade of the line color: reads as one
+  // connected metro line, while the paler shade keeps it honest as
+  // inferred continuity rather than surveyed geometry. Non-interactive,
+  // and mounted to the map *before* the real strokes in the same pane so
+  // it always sits underneath them.
+  //
+  // Two refinements over a naive whole-line chain:
+  // - gaps chain PER SOURCE STREET, then streets connect with at most one
+  //   feeder per pair (BSDNet.crossStreetGaps) — so a couplet line like
+  //   Jackson–Washington reads as two clean parallels, not a zigzag;
+  // - each bridge prefers routing over the connector mesh (mellowest
+  //   grade first, detour-capped) and only falls back to a straight
+  //   stroke when nothing rideable is nearby.
+
+  const GAP_LIGHTEN = 0.55;
+  const GAP_BASE_WEIGHT = 6; // matches the core stroke weight of both tiers
+
+  // Router edges over the whole connector tier (drawn or not — the data is
+  // loaded regardless of the connectors toggle).
+  const routerEdges = [];
+  localFeatures.forEach((f) => {
+    const grade = BSDNet.CONNECTOR_GRADE_MAP[f.properties.facility_category] || "none";
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), grade));
+  });
+  (mellowConnectorsData.features || []).forEach((f) => {
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), "mellow"));
+  });
+  nonRosterTrailFeatures.forEach((f) => {
+    routerEdges.push(...BSDNet.connectorEdges(BSDNet.schematicLatLngs(f.geometry), "offstreet"));
+  });
+
+  function drawLineGaps(lineId, features, pane, group) {
+    const byStreet = new Map();
+    features.forEach((f) => {
+      const street = f.properties.street || "";
+      const ll = BSDNet.schematicLatLngs(f.geometry);
+      if (!byStreet.has(street)) byStreet.set(street, []);
+      byStreet.get(street).push(...(BSDNet.isMultiPart(ll) ? ll : [ll]));
+    });
+    const gaps = [];
+    byStreet.forEach((parts) => gaps.push(...BSDNet.chainPlan(parts).gaps));
+    gaps.push(...BSDNet.crossStreetGaps([...byStreet.values()]));
+
+    const color = BSDNet.lightenColor(
+      BSDNet.LINE_COLORS[lineId] || BSDNet.FALLBACK_LINE_COLOR, GAP_LIGHTEN);
+    gaps.forEach(([a, b]) => {
+      const path = BSDNet.routeGapThroughConnectors(a, b, routerEdges) || [a, b];
+      const layer = L.polyline(path, {
+        pane, interactive: false, lineCap: "round", lineJoin: "round",
+        color, weight: GAP_BASE_WEIGHT, opacity: 1,
+      });
+      group.addLayer(layer);
+      gapRecords.push({ lineId, layer, baseWeight: GAP_BASE_WEIGHT });
+    });
+  }
+
+  (mainRoutesData.lines || []).forEach((lineMeta) => {
+    const isTrail = lineMeta.source === "osm_trails";
+    const members = isTrail
+      ? rosterTrailFeatures.filter((f) => f.properties.line_id === lineMeta.id)
+      : BSDNet.membersOfLine(rosterFeatures, rosterIndex, lineMeta.id);
+    if (members.length === 0) return; // no_data lines: nothing to bridge, never fabricate
+    if (isTrail) drawLineGaps(lineMeta.id, members, "trailsPane", layers.gapsTrails);
+    else drawLineGaps(lineMeta.id, members, "linesPane", layers.gapsMain);
+  });
 
   /* ---------------- labels ---------------- */
 
@@ -686,11 +795,15 @@
 
   function applyZoomWeights() {
     const f = BSDNet.zoomWeightFactor(map.getZoom());
-    if (f === weightFactor) return;
-    weightFactor = f;
-    restyleAll();
-    updateHalo();
-    restyleStaticWeights();
+    if (f !== weightFactor) {
+      weightFactor = f;
+      restyleAll();
+      updateHalo();
+      restyleStaticWeights();
+    }
+    // Strand spacing is pixel-constant, so it changes on EVERY zoom step,
+    // not just when the weight factor bucket does.
+    applyStrandOffsets();
   }
 
   function updateDeclutter() {
@@ -720,10 +833,12 @@
   }
   updateDeclutter();
   // Layers are drawn with unscaled base weights; apply the current zoom's
-  // weight factor once now (the zoomend path only restyles on *changes*).
+  // weight factor and strand spacing once now (the zoomend path only
+  // restyles on *changes*).
   weightFactor = BSDNet.zoomWeightFactor(map.getZoom());
   restyleAll();
   restyleStaticWeights();
+  applyStrandOffsets();
 
   /* ---------------- deselect triggers (spec §7, click-bug fix) ---------------- */
   // Every feature click handler above calls L.DomEvent.stop(e), so this
@@ -845,7 +960,6 @@
   side.innerHTML = `
     <div>
       <h2>Route tiers</h2>
-      <p class="muted">Route-planning view: how to get from area A to area B. Filter by tier, set a comfort floor to see only the network that meets your bar, and click any route for detail. For crash and infrastructure-condition data by location, see the <a href="index.html">Map</a>.</p>
 
       <div class="layer-control tier-toggles">
         ${TIER_ROWS.map(tierRowHTML).join("")}

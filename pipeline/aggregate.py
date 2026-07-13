@@ -632,17 +632,28 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
     trail_feats = osm_trails_gj.get("features", [])
 
     # Pre-pass: every roster line id a street segment matches, in roster order.
+    # A `streets` entry is either a plain normalized name, or
+    # {"name": ..., "clip_bbox": [south, west, north, east]} when the line
+    # should claim only part of that street (e.g. the downtown lines sharing
+    # just the Loop stretch of RANDOLPH). A per-street clip_bbox overrides
+    # the line-level one; both test the segment's geometry midpoint.
     matches_by_seg = defaultdict(list)
     for line in roster["lines"]:
         if line["source"] != "bike_routes":
             continue
-        streets = set(line["streets"])
-        bbox = line.get("clip_bbox")
+        street_bboxes = {}
+        for entry in line["streets"]:
+            if isinstance(entry, dict):
+                street_bboxes[entry["name"]] = entry.get("clip_bbox") or line.get("clip_bbox")
+            else:
+                street_bboxes[entry] = line.get("clip_bbox")
         for f in street_feats:
             p = f["properties"]
             seg_id = p.get("segment_id")
-            if normalize_street(p.get("street")) not in streets:
+            name = normalize_street(p.get("street"))
+            if name not in street_bboxes:
                 continue
+            bbox = street_bboxes[name]
             if bbox:
                 mid = _geometry_midpoint(f["geometry"])
                 if mid is None or not _in_bbox(mid, bbox):
@@ -675,6 +686,10 @@ def build_main_routes(routes_gj, osm_trails_gj, roster):
                         "geometry": f["geometry"],
                         "properties": {
                             "segment_id": seg_id,
+                            # Normalized source street: lets the UI treat a
+                            # couplet line (Jackson–Washington) as one chain
+                            # per street instead of zigzagging between them.
+                            "street": normalize_street(p.get("street")),
                             "line_id": line_ids[0],
                             "line_ids": list(line_ids),
                             "grade": grade,
