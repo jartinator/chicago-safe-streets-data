@@ -435,3 +435,16 @@ environment forced a deviation. Newest last.
     312 RiverRun" OSM features) and a line color (`#4f46e5`). Data edit only:
     the `main_routes.json` format and `CONTRACT_VERSION` (1.11) are unchanged,
     per SCHEMA.md's rule that only key adds/renames bump the contract.
+
+27. **The Green Bay Trail joins the trail roster too — 14 street + 7 trail =
+    21 lines — accepting a fully-suburban line onto an otherwise Chicago
+    roster.** Unlike every other roster trail, its geometry (Wilmette ⇄
+    Braeside, 7.19 mi) lies entirely outside the city line; the owner signed
+    it anyway because it functionally continues the North Shore Channel
+    corridor northward (its south end meets the Channel trail's north end in
+    Wilmette), so on the map it reads as the next leg of an existing named
+    route rather than an orphan suburban line. Roster entry `green-bay`
+    (`name_tokens` `["green bay"]`, one matching OSM feature), line color
+    `#a21caf`. Same no-contract-bump posture as #26; the derived node layer
+    picked up one new interchange (North Branch Trail × Green Bay Trail at
+    Braeside) automatically.
