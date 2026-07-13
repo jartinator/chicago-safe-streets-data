@@ -140,10 +140,30 @@ additions; `test_run_all_order.py` gains the new stage. No new deps.
   avoid a cross-session collision.
 - Body text, summaries, sentiment, or any editorial framing by OYL.
 
-## Validation gate before implementation
+## Validation outcome (persona research, 2026-07-13)
 
-Light persona research (docs/research/news-layer/interviews/) with the four
-Chicago research subjects from the 2026-07 study — everyday rider, ward
-office, pro advocate, community organizer — probing: value of attached
-coverage, endorsement-perception risk, false-match tolerance, and where they'd
-expect to see it. Kill/trim per their verdicts before code is written.
+Four interviews with the prior study's Chicago subjects
+(docs/research/news-layer/interviews/, synthesis in `_synthesis-memo.md`):
+**4/4 conditional use — ship v1**, with these binding amendments:
+
+- **A. Auditable matches.** Every match carries a `matched_via` string
+  (e.g. `tag "35th Ward"`, `street "Milwaukee Ave" in headline`) published in
+  the dataset and surfaced in the UI (title attribute / info affordance) —
+  the advocate's "no methodology to recite" objection, answered.
+- **B. Precision rules hardened.** Ward: explicit "Nth Ward" tag or headline
+  string only. Alderman: "Ald./Alderman/Alderwoman <surname>" pattern or
+  full name; bare surnames never match. Street: type-suffix required in
+  headline text (publisher tags may match exact street form). Thinner
+  correct lists beat fuller lists with one landmine — one wrong match
+  spends the whole trust budget (4/4).
+- **C. Outlet-mix optics.** Outlet name is a first-class visible label per
+  item; neutrality note ("independent outlets' own headlines; coverage, not
+  endorsement") on both UI sections and the sources card. No per-outlet
+  quota; deterministic newest-first.
+- **D. Explicit empty state.** "No coverage found for this ward in the last
+  90 days — outlets cover some neighborhoods more than others." Silence must
+  not read as calm (organizer; documented coverage skew).
+- **Per-meeting/ordinance linkage: permanently killed (4/4 rejection)**,
+  including as an opt-in. Recorded so future sessions don't resurrect it.
+- Both placements (ward page + action page) kept — each has a champion and
+  they share one helper.
