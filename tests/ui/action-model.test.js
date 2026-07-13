@@ -240,3 +240,59 @@ console.log("action-model OK");
   assert.strictEqual(up.meetings[0].agenda_amended, true);
   assert.strictEqual(up.meetings[0].agenda_items[0].title, "Protected bike lane");
 }
+
+// ---- getNoVoteRecordsForAlderman: exact-name join against recorded roll-calls ----
+{
+  const councilWithVotes = {
+    records: [
+      { matter_id: 1, title: "Newer no vote", type: "Ordinance", status: "Passed",
+        intro_date: "2026-05-01T00:00:00", topic_relevant: true, url: "v1",
+        sponsors: ["X"],
+        recorded_votes: { yes: 40, no: 2, no_voters: ["Jane Doe", "Other, O"], result: "pass" } },
+      { matter_id: 2, title: "Older no vote", type: "Ordinance", status: "Passed",
+        intro_date: "2025-11-15T00:00:00", topic_relevant: true, url: "v2",
+        sponsors: [],
+        recorded_votes: { yes: 38, no: 1, no_voters: ["Jane Doe"], result: "pass" } },
+      { matter_id: 3, title: "Off-topic no vote", type: "Ordinance", status: "Passed",
+        intro_date: "2026-06-01T00:00:00", topic_relevant: false, url: "v3",
+        sponsors: [],
+        recorded_votes: { yes: 30, no: 5, no_voters: ["Jane Doe"], result: "pass" } },
+      { matter_id: 4, title: "Voice vote (no roll call)", type: "Ordinance", status: "Passed",
+        intro_date: "2026-06-10T00:00:00", topic_relevant: true, url: "v4",
+        sponsors: ["Jane Doe"] },
+      { matter_id: 5, title: "Someone else's no", type: "Ordinance", status: "Passed",
+        intro_date: "2026-06-20T00:00:00", topic_relevant: true, url: "v5",
+        sponsors: [],
+        recorded_votes: { yes: 41, no: 1, no_voters: ["Other, O"], result: "pass" } },
+      { matter_id: 6, title: "Fuzzy name must not match", type: "Ordinance", status: "Passed",
+        intro_date: "2026-06-25T00:00:00", topic_relevant: true, url: "v6",
+        sponsors: [],
+        recorded_votes: { yes: 41, no: 1, no_voters: [" jane doe ", "JANE DOE"], result: "pass" } },
+    ],
+  };
+
+  const noVotes = A.getNoVoteRecordsForAlderman(councilWithVotes, "Jane Doe");
+  assert.deepStrictEqual(
+    noVotes.map(r => r.matter_id), [1, 2],
+    "getNoVoteRecordsForAlderman: exact-name, topic-relevant roll-calls only, newest first"
+  );
+  assert.strictEqual(noVotes[0].title, "Newer no vote",
+    "getNoVoteRecordsForAlderman: record fields pass through");
+
+  // Count agrees with the pipeline's recorded_no_votes semantics (topic_relevant
+  // + recorded_votes + exact name) so the card never shows a count the list
+  // contradicts.
+  assert.strictEqual(noVotes.length, 2,
+    "getNoVoteRecordsForAlderman: list length matches pipeline counting rule");
+
+  assert.deepStrictEqual(A.getNoVoteRecordsForAlderman(councilWithVotes, null), [],
+    "getNoVoteRecordsForAlderman: null name returns empty list");
+  assert.deepStrictEqual(A.getNoVoteRecordsForAlderman(null, "Jane Doe"), [],
+    "getNoVoteRecordsForAlderman: null data returns empty list");
+  assert.deepStrictEqual(A.getNoVoteRecordsForAlderman({}, "Jane Doe"), [],
+    "getNoVoteRecordsForAlderman: shapeless data returns empty list");
+  assert.deepStrictEqual(A.getNoVoteRecordsForAlderman(councilWithVotes, "Nobody"), [],
+    "getNoVoteRecordsForAlderman: unknown name returns empty list");
+
+  console.log("action-model no-vote join OK");
+}
