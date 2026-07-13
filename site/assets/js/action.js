@@ -129,10 +129,22 @@
     return { meetings, introduced };
   }
 
+  // News items matched to this ward (news_items.json). Matching is done by
+  // the pipeline (matches.wards, each entry carrying its auditable `via`) —
+  // this only filters and caps. Newest-first order is the file's own.
+  function getNewsForWard(newsData, ward, max) {
+    if (!newsData || !Array.isArray(newsData.items)) return [];
+    const wardStr = String(ward);
+    return newsData.items
+      .filter(item => item && item.matches && Array.isArray(item.matches.wards) &&
+        item.matches.wards.some(w => w && String(w.ward) === wardStr))
+      .slice(0, max == null ? 5 : max);
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       getSafetyIndexForWard, getSponsorRecordsForWard, getMenuSpendingForWard,
-      getUpcomingForWard, getNoVoteRecordsForAlderman,
+      getUpcomingForWard, getNoVoteRecordsForAlderman, getNewsForWard,
     };
   }
 
@@ -153,13 +165,14 @@
   let hearingsData = null;
   let councilData = null;
   let metaData = null;
+  let newsData = null;
 
   async function loadAllData() {
     try {
       [
         wardsData, aldemenData, ward311Data,
         safetyIndexData, aldermenSafetyData, menuSpendingData, hearingsData,
-        councilData, metaData,
+        councilData, metaData, newsData,
       ] = await Promise.all([
         BSD.loadJSON("data/wards.geojson"),
         BSD.loadJSON("data/aldermen.json"),
@@ -170,6 +183,7 @@
         BSD.loadJSON("data/hearings.json").catch(() => null),
         BSD.loadJSON("data/council_records.json").catch(() => null),
         BSD.loadJSON("data/meta.json").catch(() => null),
+        BSD.loadJSON("data/news_items.json").catch(() => null),
       ]);
     } catch (err) {
       throw new Error(`Failed to load data: ${err.message}`);
@@ -430,6 +444,36 @@
     return html;
   }
 
+  // ---- Recent coverage section ----
+  // Ward-matched news headlines (validation study 2026-07-13): outlet name is
+  // a first-class label on every line, the empty state is explicit (silence
+  // must not read as calm), and no line ever claims to be about a specific
+  // meeting or ordinance. Each line's `via` audit trail rides on title=.
+  function newsSectionHTML(ward) {
+    const items = getNewsForWard(newsData, ward, 5);
+    let html = sectionHeadingHTML("Recent coverage for this ward", "real");
+
+    if (!items.length) {
+      html += `<p class="muted">No coverage found for this ward in the last 90 days — ` +
+        `outlets cover some neighborhoods more than others.</p>`;
+      return html;
+    }
+
+    html += `<div class="kv-list">`;
+    items.forEach(item => {
+      const via = (item.matches.wards.find(w => String(w.ward) === String(ward)) || {}).via || "";
+      html += `<div>${BSD.esc(fmtDate(item.published))} · ` +
+        `<span class="muted">${BSD.esc(item.source || "unknown outlet")}</span> · ` +
+        `<a href="${BSD.esc(item.url)}" target="_blank" rel="noopener"` +
+        (via ? ` title="Matched: ${BSD.esc(via)}"` : "") +
+        `>${BSD.esc(item.title)}</a></div>`;
+    });
+    html += `</div>`;
+    html += `<div class="fine-print">Independent outlets' own headlines — ` +
+      `coverage, not endorsement. Matched to this ward by name rules; the article is authoritative.</div>`;
+    return html;
+  }
+
   // ---- Safety scorecard section ----
   function scorecardSectionHTML(ward) {
     const result = getSafetyIndexForWard(safetyIndexData, ward);
@@ -586,6 +630,9 @@
     html += `<dt><strong>Coming up / meetings</strong> — real · City Clerk eLMS public API</dt>`;
     html += dd(`Best-effort weekly pull from an undocumented API; verify against the official calendar before attending.`, "hearings");
 
+    html += `<dt><strong>Recent coverage</strong> — real · outlets' public RSS feeds</dt>`;
+    html += dd(`Verbatim headlines/links from independent news outlets (coverage, not endorsement); ward matching is computed by name rules and can miss or mismatch — the article is authoritative.`, "news_items");
+
     html += `<dt><strong>Current alderperson</strong> — real · city Ward Offices roster</dt>`;
     html += dd(`The city's own roster${BSD.esc(rosterAsOf)}; vacant seats appear as a lookup link, never a guessed name.`, "aldermen");
 
@@ -617,6 +664,7 @@
       reportHeadHTML(ward, entry) +
       `<div class="report-section">${crashSectionHTML(ward, entry)}</div>` +
       `<div class="report-section">${upcomingSectionHTML(ward, aldermanName, upcoming)}</div>` +
+      `<div class="report-section">${newsSectionHTML(ward)}</div>` +
       `<div class="report-section">${scorecardSectionHTML(ward)}</div>` +
       `<div class="report-section">${aldermanRecordSectionHTML(ward)}</div>` +
       `<div class="report-section">${menuSpendingSectionHTML(ward)}</div>` +

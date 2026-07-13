@@ -480,3 +480,22 @@ environment forced a deviation. Newest last.
     fallback) — the lightened color still marks all of it as inferred
     continuity. Connectors default off on the network map; the toggle brings
     the mesh back.
+
+29. **News coverage ships as links-only, matched conservatively, with every
+    match auditable.** The "In the news" layer (`pull_news.py` →
+    `news_items.json`) publishes verbatim headline + link + date + outlet
+    from public RSS feeds (Streetsblog Chicago, Block Club Chicago's
+    transportation category, a Google News search) and never article text —
+    the licensing-safe subset confirmed in
+    docs/research/news-layer/evidence-feeds.md. Three calls made against the
+    obvious alternatives: (a) entity matching favors precision over recall
+    (publisher tags first, honorific+surname or full-name for alderpersons,
+    street-type suffix required for street names) because the validation
+    study found one wrong match costs more trust than many misses — every
+    match therefore publishes a `via` string recording the exact rule that
+    made it; (b) item↔meeting and item↔record-number linkage is permanently
+    killed, not deferred — record numbers appeared in zero of ~50 sampled
+    headlines, and all four study personas rejected date-proximity guessing
+    outright; (c) the pull identifies itself as OnYourLeftNewsBot (both
+    outlets' robots.txt disallow AI-branded crawlers by name) and treats any
+    403/429 as the outlet opting out — skip the feed, never work around it.

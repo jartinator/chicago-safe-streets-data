@@ -281,6 +281,21 @@
         { text: "Ward Wise", url: "https://www.wardwisechicago.org" }
       ],
       metaId: "menu_spending"
+    },
+    {
+      id: "news_items",
+      name: "News Coverage (public RSS headlines)",
+      short: "News coverage",
+      origin: "Streetsblog Chicago, Block Club Chicago (transportation category), and a Google News search — public RSS feeds only",
+      tier: "real",
+      cadence: "weekly pipeline run, best-effort; 90-day window",
+      description: "Recent news coverage of Chicago bike/street safety, shown on ward and action pages: verbatim headline, link, date, and outlet name — never article text or images. Items are matched to wards, alderpersons, and main routes by conservative name rules (publisher tags first; street names need a type suffix; bare surnames never match), and every match records exactly which rule made it.",
+      limitations: "These are independent editorial outlets — listing coverage is not an endorsement, and outlets cover some neighborhoods far more than others, so absence of coverage never means nothing happened. Matching is computed and errs toward missing items rather than mislabeling them, but a wrong match is still possible — the linked article is always authoritative. Feeds that block or rate-limit our fetcher are skipped, never worked around. There is deliberately no story-to-meeting or story-to-ordinance matching: news text almost never carries the identifiers that would make that reliable.",
+      links: [
+        { text: "Streetsblog Chicago", url: "https://chi.streetsblog.org/" },
+        { text: "Block Club Chicago", url: "https://blockclubchicago.org/" }
+      ],
+      metaId: "news_items"
     }
   ];
 

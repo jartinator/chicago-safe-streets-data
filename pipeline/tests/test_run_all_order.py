@@ -61,3 +61,9 @@ def test_emit_api_is_a_common_stage_after_aggregate():
     common = _flat(run_all.COMMON_STAGES)
     assert "emit_api.py" in common
     assert common.index("emit_api.py") > common.index("aggregate.py")
+
+
+def test_news_pull_is_a_live_stage():
+    # News feeds are a third-party network pull (skipped under --fixtures);
+    # matching happens in aggregate, so order among LIVE stages is free.
+    assert "pull_news.py" in _flat(run_all.LIVE_STAGES)

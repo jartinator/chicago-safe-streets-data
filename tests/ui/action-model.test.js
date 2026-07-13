@@ -296,3 +296,30 @@ console.log("action-model OK");
 
   console.log("action-model no-vote join OK");
 }
+
+// ---- getNewsForWard: ward-matched news items (contract v1.12) ----
+{
+  const newsData = {
+    data_tier: "real", match_tier: "derived",
+    items: [
+      { title: "A", url: "u1", source: "Streetsblog Chicago", published: "2026-07-10T00:00:00+00:00",
+        matches: { wards: [{ ward: "1", via: "publisher tag '1st Ward'" }], aldermen: [], routes: [] } },
+      { title: "B", url: "u2", source: "Block Club Chicago", published: "2026-07-09T00:00:00+00:00",
+        matches: { wards: [], aldermen: [], routes: [{ id: "milwaukee", name: "Milwaukee Line", via: "x" }] } },
+      { title: "C", url: "u3", source: "Fixture Wire", published: "2026-07-08T00:00:00+00:00",
+        matches: { wards: [{ ward: "1", via: "names Ald. X" }, { ward: "3", via: "tag" }], aldermen: [], routes: [] } },
+    ],
+  };
+  const hits = A.getNewsForWard(newsData, 1);
+  assert.deepStrictEqual(hits.map(i => i.title), ["A", "C"],
+    "getNewsForWard: only ward-matched items, file order preserved");
+  assert.deepStrictEqual(A.getNewsForWard(newsData, 1, 1).map(i => i.title), ["A"],
+    "getNewsForWard: cap respected");
+  assert.deepStrictEqual(A.getNewsForWard(newsData, "7"), [],
+    "getNewsForWard: unmatched ward is empty, not everything");
+  assert.deepStrictEqual(A.getNewsForWard(null, 1), [],
+    "getNewsForWard: null data returns empty list");
+  assert.deepStrictEqual(A.getNewsForWard({ items: null }, 1), [],
+    "getNewsForWard: shapeless data returns empty list");
+  console.log("action-model news OK");
+}

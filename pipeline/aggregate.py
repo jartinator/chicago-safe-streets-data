@@ -9,6 +9,8 @@ Usage: python aggregate.py
 """
 import argparse
 import json
+import re
+import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -24,7 +26,7 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP, MELLOW_DEDUPE_BUFFER_M,
                     STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED,
                     CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH,
-                    SAFETY_TOPIC_KEYWORDS)
+                    SAFETY_TOPIC_KEYWORDS, NEWS_WINDOW_DAYS, NEWS_MAX_ITEMS)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -1593,6 +1595,213 @@ def build_menu_spending():
     }
 
 
+# ---- News coverage ("In the news") -----------------------------------------
+# Deterministic entity matching of pulled news items (raw/news.json) against
+# entities the site already publishes. Design + persona-validation basis:
+# docs/superpowers/specs/2026-07-13-news-coverage-design.md. Precision over
+# recall throughout — one wrong match costs more trust than ten misses (4/4
+# study participants), so every rule below requires an unambiguous anchor and
+# every match records how it was made (`via`), keeping matches auditable.
+
+# "35th Ward" — as a whole publisher tag or inside a headline.
+_WARD_TEXT_RE = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)\s+Ward\b", re.IGNORECASE)
+
+# Street-name headline matches require a street-type suffix ("Milwaukee
+# Avenue" yes, bare "Milwaukee" no — could be the city or the brewery).
+_STREET_SUFFIXES = r"(?:Ave(?:nue)?|St(?:reet)?|Blvd|Boulevard|R(?:oa)?d|Dr(?:ive)?)"
+
+# "Today's Headlines for Monday…" — Streetsblog's daily link-roundup digests,
+# not original reporting (both straight and curly apostrophes).
+_DIGEST_TITLE_RE = re.compile(r"^Today[’']s Headlines", re.IGNORECASE)
+
+# Publisher topic categories that mark an item bike-relevant even when the
+# headline lacks a SAFETY_TOPIC_KEYWORDS hit (observed live: Streetsblog
+# "Bicycling"/"Complete Streets", Block Club "Bikes").
+NEWS_TOPIC_CATEGORIES = {"bicycling", "bikes", "bike lanes", "bike safety",
+                         "complete streets", "vision zero", "dooring"}
+
+
+def _news_relevant(item, feed_kind):
+    if _DIGEST_TITLE_RE.search(item.get("title") or ""):
+        return False
+    if feed_kind == "google_news":
+        return True  # the search query itself is the filter
+    title = (item.get("title") or "").lower()
+    if any(kw in title for kw in SAFETY_TOPIC_KEYWORDS):
+        return True
+    return any((c or "").lower() in NEWS_TOPIC_CATEGORIES
+               for c in item.get("categories") or [])
+
+
+def _alderman_matchers(aldermen_wards):
+    """Per-alderman match patterns from aldermen.json's "Last, First" names.
+
+    Bare surnames never match (amendment B); a surname needs an
+    "Ald./Alderman/Alderwoman/Alderperson" honorific in front of it, and a
+    surname shared by two alders is matched by full name only.
+    """
+    parsed = []
+    for w in aldermen_wards or []:
+        name = (w.get("alderman") or "").strip()
+        if "," not in name:
+            continue
+        last, first = [p.strip() for p in name.split(",", 1)]
+        first = first.rstrip(".")
+        if last and first:
+            parsed.append({"name": name, "ward": w.get("ward"),
+                           "surname": last, "full": f"{first} {last}"})
+    surname_counts = Counter(p["surname"].lower() for p in parsed)
+    for p in parsed:
+        pats = [re.compile(r"\b" + re.escape(p["full"]) + r"\b", re.IGNORECASE)]
+        if surname_counts[p["surname"].lower()] == 1:
+            pats.append(re.compile(
+                r"\b(?:Ald\.?|Alderman|Alderwoman|Alderperson)\s+"
+                + re.escape(p["surname"]) + r"\b", re.IGNORECASE))
+        p["patterns"] = pats
+    return parsed
+
+
+def _route_matchers(roster):
+    """Per-route match patterns from the main-routes roster: street lines match
+    "<Street> <type-suffix>"; trail lines match their name_tokens."""
+    matchers = []
+    for line in roster.get("lines") or []:
+        pats = []
+        for street in line.get("streets") or []:
+            name = street["name"] if isinstance(street, dict) else street
+            pats.append(re.compile(
+                r"\b" + re.escape(name.title()) + r"\s+" + _STREET_SUFFIXES + r"\b",
+                re.IGNORECASE))
+        for token in line.get("name_tokens") or []:
+            pats.append(re.compile(r"\b" + re.escape(token) + r"\b",
+                                   re.IGNORECASE))
+        if pats:
+            matchers.append({"id": line["id"], "name": line["name"],
+                             "patterns": pats})
+    return matchers
+
+
+def _search_tagged(item, pattern):
+    """Where a pattern hits: the matched publisher tag, the headline, or None.
+    Publisher tags are checked first — they're the outlet's own indexing and
+    the strongest evidence."""
+    for cat in item.get("categories") or []:
+        if pattern.search(cat):
+            return f"publisher tag '{cat}'"
+    m = pattern.search(item.get("title") or "")
+    if m:
+        return f"'{m.group(0)}' in headline"
+    return None
+
+
+def match_news_item(item, alderman_matchers, route_matchers):
+    """{wards, aldermen, routes} for one item, every entry carrying `via`."""
+    wards, aldermen, routes = [], [], []
+    seen_wards = set()
+
+    for cat in item.get("categories") or []:
+        m = _WARD_TEXT_RE.search(cat)
+        if m and m.group(1) not in seen_wards:
+            seen_wards.add(m.group(1))
+            wards.append({"ward": m.group(1), "via": f"publisher tag '{cat}'"})
+    m = _WARD_TEXT_RE.search(item.get("title") or "")
+    if m and m.group(1) not in seen_wards:
+        seen_wards.add(m.group(1))
+        wards.append({"ward": m.group(1), "via": f"'{m.group(0)}' in headline"})
+
+    for a in alderman_matchers:
+        for pattern in a["patterns"]:
+            where = _search_tagged(item, pattern)
+            if where:
+                aldermen.append({"name": a["name"], "ward": a["ward"],
+                                 "via": where})
+                if a["ward"] and a["ward"] not in seen_wards:
+                    seen_wards.add(a["ward"])
+                    wards.append({"ward": a["ward"],
+                                  "via": f"names Ald. {a['surname']} ({where})"})
+                break
+
+    for r in route_matchers:
+        for pattern in r["patterns"]:
+            where = _search_tagged(item, pattern)
+            if where:
+                routes.append({"id": r["id"], "name": r["name"], "via": where})
+                break
+
+    return {"wards": wards, "aldermen": aldermen, "routes": routes}
+
+
+NEWS_NOTE = (
+    "Recent public news coverage of Chicago bike/street safety: verbatim "
+    "headlines, links, dates, and outlet names from the outlets' own public "
+    "RSS feeds — never article text. Matching to wards, alderpersons, and "
+    "main routes is computed by exact name rules (each match records how it "
+    "was made in `via`) and can miss or, rarely, mismatch; the linked article "
+    "is authoritative. These are independent editorial outlets: coverage "
+    "listed here is not an endorsement by this site, and absence of coverage "
+    "does not mean nothing happened — outlets cover some neighborhoods more "
+    "than others.")
+
+
+def build_news_items(roster):
+    """site/data/news_items.json from raw/news.json: relevance-filtered,
+    entity-matched, windowed to NEWS_WINDOW_DAYS before the pull's own
+    fetched_at (deterministic on re-aggregation), newest first, capped."""
+    path = RAW_DIR / "news.json"
+    empty = {"data_tier": "real", "match_tier": "derived", "as_of": None,
+             "note": NEWS_NOTE, "items": []}
+    if not path.exists():
+        empty["note"] += " pull_news.py did not run this pipeline run."
+        return empty
+    raw = json.loads(path.read_text())
+    fetched_at = raw.get("fetched_at")
+    try:
+        anchor = datetime.fromisoformat(fetched_at)
+    except (TypeError, ValueError):
+        return empty
+    if anchor.tzinfo is None:
+        anchor = anchor.replace(tzinfo=timezone.utc)
+    cutoff = anchor - timedelta(days=NEWS_WINDOW_DAYS)
+
+    aldermen_path = SITE_DATA_DIR / "aldermen.json"
+    if aldermen_path.exists():
+        aldermen_wards = json.loads(aldermen_path.read_text()).get("wards", [])
+    else:
+        # From-scratch site/data dir (pull_aldermen didn't run / no committed
+        # file yet): degrade loudly, not silently — items still publish, just
+        # without alderman-name matches this run.
+        aldermen_wards = []
+        print("news_items: site/data/aldermen.json absent — alderman matching "
+              "skipped this run.", file=sys.stderr)
+    alderman_matchers = _alderman_matchers(aldermen_wards)
+    route_matchers = _route_matchers(roster)
+
+    items = []
+    for feed in raw.get("feeds") or []:
+        for item in feed.get("items") or []:
+            if not _news_relevant(item, feed.get("kind")):
+                continue
+            try:
+                published = datetime.fromisoformat(item["published"])
+            except (TypeError, ValueError, KeyError):
+                continue  # can't window an undated item — drop, don't guess
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+            if published < cutoff:
+                continue
+            items.append({
+                "title": item["title"],
+                "url": item["url"],
+                "source": item.get("source"),
+                "published": item["published"],
+                "matches": match_news_item(item, alderman_matchers,
+                                           route_matchers),
+            })
+    items.sort(key=lambda i: i["published"], reverse=True)
+    return {"data_tier": "real", "match_tier": "derived", "as_of": fetched_at,
+            "note": NEWS_NOTE, "items": items[:NEWS_MAX_ITEMS]}
+
+
 def main():
     argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
     crashes = json.loads((RAW_DIR / "crashes_joined.json").read_text())
@@ -1695,8 +1904,10 @@ def main():
     # fallback (data/curated_trails.geojson), else the empty stub.
     osm_trails_gj = build_osm_trails_layer()
 
-    main_routes_gj = build_main_routes(routes_gj, osm_trails_gj, load_main_routes_roster())
+    main_routes_roster = load_main_routes_roster()
+    main_routes_gj = build_main_routes(routes_gj, osm_trails_gj, main_routes_roster)
     network_nodes_out = build_network_nodes(main_routes_gj, load_orientation_points())
+    news_items_out = build_news_items(main_routes_roster)
 
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
     meta = {
@@ -1758,6 +1969,9 @@ def main():
             {"id": "menu_spending", "name": "Aldermanic Menu Program Spending (Ward Wise)",
              "tier": "proxy", "records": len(menu_spending_out.get("wards", {})),
              "date_range": None},
+            {"id": "news_items", "name": "News Coverage (public RSS headlines)",
+             "tier": "real", "records": len(news_items_out["items"]),
+             "date_range": None},
         ],
     }
 
@@ -1786,6 +2000,7 @@ def main():
     write_json(SITE_DATA_DIR / "hearings.json", hearings_out)
     write_json(SITE_DATA_DIR / "menu_spending.json", menu_spending_out)
     write_json(SITE_DATA_DIR / "road_network.json", road_network)
+    write_json(SITE_DATA_DIR / "news_items.json", news_items_out)
 
     # Fixtures/offline fallback only: live runs fill aldermen.json from the city's
     # Ward Offices dataset via pull_aldermen.py (which fails soft, preserving the
