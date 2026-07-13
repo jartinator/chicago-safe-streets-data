@@ -45,10 +45,11 @@
     B.loadJSON("data/hearings.json").catch(() => null),
     B.loadJSON("data/menu_spending.json").catch(() => null),
     B.loadJSON("data/meta.json").catch(() => null),
-  ]).then(([safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData]) => {
+    B.loadJSON("data/news_items.json").catch(() => null),
+  ]).then(([safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData]) => {
     const today = new Date().toISOString().slice(0, 10);
     const o = W.buildOnePager(
-      { safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData },
+      { safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData },
       wardNorm, today);
     render(o);
   }).catch(err => {
@@ -104,6 +105,15 @@
       html += kv("Next committee hearing",
         `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>`, "real");
     }
+    // "In the news" (brief register only — the print one-pager's audience).
+    // Outlet always named (coverage ≠ endorsement); explicit empty state so
+    // no-coverage never reads as all-quiet (validation study 2026-07-13).
+    html += kv("In the news (90 days)", o.news.length
+      ? o.news.slice(0, 3).map(n =>
+          `${B.esc(fmtDate(n.published))} · <span class="muted">${B.esc(n.source || "unknown outlet")}</span> · ` +
+          `<a href="${B.esc(n.url)}" target="_blank" rel="noopener">${B.esc(n.title)}</a>`).join("<br>")
+      : `<span class="muted">no coverage found for this ward — outlets cover some neighborhoods more than others</span>`,
+      "real");
     return html;
   }
 
