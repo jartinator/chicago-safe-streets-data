@@ -125,9 +125,10 @@
 
   // ---- Main routes ("rail vs bus") helpers — spec v2 §1/§2/§3/§9 ----
 
-  // One solid color per named line (spec §9) — the 14 street + 5 trail
+  // One solid color per named line (spec §9) — the 14 street + 7 trail
   // roster, exactly as listed. roosevelt/vincennes are demoted to
-  // connectors (spec §2) and carry no line color.
+  // connectors (spec §2) and carry no line color; 312-riverrun and
+  // green-bay joined the trail roster after the spec (DECISIONS.md #26/#27).
   const LINE_COLORS = {
     // street lines
     "milwaukee":            "#1d4ed8",
@@ -150,6 +151,8 @@
     "major-taylor":         "#ca8a04",
     "north-shore-channel":  "#0d9488",
     "north-branch":         "#3f6212",
+    "312-riverrun":         "#4f46e5",
+    "green-bay":            "#a21caf",
   };
   const FALLBACK_LINE_COLOR = "#334155"; // any line id not in the map
 

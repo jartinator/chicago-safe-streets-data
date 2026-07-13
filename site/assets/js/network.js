@@ -730,7 +730,7 @@
   // One badge per GROUP header rather than per roster row: tier is uniform
   // within each group (every trail line is crowdsourced, every street line
   // is derived — see LINE_COLORS/data_tier in main_routes.geojson), so a
-  // 19-row roster carrying 19 identical per-row badges would be noise; the
+  // 21-row roster carrying 21 identical per-row badges would be noise; the
   // group-level badge satisfies the visible-badge rule just as well.
   function rosterGroupHTML(title, lines, tier) {
     if (lines.length === 0) return "";
