@@ -1,0 +1,161 @@
+"""Pull public news-feed items about Chicago bike/street safety (RSS only).
+
+The site publishes the official record (meetings, council records, alderman
+records, main routes) but not the narrative around it. This module fetches a
+small allowlist of public RSS feeds (config.NEWS_FEEDS — Streetsblog Chicago,
+Block Club Chicago's transportation category, a Google News search) and stores
+each item **verbatim**: headline, canonical link, outlet, publish date, and
+the publisher's own category tags. Never body text, never images — see
+docs/research/news-layer/evidence-feeds.md for the licensing evidence.
+
+No analysis happens here (agenda-items precedent): relevance filtering and
+ward/alderman/route matching live in aggregate.py. Same non-fatal posture as
+every third-party pull — a failed feed is recorded ok:false and skipped, an
+all-fail run writes an honest empty raw file, and nothing ever raises the
+pipeline. A 403/429 means the outlet opted out: skip it, never work around.
+Idempotent: re-running overwrites cleanly.
+"""
+import argparse
+import sys
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+
+import requests
+
+from config import NEWS_FEEDS, NEWS_USER_AGENT, NEWS_FEED_MAX_BYTES, RAW_DIR
+from socrata import write_json
+
+_HEADERS = {
+    "User-Agent": NEWS_USER_AGENT,
+    "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+}
+
+
+def fetch_feed(url):
+    """Feed XML bytes, or None on any failure (non-fatal posture)."""
+    try:
+        resp = requests.get(url, headers=_HEADERS, timeout=30)
+        if resp.status_code in (403, 429):
+            print(f"  WARNING: {url} returned {resp.status_code} — outlet "
+                  f"opted out this run; skipping.", file=sys.stderr)
+            return None
+        if resp.status_code != 200 or len(resp.content) > NEWS_FEED_MAX_BYTES:
+            return None
+        return resp.content
+    except requests.RequestException:
+        return None
+
+
+def resolve_redirect(url):
+    """Final URL after redirects (Google News links are opaque redirectors),
+    or the original URL on any failure — a working redirect link beats none."""
+    try:
+        resp = requests.head(url, headers={"User-Agent": NEWS_USER_AGENT},
+                             timeout=15, allow_redirects=True)
+        return resp.url or url
+    except requests.RequestException:
+        return url
+
+
+def _iso_pubdate(text):
+    """RFC-2822 pubDate -> ISO 8601 string, or None if unparseable."""
+    if not text:
+        return None
+    try:
+        return parsedate_to_datetime(text.strip()).isoformat(timespec="seconds")
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_feed(xml_bytes, default_source, kind, resolve_fn=resolve_redirect):
+    """Verbatim items from one RSS document:
+    [{title, url, source, published, categories: []}]. Returns [] on any
+    parse failure. Google News items get their outlet name from the per-item
+    <source> element and their link resolved to the publisher URL."""
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        return []
+    items = []
+    for node in root.iter("item"):
+        title = (node.findtext("title") or "").strip()
+        link = (node.findtext("link") or "").strip()
+        if not title or not link:
+            continue
+        source = default_source
+        if kind == "google_news":
+            source = (node.findtext("source") or "").strip() or None
+            link = resolve_fn(link)
+            # Google appends " - <outlet>" to every title; strip it so the
+            # published headline is the outlet's own and cross-feed title
+            # dedup can catch the same story arriving via the direct feed.
+            if source and title.endswith(f" - {source}"):
+                title = title[: -len(f" - {source}")].rstrip()
+        items.append({
+            "title": title,
+            "url": link,
+            "source": source,
+            "published": _iso_pubdate(node.findtext("pubDate")),
+            "categories": [c.text.strip() for c in node.findall("category")
+                           if c.text and c.text.strip()],
+        })
+    return items
+
+
+def _title_key(title):
+    return " ".join(title.lower().split())
+
+
+def dedup_items(feeds):
+    """Drop repeat items across feeds in place (same URL, then same
+    normalized title — Google News re-surfaces the allowlisted outlets' own
+    stories). First feed listed wins, so direct feeds beat the aggregator."""
+    seen_urls, seen_titles = set(), set()
+    for feed in feeds:
+        kept = []
+        for item in feed["items"]:
+            url, tkey = item["url"], _title_key(item["title"])
+            if url in seen_urls or tkey in seen_titles:
+                continue
+            seen_urls.add(url)
+            seen_titles.add(tkey)
+            kept.append(item)
+        feed["items"] = kept
+    return feeds
+
+
+def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
+    """[{url, source, ok, items: [...]}] — one entry per configured feed,
+    ok:false with empty items for any feed that failed to fetch or parse."""
+    feeds = []
+    for cfg in feed_configs:
+        raw = fetch_fn(cfg["url"])
+        items = (parse_feed(raw, cfg["source"], cfg["kind"], resolve_fn=resolve_fn)
+                 if raw else [])
+        if raw and not items:
+            print(f"  WARNING: {cfg['url']} fetched but yielded no items.",
+                  file=sys.stderr)
+        feeds.append({"url": cfg["url"], "source": cfg["source"],
+                      "kind": cfg["kind"], "ok": bool(items), "items": items})
+    return dedup_items(feeds)
+
+
+def main():
+    argparse.ArgumentParser(
+        description="Pull public news-feed items (RSS) about Chicago bike safety."
+    ).parse_args()
+
+    feeds = build_feeds(NEWS_FEEDS)
+    write_json(RAW_DIR / "news.json", {
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "feeds": feeds,
+    })
+    total = sum(len(f["items"]) for f in feeds)
+    ok = sum(1 for f in feeds if f["ok"])
+    print(f"news: {ok}/{len(feeds)} feeds fetched, {total} items (verbatim; "
+          f"relevance/matching happens in aggregate)")
+
+
+if __name__ == "__main__":
+    main()

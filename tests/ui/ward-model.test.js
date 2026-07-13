@@ -107,3 +107,28 @@ assert.strictEqual(nmAgenda.agenda_amended, false, "agenda_amended always presen
 assert.strictEqual(nmAgenda.agenda_items[0].title, "Vacation of alley");
 assert.strictEqual(W.nextMeeting(hearings, "2026-07-13").agenda_items, null,
   "meetings without parsed agendas carry null, not a fabricated empty list");
+
+// ---- newsForWard + buildOnePager news (contract v1.12) ----
+{
+  const newsData = {
+    items: [
+      { title: "A", url: "u1", source: "Streetsblog Chicago", published: "2026-07-10T00:00:00+00:00",
+        matches: { wards: [{ ward: "1", via: "publisher tag '1st Ward'" }], aldermen: [], routes: [] },
+        extraneous: "dropped" },
+      { title: "B", url: "u2", source: null, published: "2026-07-09T00:00:00+00:00",
+        matches: { wards: [{ ward: "2", via: "t" }], aldermen: [], routes: [] } },
+    ],
+  };
+  const hits = W.newsForWard(newsData, 1);
+  assert.deepStrictEqual(hits, [
+    { title: "A", url: "u1", source: "Streetsblog Chicago", published: "2026-07-10T00:00:00+00:00" },
+  ], "newsForWard: matched, and slimmed to the four render fields");
+  assert.deepStrictEqual(W.newsForWard(newsData, 9), [], "no match → empty");
+  assert.deepStrictEqual(W.newsForWard(null, 1), [], "null data → empty");
+
+  const withNews = W.buildOnePager({ newsData }, 1, "2026-07-13");
+  assert.strictEqual(withNews.news.length, 1, "buildOnePager threads news through");
+  assert.deepStrictEqual(W.buildOnePager({}, 1, "2026-07-13").news, [],
+    "missing news data → empty list, never null (renders explicit empty state)");
+  console.log("ward-model news OK");
+}

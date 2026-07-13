@@ -138,8 +138,35 @@ WARD_WISE_API_URL = "https://www.wardwisechicago.org/api"
 SAFETY_TOPIC_KEYWORDS = [
     "bike", "bicycle", "cyclist", "complete streets", "vision zero",
     "traffic calming", "protected lane", "bike lane", "pedestrian safety",
-    "speed hump", "traffic safety", "road diet", "curb extension",
+    "speed hump", "traffic safety", "road diet", "curb extension", "dooring",
 ]
+
+# News coverage feeds (pull_news.py) — public RSS only, headline+link+date+
+# outlet, never body text. Feasibility evidence and outlet-by-outlet verdicts:
+# docs/research/news-layer/evidence-feeds.md. Both outlets' robots.txt
+# disallow AI-branded crawlers by name, so the pull identifies itself with its
+# own honest User-Agent (same pattern as OSM_USER_AGENT above) and treats any
+# 403/429 as the outlet opting out — skip, never work around.
+NEWS_USER_AGENT = ("OnYourLeftNewsBot/1.0 (open-source Chicago bike-safety "
+                   "dashboard; +https://github.com/jartinator/chicago-safe-streets-data)")
+NEWS_FEEDS = [
+    # source=None means "take the outlet name from the feed item itself"
+    # (Google News carries a per-item <source> element).
+    {"url": "https://chi.streetsblog.org/feed/",
+     "source": "Streetsblog Chicago", "kind": "rss"},
+    {"url": "https://blockclubchicago.org/category/transportation/feed/",
+     "source": "Block Club Chicago", "kind": "rss"},
+    {"url": ("https://news.google.com/rss/search?q=%22bike+lane%22+OR+"
+             "%22bike+lanes%22+OR+%22protected+lane%22+OR+dooring+Chicago"
+             "+when:90d&hl=en-US&gl=US&ceid=US:en"),
+     "source": None, "kind": "google_news"},
+]
+# Published window/cap: items older than this (relative to the pull's
+# fetched_at, so re-aggregation is deterministic) are dropped at aggregate
+# time; the list is newest-first and capped.
+NEWS_WINDOW_DAYS = 90
+NEWS_MAX_ITEMS = 60
+NEWS_FEED_MAX_BYTES = 5 * 1024 * 1024
 
 # Crash data is citywide-reliable only from this date (capability report).
 CRASH_START_DATE = "2017-09-01"
@@ -261,7 +288,7 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.11"
+CONTRACT_VERSION = "1.12"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM

@@ -61,6 +61,20 @@
     return best;
   }
 
+  // News items matched to this ward (news_items.json; pipeline computes
+  // matches, each entry carrying its auditable `via` — this only filters and
+  // caps, preserving the file's newest-first order).
+  function newsForWard(newsData, ward, max) {
+    if (!newsData || !Array.isArray(newsData.items)) return [];
+    const wardStr = String(ward);
+    return newsData.items
+      .filter(item => item && item.matches && Array.isArray(item.matches.wards) &&
+        item.matches.wards.some(w => w && String(w.ward) === wardStr))
+      .slice(0, max || 5)
+      .map(item => ({ title: item.title, url: item.url,
+                      source: item.source || null, published: item.published }));
+  }
+
   // Assemble everything the one-pager renders, from already-loaded JSON.
   // Every field is null-safe: the artifact renders honestly with gaps rather
   // than failing or inventing (missing data shows as "no data", never 0).
@@ -68,7 +82,7 @@
     const wardStr = String(ward);
     const {
       safetyIndexData, aldermenData, wardsData, routesData,
-      hearingsData, menuData, metaData,
+      hearingsData, menuData, metaData, newsData,
     } = inputs || {};
 
     let entry = null, rank = null, total = null;
@@ -113,12 +127,13 @@
       bikewayMiles: entry && entry.bikeway_miles != null ? entry.bikeway_miles : null,
       topCorridors: topCorridorsForWard(wardFeature, routesData && routesData.features, 3),
       nextMeeting: nextMeeting(hearingsData, todayISO),
+      news: newsForWard(newsData, wardStr, 5),
       menuBikeSpent: menuEntry ? (menuEntry.bike_safety_spent ?? 0) : null,
       menuTotalSpent: menuEntry ? menuEntry.total_spent : null,
     };
   }
 
-  const api = { bboxOf, topCorridorsForWard, nextMeeting, buildOnePager };
+  const api = { bboxOf, topCorridorsForWard, nextMeeting, newsForWard, buildOnePager };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof window !== "undefined") window.BSDWard = api;
 })();

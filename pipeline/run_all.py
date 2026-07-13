@@ -50,6 +50,7 @@ LIVE_STAGES = [
     ["pull_ward_demographics.py"], ["restore_frozen.py"], ["pull_councilmatic.py"],
     ["pull_menu_spending.py"], ["pull_hearings.py"],
     ["pull_agenda_items.py"],  # consumes raw/hearings.json — must follow pull_hearings
+    ["pull_news.py"],
 ]
 COMMON_STAGES = [
     ["snapshot_bike_routes.py"],

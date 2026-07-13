@@ -770,3 +770,63 @@ or renamed anywhere, so `CONTRACT_VERSION` stays `"1.11"`. `meta.json`'s
 entries plus their three member features (289 features total), and
 `network_nodes.json` picks up one derived interchange (North Branch Trail ×
 Green Bay Trail), 42 → 43 nodes.
+
+## news_items.json — tier real (matches derived)
+
+Recent public news coverage of Chicago bike/street safety, for the "In the
+news" sections (ward page, action page). Headline + link + date + outlet
+**only** — never article body text or images (licensing evidence:
+docs/research/news-layer/evidence-feeds.md). Weekly pull (`pull_news.py`)
+from the public RSS feeds allowlisted in `config.NEWS_FEEDS`; relevance
+filtering and entity matching are computed in `aggregate.py`
+(`build_news_items`), design and persona-validation basis in
+docs/superpowers/specs/2026-07-13-news-coverage-design.md.
+
+```
+{ data_tier: "real",            // headlines/links/dates/outlets are verbatim
+  match_tier: "derived",        // the matches object is computed
+  as_of,                        // the pull's fetched_at (null if it didn't run)
+  note,
+  items: [{                     // newest first; published within
+                                // NEWS_WINDOW_DAYS of as_of; capped at
+                                // NEWS_MAX_ITEMS; undated items are dropped
+    title,                      // verbatim headline
+    url,                        // canonical article URL (Google News redirect
+                                // links are resolved; unresolvable ones kept)
+    source|null,                // outlet name, e.g. "Streetsblog Chicago"
+    published,                  // ISO 8601, from the feed's pubDate
+    matches: {                  // every entry carries `via`: an auditable,
+                                // human-readable record of the exact rule
+                                // that made the match (amendment A)
+      wards:    [{ ward, via }],        // explicit "Nth Ward" tag/headline
+                                        // hit, or the ward of a matched
+                                        // alderperson (via says which)
+      aldermen: [{ name, ward|null, via }], // honorific+surname or full-name
+                                        // rule only; bare surnames and
+                                        // shared surnames never match alone
+      routes:   [{ id, name, via }]     // main-routes roster: street name +
+                                        // type suffix, or trail name token
+    } }] }
+```
+
+Precision over recall throughout: a missing match is expected, a wrong match
+is a defect (persona study, 4/4). Items with **no** matches still publish —
+they're citywide coverage. There is deliberately no item↔meeting or
+item↔record-number matching (record numbers never appear in news text;
+permanently killed by the validation study).
+
+## Contract v1.12 changes (news coverage)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.12"`. Additive only.
+
+- **`news_items.json`** (new file) — schema above.
+- **`SAFETY_TOPIC_KEYWORDS`** gains `"dooring"` (config edit, cast-wide by
+  design; affects the derived `safety_keyword_match` agenda-item flag and
+  the pull-time council-records net, both downstream-filtered).
+
+### meta.json — new source entry
+- **`news_items`** (new): `{ id: "news_items", name: "News Coverage (public
+  RSS headlines)", tier: "real", records: <published item count>,
+  date_range: null }`. Unconditional (the file is always written; zero
+  records on a degraded/offline run is honest, not absent). Placed last,
+  after `menu_spending`.

@@ -36,7 +36,8 @@ import json
 import emit_api
 from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
-                       build_mellow_connectors, mellow_connector_records)
+                       build_mellow_connectors, mellow_connector_records,
+                       build_news_items)
 from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -80,7 +81,7 @@ def _load(name):
 
 
 def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes, upsert_osm_trails=True):
+                        network_nodes, upsert_osm_trails=True, news_items=None):
     """Register/update the citywide_trend, main_routes, mellow_connectors,
     osm_trails, and network_nodes source entries in meta["sources"] in place,
     matching aggregate.py's final ordering exactly: ... mellow_routes,
@@ -178,6 +179,16 @@ def upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, mai
                 "tier": "derived", "records": len(network_nodes["nodes"]),
                 "date_range": None}
     _upsert("network_nodes", nn_entry, anchor_ids=["citywide_trend"])
+
+    # news_items: register/update only when this run actually rebuilt the
+    # layer from a real raw pull (news_items=None otherwise — same
+    # rebuilt-this-run posture as osm_trails above). aggregate.py places it
+    # last in the sources list, so no anchor: insert at the end.
+    if news_items is not None:
+        news_entry = {"id": "news_items", "name": "News Coverage (public RSS headlines)",
+                      "tier": "real", "records": len(news_items["items"]),
+                      "date_range": None}
+        _upsert("news_items", news_entry, anchor_ids=[])
 
 
 def main():
@@ -288,6 +299,21 @@ def main():
                                                 _load("bike_routes.geojson"))
     write_json(SITE_DATA_DIR / "mellow_connectors.geojson", mellow_connectors)
 
+    # News items: only rebuild when a real feed pull (pipeline/raw/news.json,
+    # gitignored) is present — same never-downgrade invariant as osm_trails
+    # above (build_news_items with no raw file would replace a committed real
+    # list with an honest-but-empty one).
+    news_raw_path = RAW_DIR / "news.json"
+    news_items = None
+    if news_raw_path.exists():
+        news_items = build_news_items(load_main_routes_roster())
+        write_json(SITE_DATA_DIR / "news_items.json", news_items)
+        print(f"  news_items: rebuilt from {news_raw_path} "
+              f"({len(news_items['items'])} items)")
+    else:
+        print(f"  news_items: {news_raw_path} absent — left committed "
+              f"site/data/news_items.json untouched")
+
     # meta.json: stamp the (possibly newer) contract version and register the
     # citywide_trend / main_routes / mellow_connectors / osm_trails /
     # network_nodes sources if this meta predates them (see upsert_meta_sources
@@ -295,7 +321,8 @@ def main():
     # underlying pull, which this script does not redo.
     meta["contract_version"] = CONTRACT_VERSION
     upsert_meta_sources(meta, months, anchor, mellow_connectors, osm_trails, main_routes,
-                        network_nodes, upsert_osm_trails=rebuild_osm_trails)
+                        network_nodes, upsert_osm_trails=rebuild_osm_trails,
+                        news_items=news_items)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")
