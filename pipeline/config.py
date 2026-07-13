@@ -116,6 +116,9 @@ COUNCILMATIC_DATASETTE_URL = "https://puddle.datamade.us/chicago_council"
 # link-out fallback shape on any failure.
 ELMS_API_URL = "https://api.chicityclerkelms.chicago.gov"
 ELMS_MEETINGS_URL = "https://chicityclerkelms.chicago.gov/Meetings"
+# Public matter detail page (confirmed 200 with a matterId GUID, 2026-07-13) —
+# where pull_agenda_items.py points each agenda item's "read the record" link.
+ELMS_MATTER_PAGE_URL = "https://chicityclerkelms.chicago.gov/Matter/?matterId="
 ELMS_COMMITTEES_OF_INTEREST = [
     "Committee on Pedestrian and Traffic Safety",
     "Committee on Transportation and Public Way",

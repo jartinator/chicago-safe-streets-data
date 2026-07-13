@@ -3,3 +3,4 @@ geopandas>=0.14
 shapely>=2.0
 pyproj>=3.6
 anthropic>=0.40  # classify_safety_topic.py only; optional at runtime (see module docstring)
+pypdf>=4.0  # pull_agenda_items.py — committee agenda PDF text extraction
