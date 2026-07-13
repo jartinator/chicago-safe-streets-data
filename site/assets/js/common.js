@@ -342,6 +342,33 @@
     return lines.join("\r\n").replace(/\r?\n/g, "\r\n") + "\r\n";
   }
 
+  // Short display lines for a meeting's parsed agenda items (contract v1.11):
+  // items tagged for `ward` first, then safety-keyword matches, then items
+  // with a record number (the votable matters, with clerk-verified titles),
+  // then the rest in printed-agenda order, capped at `max`. Labels are the official record
+  // title when the City Clerk lookup succeeded, else the verbatim agenda text
+  // (truncated) — never generated. [] when the agenda PDF wasn't parsed.
+  function agendaHighlights(meeting, ward, max) {
+    if (!meeting || !Array.isArray(meeting.agenda_items)) return [];
+    const wardStr = ward != null ? String(ward) : null;
+    const out = meeting.agenda_items.map((item, i) => {
+      let label = item.title || String(item.agenda_text || "").trim();
+      if (label.length > 140) label = label.slice(0, 140).trim() + "…";
+      return {
+        label, i,
+        forWard: wardStr != null && item.ward != null && String(item.ward) === wardStr,
+        safety: !!item.safety_keyword_match,
+        matter: !!item.record_number,
+        ward: item.ward != null ? item.ward : null,
+        sponsor: item.sponsor || null,
+        type: item.type || null,
+        url: item.matter_url || null,
+      };
+    }).filter(h => h.label);
+    out.sort((a, b) => (b.forWard - a.forWard) || (b.safety - a.safety) || (b.matter - a.matter) || (a.i - b.i));
+    return out.slice(0, max || out.length).map(h => { delete h.i; delete h.matter; return h; });
+  }
+
   function downloadICS(filename, icsString) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([icsString], { type: "text/calendar" }));
@@ -418,7 +445,7 @@
     TREND_LABELS, TREND_ARROWS,
     esc, badge, badgeHTML, noticeHTML, openModal, loadJSON, fmt, qs, setParams,
     downloadCSV, csvText, provenanceLines, initPage, trendHTML, scoreColor, money, lineBadgeTier,
-    rollingSums, trendChartSVG, icsForEvent, downloadICS, mixSegments,
+    rollingSums, trendChartSVG, icsForEvent, downloadICS, mixSegments, agendaHighlights,
   };
 
   if (typeof module !== "undefined" && module.exports) {
@@ -427,6 +454,7 @@
     module.exports = {
       trendHTML, scoreColor, money, esc, fmt, badgeHTML, TIER_PLAIN, lineBadgeTier,
       rollingSums, trendChartSVG, icsForEvent, downloadICS, csvText, provenanceLines, mixSegments,
+      agendaHighlights,
     };
   }
 })();

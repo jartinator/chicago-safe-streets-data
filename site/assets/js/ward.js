@@ -87,10 +87,23 @@
     html += kv("Menu-money on bike/traffic-calming", o.menuBikeSpent != null
       ? `${B.money(o.menuBikeSpent)} <span class="muted">of ${B.money(o.menuTotalSpent)} total — unverified extract, cross-check before citing</span>`
       : noData, "proxy");
-    html += kv("Next committee hearing", o.nextMeeting
-      ? `${B.esc(fmtDate(o.nextMeeting.date))} — ${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}` +
-        (o.nextMeeting.comment ? `<div class="fine-print">${B.esc(o.nextMeeting.comment)}</div>` : "")
-      : `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>`, "real");
+    if (o.nextMeeting) {
+      // Up to two agenda highlights (this ward's items first, then safety
+      // matches) — verbatim official titles, see BSD.agendaHighlights.
+      const highlights = B.agendaHighlights(o.nextMeeting, o.ward, 2).map(h => {
+        const label = h.url
+          ? `<a href="${B.esc(h.url)}" target="_blank" rel="noopener">${B.esc(h.label)}</a>`
+          : B.esc(h.label);
+        return `<div class="fine-print">${h.forWard ? `<strong>Ward ${B.esc(h.ward)}</strong> · ` : ""}${label}</div>`;
+      }).join("");
+      html += kv("Next committee hearing",
+        `${B.esc(fmtDate(o.nextMeeting.date))} — ${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}` +
+        (o.nextMeeting.comment ? `<div class="fine-print">${B.esc(o.nextMeeting.comment)}</div>` : "") +
+        highlights, "real");
+    } else {
+      html += kv("Next committee hearing",
+        `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>`, "real");
+    }
     return html;
   }
 
@@ -139,8 +152,13 @@
       : `<a class="btn primary" href="${B.esc(B.LINKS.aldermanLookup)}" target="_blank" rel="noopener">Find your alderperson</a>`;
     html += `<div class="op-action"><strong>One thing you can do:</strong><br>${action}</div>`;
     if (o.nextMeeting) {
+      const wardItems = B.agendaHighlights(o.nextMeeting, o.ward, 0).filter(h => h.forWard);
+      const wardNote = wardItems.length
+        ? ` ${wardItems.length === 1 ? "One item on its agenda is" : `${B.fmt(wardItems.length)} items on its agenda are`}
+           specifically about Ward ${B.esc(o.ward)}.`
+        : "";
       html += `<p class="op-plain muted">City Council's next street-safety meeting:
-        ${B.esc(fmtDate(o.nextMeeting.date))} (${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}).
+        ${B.esc(fmtDate(o.nextMeeting.date))} (${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}).${wardNote}
         Anyone can send a written comment.</p>`;
     }
     return html;

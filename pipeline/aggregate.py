@@ -23,7 +23,8 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     INJURY_SEVERITY_MAP, CONTRACT_VERSION, CRASH_START_DATE,
                     MAIN_ROUTES_PATH, MAIN_ROUTE_GRADE_MAP, MELLOW_DEDUPE_BUFFER_M,
                     STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED,
-                    CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH)
+                    CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH,
+                    SAFETY_TOPIC_KEYWORDS)
 from council_merge import load_all_council_records
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
@@ -1492,13 +1493,46 @@ def build_aldermen_safety_record(council_records, name_to_ward):
     }
 
 
-def build_hearings():
+def decorate_agenda_item(item, tracked_ids):
+    """Add the two derived flags the UI keys off: does this agenda item match
+    the safety keyword net, and is it already in the published council-records
+    set (so the UI can cross-link instead of just naming it)."""
+    haystack = f"{item.get('title') or ''} {item.get('agenda_text') or ''}".lower()
+    item["safety_keyword_match"] = any(kw in haystack for kw in SAFETY_TOPIC_KEYWORDS)
+    item["tracked"] = bool(item.get("record_number")) and item["record_number"] in tracked_ids
+    return item
+
+
+AGENDA_NOTE = (" Agenda items are extracted from the official agenda PDF and matched "
+               "to City Clerk records by record number; extraction is best-effort — "
+               "the linked PDF is authoritative.")
+
+
+def build_hearings(council_records=None):
     path = RAW_DIR / "hearings.json"
     if not path.exists():
         return {"data_tier": "real", "as_of": None, "structured_data_available": False,
                 "note": "pull_hearings.py did not run this pipeline run.", "committees": []}
     raw = json.loads(path.read_text())
     raw["data_tier"] = "real"
+
+    agenda_path = RAW_DIR / "agenda_items.json"
+    if agenda_path.exists():
+        agendas = json.loads(agenda_path.read_text()).get("agendas") or {}
+        tracked_ids = {r["matter_id"] for r in (council_records or [])
+                       if isinstance(r.get("matter_id"), str)}
+        merged_any = False
+        for committee in raw.get("committees") or []:
+            for meeting in committee.get("meetings") or []:
+                agenda = agendas.get(meeting.get("agenda_url"))
+                if agenda is None:
+                    continue  # PDF unfetchable/unparseable — meeting keeps its link only
+                meeting["agenda_items"] = [decorate_agenda_item(i, tracked_ids)
+                                           for i in agenda.get("items") or []]
+                meeting["agenda_amended"] = bool(agenda.get("amended"))
+                merged_any = True
+        if merged_any and raw.get("note"):
+            raw["note"] += AGENDA_NOTE
     return raw
 
 
@@ -1597,7 +1631,7 @@ def main():
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
     aldermen_safety_record = build_aldermen_safety_record(council_records_list, name_to_ward)
-    hearings_out = build_hearings()
+    hearings_out = build_hearings(council_records_list)
     menu_spending_out = build_menu_spending()
 
     ward_311 = defaultdict(lambda: {"total": 0, "by_type": Counter()})

@@ -225,3 +225,18 @@ assert.deepStrictEqual(
 );
 
 console.log("action-model OK");
+
+// ---- getUpcomingForWard: agenda_items survive the meeting flattening ----
+{
+  const hearingsAgenda = { structured_data_available: true, committees: [
+    { committee: "Committee on Transportation", calendar_url: "https://x/cal",
+      meetings: [{ date: "2026-07-20T09:00:00",
+        agenda_items: [{ record_number: "O2026-9", ward: 5,
+          title: "Protected bike lane", safety_keyword_match: true, tracked: true }],
+        agenda_amended: true }] },
+  ] };
+  const up = A.getUpcomingForWard(hearingsAgenda, null, null, "5", "2026-07-13");
+  assert.strictEqual(up.meetings.length, 1);
+  assert.strictEqual(up.meetings[0].agenda_amended, true);
+  assert.strictEqual(up.meetings[0].agenda_items[0].title, "Protected bike lane");
+}

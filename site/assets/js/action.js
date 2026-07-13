@@ -318,6 +318,39 @@
     return html;
   }
 
+  // "On the agenda" sub-list for one meeting (contract v1.11 agenda_items).
+  // Everything shown is verbatim official text (PDF or City Clerk record);
+  // ward-tagged and safety-keyword items surface first via BSD.agendaHighlights.
+  function agendaItemsHTML(m, ward, max) {
+    const items = BSD.agendaHighlights(m, ward, max);
+    if (!items.length) return "";
+    let html = `<div style="margin: .15rem 0 .4rem .85rem;">`;
+    if (m.agenda_amended) {
+      html += `<div class="fine-print">Agenda has been amended since first published.</div>`;
+    }
+    html += `<div class="fine-print" style="font-weight: 600;">On the agenda:</div>`;
+    items.forEach(it => {
+      const label = it.url
+        ? `<a href="${BSD.esc(it.url)}" target="_blank" rel="noopener">${BSD.esc(it.label)}</a>`
+        : BSD.esc(it.label);
+      let line = it.safety ? `<strong>${label}</strong>` : label;
+      if (it.forWard) line = `<strong>Ward ${BSD.esc(it.ward)}</strong> · ${line}`;
+      else if (it.ward != null) line = `Ward ${BSD.esc(it.ward)} · ${line}`;
+      const meta = [it.type, it.sponsor].filter(Boolean).join(", ");
+      if (meta) line += ` <span class="muted">— ${BSD.esc(meta)}</span>`;
+      html += `<div class="fine-print">${line}</div>`;
+    });
+    const more = (Array.isArray(m.agenda_items) ? m.agenda_items.length : 0) - items.length;
+    if (more > 0) {
+      html += `<div class="fine-print">+ ${BSD.fmt(more)} more item${more === 1 ? "" : "s"}` +
+        (m.agenda_url
+          ? ` — <a href="${BSD.esc(m.agenda_url)}" target="_blank" rel="noopener">full agenda (PDF)</a>`
+          : "") + `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
   // ---- Coming up in Ward {N} section ----
   function upcomingSectionHTML(ward, aldermanName, upcoming) {
     let html = sectionHeadingHTML(`Coming up in Ward ${ward}`, "real");
@@ -361,6 +394,7 @@
         if (m.comment) {
           html += `<div class="fine-print">${BSD.esc(m.comment)}</div>`;
         }
+        html += agendaItemsHTML(m, ward, 6);
       });
       html += `</div>`;
     }
@@ -617,6 +651,7 @@
             if (m.location) html += ` · ${BSD.esc(m.location)}`;
             if (m.agenda_url) html += ` · <a href="${BSD.esc(m.agenda_url)}" target="_blank" rel="noopener">Agenda (PDF)</a>`;
             html += `</div>`;
+            html += agendaItemsHTML(m, null, 4);
           });
         }
         html += `</div>`;

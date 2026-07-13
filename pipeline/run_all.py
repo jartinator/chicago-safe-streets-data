@@ -12,7 +12,8 @@ Stages:
      pull_mellow, pull_osm_trails
   4. pull_ward_demographics, restore_frozen (frozen pre-2023 Legistar council records —
      see note below), pull_councilmatic (post-2023 council data — see DECISIONS.md),
-     pull_menu_spending, pull_hearings
+     pull_menu_spending, pull_hearings, pull_agenda_items (agenda PDF items +
+     eLMS matter context; consumes raw/hearings.json)
      (ward-accountability layer — see DECISIONS.md; each is non-fatal on failure)
   5. snapshot_bike_routes (dated copy — builds install-date history over time)
   6. make_mock_obstructions
@@ -47,6 +48,7 @@ LIVE_STAGES = [
     ["pull_mellow.py"], ["pull_osm_trails.py"],
     ["pull_ward_demographics.py"], ["restore_frozen.py"], ["pull_councilmatic.py"],
     ["pull_menu_spending.py"], ["pull_hearings.py"],
+    ["pull_agenda_items.py"],  # consumes raw/hearings.json — must follow pull_hearings
 ]
 COMMON_STAGES = [
     ["snapshot_bike_routes.py"],

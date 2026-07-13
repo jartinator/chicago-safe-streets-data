@@ -52,7 +52,9 @@
         if (today && d < today) return;
         if (!best || d < String(best.date).slice(0, 10)) {
           best = { date: m.date, committee: c.committee, comment: m.comment || null,
-                   agenda_url: m.agenda_url || null, location: m.location || null };
+                   agenda_url: m.agenda_url || null, location: m.location || null,
+                   agenda_items: Array.isArray(m.agenda_items) ? m.agenda_items : null,
+                   agenda_amended: !!m.agenda_amended };
         }
       });
     });

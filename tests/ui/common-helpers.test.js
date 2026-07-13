@@ -147,3 +147,47 @@ assert.ok(!B.provenanceLines("x", "real", null, "two\nlines")
   .some(l => l.includes("\n")) || B.csvText([], ["a"], ["two\nlines"]).split("\n")[0] === "# two lines");
 
 console.log("common-helpers OK");
+
+// ---- agendaHighlights: verbatim labels, ward/safety-first ordering ----
+const meeting = {
+  agenda_items: [
+    { record_number: null, ward: null, section: "MAYORAL",
+      agenda_text: "APPOINTMENT OF X - The appointment of X to the CTA board.",
+      safety_keyword_match: false, tracked: false },
+    { record_number: "O2026-2", ward: 43, section: null,
+      agenda_text: "SOMETHING - O2026-2", title: "Protected bike lane on Clark St",
+      type: "Ordinance", sponsor: "Doe, Jane",
+      matter_url: "https://x/matter/2", safety_keyword_match: true, tracked: true },
+    { record_number: "O2026-3", ward: 28, section: null,
+      agenda_text: "ALLEY THING - O2026-3", title: "Vacation of alley",
+      safety_keyword_match: false, tracked: false },
+  ],
+};
+const hs = B.agendaHighlights(meeting, 28, 2);
+assert.strictEqual(hs.length, 2, "capped at max");
+assert.strictEqual(hs[0].label, "Vacation of alley", "this ward's item first");
+assert.strictEqual(hs[0].forWard, true);
+assert.strictEqual(hs[1].label, "Protected bike lane on Clark St", "safety match next");
+assert.strictEqual(hs[1].safety, true);
+assert.strictEqual(hs[1].url, "https://x/matter/2");
+assert.strictEqual(hs[1].sponsor, "Doe, Jane");
+
+const all = B.agendaHighlights(meeting, null, 0);
+assert.strictEqual(all.length, 3, "max 0/omitted returns everything");
+assert.strictEqual(all[0].label, "Protected bike lane on Clark St",
+  "no ward filter: safety match first");
+assert.strictEqual(all[1].label, "Vacation of alley",
+  "record-numbered matters outrank no-record items");
+assert.ok(all[2].label.startsWith("APPOINTMENT OF X"),
+  "no-record item falls back to verbatim agenda text, ranked last");
+
+// Truncation of long PDF text (no title from the record lookup)
+const long = B.agendaHighlights({ agenda_items: [
+  { agenda_text: "A".repeat(200), safety_keyword_match: false }] }, null, 0)[0];
+assert.strictEqual(long.label.length, 141, "140 chars + ellipsis");
+assert.ok(long.label.endsWith("…"));
+
+assert.deepStrictEqual(B.agendaHighlights({}, 28, 2), [],
+  "meeting without agenda_items (PDF not parsed) yields [] — nothing invented");
+assert.deepStrictEqual(B.agendaHighlights(null, 28, 2), []);
+
