@@ -59,6 +59,13 @@ environment forced a deviation. Newest last.
     distorted schematic — a genuine DC-Metro-style schematization is a design
     project of its own; this keeps the "read the network" job without inventing
     geography.
+    - *2026-07-13:* geometry-faithful, but straightened at render time. Raw
+      CDOT/OSM vertices every few meters made lines read smudgy/squiggly at
+      metro-map stroke widths, so the network screen now runs all drawn
+      geometry through Ramer–Douglas–Peucker (40 m tolerance,
+      `BSDNet.schematicLatLngs`). Vertices are only dropped, never moved or
+      invented, and endpoints survive so segments stay connected — still not
+      a distorted schematic. Trail strokes also slimmed 11/15 px → 7/10 px.
 
 11. **Spatial params.** Nearest-bikeway threshold 30 m in EPSG:26916 (UTM 16N);
     intersection hotspots are ~100 m grid clusters (≥2 crashes), top 25

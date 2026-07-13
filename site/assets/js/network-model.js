@@ -179,16 +179,18 @@
   }
   const TRAIL_OUTLINE_DARKEN = 0.35;
 
-  // Trails (spec §1): weight 11 core stroke in the line color, drawn over a
-  // slightly wider outline stroke in a darkened shade of the same color
-  // (not white — trails are their own "express" tier, not a main-route
-  // lookalike).
+  // Trails (spec §1): core stroke in the line color, drawn over a slightly
+  // wider outline stroke in a darkened shade of the same color (not white —
+  // trails are their own "express" tier, not a main-route lookalike).
+  // Weight 7 over 10: a hair heavier than the weight-6 main routes so the
+  // tier still reads, but no longer the 11/15 slab that smudged every bend
+  // of the raw geometry together.
   function trailStyle(lineId) {
-    return { color: LINE_COLORS[lineId] || FALLBACK_LINE_COLOR, weight: 11, opacity: 1 };
+    return { color: LINE_COLORS[lineId] || FALLBACK_LINE_COLOR, weight: 7, opacity: 1 };
   }
   function trailOutlineStyle(lineId) {
     const base = LINE_COLORS[lineId] || FALLBACK_LINE_COLOR;
-    return { color: darkenColor(base, TRAIL_OUTLINE_DARKEN), weight: 15, opacity: 1 };
+    return { color: darkenColor(base, TRAIL_OUTLINE_DARKEN), weight: 10, opacity: 1 };
   }
 
   // Connectors (spec §1): everything rideable that isn't a roster trail or
@@ -335,6 +337,67 @@
     return streets;
   }
 
+  // ---- Render-time geometry straightening ----
+  // Raw CDOT/OSM geometry carries a vertex every few meters; drawn at
+  // metro-map stroke widths that jitter reads as smudge, not route. At draw
+  // time we run Ramer–Douglas–Peucker in meter space (equirectangular
+  // approximation — fine at city scale): drop every vertex that deviates
+  // less than `toleranceMeters` from the straight line between its kept
+  // neighbors. Endpoints always survive, so segment-to-segment continuity
+  // is preserved; vertices are only dropped, never moved or invented
+  // (DECISIONS.md #10 — still real geometry, just decluttered).
+
+  // Perpendicular distance (meters) from point p to segment a-b, all in
+  // pre-projected [x, y] meter coordinates.
+  function pointSegDistance(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+    let t = lenSq === 0 ? 0 : ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+  }
+
+  // RDP over one flat [lat,lng][] part. Iterative (explicit stack) so a
+  // multi-thousand-vertex trail can't blow the call stack.
+  function simplifyPart(part, toleranceMeters) {
+    if (!part || part.length <= 2 || !toleranceMeters) return (part || []).slice();
+    const mLng = metersPerDegLng(part[0][0]);
+    const pts = part.map(([lat, lng]) => [lng * mLng, lat * METERS_PER_DEG_LAT]);
+    const keep = new Array(part.length).fill(false);
+    keep[0] = keep[part.length - 1] = true;
+    const stack = [[0, part.length - 1]];
+    while (stack.length > 0) {
+      const [s, e] = stack.pop();
+      let maxDist = -1, maxIdx = -1;
+      for (let i = s + 1; i < e; i++) {
+        const d = pointSegDistance(pts[i], pts[s], pts[e]);
+        if (d > maxDist) { maxDist = d; maxIdx = i; }
+      }
+      if (maxDist > toleranceMeters) {
+        keep[maxIdx] = true;
+        stack.push([s, maxIdx], [maxIdx, e]);
+      }
+    }
+    return part.filter((_, i) => keep[i]);
+  }
+
+  // Simplify a toLatLngs()-shaped geometry (flat or multi-part),
+  // preserving its shape.
+  function simplifyLatLngs(latlngs, toleranceMeters) {
+    if (isMultiPart(latlngs)) return latlngs.map((part) => simplifyPart(part, toleranceMeters));
+    return simplifyPart(latlngs, toleranceMeters);
+  }
+
+  // One tolerance for every drawn tier. ~40 m is invisible at the citywide
+  // fit (~57 m/px at z11) and straightens block-level jitter at street
+  // zooms without detaching lines from their corridors.
+  const SIMPLIFY_TOLERANCE_METERS = 40;
+
+  // toLatLngs + simplify in one call — what network.js draws with.
+  function schematicLatLngs(geometry) {
+    return simplifyLatLngs(toLatLngs(geometry), SIMPLIFY_TOLERANCE_METERS);
+  }
+
   // ---- Interlining (spec §6): shared-track render-plan helpers ----
   // Pure geometry only — no Leaflet objects are created here. network.js
   // turns the plan this produces into actual polylines/markers. Kept pure
@@ -441,6 +504,7 @@
     DRAINED_COLOR, DRAINED_STYLE,
     QUALITY_MIX_ORDER, qualityMixSegments,
     buildRosterIndex, linesById, splitByRoster, membersOfLine, rosterStreets,
+    simplifyPart, simplifyLatLngs, schematicLatLngs, SIMPLIFY_TOLERANCE_METERS,
     isMultiPart, offsetPart, offsetLatLngs, strandOffsets, pathEndpoints,
     planInterlinedRoute, INTERLINE_GAP_METERS,
   };

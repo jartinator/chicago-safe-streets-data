@@ -189,7 +189,8 @@ assert.strictEqual(N.darkenColor("#ffffff", 1), "#000000", "darkenColor: amount 
 assert.strictEqual(N.darkenColor("#c8c8c8", 0.5), "#646464", "darkenColor: halves each channel");
 assert.strictEqual(N.darkenColor("not-a-color", 0.5), "not-a-color", "darkenColor: bad input passes through unchanged");
 
-assert.strictEqual(N.trailStyle("lakefront").weight, 11, "trailStyle: weight 11 (spec §1)");
+assert.strictEqual(N.trailStyle("lakefront").weight, 7,
+  "trailStyle: weight 7 — just above main routes' 6, thin enough not to smudge");
 assert.strictEqual(N.trailStyle("lakefront").color, N.LINE_COLORS.lakefront, "trailStyle: uses the line color");
 const outline = N.trailOutlineStyle("lakefront");
 assert.strictEqual(outline.color, N.darkenColor(N.LINE_COLORS.lakefront, 0.35),
@@ -434,5 +435,69 @@ assert.deepStrictEqual(plan.capsules, [sharedLatLngs[0], sharedLatLngs[2]],
 // but the plan must stay well-defined) -> no border, matching qualityBorderStyle.
 const planOffstreet = N.planInterlinedRoute(sharedLatLngs, ["milwaukee", "damen"], "offstreet", colorFor);
 assert.strictEqual(planOffstreet.border, null, "planInterlinedRoute: offstreet grade -> no shared border");
+
+// ---- simplifyPart / simplifyLatLngs / schematicLatLngs ----
+
+// Collinear jitter well under tolerance collapses to just the endpoints.
+// ~0.0001 deg lat ≈ 11 m of wobble around a straight north-south run.
+const wobbly = [
+  [41.90, -87.65],
+  [41.91, -87.65009],
+  [41.92, -87.64991],
+  [41.93, -87.65005],
+  [41.94, -87.65],
+];
+assert.deepStrictEqual(
+  N.simplifyPart(wobbly, 40),
+  [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyPart: sub-tolerance wobble collapses to endpoints"
+);
+
+// A genuine bend (way beyond tolerance) survives. 0.01 deg lng ≈ 830 m.
+const bent = [
+  [41.90, -87.65],
+  [41.92, -87.64],
+  [41.94, -87.65],
+];
+assert.deepStrictEqual(N.simplifyPart(bent, 40), bent,
+  "simplifyPart: real bends above tolerance are kept");
+
+// Endpoints always survive, so adjacent segments sharing an endpoint stay
+// connected after simplification.
+const simplified = N.simplifyPart(wobbly, 40);
+assert.deepStrictEqual(simplified[0], wobbly[0], "simplifyPart: first vertex preserved");
+assert.deepStrictEqual(simplified[simplified.length - 1], wobbly[wobbly.length - 1],
+  "simplifyPart: last vertex preserved");
+
+// Degenerate inputs pass through untouched (as copies).
+assert.deepStrictEqual(N.simplifyPart([], 40), [], "simplifyPart: empty part");
+assert.deepStrictEqual(N.simplifyPart([[41.9, -87.65]], 40), [[41.9, -87.65]],
+  "simplifyPart: single point");
+assert.deepStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
+  "simplifyPart: zero tolerance is a no-op copy");
+assert.notStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
+  "simplifyPart: returns a new array, not the input itself");
+
+// Multi-part input keeps its nesting; flat input stays flat.
+const multiIn = [wobbly, bent];
+const multiOut = N.simplifyLatLngs(multiIn, 40);
+assert.strictEqual(multiOut.length, 2, "simplifyLatLngs: multi-part shape preserved");
+assert.deepStrictEqual(multiOut[0], [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyLatLngs: each part simplified independently");
+assert.deepStrictEqual(multiOut[1], bent, "simplifyLatLngs: bend part untouched");
+assert.deepStrictEqual(N.simplifyLatLngs(wobbly, 40), [[41.90, -87.65], [41.94, -87.65]],
+  "simplifyLatLngs: flat input stays flat");
+
+// schematicLatLngs = toLatLngs + simplify at the default tolerance.
+const wobblyGeom = {
+  type: "LineString",
+  coordinates: wobbly.map(([lat, lng]) => [lng, lat]),
+};
+assert.deepStrictEqual(
+  N.schematicLatLngs(wobblyGeom),
+  N.simplifyLatLngs(N.toLatLngs(wobblyGeom), N.SIMPLIFY_TOLERANCE_METERS),
+  "schematicLatLngs: composes toLatLngs + simplifyLatLngs at the default tolerance"
+);
+assert.ok(N.SIMPLIFY_TOLERANCE_METERS > 0, "SIMPLIFY_TOLERANCE_METERS: positive");
 
 console.log("network-model OK");

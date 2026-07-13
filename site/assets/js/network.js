@@ -208,7 +208,7 @@
         const key = feature.properties.segment_id + "|" + lineId;
         if (seen.has(key)) return;
         seen.add(key);
-        layers.halo.addLayer(L.polyline(BSDNet.toLatLngs(feature.geometry), {
+        layers.halo.addLayer(L.polyline(BSDNet.schematicLatLngs(feature.geometry), {
           pane: "haloPane", color, weight: 16, opacity: 0.25, lineCap: "round", lineJoin: "round",
         }));
       });
@@ -324,7 +324,7 @@
   // map's own "click" handler (wired below for deselect-on-empty-click),
   // which would immediately undo the selection this very click just made.
   function drawSimpleMainRoute(feature, entry) {
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
     const lineId = entry.lineId;
 
     const borderStyle = BSDNet.qualityBorderStyle(entry.grade);
@@ -377,7 +377,9 @@
   }
 
   function drawInterlinedMainRoute(feature, entry) {
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    // Straighten before offsetting so the parallel strands are offset from
+    // the same decluttered path (offsetting first would re-wiggle them).
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
     const plan = BSDNet.planInterlinedRoute(
       latlngs, entry.lineIds, entry.grade,
       (id) => BSDNet.LINE_COLORS[id] || BSDNet.FALLBACK_LINE_COLOR
@@ -431,7 +433,7 @@
 
   rosterTrailFeatures.forEach((feature) => {
     const lineId = feature.properties.line_id;
-    const latlngs = BSDNet.toLatLngs(feature.geometry);
+    const latlngs = BSDNet.schematicLatLngs(feature.geometry);
 
     const outlineLayer = L.polyline(latlngs, {
       pane: "trailsOutlinePane", lineCap: "round", lineJoin: "round", ...BSDNet.trailOutlineStyle(lineId),
@@ -467,7 +469,7 @@
   function drawConnector(feature, pane, extraProps, renderer) {
     const opts = { pane, lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTOR_STYLE };
     if (renderer) opts.renderer = renderer;
-    const line = L.polyline(BSDNet.toLatLngs(feature.geometry), opts);
+    const line = L.polyline(BSDNet.schematicLatLngs(feature.geometry), opts);
     line.feature = feature;
     line._connectorGrade = (extraProps && extraProps.grade) || null;
     line.on("click", (e) => { L.DomEvent.stop(e); showSegmentDetail({ ...feature, ...extraProps }); });
@@ -517,7 +519,7 @@
 
   if (plannedData.features.length > 0) {
     plannedData.features.forEach((feature) => {
-      const latlngs = BSDNet.toLatLngs(feature.geometry);
+      const latlngs = BSDNet.schematicLatLngs(feature.geometry);
       const props = feature.properties;
       const color = BSD.FACILITY_COLORS[props.facility_category] || BSD.FACILITY_COLORS.other;
 
