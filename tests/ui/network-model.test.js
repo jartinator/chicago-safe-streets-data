@@ -168,10 +168,12 @@ const EXPECTED_LINE_COLORS = {
   marquette: "#1e40af", lake: "#a16207", "83rd": "#15803d",
   lakefront: "#0369a1", bloomingdale: "#16a34a", "major-taylor": "#ca8a04",
   "north-shore-channel": "#0d9488", "north-branch": "#3f6212",
+  "312-riverrun": "#4f46e5",
+  "green-bay": "#a21caf",
 };
 assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS,
-  "LINE_COLORS: exactly the 19 spec §9 entries (roosevelt/vincennes dropped)");
-assert.strictEqual(Object.keys(N.LINE_COLORS).length, 19, "LINE_COLORS: exactly 19 entries (14 street + 5 trail)");
+  "LINE_COLORS: exactly the 21 roster entries (spec §9 + DECISIONS.md #26/#27 additions)");
+assert.strictEqual(Object.keys(N.LINE_COLORS).length, 21, "LINE_COLORS: exactly 21 entries (14 street + 7 trail)");
 assert.ok(!("roosevelt" in N.LINE_COLORS), "LINE_COLORS: roosevelt demoted off the roster");
 assert.ok(!("vincennes" in N.LINE_COLORS), "LINE_COLORS: vincennes demoted off the roster");
 assert.match(N.FALLBACK_LINE_COLOR, /^#[0-9a-f]{6}$/i, "FALLBACK_LINE_COLOR is a 7-char hex color");

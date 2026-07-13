@@ -42,12 +42,13 @@ def _lines_by_id(out):
 def test_roster_shape_matches_spec():
     # network-tiers-v2 design spec §2 (2026-07-13-network-tiers-design.md):
     # owner-signed count 14 street lines + 5 trail lines = 19; roosevelt and
-    # vincennes demoted to connectors.
+    # vincennes demoted to connectors. DECISIONS.md #26 adds 312-riverrun,
+    # #27 adds green-bay -> 14 street + 7 trail = 21.
     lines = ROSTER["lines"]
-    assert len(lines) == 19
+    assert len(lines) == 21
     street = [ln for ln in lines if ln["source"] == "bike_routes"]
     trail = [ln for ln in lines if ln["source"] == "osm_trails"]
-    assert len(street) == 14 and len(trail) == 5
+    assert len(street) == 14 and len(trail) == 7
     ids = [ln["id"] for ln in lines]
     assert not ({"loop", "belmont", "31st"} & set(ids)), "dropped lines must be gone"
     assert not ({"roosevelt", "vincennes"} & set(ids)), "demoted-to-connector lines must be gone"
@@ -55,7 +56,8 @@ def test_roster_shape_matches_spec():
     assert {"milwaukee", "halsted", "clark", "kedzie", "damen", "state-indiana",
             "elston", "lake", "jackson-washington"} <= set(ids)
     assert {"lakefront", "bloomingdale", "major-taylor",
-            "north-shore-channel", "north-branch"} <= set(ids)
+            "north-shore-channel", "north-branch", "312-riverrun",
+            "green-bay"} <= set(ids)
     # no line carries a clip_bbox anymore (that was loop-only)
     assert not any(ln.get("clip_bbox") for ln in lines)
 
@@ -282,4 +284,4 @@ def test_top_level_shape_is_derived_with_lines_key():
     assert out["type"] == "FeatureCollection"
     assert out["data_tier"] == "derived"
     assert "editorial" in out["note"]
-    assert len(out["lines"]) == 19
+    assert len(out["lines"]) == 21
