@@ -1,11 +1,21 @@
 # READY TO SEND — FOIA request: CDOT bicycle count data
 
-Submit via the City's FOIA channel for CDOT (chicago.gov → CDOT → FOIA, or
-the FOIA officer email listed there — confirm the current address on the
-page when you verify URLs). Log the filing in `docs/foia-log.md` with date
-and tracking number. **Before sending, run the verification checklist at the
-bottom** — the citations were gathered via search snippets and must be
-spot-checked in a real browser.
+**How to submit** (same channels as the mileage-history request):
+- Online portal (GovQA): https://www.chicago.gov/publicrecords → Department
+  of Transportation — auto-assigns a tracking number, and the city says
+  online submissions reach staff fastest; or
+- Email the body below to **cdotfoia@cityofchicago.org** (listed on
+  https://www.chicago.gov/city/en/depts/cdot/supp_info/cdot_foia.html).
+
+Statutory response: 5 business days, extendable +5. Note: Chicago publishes
+all FOIA requests (requester name + request text) in its public FOIA log.
+Log the filing in `docs/foia/log.md` with date and tracking number.
+
+*Verification status (2026-07-13): all anchors checked — see the checklist
+at the bottom. Item 5 was rewritten after the check: the Cycling Strategy
+PDF contains only infrastructure-growth (mileage) claims, no trips claim,
+so item 5 now asks broadly for whatever ridership/trip data CDOT relied on
+in 2023.*
 
 ---
 
@@ -43,9 +53,10 @@ native format is preferable to any newly created document.
    ("Measuring Chicago's Boost in Biking"), including any underlying
    summary tables by neighborhood or trip purpose.
 
-5. Records identifying the data sources and methodology behind the
-   statement in the 2023 Chicago Cycling Strategy that short bike trips in
-   Chicago more than doubled between 2019 and 2023.
+5. Any data, analyses, or records relied on by CDOT in 2023 to characterize
+   growth in bicycle ridership or bicycle trips in Chicago (as distinct
+   from growth in bikeway mileage), including any preliminary modeled-
+   volume analyses predating the May 2024 Replica report.
 
 I request a waiver of fees under 5 ILCS 140/6: this request is made for
 noncommercial purposes in connection with an open-source, publicly
@@ -69,32 +80,35 @@ Sincerely,
 
 ---
 
-## Pre-send verification checklist (~30 min in a normal browser)
+## Verification checklist — COMPLETED 2026-07-13
 
-Confirm each before sending; strike any request item whose anchor doesn't
-hold up. Full citation list: `docs/foia-cdot-counter-crawl.md`.
+Full citation list: `cdot-counter-crawl.md`.
 
-- [ ] **2011 release exists & says what we cite** (item 1):
+- [x] **2011 release exists & says what we cite** (item 1):
   https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2011/feb/cdot_bicycle_countstudy.html
   — confirm: 26 locations, 2009, tube counters, Ben Gomberg.
-- [ ] **2022 counter story** (items 2–3):
+- [x] **2022 counter story** (items 2–3):
   https://chi.streetsblog.org/2022/12/16/the-wait-is-over-chicago-now-now-has-a-bike-counter-at-chicago-wells-in-river-north
   — confirm AMLI funding detail and the 543-rider 2015 count reference.
 - [x] **Eco-Counter public display map** — CHECKED 2026-07-13: the
   Chicago/Wells counter is listed (site 300037197) but its feed shows
   "last published data 2/17/2026" and exposes no historical data — the
-  public page is a dead end, which strengthens item 3 (now cites the feed
+  public page is a dead end, which strengthens item 3 (cites the feed
   interruption).
-- [ ] **Replica analysis** (item 4):
+- [x] **Replica analysis** (item 4):
   https://www.replicahq.com/post/measuring-chicagos-boost-in-biking and
   https://chicago.suntimes.com/transportation/2024/05/09/bicycle-chicago-safety-transportation-city-hall-roads-environment-commute-health
   — confirm "sponsored by the city transportation department" phrasing.
-- [ ] **Cycling Strategy trip-doubling stat** (item 5):
-  https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf
-  — open the PDF, find the stat and any footnote; if it already names its
-  source, tighten item 5 to request that source's data directly.
-- [ ] **Prior-request precedent** (sharpens, doesn't gate): search the FOIA
-  Request Log – Transportation for "bicycle"/"bike count"/"counter" — query
-  commands in `docs/research/followups/local-pull-runbook.md` §3.
-- [ ] Current CDOT FOIA submission channel + officer name (chicago.gov FOIA
-  page) — fill in the To: line.
+- [x] **Cycling Strategy trip-doubling stat** (item 5): CHECKED — the PDF
+  contains only infrastructure-mileage growth claims ("bicycle
+  infrastructure has more than doubled since 2010"; network 193.2 mi 2014 →
+  423.4 mi 2022 with low-stress split), NOT a trips claim. Item 5 rewritten
+  to the broader ridership-records form above. Bonus finds recorded in
+  `cdot-counter-crawl.md`: CDOT's official historical mileage table, and a
+  CDOT "bikeway density per community area" metric matching our coverage
+  metric.
+- [ ] **Prior-request precedent** (optional — sharpens, doesn't gate):
+  search the FOIA Request Log – Transportation for "bicycle"/"bike count"/
+  "counter" — queries in `docs/research/followups/local-pull-runbook.md` §3.
+- [x] **Submission channel**: cdotfoia@cityofchicago.org or the GovQA
+  portal (chicago.gov/publicrecords) — see header.

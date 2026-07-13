@@ -220,8 +220,8 @@ environment forced a deviation. Newest last.
     - **Historical backfill is a FOIA question, not a code one.** Because CDOT
       publishes nothing dated, the only route to a *retroactive* series is a
       records request for archived tracker versions or a GIS layer carrying
-      install dates. Those requests are drafted in `docs/foia-cdot-bikeway-
-      mileage-history.md` and tracked in `docs/foia-log.md`; any returned
+      install dates. Those requests are drafted in `docs/foia/cdot-bikeway-
+      mileage-history.md` and tracked in `docs/foia/log.md`; any returned
       historical data would live under `pipeline/frozen/` or `data/`, the same
       committed-immutable pattern as the frozen Legistar records.
 
