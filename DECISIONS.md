@@ -521,3 +521,27 @@ environment forced a deviation. Newest last.
     published (official record + unresolved outcome + geographic spread;
     news volume explicitly not a criterion) after the validation study
     flagged coverage-volume drift as imported inequity.
+
+31. **PeopleForBikes BNA ships as a citywide scorecard only (B1) — the trend
+    compares like with like, and last-place gets said out loud.** The
+    validated integration proposal (docs/projects/pfb-bna-proposal.md;
+    six-persona verdict under docs/research/user-needs/validation/pfb-bna/)
+    approved four elements: the citywide card ships now, the ward access
+    scores (B2) and segment stress cross-check (B3) are execution-planned but
+    gated on a PFB redistribution-license answer tracked in Linear, and the
+    peer-city strip (B4) was killed on a unanimous ignore. Two calls made on
+    contact with the real data: (a) PFB's score history reaches 2017, but
+    methodology rescorings (2020, 2026) make distant versions incomparable —
+    a 2017 "33" next to today's "11.08" reads as collapse when it's mostly a
+    formula change — so the finding's trend sentence only compares analyses
+    within TREND_COMPARABLE_YEARS (2) of the latest, and bna_scores.json's
+    note says the full history array is not cross-version comparable.
+    (b) Chicago ranking last (73rd of 73) among rated cities over 300,000
+    people is computed from the same cities-index pull and stated plainly on
+    the card — it matches PFB's own published large-city rank, and softening
+    it would be editorializing in the wrong direction. Tier crowdsourced
+    everywhere (OSM-derived); the caveat carries the verdict's required
+    anti-discouragement line ("a case for building more, not a reason not to
+    ride"). Non-fatal pull with a committed-file fallback chain
+    (aggregate.build_bna), mirroring osm_trails, because the BNA host may be
+    egress-blocked in pipeline environments.

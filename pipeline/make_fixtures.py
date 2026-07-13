@@ -385,6 +385,40 @@ def build_hearings():
     }
 
 
+def build_bna_raw():
+    """Synthetic raw/bna.json — the PFB BNA citywide scorecard pull.
+
+    Deterministic (no rng): two analysis years with a small score rise, plus a
+    tiny cities index with one large-city peer, so the finding card's trend,
+    national-mean, and large-city-rank paths all execute offline.
+    """
+    return {
+        "city": {"id": "fixture-chicago", "name": "Chicago", "state": "Illinois"},
+        "history": [
+            {"id": "fx-old", "score": 9, "version": "25.01",
+             "created_at": "2025-04-01T00:00:00Z"},
+            {"id": "fx-new", "score": 11.08, "version": "26.05",
+             "created_at": "2026-05-08T00:00:00Z"},
+        ],
+        "latest": {
+            "id": "fx-new", "score": 11.08, "version": "26.05",
+            "infrastructure": {"low_stress_miles": 1834.3,
+                               "high_stress_miles": 6267.2},
+            "people": {"people": 5.28},
+            "opportunity": {"score": 7.67},
+            "core_services": {"score": 6.29},
+            "recreation": {"score": 9.41},
+            "retail": {"retail": 32.55},
+            "transit": {"transit": 6.47},
+        },
+        "cities_index": [
+            {"id": "fixture-chicago", "score": 11.08, "population": 2746349},
+            {"id": "fixture-peer", "score": 40.0, "population": 800000},
+            {"id": "fixture-small", "score": 20.9, "population": 19759},
+        ],
+    }
+
+
 def build_news():
     # pull_news.py is a LIVE_STAGES module (network), not run under --fixtures.
     # Synthetic items in its exact raw shape so aggregate's relevance/matching/
@@ -466,6 +500,7 @@ def main():
     write_json(RAW_DIR / "hearings.json", hearings)
     write_json(RAW_DIR / "news.json", build_news())
     write_json(RAW_DIR / "osm_trails.json", osm_trails)
+    write_json(RAW_DIR / "bna.json", build_bna_raw())
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
     write_fixture_snapshots()
 

@@ -29,6 +29,7 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     SAFETY_TOPIC_KEYWORDS, NEWS_WINDOW_DAYS, NEWS_MAX_ITEMS,
                     PROPOSED_PROJECTS_PATH)
 from council_merge import load_all_council_records
+from bna_metrics import build_bna_scores, build_bna_finding
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core)
 from socrata import write_json
@@ -1596,6 +1597,28 @@ def build_menu_spending():
     }
 
 
+def build_bna(ignore_raw=False):
+    """PFB BNA scorecard, source priority: raw pull -> committed site data -> None.
+
+    Same fallback chain as build_osm_trails_layer: bna.peopleforbikes.org may be
+    egress-blocked in a pipeline environment, so an absent raw/bna.json keeps the
+    committed bna_scores.json (and its finding) shipping unchanged rather than
+    dropping the layer. Returns None only when neither exists — then no file, no
+    finding, and no meta entry (meta never claims a source ran when it didn't).
+
+    ignore_raw=True treats raw/bna.json as absent even if present — used by
+    refresh_reporting when that file is synthetic fixture output (raw_is_fixture),
+    so fixture scores never get built into (or written over) real reporting data.
+    """
+    raw_path = RAW_DIR / "bna.json"
+    if raw_path.exists() and not ignore_raw:
+        return build_bna_scores(json.loads(raw_path.read_text()))
+    committed = SITE_DATA_DIR / "bna_scores.json"
+    if committed.exists():
+        return json.loads(committed.read_text())
+    return None
+
+
 # ---- News coverage ("In the news") -----------------------------------------
 # Deterministic entity matching of pulled news items (raw/news.json) against
 # entities the site already publishes. Design + persona-validation basis:
@@ -1955,6 +1978,13 @@ def main():
     tuples = crash_tuples(crashes)
     findings = build_findings(tuples, corridors, wards_gj, as_of_date, road_coverage=road_network["citywide"])
 
+    # PFB BNA citywide scorecard (crowdsourced tier) — validated proposal B1,
+    # docs/projects/pfb-bna-proposal.md. Appended after the core findings so the
+    # crash-derived cards keep their established order.
+    bna_scores = build_bna()
+    if bna_scores:
+        findings.append(build_bna_finding(bna_scores))
+
     # Citywide monthly trend since CRASH_START_DATE, from the same crash tuples.
     trend_anchor = max((t["date"] for t in tuples), default=None)
     trend_months = monthly_counts(tuples, CRASH_START_DATE[:7],
@@ -2056,7 +2086,12 @@ def main():
              if mellow_connectors_gj["features"] else []) + (
             [{"id": "osm_trails", "name": "OpenStreetMap Off-street Trails",
               "tier": "crowdsourced", "records": len(osm_trails_gj["features"]), "date_range": None}]
-             if osm_trails_gj["features"] else []) + [
+             if osm_trails_gj["features"] else []) + (
+            [{"id": "bna_scores", "name": "PeopleForBikes BNA City Rating (citywide scorecard)",
+              "tier": "crowdsourced", "records": len(bna_scores.get("history") or []),
+              "date_range": ([bna_scores["history"][0]["as_of"], bna_scores["as_of"]]
+                             if bna_scores.get("history") and bna_scores.get("as_of") else None)}]
+             if bna_scores else []) + [
             {"id": "main_routes", "name": "Main Routes (curated line roster)",
              "tier": "derived", "records": len(main_routes_gj["lines"]),
              "date_range": None},
@@ -2104,6 +2139,8 @@ def main():
     write_json(SITE_DATA_DIR / "corridors.json", corridors)
     write_json(SITE_DATA_DIR / "intersections.json", intersections)
     write_json(SITE_DATA_DIR / "findings.json", findings)
+    if bna_scores:
+        write_json(SITE_DATA_DIR / "bna_scores.json", bna_scores)
     write_json(SITE_DATA_DIR / "citywide_trend.json", citywide_trend)
     write_json(SITE_DATA_DIR / "meta.json", meta)
     write_json(SITE_DATA_DIR / "planned_routes.geojson", stub_layer(

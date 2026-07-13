@@ -158,6 +158,21 @@
       metaId: "osm_trails"
     },
     {
+      id: "bna_scores",
+      name: "PeopleForBikes BNA City Rating (citywide scorecard)",
+      short: "BNA score",
+      origin: "PeopleForBikes Bicycle Network Analysis (bna.peopleforbikes.org)",
+      tier: "crowdsourced",
+      cadence: "annual upstream analysis (each spring); pulled weekly, best-effort",
+      description: "PeopleForBikes' annual citywide score (0–100) of how well Chicago's bike network connects people to destinations on low-stress streets, with subscores (people, opportunity, core services, recreation, retail, transit), low- vs high-stress street mileage, score history back to 2017, and national context (average across ~3,000 rated cities, rank among large cities). Powers the findings card; methodology is published by PeopleForBikes.",
+      limitations: "Computed from OpenStreetMap, so it is only as current as volunteer mapping — which is uneven across neighborhoods and can understate what a neighborhood has or miss hazards nobody mapped. It grades the street network, not riders or crashes: it moves when mapping or infrastructure changes, not when safety outcomes do. A low score is a case for building more, not evidence that people don't or shouldn't ride. Only the current analysis version is hosted upstream (older versions disappear), so history beyond the citywide score is not retained by PeopleForBikes.",
+      links: [
+        { text: "Chicago on the BNA map", url: "https://bna.peopleforbikes.org/cities/United%20States/Illinois/Chicago" },
+        { text: "City Ratings methodology", url: "https://cityratings.peopleforbikes.org/about/methodology" }
+      ],
+      metaId: "bna_scores"
+    },
+    {
       id: "main_routes",
       name: "Main Routes (curated line roster)",
       short: "Main routes",
