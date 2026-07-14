@@ -545,3 +545,23 @@ environment forced a deviation. Newest last.
     ride"). Non-fatal pull with a committed-file fallback chain
     (aggregate.build_bna), mirroring osm_trails, because the BNA host may be
     egress-blocked in pipeline environments.
+
+32. **Agent-first consumption is a static, versioned mirror, not a service.**
+    The agent API (`site/api/v1/`, Phases 1-5) never stood up a server: no
+    new infra, no auth, no rate-limiter, no uptime to own — just JSON files
+    under version control, rebuilt by the same weekly pipeline run that
+    already produces `site/data/`. `site/api/v1/` is an additive namespace
+    that never mutates the existing `site/data/` contract; the two evolve
+    together but a change to one doesn't require touching the other.
+    Schemas are hand-written (Phase 4, `site/api/v1/schemas/`), not derived
+    from `emit_api.py`'s own output — drift between code and contract gets
+    caught by CI (`pipeline/check_api.py`) instead of silently absorbed,
+    same philosophy as this file's own published-contract discipline.
+    Two accepted trade-offs, both documented at the point of use: crash IDs
+    ship as a lossy `CRASH_ID_PREFIX_LEN`-hex-char prefix rather than the
+    full 128-char id (mitigated by a per-id uniqueness check that falls back
+    to the full id on the astronomically rare collision — see
+    `emit_api.crash_id_prefixes`), and the human site's synthetic
+    obstruction-demo layer never appears under `/api/v1/` in any form —
+    `index.json`'s `no_synthetic_data` field and `llms.txt`'s matching
+    disclaimer say so explicitly rather than silently omitting it.

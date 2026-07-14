@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "pipeline" / "raw"
+SITE_DIR = REPO_ROOT / "site"
 SITE_DATA_DIR = REPO_ROOT / "site" / "data"
 SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots"
 # Fixtures write their own synthetic dated snapshots here (gitignored) so an offline
@@ -325,6 +326,10 @@ CONTRACT_VERSION = "1.14"
 # agents to fetch and cite. See pipeline/emit_api.py.
 API_VERSION = "1"
 SITE_API_DIR = REPO_ROOT / "site" / "api" / "v1"
+# llms.txt/sitemap.xml (Phase 5) are siblings of index.html at the site root,
+# not part of the api/v1 namespace tree — they're written under SITE_DIR
+# (above), never SITE_API_DIR, so _prune_stale (which only scans
+# SITE_API_DIR) never touches them.
 SITE_BASE_URL = "https://jartinator.github.io/chicago-safe-streets-data"
 # emit_api.py hard-fails if any emitted file exceeds this — the design goal is
 # a cold agent reaching a cited answer in <=3 fetches of <100 KB each.

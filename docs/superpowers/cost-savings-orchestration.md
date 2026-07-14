@@ -118,12 +118,30 @@ step in the playbook calls for a different model.
 - Phase 2 deviation (documented): ward files omit "top corridors" — corridors.json has
   no ward linkage/geometry, an honest per-ward mapping needs aggregate.py support first.
 
-## Phase map (plan §6 of the agent-api-layer plan)
+## Phase map (plan §6 of the agent-api-layer plan) — COMPLETE as of Phase 5
 - P1: DONE, merged PR #32 — index/citywide/corridors skeleton + pipeline wiring.
 - P2: DONE, merged PR #36 — wards/index.json, wards/ward-NN.json, crashes/ward-NN.json,
   size tests, pruning.
-- P3: routes/index.json + routes/line-<id>.json; council/{index,records,aldermen}.json.
-- P4: schemas/*.schema.json (hand-written, normative), check_api.py, jsonschema dev dep,
-  data-guard step, optional tests.yml (repo has no pytest CI).
-- P5: llms.txt, sitemap.xml, robots.txt, HTML head links + JSON-LD, README/CONTRIBUTING/
-  SCHEMA.md section, DECISIONS entry (take next free number), CONTRACT_VERSION note.
+- P3: DONE, merged PR #43 — routes/index.json + routes/line-<id>.json;
+  council/{index,records,aldermen}.json.
+- P4: DONE, merged PR #44 — schemas/*.schema.json (hand-written, normative), check_api.py,
+  jsonschema dev dep, data-guard step. tests.yml (separate pytest CI) intentionally
+  skipped as optional (repo has no pytest CI) — still available as a standalone PR later.
+- P5: DONE, PR #45 (open) — llms.txt, sitemap.xml, robots.txt, HTML head links + JSON-LD,
+  README/CONTRIBUTING/SCHEMA.md section, DECISIONS entry, CONTRACT_VERSION note.
+
+This was the last phase in the plan (`docs/superpowers/plans/2026-07-13-agent-api-layer.md`
+§6). There is no Phase 6. If new work surfaces (parked minors, newly-discovered bugs), scope
+it as its own plan/brief — don't assume the phase-N loop above continues automatically.
+
+## Gotcha: this site is a GitHub Pages *project* page — no root-relative hrefs
+`SITE_BASE_URL` is `https://jartinator.github.io/chicago-safe-streets-data` (no `CNAME`,
+so it's served under a path, not at the domain root). Any HTML written into `site/*.html`
+must use **relative** hrefs (`api/v1/index.json`, not `/api/v1/index.json`) for anything
+meant to resolve under the site's own path — a root-relative href resolves to
+`jartinator.github.io/...` and silently 404s in production while looking correct in a
+local file-server preview that happens to serve from the repo root. Bit Phase 5's
+`<link rel="alternate">` tags (caught in final review, fixed before merge — see P5 ledger
+entry). Absolute URLs (built from `SITE_BASE_URL` itself, e.g. JSON-LD `url`/`contentUrl`,
+or any URL embedded inside a JSON/text payload like llms.txt) are correct as-is and don't
+need this treatment — only literal `href="/..."` attributes in committed HTML.

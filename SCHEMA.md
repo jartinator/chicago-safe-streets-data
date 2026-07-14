@@ -939,3 +939,30 @@ functional overlap with either). Additive only (validated proposal B1 —
   between `osm_trails` and `main_routes`; `records` = number of analysis
   years in `history`, `date_range` = first analysis date → `as_of`) — only on
   runs that actually pulled (meta never claims a source ran when it didn't).
+
+## Contract v1.14 (agent API)
+
+`pipeline/emit_api.py` builds a separate, additive JSON namespace under
+`site/api/v1/` for LLM agents — smaller, self-describing files sized for a
+handful of fetches, generated from this file's own contract (`site/data/`),
+never a second source of truth. Every endpoint's shape is a hand-written
+JSON Schema under `site/api/v1/schemas/`, validated in CI
+(`pipeline/check_api.py`); this file does NOT restate those shapes
+field-by-field — the schemas are the contract for `/api/v1/`, this section
+just says it exists. Discovery for a cold agent: `site/llms.txt` (plain
+text) and `/api/v1/index.json` both list every endpoint, its size, and
+fetch recipes for common questions; `site/sitemap.xml` and `site/robots.txt`
+point crawlers at both.
+
+Two trade-offs worth knowing about:
+
+- **Crash IDs are truncated.** `crashes/ward-NN.json` rows carry a
+  `CRASH_ID_PREFIX_LEN`-hex-char prefix of the full crash_id, not the full
+  128-char id — cheaper to fetch and parse at scale. On the (astronomically
+  unlikely) event two ids in the same build share that prefix, both fall
+  back to their full id rather than colliding (`emit_api.crash_id_prefixes`);
+  an agent wanting the full id set uses `full_data_url`.
+- **No synthetic data.** The human site's `obstructions_mock.geojson` layer
+  never appears under `/api/v1/` in any form — `index.json`'s
+  `no_synthetic_data` field and `llms.txt`'s matching disclaimer say so
+  explicitly, so an agent doesn't go looking for it.
