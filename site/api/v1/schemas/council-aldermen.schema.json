@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/council-aldermen.schema.json",
+  "title": "council/aldermen.json — current roster with safety-sponsorship record",
+  "description": "See build_aldermen_api() in pipeline/emit_api.py. safety_record per alderman is nullable (no exact (ward, name) match — see DECISIONS.md #8).",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "as_of": { "type": "string" },
+    "roster_note": { "type": "string" },
+    "menu_note": { "type": "string" },
+    "safety_record_note": { "type": "string" },
+    "aldermen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ward": { "type": "string" },
+          "alderman": { "type": ["string", "null"] },
+          "email": { "type": ["string", "null"] },
+          "phone": { "type": ["string", "null"] },
+          "website": { "type": ["string", "null"] },
+          "safety_record": {
+            "type": ["object", "null"],
+            "properties": {
+              "safety_sponsorships": { "type": "integer" },
+              "total_matched_sponsorships": { "type": "integer" },
+              "recorded_no_votes": { "type": "integer" }
+            },
+            "required": ["safety_sponsorships", "total_matched_sponsorships",
+                         "recorded_no_votes"],
+            "additionalProperties": false
+          },
+          "menu_spending": {
+            "type": "object",
+            "description": "Either {available: false} (no Ward Wise data) or the real per-ward menu-spending record with data_tier added — kept loose.",
+            "additionalProperties": true
+          },
+          "detail_url": { "type": "string" }
+        },
+        "required": ["ward", "alderman", "email", "phone", "website", "safety_record",
+                     "menu_spending", "detail_url"],
+        "additionalProperties": false
+      }
+    },
+    "unmatched_sponsors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sponsor_name": { "type": "string" },
+          "ward": { "type": ["string", "null"] },
+          "safety_sponsorships": { "type": "integer" },
+          "total_matched_sponsorships": { "type": "integer" },
+          "recorded_no_votes": { "type": "integer" }
+        },
+        "required": ["sponsor_name", "ward", "safety_sponsorships",
+                     "total_matched_sponsorships", "recorded_no_votes"],
+        "additionalProperties": false
+      }
+    },
+    "unmatched_note": { "type": "string" }
+  },
+  "required": ["_meta", "as_of", "roster_note", "menu_note", "safety_record_note",
+               "aldermen", "unmatched_sponsors", "unmatched_note"],
+  "additionalProperties": false
+}

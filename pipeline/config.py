@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_ROOT / "pipeline" / "raw"
+SITE_DIR = REPO_ROOT / "site"
 SITE_DATA_DIR = REPO_ROOT / "site" / "data"
 SNAPSHOT_DIR = REPO_ROOT / "data" / "snapshots"
 # Fixtures write their own synthetic dated snapshots here (gitignored) so an offline
@@ -124,6 +125,19 @@ ELMS_COMMITTEES_OF_INTEREST = [
     "Committee on Transportation and Public Way",
 ]
 
+# PeopleForBikes BNA / City Ratings (bna.peopleforbikes.org) — third-party annual
+# bike-network score computed from OpenStreetMap (crowdsourced tier). Unauthenticated
+# JSON API, verified 2026-07-13; access notes and full endpoint survey in
+# docs/research/followups/peopleforbikes-bna-evaluation.md. Only the citywide
+# scorecard (B1) ships from these endpoints; the block/ways file store is the
+# gated B2/B3 work (docs/superpowers/plans/2026-07-13-pfb-bna-b2-*.md, -b3-*.md).
+# Non-fatal like Mellow — the host may be egress-blocked in pipeline environments,
+# in which case aggregate.py keeps shipping the committed bna_scores.json.
+BNA_API_URL = "https://bna.peopleforbikes.org/api"
+BNA_CITY_RATINGS_PATH = "city-ratings/United%20States/Illinois/Chicago"
+# PFB's "large city" population floor, used for the peer-context rank.
+BNA_LARGE_CITY_MIN_POPULATION = 300_000
+
 # Ward Wise (Chi Hack Night, wardwisechicago.org) — volunteer project structuring
 # Aldermanic Menu Program spending (city only publishes PDFs). States it has a
 # public JSON API; every endpoint returned HTTP 500 during verification
@@ -138,8 +152,52 @@ WARD_WISE_API_URL = "https://www.wardwisechicago.org/api"
 SAFETY_TOPIC_KEYWORDS = [
     "bike", "bicycle", "cyclist", "complete streets", "vision zero",
     "traffic calming", "protected lane", "bike lane", "pedestrian safety",
-    "speed hump", "traffic safety", "road diet", "curb extension",
+    "speed hump", "traffic safety", "road diet", "curb extension", "dooring",
 ]
+
+# News coverage feeds (pull_news.py) — public RSS only, headline+link+date+
+# outlet, never body text. Feasibility evidence and outlet-by-outlet verdicts:
+# docs/research/news-layer/evidence-feeds.md. Both outlets' robots.txt
+# disallow AI-branded crawlers by name, so the pull identifies itself with its
+# own honest User-Agent (same pattern as OSM_USER_AGENT above) and treats any
+# 403/429 as the outlet opting out — skip, never work around.
+NEWS_USER_AGENT = ("OnYourLeftNewsBot/1.0 (open-source Chicago bike-safety "
+                   "dashboard; +https://github.com/jartinator/chicago-safe-streets-data)")
+NEWS_FEEDS = [
+    # source=None means "take the outlet name from the feed item itself"
+    # (Google News carries a per-item <source> element).
+    {"url": "https://chi.streetsblog.org/feed/",
+     "source": "Streetsblog Chicago", "kind": "rss"},
+    {"url": "https://blockclubchicago.org/category/transportation/feed/",
+     "source": "Block Club Chicago", "kind": "rss"},
+    # query_is_filter: this query is scoped tightly enough that its results
+    # are bike-safety-relevant by construction — aggregate's relevance gate
+    # accepts them without a keyword check. The roster-derived project query
+    # (pull_news.project_query_feed) deliberately does NOT set this: its
+    # corridor-name phrases can surface unrelated stories, which must pass
+    # the normal keyword/project gate.
+    {"url": ("https://news.google.com/rss/search?q=%22bike+lane%22+OR+"
+             "%22bike+lanes%22+OR+%22protected+lane%22+OR+dooring+Chicago"
+             "+when:90d&hl=en-US&gl=US&ceid=US:en"),
+     "source": None, "kind": "google_news", "query_is_filter": True},
+]
+# Published window/cap: items older than this (relative to the pull's
+# fetched_at, so re-aggregation is deterministic) are dropped at aggregate
+# time; the list is newest-first and capped.
+NEWS_WINDOW_DAYS = 90
+NEWS_MAX_ITEMS = 60
+NEWS_FEED_MAX_BYTES = 5 * 1024 * 1024
+
+# Proposed & in-progress bikeway projects — hand-curated editorial roster
+# (the main_routes.json pattern): statuses are volunteer-reviewed with
+# citations; the news layer auto-attaches coverage per project via its
+# curated news_phrases. Design + validation: docs/superpowers/specs/
+# 2026-07-13-proposed-projects-design.md. pull_news.py also derives one
+# extra Google News query from the roster's phrases so coverage follows the
+# roster (several real projects' current coverage lives on outlets outside
+# the base allowlist).
+PROPOSED_PROJECTS_PATH = REPO_ROOT / "data" / "proposed_projects.json"
+NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT = 2  # keeps the query URL sane
 
 # Crash data is citywide-reliable only from this date (capability report).
 CRASH_START_DATE = "2017-09-01"
@@ -261,14 +319,29 @@ INJURY_SEVERITY_MAP = {
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.11"
+CONTRACT_VERSION = "1.14"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM
 # agents to fetch and cite. See pipeline/emit_api.py.
 API_VERSION = "1"
 SITE_API_DIR = REPO_ROOT / "site" / "api" / "v1"
+# llms.txt/sitemap.xml (Phase 5) are siblings of index.html at the site root,
+# not part of the api/v1 namespace tree — they're written under SITE_DIR
+# (above), never SITE_API_DIR, so _prune_stale (which only scans
+# SITE_API_DIR) never touches them.
 SITE_BASE_URL = "https://jartinator.github.io/chicago-safe-streets-data"
 # emit_api.py hard-fails if any emitted file exceeds this — the design goal is
 # a cold agent reaching a cited answer in <=3 fetches of <100 KB each.
 API_SIZE_BUDGET_BYTES = 100_000
+# Crash slices (site/api/v1/crashes/ward-NN.json) are columnar rows, not prose,
+# and the worst ward (27, 1,187 crashes) needs more headroom than a hand-
+# written endpoint ever would — this budget applies to that one family only,
+# everything else still enforces API_SIZE_BUDGET_BYTES.
+API_CRASH_SLICE_BUDGET_BYTES = 150_000
+# crash_id in the source data is a 128-hex-char string; emitting it in full in
+# every row of every ward file wastes bytes for no agent-facing benefit, so
+# crash slices truncate to this many leading hex chars (falling back to the
+# full id per-crash on the rare prefix collision — see crash_id_prefixes in
+# emit_api.py).
+CRASH_ID_PREFIX_LEN = 16

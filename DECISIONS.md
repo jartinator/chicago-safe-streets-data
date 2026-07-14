@@ -481,7 +481,92 @@ environment forced a deviation. Newest last.
     continuity. Connectors default off on the network map; the toggle brings
     the mesh back.
 
-29. **Graded connectors — the background tier stops being one flat gray and
+29. **News coverage ships as links-only, matched conservatively, with every
+    match auditable.** The "In the news" layer (`pull_news.py` →
+    `news_items.json`) publishes verbatim headline + link + date + outlet
+    from public RSS feeds (Streetsblog Chicago, Block Club Chicago's
+    transportation category, a Google News search) and never article text —
+    the licensing-safe subset confirmed in
+    docs/research/news-layer/evidence-feeds.md. Three calls made against the
+    obvious alternatives: (a) entity matching favors precision over recall
+    (publisher tags first, honorific+surname or full-name for alderpersons,
+    street-type suffix required for street names) because the validation
+    study found one wrong match costs more trust than many misses — every
+    match therefore publishes a `via` string recording the exact rule that
+    made it; (b) item↔meeting and item↔record-number linkage is permanently
+    killed, not deferred — record numbers appeared in zero of ~50 sampled
+    headlines, and all four study personas rejected date-proximity guessing
+    outright; (c) the pull identifies itself as OnYourLeftNewsBot (both
+    outlets' robots.txt disallow AI-branded crawlers by name) and treats any
+    403/429 as the outlet opting out — skip the feed, never work around it.
+
+30. **Proposed routes ship as a curated roster with auto-attached news
+    coverage — no geometry, no derived statuses, no bare-token matching.**
+    `data/proposed_projects.json` + `proposed_projects.json` answer "what's
+    proposed here and what's its status" for the 606/Bloomingdale extension
+    class of question. Three calls: (a) statuses are hand-curated with a
+    visible last-reviewed date and citation, because news text cannot settle
+    them deterministically — the Archer saga had outlets describing the same
+    facts as "installed" and "ripped out" in the same month, and Streetsblog
+    published a piece disputing CBS's characterization of the same project;
+    (b) project matching uses curated multi-word phrases only ("Bloomingdale
+    Trail extension"), never bare corridor names — Streetsblog's own the-606
+    tag feed is ~1/12 on-topic for the extension; (c) no map lines: CDOT
+    publishes planned bikeways as a spreadsheet plus static maps (a
+    volunteer had to hand-geocode it to map it), and CMAP's Bikeway
+    Inventory System, probed directly at its ArcGIS REST endpoint
+    (2026-07-13), is an archive of 2012-era municipal plan documents — so
+    honest geometry does not exist, and `planned_routes.geojson` stays a
+    stub while this feature renders cards. Roster selection criteria are
+    published (official record + unresolved outcome + geographic spread;
+    news volume explicitly not a criterion) after the validation study
+    flagged coverage-volume drift as imported inequity.
+
+31. **PeopleForBikes BNA ships as a citywide scorecard only (B1) — the trend
+    compares like with like, and last-place gets said out loud.** The
+    validated integration proposal (docs/projects/pfb-bna-proposal.md;
+    six-persona verdict under docs/research/user-needs/validation/pfb-bna/)
+    approved four elements: the citywide card ships now, the ward access
+    scores (B2) and segment stress cross-check (B3) are execution-planned but
+    gated on a PFB redistribution-license answer tracked in Linear, and the
+    peer-city strip (B4) was killed on a unanimous ignore. Two calls made on
+    contact with the real data: (a) PFB's score history reaches 2017, but
+    methodology rescorings (2020, 2026) make distant versions incomparable —
+    a 2017 "33" next to today's "11.08" reads as collapse when it's mostly a
+    formula change — so the finding's trend sentence only compares analyses
+    within TREND_COMPARABLE_YEARS (2) of the latest, and bna_scores.json's
+    note says the full history array is not cross-version comparable.
+    (b) Chicago ranking last (73rd of 73) among rated cities over 300,000
+    people is computed from the same cities-index pull and stated plainly on
+    the card — it matches PFB's own published large-city rank, and softening
+    it would be editorializing in the wrong direction. Tier crowdsourced
+    everywhere (OSM-derived); the caveat carries the verdict's required
+    anti-discouragement line ("a case for building more, not a reason not to
+    ride"). Non-fatal pull with a committed-file fallback chain
+    (aggregate.build_bna), mirroring osm_trails, because the BNA host may be
+    egress-blocked in pipeline environments.
+
+32. **Agent-first consumption is a static, versioned mirror, not a service.**
+    The agent API (`site/api/v1/`, Phases 1-5) never stood up a server: no
+    new infra, no auth, no rate-limiter, no uptime to own — just JSON files
+    under version control, rebuilt by the same weekly pipeline run that
+    already produces `site/data/`. `site/api/v1/` is an additive namespace
+    that never mutates the existing `site/data/` contract; the two evolve
+    together but a change to one doesn't require touching the other.
+    Schemas are hand-written (Phase 4, `site/api/v1/schemas/`), not derived
+    from `emit_api.py`'s own output — drift between code and contract gets
+    caught by CI (`pipeline/check_api.py`) instead of silently absorbed,
+    same philosophy as this file's own published-contract discipline.
+    Two accepted trade-offs, both documented at the point of use: crash IDs
+    ship as a lossy `CRASH_ID_PREFIX_LEN`-hex-char prefix rather than the
+    full 128-char id (mitigated by a per-id uniqueness check that falls back
+    to the full id on the astronomically rare collision — see
+    `emit_api.crash_id_prefixes`), and the human site's synthetic
+    obstruction-demo layer never appears under `/api/v1/` in any form —
+    `index.json`'s `no_synthetic_data` field and `llms.txt`'s matching
+    disclaimer say so explicitly rather than silently omitting it.
+
+33. **Graded connectors — the background tier stops being one flat gray and
     the comfort floor stops nuking it outright.** Same-day amendment to #24
     (spec §12): a light re-convene of the research panel (same 5 personas,
     one follow-up pass) found the connector tier's single neutral style hid

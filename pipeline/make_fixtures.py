@@ -385,6 +385,74 @@ def build_hearings():
     }
 
 
+def build_bna_raw():
+    """Synthetic raw/bna.json — the PFB BNA citywide scorecard pull.
+
+    Deterministic (no rng): two analysis years with a small score rise, plus a
+    tiny cities index with one large-city peer, so the finding card's trend,
+    national-mean, and large-city-rank paths all execute offline.
+    """
+    return {
+        "city": {"id": "fixture-chicago", "name": "Chicago", "state": "Illinois"},
+        "history": [
+            {"id": "fx-old", "score": 9, "version": "25.01",
+             "created_at": "2025-04-01T00:00:00Z"},
+            {"id": "fx-new", "score": 11.08, "version": "26.05",
+             "created_at": "2026-05-08T00:00:00Z"},
+        ],
+        "latest": {
+            "id": "fx-new", "score": 11.08, "version": "26.05",
+            "infrastructure": {"low_stress_miles": 1834.3,
+                               "high_stress_miles": 6267.2},
+            "people": {"people": 5.28},
+            "opportunity": {"score": 7.67},
+            "core_services": {"score": 6.29},
+            "recreation": {"score": 9.41},
+            "retail": {"retail": 32.55},
+            "transit": {"transit": 6.47},
+        },
+        "cities_index": [
+            {"id": "fixture-chicago", "score": 11.08, "population": 2746349},
+            {"id": "fixture-peer", "score": 40.0, "population": 800000},
+            {"id": "fixture-small", "score": 20.9, "population": 19759},
+        ],
+    }
+
+
+def build_news():
+    # pull_news.py is a LIVE_STAGES module (network), not run under --fixtures.
+    # Synthetic items in its exact raw shape so aggregate's relevance/matching/
+    # window branches run in CI. Outlet names are fictional on purpose — fake
+    # headlines must never be attributed to real outlets. Dates sit inside the
+    # 90-day window relative to fetched_at (aggregate windows against
+    # fetched_at, not today, so this fixture stays stable as it ages).
+    return {
+        "fetched_at": "2026-07-11T00:00:00+00:00",
+        "feeds": [
+            {"url": "https://example.org/fixture/feed/", "source": "Fixture Wire",
+             "kind": "rss", "ok": True, "items": [
+                {"title": "Milwaukee Avenue bike lane repairs finished",
+                 "url": "https://example.org/fixture/milwaukee-avenue",
+                 "source": "Fixture Wire",
+                 "published": "2026-07-08T09:00:00+00:00",
+                 "categories": ["Bicycling", "Milwaukee Avenue", "1st Ward"]},
+                {"title": "Committee hears dooring testimony from 3rd Ward riders",
+                 "url": "https://example.org/fixture/dooring-hearing",
+                 "source": "Fixture Wire",
+                 "published": "2026-06-30T09:00:00+00:00",
+                 "categories": ["City Hall"]},
+                {"title": "Today's Headlines for Friday, July 10",  # digest — must be dropped
+                 "url": "https://example.org/fixture/digest",
+                 "source": "Fixture Wire",
+                 "published": "2026-07-10T09:00:00+00:00",
+                 "categories": []},
+            ]},
+            {"url": "https://example.org/fixture/unreachable/feed/",
+             "source": "Fixture Gazette", "kind": "rss", "ok": False, "items": []},
+        ],
+    }
+
+
 # Two named off-street trails in the Overpass `out geom` shape (way elements with
 # inline {lat, lon} geometry + tags.name). Lakefront moved here from CORRIDORS so
 # the bike_routes fixture matches the real on-street-only CDOT layer.
@@ -430,7 +498,9 @@ def main():
     write_json(RAW_DIR / "councilmatic_records.json", councilmatic_records)
     write_json(RAW_DIR / "menu_spending.json", menu_spending)
     write_json(RAW_DIR / "hearings.json", hearings)
+    write_json(RAW_DIR / "news.json", build_news())
     write_json(RAW_DIR / "osm_trails.json", osm_trails)
+    write_json(RAW_DIR / "bna.json", build_bna_raw())
     (RAW_DIR / "PROVENANCE").write_text("fixtures\n")
     write_fixture_snapshots()
 

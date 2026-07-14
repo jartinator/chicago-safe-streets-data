@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/ward.schema.json",
+  "title": "wards/ward-NN.json — one ward's full detail",
+  "description": "See build_ward_file() in pipeline/emit_api.py. alderman and alderman_note are nullable/optional (no roster entry for the ward); menu_spending/sr311 are either the real per-ward shape or the {available: false, ...} honest-gap shape — both validated loosely (require data_tier, allow extra fields) rather than with oneOf, per the brief's judgment call.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "ward": { "type": "string" },
+    "ward_padded": { "type": "string", "pattern": "^[0-9]{2}$" },
+    "safety": {
+      "type": "object",
+      "description": "ward_safety_index record verbatim (incl. monthly) plus score_note. additionalProperties true — passthrough.",
+      "properties": {
+        "ward": { "type": "string" },
+        "comparable_danger_score": { "type": ["number", "null"] },
+        "score_note": { "type": "string" },
+        "monthly": { "type": "array" }
+      },
+      "required": ["ward", "score_note", "monthly"],
+      "additionalProperties": true
+    },
+    "alderman": {
+      "type": ["object", "null"],
+      "description": "null when no aldermen.json roster entry exists for this ward (see alderman_note).",
+      "properties": {
+        "ward": { "type": "string" },
+        "alderman": { "type": ["string", "null"] },
+        "email": { "type": ["string", "null"] },
+        "phone": { "type": ["string", "null"] },
+        "website": { "type": ["string", "null"] },
+        "as_of": { "type": "string" },
+        "source": { "type": "string" },
+        "data_tier": { "type": "string" },
+        "lookup_url": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "alderman_note": {
+      "type": "string",
+      "description": "OPTIONAL — present only when alderman is null."
+    },
+    "safety_record": {
+      "type": "object",
+      "properties": {
+        "data_tier": { "type": "string" },
+        "note": { "type": "string" },
+        "entries": { "type": "array" }
+      },
+      "required": ["data_tier", "note", "entries"],
+      "additionalProperties": false
+    },
+    "menu_spending": {
+      "type": "object",
+      "description": "Either {available: false, data_tier, note} (no Ward Wise data for this ward) or the real per-ward menu-spending record with data_tier added.",
+      "properties": {
+        "data_tier": { "type": "string" }
+      },
+      "required": ["data_tier"],
+      "additionalProperties": true
+    },
+    "sr311": {
+      "type": "object",
+      "description": "Either {available: false, data_tier, note} (no 311 entry for this ward) or the real per-ward 311 record with data_tier/note added.",
+      "properties": {
+        "data_tier": { "type": "string" }
+      },
+      "required": ["data_tier"],
+      "additionalProperties": true
+    },
+    "crashes_url": { "type": "string" },
+    "one_pager_url": { "type": "string" },
+    "see_also": {
+      "type": "object",
+      "properties": {
+        "corridors": { "type": "string" },
+        "wards_index": { "type": "string" }
+      },
+      "required": ["corridors", "wards_index"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["_meta", "ward", "ward_padded", "safety", "alderman", "safety_record",
+               "menu_spending", "sr311", "crashes_url", "one_pager_url", "see_also"],
+  "additionalProperties": false
+}
