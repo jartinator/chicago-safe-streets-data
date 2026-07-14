@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/envelope.schema.json",
+  "title": "Agent API _meta envelope",
+  "description": "The shared `_meta` object every site/api/v1 file opens with. See _envelope() in pipeline/emit_api.py. $ref'd by every other schema for its `_meta` property — fields are not duplicated inline elsewhere.",
+  "type": "object",
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "description": "The agent-API namespace version (config.API_VERSION), independent of contract_version."
+    },
+    "contract_version": {
+      "type": "string",
+      "description": "The site/data/ contract version this file was built from, copied verbatim from site/data/meta.json."
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "Copied verbatim from site/data/meta.json's generated_at — never a fresh timestamp."
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["socrata", "fixtures"],
+      "description": "Copied verbatim from site/data/meta.json's provenance. 'socrata' is a real build; 'fixtures' must never reach main (see check_provenance.py)."
+    },
+    "data_tier": {
+      "type": "string",
+      "enum": ["real", "proxy", "mock", "crowdsourced", "derived", "mixed"],
+      "description": "This file's overall data tier. 'mixed' means the payload blends tiers; individual sections/records may carry their own data_tier."
+    },
+    "tier_note": {
+      "type": "string",
+      "description": "Present iff data_tier == 'mixed' — explains which sections carry which tier."
+    },
+    "license": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
+    },
+    "human_page": {
+      "type": "string",
+      "description": "URL of the human-facing page this file's data backs."
+    },
+    "methodology": {
+      "type": "string",
+      "description": "URL of the site-wide methodology page."
+    },
+    "schema": {
+      "type": "string",
+      "description": "URL of this file's own JSON Schema under site/api/v1/schemas/ (added Phase 4)."
+    }
+  },
+  "required": [
+    "api_version",
+    "contract_version",
+    "generated_at",
+    "provenance",
+    "data_tier",
+    "license",
+    "attribution",
+    "human_page",
+    "methodology",
+    "schema"
+  ],
+  "additionalProperties": false
+}

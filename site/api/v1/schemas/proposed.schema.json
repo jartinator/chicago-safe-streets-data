@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/proposed.schema.json",
+  "title": "proposed.json — proposed/in-progress bikeway projects",
+  "description": "See build_proposed_api() in pipeline/emit_api.py. official_links/citations pass through verbatim from data/proposed_projects.json — kept loose since their shape is editorial, not enumerated here.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "as_of": { "type": "string" },
+    "note": { "type": "string" },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "type": "string" },
+          "status_as_of": { "type": "string" },
+          "status_note": { "type": "string" },
+          "description": { "type": "string" },
+          "wards": { "type": "array", "items": { "type": "string" } },
+          "official_links": { "type": "array" },
+          "citations": { "type": "array" },
+          "coverage": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "url": { "type": "string" },
+                "source": { "type": "string" },
+                "published": { "type": "string" }
+              },
+              "required": ["title", "url", "source", "published"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["id", "name", "status", "status_as_of", "status_note",
+                     "description", "wards", "official_links", "citations", "coverage"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["_meta", "as_of", "note", "projects"],
+  "additionalProperties": false
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/corridors.schema.json",
+  "title": "corridors.json — per-street corridor crash rates and hotspot intersections",
+  "description": "See build_corridors_api() in pipeline/emit_api.py — both sections pass through site/data/corridors.json and site/data/intersections.json verbatim.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "corridors": {
+      "type": "array",
+      "description": "Passthrough of site/data/corridors.json — additionalProperties true (facility_mix keys are facility categories).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "street": { "type": "string" },
+          "segments": { "type": "integer" },
+          "length_m": { "type": "number" },
+          "crashes": { "type": "integer" },
+          "crashes_per_km": { "type": ["number", "null"] },
+          "facility_mix": { "type": "object" },
+          "data_tier": { "type": "string" }
+        },
+        "required": ["street", "segments", "length_m", "crashes", "crashes_per_km",
+                     "facility_mix", "data_tier"],
+        "additionalProperties": true
+      }
+    },
+    "hotspot_intersections": {
+      "type": "array",
+      "description": "Passthrough of site/data/intersections.json.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "label": { "type": "string" },
+          "crashes": { "type": "integer" },
+          "data_tier": { "type": "string" }
+        },
+        "required": ["lat", "lng", "label", "crashes", "data_tier"],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["_meta", "corridors", "hotspot_intersections"],
+  "additionalProperties": false
+}

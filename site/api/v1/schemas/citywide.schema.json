@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/citywide.schema.json",
+  "title": "citywide.json — citywide trend, findings, bikeway mileage",
+  "description": "See build_citywide() in pipeline/emit_api.py. protected_share is OPTIONAL — omitted entirely when there's no usable mileage snapshot.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "trend": {
+      "type": "object",
+      "description": "Passthrough of site/data/citywide_trend.json — additionalProperties true because this is source-data passthrough, not hand-enumerated here.",
+      "properties": {
+        "data_tier": { "type": "string" },
+        "window_end": { "type": "string" },
+        "note": { "type": "string" },
+        "months": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "month": { "type": "string" },
+              "crashes": { "type": "integer" },
+              "injury_crashes": { "type": "integer" },
+              "ksi": { "type": "integer" },
+              "fatal": { "type": "integer" }
+            },
+            "required": ["month", "crashes", "injury_crashes", "ksi", "fatal"],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": ["data_tier", "note", "months"],
+      "additionalProperties": true
+    },
+    "findings": {
+      "type": "array",
+      "description": "Each findings.json record, verbatim except map_state (UI-only, stripped). additionalProperties true — editorial fields may grow.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "stat": { "type": "string" },
+          "description": { "type": "string" },
+          "caveat": { "type": "string" },
+          "data_tier": { "type": "string" }
+        },
+        "required": ["id", "title", "stat", "description", "caveat", "data_tier"],
+        "not": { "required": ["map_state"] },
+        "additionalProperties": true
+      }
+    },
+    "bikeway_mileage": {
+      "type": "object",
+      "description": "Passthrough of site/data/bikeway_mileage_series.json — additionalProperties true (by_category keys are facility categories, not enumerated here).",
+      "properties": {
+        "data_tier": { "type": "string" },
+        "note": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "by_category": { "type": "object" },
+              "total": { "type": "number" }
+            },
+            "required": ["date", "by_category", "total"],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": ["data_tier", "note", "series"],
+      "additionalProperties": true
+    },
+    "protected_share": {
+      "type": "object",
+      "description": "OPTIONAL — omitted entirely when there's no usable latest mileage snapshot (empty series or total 0).",
+      "properties": {
+        "as_of": { "type": "string" },
+        "protected_miles": { "type": "number" },
+        "total_miles": { "type": "number" },
+        "pct_protected": { "type": "number" },
+        "data_tier": { "type": "string", "const": "derived" },
+        "note": { "type": "string" }
+      },
+      "required": ["as_of", "protected_miles", "total_miles", "pct_protected",
+                   "data_tier", "note"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["_meta", "trend", "findings", "bikeway_mileage"],
+  "additionalProperties": false
+}

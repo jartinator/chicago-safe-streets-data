@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/index.schema.json",
+  "title": "index.json — agent API discovery entry point",
+  "description": "See build_index() in pipeline/emit_api.py.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "url": { "type": "string" },
+          "bytes_approx": { "type": "integer", "minimum": 0 },
+          "description": { "type": "string" },
+          "example_questions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        },
+        "required": ["path", "url", "bytes_approx", "description", "example_questions"],
+        "additionalProperties": false
+      }
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path_template": { "type": "string" },
+          "url_template": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 },
+          "example": { "type": "string" },
+          "bytes_approx_max": { "type": "integer", "minimum": 0 },
+          "description": { "type": "string" },
+          "example_questions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          }
+        },
+        "required": ["path_template", "url_template", "count", "example",
+                     "bytes_approx_max", "description", "example_questions"],
+        "additionalProperties": false
+      }
+    },
+    "fetch_recipes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string" },
+          "fetch": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "then": { "type": "string" }
+        },
+        "required": ["question", "fetch", "then"],
+        "additionalProperties": false
+      }
+    },
+    "coverage_note": { "type": "string" },
+    "no_synthetic_data": { "type": "string" },
+    "planned": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["_meta", "title", "description", "endpoints", "families",
+               "fetch_recipes", "coverage_note", "no_synthetic_data", "planned"],
+  "additionalProperties": false
+}

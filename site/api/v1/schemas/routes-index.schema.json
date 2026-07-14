@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/routes-index.schema.json",
+  "title": "routes/index.json — all main bike routes' report cards",
+  "description": "See build_routes_index() in pipeline/emit_api.py. pct_protected/crashes_total are genuinely ABSENT (not null) on trail lines (source == \"osm_trails\") — those stats are street-only in the source data.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "note": { "type": "string" },
+    "grade_legend": {
+      "type": "object",
+      "properties": {
+        "protected": { "type": "string" },
+        "paint": { "type": "string" },
+        "mellow": { "type": "string" },
+        "offstreet": { "type": "string" },
+        "none": { "type": "string" }
+      },
+      "required": ["protected", "paint", "mellow", "offstreet", "none"],
+      "additionalProperties": false
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "termini": { "type": "string" },
+          "source": { "type": "string" },
+          "data_tier": { "type": "string" },
+          "miles_total": { "type": "number" },
+          "miles_by_grade": { "type": "object" },
+          "pct_protected": { "type": "number" },
+          "crashes_total": { "type": "integer" },
+          "detail_url": { "type": "string" }
+        },
+        "required": ["id", "name", "termini", "source", "data_tier", "miles_total",
+                     "miles_by_grade", "detail_url"],
+        "additionalProperties": false
+      }
+    },
+    "interchanges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "label": { "type": "string" },
+          "lines": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "kind", "lat", "lng", "label", "lines"],
+        "additionalProperties": false
+      }
+    },
+    "count": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["_meta", "note", "grade_legend", "lines", "interchanges", "count"],
+  "additionalProperties": false
+}

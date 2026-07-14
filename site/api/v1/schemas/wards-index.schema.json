@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/wards-index.schema.json",
+  "title": "wards/index.json — all 50 wards' safety index, ranked",
+  "description": "See build_wards_index() in pipeline/emit_api.py — each ward_safety_index record verbatim minus `monthly`, plus detail_url/crashes_url. additionalProperties true on ward entries: this is mostly a passthrough of site/data/ward_safety_index.json, whose field set can grow without being a contract break.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "data_tier": { "type": "string" },
+    "note": { "type": "string" },
+    "wards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ward": { "type": "string" },
+          "cyclist_crashes": { "type": "integer" },
+          "population": { "type": ["number", "null"] },
+          "bikeway_miles": { "type": "number" },
+          "crashes_per_10k_pop": { "type": ["number", "null"] },
+          "crashes_per_bikeway_mile": { "type": ["number", "null"] },
+          "comparable_danger_score": { "type": ["number", "null"] },
+          "crash_trend": { "type": "object" },
+          "detail_url": { "type": "string" },
+          "crashes_url": { "type": "string" },
+          "monthly": false
+        },
+        "required": ["ward", "detail_url", "crashes_url"],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["_meta", "data_tier", "note", "wards"],
+  "additionalProperties": false
+}

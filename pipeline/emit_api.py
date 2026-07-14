@@ -15,10 +15,11 @@ docs/superpowers/plans/2026-07-13-agent-api-layer.md for the full phasing.
 Every emitted file opens with an `_meta` envelope (see `_envelope`) carrying
 generated_at/provenance copied verbatim from site/data/meta.json (never a
 fresh timestamp — deterministic rebuilds, honest provenance), plus license,
-attribution, and a data_tier. Deliberately OMITTED from the envelope in Phase
-1: `schema` (added in Phase 4, once JSON Schemas exist to point at) and
-`docs`/llms.txt (Phase 5) — publishing a URL that 404s is worse than omitting
-the key.
+attribution, a data_tier, and (as of Phase 4) `schema` — the URL of this
+file's own hand-written JSON Schema under site/api/v1/schemas/, validated by
+pipeline/check_api.py. Deliberately OMITTED from the envelope: `docs`/
+llms.txt (Phase 5) — publishing a URL that 404s is worse than omitting the
+key.
 
 Synthetic data (the human site's obstruction map layer, provenance "mock") is
 excluded from this namespace entirely; index.json's `no_synthetic_data`
@@ -156,11 +157,14 @@ _ENDPOINTS = [
 ]
 
 
-def _envelope(meta, data_tier, human_page, tier_note=None):
+def _envelope(meta, data_tier, human_page, schema_name, tier_note=None):
     """Build the `_meta` object every emitted API file opens with.
 
     generated_at/provenance are copied verbatim from site/data/meta.json — see
     the module docstring. tier_note is included only when data_tier == "mixed".
+    schema_name is this file's own JSON Schema filename under
+    site/api/v1/schemas/ (e.g. "citywide.schema.json"), threaded into `schema`
+    (Phase 4 — see module docstring).
     """
     envelope = {
         "api_version": API_VERSION,
@@ -175,6 +179,7 @@ def _envelope(meta, data_tier, human_page, tier_note=None):
     envelope["attribution"] = ATTRIBUTION
     envelope["human_page"] = human_page
     envelope["methodology"] = f"{SITE_BASE_URL}/methodology.html"
+    envelope["schema"] = f"{API_BASE_URL}/schemas/{schema_name}"
     return envelope
 
 
@@ -214,7 +219,8 @@ def build_citywide(meta, citywide_trend, findings, mileage_series):
         meta, data_tier="mixed",
         tier_note=("trend is real; findings each carry their own data_tier; "
                   "bikeway_mileage and protected_share are derived."),
-        human_page=f"{SITE_BASE_URL}/findings.html")
+        human_page=f"{SITE_BASE_URL}/findings.html",
+        schema_name="citywide.schema.json")
 
     return {"_meta": envelope, **payload}
 
@@ -224,7 +230,8 @@ def build_corridors_api(meta, corridors, intersections):
     both passed through as-is — both sources are tier "real".
     """
     envelope = _envelope(meta, data_tier="real",
-                         human_page=f"{SITE_BASE_URL}/index.html")
+                         human_page=f"{SITE_BASE_URL}/index.html",
+                         schema_name="corridors.schema.json")
     return {"_meta": envelope, "corridors": corridors,
            "hotspot_intersections": intersections}
 
@@ -250,7 +257,8 @@ def build_wards_index(meta, ward_safety_index):
            f"{COMPARABLE_DANGER_SCORE_DESC}.")
 
     envelope = _envelope(meta, data_tier="derived",
-                         human_page=f"{SITE_BASE_URL}/table.html")
+                         human_page=f"{SITE_BASE_URL}/table.html",
+                         schema_name="wards-index.schema.json")
 
     return {
         "_meta": envelope,
@@ -330,7 +338,8 @@ def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, s
         tier_note=("safety is derived; alderman is real; safety_record is derived "
                   "(council sponsorship aggregation); sr311 is proxy (self-reported "
                   "bias); menu_spending is proxy."),
-        human_page=one_pager_url)
+        human_page=one_pager_url,
+        schema_name="ward.schema.json")
 
     return {"_meta": envelope, **payload}
 
@@ -404,7 +413,8 @@ def build_crash_slice(meta, ward, features_for_ward, id_prefix_map):
            "Dropped columns crash_type, lighting, and segment_id are available in the "
            "full GeoJSON.")
 
-    envelope = _envelope(meta, data_tier="real", human_page=f"{SITE_BASE_URL}/index.html")
+    envelope = _envelope(meta, data_tier="real", human_page=f"{SITE_BASE_URL}/index.html",
+                         schema_name="crash-slice.schema.json")
 
     return {
         "_meta": envelope,
@@ -447,7 +457,8 @@ def build_news_api(meta, news_items):
                   "(verbatim from the outlets' public RSS feeds); the entity "
                   "matching (wards/aldermen/routes/projects) is derived and "
                   "best-effort."),
-        human_page=f"{SITE_BASE_URL}/action.html")
+        human_page=f"{SITE_BASE_URL}/action.html",
+        schema_name="news.schema.json")
 
     return {
         "_meta": envelope,
@@ -487,7 +498,8 @@ def build_proposed_api(meta, proposed_projects):
                   "reviewed (derived); the attached news coverage headlines "
                   "are real (verbatim). The linked official page is "
                   "authoritative."),
-        human_page=f"{SITE_BASE_URL}/action.html")
+        human_page=f"{SITE_BASE_URL}/action.html",
+        schema_name="proposed.schema.json")
 
     return {
         "_meta": envelope,
@@ -527,7 +539,8 @@ def build_routes_index(meta, main_routes, network_nodes):
         tier_note=("line stats are derived from real CDOT segments (street lines) "
                   "and crowdsourced OSM trail geometry (trail lines); interchanges "
                   "are derived."),
-        human_page=f"{SITE_BASE_URL}/network.html")
+        human_page=f"{SITE_BASE_URL}/network.html",
+        schema_name="routes-index.schema.json")
 
     return {
         "_meta": envelope,
@@ -585,7 +598,8 @@ def build_line_file(meta, line, features, network_nodes):
         tier_note=("line and member-segment stats are derived from real CDOT "
                   "bike-route segments (street lines) or crowdsourced OSM trail "
                   "geometry (trail lines)."),
-        human_page=f"{SITE_BASE_URL}/network.html")
+        human_page=f"{SITE_BASE_URL}/network.html",
+        schema_name="route-line.schema.json")
 
     return {
         "_meta": envelope,
@@ -630,7 +644,8 @@ def build_council_index(meta, hearings, council_records):
                   "summary is derived (counts over the topic-tagged council "
                   "records, whose topic tagging is a derived best-effort "
                   "classification)."),
-        human_page=f"{SITE_BASE_URL}/action.html")
+        human_page=f"{SITE_BASE_URL}/action.html",
+        schema_name="council-index.schema.json")
 
     return {
         "_meta": envelope,
@@ -669,7 +684,8 @@ def build_council_records_api(meta, council_records):
         tier_note=("matter records (title/status/sponsors/dates) are real "
                   "(Legistar + Councilmatic); topic-relevance tagging is derived "
                   "(keyword net + classifier, best-effort)."),
-        human_page=f"{SITE_BASE_URL}/action.html")
+        human_page=f"{SITE_BASE_URL}/action.html",
+        schema_name="council-records.schema.json")
 
     return {
         "_meta": envelope,
@@ -732,7 +748,8 @@ def build_aldermen_api(meta, aldermen, safety_record, menu_spending):
         tier_note=("roster + contact info are real (city Ward Offices dataset); "
                   "safety_record aggregates are derived (council sponsorship "
                   "counts); menu_spending is a proxy."),
-        human_page=f"{SITE_BASE_URL}/action.html")
+        human_page=f"{SITE_BASE_URL}/action.html",
+        schema_name="council-aldermen.schema.json")
 
     return {
         "_meta": envelope,
@@ -835,7 +852,8 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
         tier_note=("this index has no single data tier — each endpoint declares "
                   "its own data_tier(s) in its own _meta envelope and payload "
                   "sections; see the endpoint list below."),
-        human_page=f"{SITE_BASE_URL}/index.html")
+        human_page=f"{SITE_BASE_URL}/index.html",
+        schema_name="index.schema.json")
 
     fetch_recipes = [
         {
