@@ -689,13 +689,17 @@ def build_council_index(meta, hearings, council_records):
         human_page=f"{SITE_BASE_URL}/action.html",
         schema_name="council-index.schema.json")
 
+    hearings_out = {
+        "as_of": hearings["as_of"], "note": hearings["note"],
+        "structured_data_available": hearings["structured_data_available"],
+        "committees": committees,
+    }
+    if "source" in hearings:
+        hearings_out["source"] = hearings["source"]
+
     return {
         "_meta": envelope,
-        "hearings": {
-            "as_of": hearings["as_of"], "note": hearings["note"],
-            "structured_data_available": hearings["structured_data_available"],
-            "source": hearings["source"], "committees": committees,
-        },
+        "hearings": hearings_out,
         "activity_summary": {
             "topic_relevant_matters": len(topic_records),
             "by_status": by_status,
