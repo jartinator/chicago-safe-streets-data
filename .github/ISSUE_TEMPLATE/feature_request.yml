@@ -1,0 +1,57 @@
+name: "✨ Feature / enhancement"
+description: A new capability, screen, data source, or improvement.
+labels: ["type/feat"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What need or gap does this address? Link a doc or report if one exists.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should exist when this is done?
+    validations:
+      required: true
+  - type: dropdown
+    id: initiative
+    attributes:
+      label: Initiative
+      description: Which initiative does this belong to? (registry in docs/outbox/README.md)
+      options:
+        - core-site
+        - foia
+        - exposure-data
+        - blu-partnership
+        - gov-agent-layer
+        - agent-api
+        - ux-tranche2
+        - none / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - pipeline
+        - site
+        - api
+        - foia
+        - news
+        - bna
+        - data
+        - infra
+        - not sure
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Alternatives considered, schema impact, screenshots, etc.
+    validations:
+      required: false

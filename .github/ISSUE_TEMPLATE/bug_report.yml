@@ -1,0 +1,51 @@
+name: "🐛 Bug report"
+description: Something in the pipeline, site, or API works incorrectly.
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please include enough for someone to reproduce it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+      placeholder: "pull_news resolved 3/57 Google News redirects; expected all to resolve to publisher URLs."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Command(s) run, or the page/URL and what you clicked.
+      placeholder: |
+        1. python pipeline/run_all.py --fixtures
+        2. open site/map.html
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which subsystem? (also add the matching `area/*` label)
+      options:
+        - pipeline
+        - site
+        - api
+        - foia
+        - news
+        - bna
+        - data
+        - infra
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Environment / logs
+      description: OS, Python version, and any relevant traceback or console output.
+    validations:
+      required: false

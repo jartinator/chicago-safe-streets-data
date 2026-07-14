@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📬 Human action item (letters, applications, contacts)
+    url: https://github.com/jartinator/chicago-safe-streets-data/issues/33
+    about: Tasks only a human can do live on tracker issue #33. Add it there, prefixed with the [initiative] key.
+  - name: 🔒 FOIA / open-records request
+    url: https://github.com/jartinator/chicago-safe-streets-data/tree/main/docs/foia
+    about: Open-records program docs and log. Draft correspondence in docs/outbox/.

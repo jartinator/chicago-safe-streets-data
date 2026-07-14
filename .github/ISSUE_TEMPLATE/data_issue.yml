@@ -1,0 +1,43 @@
+name: "📊 Data issue"
+description: A data source, schema, tier, or accuracy problem.
+labels: ["type/data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for source changes, schema drift, wrong `data_tier` labeling,
+        stale datasets, or accuracy concerns. Data quality must always be honest
+        and visible — see CONTRIBUTING.md and SCHEMA.md.
+  - type: input
+    id: dataset
+    attributes:
+      label: Dataset / file
+      description: Which published file or source dataset?
+      placeholder: "site/data/obstructions_mock.geojson  (or Socrata id pr57-gg9e)"
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What's wrong?
+      description: Describe the discrepancy, and how you noticed it.
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Data tier involved
+      options:
+        - measured
+        - proxy
+        - mock
+        - not sure
+    validations:
+      required: false
+  - type: textarea
+    id: source
+    attributes:
+      label: Better source (if known)
+      description: Link a candidate replacement source and note licensing/access.
+    validations:
+      required: false
