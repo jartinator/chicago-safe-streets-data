@@ -151,6 +151,7 @@
   const mainRouteRecords = []; // { grade, lineIds, casingLayer, casingBaseWeight, borderLayer, strandLayers: [{lineId, layer}] }
   const trailRecords = [];     // { lineId, coreLayer, outlineLayer }
   const gapRecords = [];       // { lineId, layer, baseWeight } — lighter continuity strokes
+  const connectorRecords = []; // { layer, grade } — per-feature comfort grade (spec §12)
 
   function isLineSelected(lineId) {
     return selectedLineIds != null && selectedLineIds.has(lineId);
@@ -301,6 +302,20 @@
     `;
   }
   const GRADE_MIX_LABELS = { protected: "protected", paint: "paint", mellow: "mellow", none: "none" };
+
+  // Connector detail-card title per comfort grade (spec §12): names the
+  // grade the way the quality legend does, with the same facility-type
+  // caveat repeated in the card body below. Unknown grade -> the `none`
+  // label, matching connectorStyle's fallback.
+  const CONNECTOR_GRADE_LABELS = {
+    protected: "Protected connector",
+    paint: "Painted connector",
+    mellow: "Mellow connector",
+    none: "Connector",
+  };
+  function connectorGradeLabel(grade) {
+    return CONNECTOR_GRADE_LABELS[grade] || CONNECTOR_GRADE_LABELS.none;
+  }
 
   function selectLine(lineId, opts) {
     const o = opts || {};
@@ -565,13 +580,17 @@
     trailRecords.push({ lineId, coreLayer, outlineLayer });
   });
 
-  /* ---------------- draw: connectors (spec §1) ---------------- */
-  // One tier, one style, three sources: non-roster bike_routes (the old
+  /* ---------------- draw: connectors (spec §1, amended §12) ---------------- */
+  // One tier, three sources: non-roster bike_routes (the old
   // "connecting/local" background network, ~1000 small features — SVG is
   // fine), deduped mellow geometry (mellow_connectors.geojson — may 404,
-  // degrades to []), and non-roster named OSM trails. All click through to
-  // the plain (non-selection) segment detail card — connectors carry no
-  // line identity to select.
+  // degrades to []), and non-roster named OSM trails. Each feature now also
+  // carries a per-feature comfort grade (spec §12) — mellow/offstreet are
+  // forced by source, everything else derives from facility_category via
+  // BSDNet.CONNECTOR_GRADE_MAP — styled with BSDNet.connectorStyle(grade):
+  // still one subtle, identity-less background mesh, just tinted. All click
+  // through to the plain (non-selection) segment detail card — connectors
+  // carry no line identity to select.
   //
   // mellow_connectors.geojson ships as a HANDFUL of features, each one huge
   // citywide MultiLineString (same shape the old mellow_routes.geojson
@@ -582,13 +601,18 @@
   // this is that pattern, scoped to just this one source.
   const mellowConnectorCanvas = L.canvas({ pane: "connectorsPane" });
   function drawConnector(feature, pane, extraProps, renderer) {
-    const opts = { pane, lineCap: "round", lineJoin: "round", ...BSDNet.CONNECTOR_STYLE };
+    const props = extraProps || {};
+    const grade = props._mellowConnector ? "mellow"
+      : props._trail ? "offstreet"
+      : BSDNet.CONNECTOR_GRADE_MAP[feature.properties.facility_category] || "none";
+    const opts = { pane, lineCap: "round", lineJoin: "round", ...BSDNet.connectorStyle(grade) };
     if (renderer) opts.renderer = renderer;
     const line = L.polyline(BSDNet.schematicLatLngs(feature.geometry), opts);
     line.feature = feature;
-    line._connectorGrade = (extraProps && extraProps.grade) || null;
-    line.on("click", (e) => { L.DomEvent.stop(e); showSegmentDetail({ ...feature, ...extraProps }); });
+    line._connectorGrade = grade;
+    line.on("click", (e) => { L.DomEvent.stop(e); showSegmentDetail({ ...feature, ...extraProps, _connectorGrade: grade }); });
     layers.connectors.addLayer(line);
+    connectorRecords.push({ layer: line, grade });
     return line;
   }
   localFeatures.forEach((feature) => drawConnector(feature, "connectorsPane"));
@@ -761,7 +785,11 @@
   // lineLabelsStreets mounts via updateDeclutter() once zoomed past BSDNet.ZOOM.lineLabels.
   if (state.overlays.has("quality")) layers.quality.addTo(map);
   if (state.overlays.has("trails")) { layers.trailsOutline.addTo(map); layers.gapsTrails.addTo(map); layers.trails.addTo(map); layers.lineLabelsTrails.addTo(map); }
-  if (state.overlays.has("connectors") && state.floor === "any") layers.connectors.addTo(map);
+  // Connector tier mounts by its own toggle only (spec §12 amendment) — the
+  // comfort floor no longer hides the whole tier, it filters membership per
+  // record instead (applyConnectorFloor, below), applied via applyFloor()
+  // before any deep link/paint happens.
+  if (state.overlays.has("connectors")) layers.connectors.addTo(map);
   if (state.overlays.has("planned")) { layers.planned.addTo(map); layers.plannedCasing.addTo(map); }
 
   function setLayerVisible(layer, visible) {
@@ -772,23 +800,46 @@
     }
   }
 
-  // Comfort floor (spec §5): connectors have no identity to preserve below
-  // a floor, so the whole tier hides whenever a floor is set, regardless of
-  // its own toggle state. Main-route stretches below the floor drain in
-  // place via restyleMainRoute (setStyle, not rebuild) — only mainRouteRecords
-  // need restyling here; trails are floor-immune (comfort floor only judges
-  // on-street facility grade) so restyleAll()'s trail pass would be wasted
-  // work. restyleAll() is still used for selection changes, which DO affect
-  // trail dimming/highlighting.
+  // Per-record connector floor membership (spec §12 amendment): each
+  // connector hides when its grade is below the current floor and stays
+  // visible at/above it (BSDNet.meetsFloor) — floors now *reveal* the
+  // qualifying background network instead of nuking the whole tier.
+  // eachLayer() is deliberately NOT used here (see restyleStaticWeights
+  // below) because a floor-removed layer isn't in the group to iterate.
+  function applyConnectorFloor() {
+    connectorRecords.forEach((rec) => {
+      const show = BSDNet.meetsFloor(rec.grade, state.floor);
+      if (show) {
+        if (!layers.connectors.hasLayer(rec.layer)) layers.connectors.addLayer(rec.layer);
+      } else if (layers.connectors.hasLayer(rec.layer)) {
+        layers.connectors.removeLayer(rec.layer);
+      }
+    });
+  }
+
+  // Comfort floor (spec §5, amended §12): each connector now carries a
+  // comfort grade of its own, so a floor no longer hides the whole
+  // connectors tier — it filters membership per record instead
+  // (applyConnectorFloor, above): below-floor connectors drop out of
+  // layers.connectors, at/above-floor ones stay in. The tier's own mount/
+  // unmount is toggle-only (setLayerVisible). Main-route stretches below
+  // the floor still drain in place via restyleMainRoute (setStyle, not
+  // rebuild) — only mainRouteRecords need restyling here; trails are
+  // floor-immune (comfort floor only judges on-street facility grade) so
+  // restyleAll()'s trail pass would be wasted work. restyleAll() is still
+  // used for selection changes, which DO affect trail dimming/highlighting.
   function applyFloor() {
-    setLayerVisible(layers.connectors, state.overlays.has("connectors") && state.floor === "any");
+    setLayerVisible(layers.connectors, state.overlays.has("connectors"));
+    applyConnectorFloor();
     mainRouteRecords.forEach(restyleMainRoute);
   }
 
-  // Connectors and planned routes have no per-feature records — scale
-  // their fixed base weights directly whenever the zoom factor changes.
+  // Connectors restyle per-record — eachLayer() would miss any layer a
+  // floor has removed from the group, leaving it mis-scaled for the next
+  // zoom once it's revealed again (spec §12). Planned routes have no
+  // per-feature records, so their fixed base weights scale directly.
   function restyleStaticWeights() {
-    layers.connectors.eachLayer((l) => l.setStyle({ weight: BSDNet.CONNECTOR_STYLE.weight * weightFactor }));
+    connectorRecords.forEach((rec) => rec.layer.setStyle({ weight: BSDNet.CONNECTOR_STYLE.weight * weightFactor }));
     layers.planned.eachLayer((l) => l.setStyle({ weight: 5 * weightFactor }));
     layers.plannedCasing.eachLayer((l) => l.setStyle({ weight: 8 * weightFactor }));
   }
@@ -811,10 +862,13 @@
     setLayerVisible(layers.lineLabelsStreets, z >= BSDNet.ZOOM.lineLabels);
     setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z >= BSDNet.ZOOM.interchangeNodes);
     setLayerVisible(layers.nodesOrientation, state.overlays.has("nodes") && z >= BSDNet.ZOOM.corridorLabels);
-    // Corridor labels are for connector-tier streets specifically, so they
-    // share applyFloor's exact "connectors tier is actually showing" gate
-    // (overlay on AND floor === "any") on top of their own zoom threshold —
-    // otherwise a floor hides the connectors layer but its labels linger.
+    // Corridor labels are for connector-tier streets specifically. Unlike
+    // the connectors layer itself — which now filters per-feature via
+    // meetsFloor instead of hiding outright (spec §12 amendment) — labels
+    // deliberately KEEP the coarser floor === "any" gate: once a floor
+    // thins the background mesh it's meant to read sparse (spec §12), and
+    // a floored, partly-labeled background isn't worth the complexity of
+    // per-grade label placement. On top of their own zoom threshold.
     setLayerVisible(layers.labels, state.overlays.has("connectors") && state.floor === "any" && z >= BSDNet.ZOOM.corridorLabels);
   }
   map.on("zoomend", () => {
@@ -914,6 +968,7 @@
         <span>transfer — routes meet or share track</span>
       </div>
       <p class="muted quality-footnote">trails are off-street — no border needed</p>
+      <p class="muted quality-footnote">connector tints share these colors — grades reflect facility type, not a safety metric</p>
     `;
   }
 
@@ -926,6 +981,7 @@
         ).join("")}
       </div>
       <p class="muted caption">the network that meets your bar stays lit — routes never break</p>
+      <p class="muted caption">floors hide connectors below your bar — greenway links need Any</p>
     `;
   }
 
@@ -1030,7 +1086,7 @@
       if (e.target.checked) state.overlays.add(t.id); else state.overlays.delete(t.id);
       if (t.id === "trails") { setLayerVisible(layers.trailsOutline, e.target.checked); setLayerVisible(layers.gapsTrails, e.target.checked); setLayerVisible(layers.trails, e.target.checked); setLayerVisible(layers.lineLabelsTrails, e.target.checked); }
       if (t.id === "main") { setLayerVisible(layers.casing, e.target.checked); setLayerVisible(layers.gapsMain, e.target.checked); setLayerVisible(layers.lines, e.target.checked); setLayerVisible(layers.capsules, e.target.checked); }
-      if (t.id === "connectors") { setLayerVisible(layers.connectors, e.target.checked && state.floor === "any"); updateDeclutter(); }
+      if (t.id === "connectors") { setLayerVisible(layers.connectors, e.target.checked); updateDeclutter(); }
       syncURL();
     });
   });
@@ -1117,17 +1173,18 @@
     if (feature._mellowConnector) {
       detail.innerHTML = `
         <div>
-          <strong>Connector</strong> ${BSD.badgeHTML(props.data_tier || "crowdsourced")}
+          <strong>Mellow connector</strong> ${BSD.badgeHTML(props.data_tier || "crowdsourced")}
           <dl>
             <dt>Length</dt><dd>${BSD.fmt(Math.round(props.length_m || 0))} m</dd>
           </dl>
-          <p class="muted">Mellow/low-stress geometry that doesn't overlap the curated bikeway roster — a short rideable link, not its own route.</p>
+          <p class="muted">Mellow/low-stress geometry that doesn't overlap the curated bikeway roster — a short rideable link, not its own route — grade reflects facility type, not a safety metric.</p>
         </div>
       `;
       return;
     }
 
     const streetLabel = props.street || "(unnamed)";
+    const connectorLabel = connectorGradeLabel(feature._connectorGrade);
     // A connector/segment click clears the current roster-line selection
     // (it belongs to none) — reset halo/dim/roster-highlight first so they
     // never disagree with state.line/the URL this function is about to sync.
@@ -1155,7 +1212,7 @@
           <dt></dt>
           <dd><a href="${link}">Crash & infrastructure data →</a></dd>
         </dl>
-        <p class="muted">Connector — a short rideable link, not part of the curated route roster.</p>
+        <p class="muted">${BSD.esc(connectorLabel)} — a short rideable link, not part of the curated route roster — grade reflects facility type, not a safety metric.</p>
       </div>
     `;
     syncURL();
@@ -1200,7 +1257,11 @@
       if (entry) {
         selectLine(entry.lineId, { fitBounds: false });
       } else {
-        showSegmentDetail(longest);
+        // Not a roster member -> a connector segment; carry the same
+        // per-feature comfort grade drawConnector() computes (spec §12) so
+        // the detail card names it correctly even reached via deep link.
+        const grade = BSDNet.CONNECTOR_GRADE_MAP[longest.properties.facility_category] || "none";
+        showSegmentDetail({ ...longest, _connectorGrade: grade });
       }
       map.fitBounds(BSDNet.unionBBox(corridorFeats), { padding: [50, 50], animate: false });
     }

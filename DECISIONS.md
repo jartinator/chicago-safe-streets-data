@@ -565,3 +565,32 @@ environment forced a deviation. Newest last.
     obstruction-demo layer never appears under `/api/v1/` in any form —
     `index.json`'s `no_synthetic_data` field and `llms.txt`'s matching
     disclaimer say so explicitly rather than silently omitting it.
+
+33. **Graded connectors — the background tier stops being one flat gray and
+    the comfort floor stops nuking it outright.** Same-day amendment to #24
+    (spec §12): a light re-convene of the research panel (same 5 personas,
+    one follow-up pass) found the connector tier's single neutral style hid
+    real comfort information the pipeline already computes, and #24's
+    "floor hides connectors outright, they have no identity to preserve"
+    call made the floor control actively hostile to the connectors toggle
+    the moment a rider turned it on. Each connector now carries a per-
+    feature comfort grade —
+    same buckets as the main-route quality regrade, derived client-side via
+    the existing `CONNECTOR_GRADE_MAP` — styled with a muted hue + dash
+    tint ("Option C", the panel's unanimous pick): solid muted green
+    `#4d8873` for protected, dashed `#4d8873` for paint, dashed muted
+    lavender `#9a8fc9` for mellow, dashed slate `#94a3b8` for none (today's
+    look, unchanged), solid slate for offstreet. The tint is **always on**
+    — the panel split 3-2 toward gating it behind the Quality toggle, but
+    the owner's explicit ask (this is a subtle background effect either
+    way, not a new safety claim) won. And the comfort floor now filters
+    connectors **per grade** via the existing `meetsFloor`, the same
+    semantics the main-route drain already uses, instead of hiding the
+    whole tier: floors now *reveal* the qualifying background network
+    rather than erasing it. The Quality legend (still only visible with
+    that toggle on) gains a footnote that the connector tints share its
+    colors and, like every quality grade, describe facility type — not a
+    safety metric. Corridor labels keep #24's coarser `floor === "any"`
+    gate rather than following the new per-grade filtering — a floored
+    background is supposed to read sparse. See
+    `docs/superpowers/specs/2026-07-13-network-tiers-design.md` §12.
