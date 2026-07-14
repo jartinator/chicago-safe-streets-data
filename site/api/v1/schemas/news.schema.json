@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/news.schema.json",
+  "title": "news.json — recent bike/street safety news coverage",
+  "description": "See build_news_api() in pipeline/emit_api.py.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "as_of": { "type": "string" },
+    "note": { "type": "string" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "url": { "type": "string" },
+          "source": { "type": "string" },
+          "published": { "type": "string" },
+          "wards": { "type": "array", "items": { "type": "string" } },
+          "aldermen": { "type": "array", "items": { "type": "string" } },
+          "routes": { "type": "array", "items": { "type": "string" } },
+          "projects": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["title", "url", "source", "published", "wards", "aldermen",
+                     "routes", "projects"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["_meta", "as_of", "note", "items"],
+  "additionalProperties": false
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/council-records.schema.json",
+  "title": "council/records.json — topic-relevant council matters",
+  "description": "See build_council_records_api() in pipeline/emit_api.py — records trimmed to _COUNCIL_RECORD_FIELDS.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "as_of": { "type": "string" },
+    "note": { "type": "string" },
+    "count": { "type": "integer", "minimum": 0 },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "matter_id": { "type": ["string", "integer"] },
+          "title": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string" },
+          "intro_date": { "type": "string" },
+          "sponsors": { "type": "array", "items": { "type": "string" } },
+          "sponsor_wards": { "type": "array", "items": { "type": "string" } },
+          "url": { "type": "string" },
+          "source": { "type": "string" }
+        },
+        "required": ["matter_id", "title", "type", "status", "intro_date", "sponsors",
+                     "sponsor_wards", "url", "source"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["_meta", "as_of", "note", "count", "records"],
+  "additionalProperties": false
+}
