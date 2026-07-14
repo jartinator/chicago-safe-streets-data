@@ -540,21 +540,11 @@ def test_build_index_coverage_note_mentions_crash_start_date():
     assert CRASH_START_DATE in out["coverage_note"]
 
 
-def test_build_index_planned_namespaces_are_marked_not_yet_published():
+def test_build_index_planned_is_empty_now_all_phases_shipped():
+    # schemas/ (Phase 4) and llms.txt/sitemap.xml (Phase 5) are published;
+    # nothing in the agent-api-layer plan remains planned-but-absent.
     out = build_index(_meta(), _endpoint_bytes())
-    assert out["planned"]
-    for entry in out["planned"]:
-        assert "not yet published" in entry.lower()
-
-
-def test_build_index_planned_no_longer_lists_wards_or_crashes():
-    out = build_index(_meta(), _endpoint_bytes())
-    assert not any("wards/" in entry for entry in out["planned"])
-    assert not any("crashes/" in entry for entry in out["planned"])
-    # routes/ and council/ are now published too; only schemas/ remains
-    assert not any("routes/" in entry for entry in out["planned"])
-    assert not any("council/" in entry for entry in out["planned"])
-    assert any("schemas/" in entry for entry in out["planned"])
+    assert out["planned"] == []
 
 
 def test_build_index_omits_ward_and_crash_families_when_no_files_given():

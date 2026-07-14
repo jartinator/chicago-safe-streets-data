@@ -974,9 +974,7 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
             "are raw, not ridership-normalized; recent months are provisional "
             "(records get amended)."),
         "no_synthetic_data": NO_SYNTHETIC_DATA_STATEMENT,
-        "planned": [
-            "schemas/ — machine-readable JSON Schemas for these endpoints (not yet published)",
-        ],
+        "planned": [],
     }
 
 
