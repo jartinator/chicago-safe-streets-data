@@ -1438,6 +1438,18 @@ def test_build_council_index_envelope_mixed_with_tier_note():
     assert out["_meta"]["human_page"] == SITE_BASE_URL + "/action.html"
 
 
+def test_build_council_index_omits_source_when_structured_data_unavailable():
+    # pull_hearings.py only sets "source" when the eLMS API was actually
+    # reachable this run; when it wasn't, the key is absent entirely
+    # (not None) — mirrored by make_fixtures.py's build_hearings().
+    hearings = _hearings()
+    del hearings["source"]
+    hearings["structured_data_available"] = False
+    out = build_council_index(_meta(), hearings, _council_records())
+    assert out["hearings"]["structured_data_available"] is False
+    assert "source" not in out["hearings"]
+
+
 # --- 20. build_council_records_api -----------------------------------------------
 
 def test_build_council_records_api_only_topic_relevant_kept():

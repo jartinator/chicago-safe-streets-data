@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/council-index.schema.json",
   "title": "council/index.json — committee hearings and activity summary",
-  "description": "See build_council_index() in pipeline/emit_api.py.",
+  "description": "See build_council_index() in pipeline/emit_api.py. hearings.source is present only when structured_data_available is true (the eLMS API was reachable this run); absent when it wasn't.",
   "type": "object",
   "properties": {
     "_meta": { "$ref": "envelope.schema.json" },
@@ -32,7 +32,7 @@
           }
         }
       },
-      "required": ["as_of", "note", "structured_data_available", "source", "committees"],
+      "required": ["as_of", "note", "structured_data_available", "committees"],
       "additionalProperties": false
     },
     "activity_summary": {
