@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/council-index.schema.json",
+  "title": "council/index.json — committee hearings and activity summary",
+  "description": "See build_council_index() in pipeline/emit_api.py. hearings.source is present only when structured_data_available is true (the eLMS API was reachable this run); absent when it wasn't.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "hearings": {
+      "type": "object",
+      "properties": {
+        "as_of": { "type": "string" },
+        "note": { "type": "string" },
+        "structured_data_available": { "type": "boolean" },
+        "source": { "type": "string" },
+        "committees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "committee": { "type": "string" },
+              "calendar_url": { "type": "string" },
+              "meeting_count": { "type": "integer", "minimum": 0 },
+              "meetings": {
+                "type": "array",
+                "description": "Meeting record shape is eLMS passthrough — kept loose.",
+                "items": { "type": "object" }
+              }
+            },
+            "required": ["committee", "calendar_url", "meeting_count", "meetings"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["as_of", "note", "structured_data_available", "committees"],
+      "additionalProperties": false
+    },
+    "activity_summary": {
+      "type": "object",
+      "properties": {
+        "topic_relevant_matters": { "type": "integer", "minimum": 0 },
+        "by_status": { "type": "object" },
+        "by_type": { "type": "object" },
+        "most_recent_intro_date": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      },
+      "required": ["topic_relevant_matters", "by_status", "by_type",
+                   "most_recent_intro_date", "note"],
+      "additionalProperties": false
+    },
+    "records_url": { "type": "string" },
+    "aldermen_url": { "type": "string" }
+  },
+  "required": ["_meta", "hearings", "activity_summary", "records_url", "aldermen_url"],
+  "additionalProperties": false
+}

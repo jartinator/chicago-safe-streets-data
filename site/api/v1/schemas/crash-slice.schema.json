@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/crash-slice.schema.json",
+  "title": "crashes/ward-NN.json — one ward's cyclist crash records, columnar",
+  "description": "See build_crash_slice() in pipeline/emit_api.py. rows are arrays of length == columns.length; cell types are validated loosely (mixed string/number/bool/null per column) rather than per-column, per the brief.",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "ward": { "type": "string" },
+    "ward_url": { "type": "string" },
+    "columns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": ["string", "number", "boolean", "null"] }
+      }
+    },
+    "count": { "type": "integer", "minimum": 0 },
+    "note": { "type": "string" },
+    "full_data_url": { "type": "string" }
+  },
+  "required": ["_meta", "ward", "ward_url", "columns", "rows", "count", "note", "full_data_url"],
+  "additionalProperties": false
+}

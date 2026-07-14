@@ -206,6 +206,41 @@ assert.strictEqual(N.CONNECTOR_STYLE.weight, 2.5, "CONNECTOR_STYLE: weight 2.5")
 assert.strictEqual(N.CONNECTOR_STYLE.opacity, 0.75, "CONNECTOR_STYLE: opacity 0.75");
 assert.ok(N.CONNECTOR_STYLE.dashArray, "CONNECTOR_STYLE: dashed");
 
+// ---- connectorStyle (spec §12 amendment: per-grade connector tint) ----
+assert.strictEqual(N.connectorStyle("protected").color, "#4d8873", "connectorStyle: protected muted green");
+assert.strictEqual(N.connectorStyle("protected").dashArray, null, "connectorStyle: protected solid");
+assert.strictEqual(N.connectorStyle("protected").weight, N.CONNECTOR_STYLE.weight,
+  "connectorStyle: weight inherited from CONNECTOR_STYLE");
+assert.strictEqual(N.connectorStyle("protected").opacity, N.CONNECTOR_STYLE.opacity,
+  "connectorStyle: opacity inherited from CONNECTOR_STYLE");
+
+assert.strictEqual(N.connectorStyle("paint").color, "#4d8873", "connectorStyle: paint shares protected's muted green");
+assert.strictEqual(N.connectorStyle("paint").dashArray, "4,5", "connectorStyle: paint dashed 4,5");
+assert.strictEqual(N.connectorStyle("paint").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: paint weight inherited");
+assert.strictEqual(N.connectorStyle("paint").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: paint opacity inherited");
+
+assert.strictEqual(N.connectorStyle("mellow").color, "#9a8fc9", "connectorStyle: mellow muted lavender");
+assert.strictEqual(N.connectorStyle("mellow").dashArray, "4,5", "connectorStyle: mellow dashed 4,5");
+assert.strictEqual(N.connectorStyle("mellow").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: mellow weight inherited");
+assert.strictEqual(N.connectorStyle("mellow").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: mellow opacity inherited");
+
+assert.strictEqual(N.connectorStyle("none").color, "#94a3b8", "connectorStyle: none slate — today's look, unchanged");
+assert.strictEqual(N.connectorStyle("none").dashArray, "4,5", "connectorStyle: none dashed 4,5");
+assert.strictEqual(N.connectorStyle("none").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: none weight inherited");
+assert.strictEqual(N.connectorStyle("none").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: none opacity inherited");
+
+assert.strictEqual(N.connectorStyle("offstreet").color, "#94a3b8",
+  "connectorStyle: offstreet slate — neutral hue makes no facility claim");
+assert.strictEqual(N.connectorStyle("offstreet").dashArray, null,
+  "connectorStyle: offstreet solid — pattern says calm");
+assert.strictEqual(N.connectorStyle("offstreet").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: offstreet weight inherited");
+assert.strictEqual(N.connectorStyle("offstreet").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: offstreet opacity inherited");
+
+assert.deepStrictEqual(N.connectorStyle("bogus"), N.connectorStyle("none"),
+  "connectorStyle: unknown grade falls back to the none treatment (loud-not-silent)");
+assert.deepStrictEqual(N.connectorStyle(undefined), N.connectorStyle("none"),
+  "connectorStyle: missing grade falls back to the none treatment");
+
 // ---- qualityBorderStyle (spec §3) ----
 assert.strictEqual(N.qualityBorderStyle("protected").color, "#0b6e4f", "qualityBorderStyle: protected color");
 assert.strictEqual(N.qualityBorderStyle("protected").dashArray, undefined, "qualityBorderStyle: protected solid");

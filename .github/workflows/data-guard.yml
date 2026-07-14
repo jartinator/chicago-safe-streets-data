@@ -27,3 +27,7 @@ jobs:
           python-version: "3.12"
       - name: Check data provenance
         run: python pipeline/check_provenance.py
+      - name: Install jsonschema
+        run: pip install jsonschema
+      - name: Check agent API schemas
+        run: python pipeline/check_api.py

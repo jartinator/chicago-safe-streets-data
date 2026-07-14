@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jartinator.github.io/chicago-safe-streets-data/sitemap.xml

@@ -1325,7 +1325,7 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
             "ward": w,
             "cyclist_crashes": f["properties"]["cyclist_crashes"],
             "population": pop.get(w),
-            "bikeway_miles": round(miles[w], 2) if w in miles else None,
+            "bikeway_miles": round(miles.get(w, 0.0), 2),
             "crashes_per_10k_pop": per_capita.get(w),
             "crashes_per_bikeway_mile": per_mile.get(w),
             "comparable_danger_score": blended,

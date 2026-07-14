@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/route-line.schema.json",
+  "title": "routes/line-<id>.json — one main route's detail",
+  "description": "See build_line_file() in pipeline/emit_api.py. pct_protected/crashes_total are null (not absent — via .get()) for trail lines; member_segments[].crashes is null for trail segments (no crash join at all, a data gap not a true zero).",
+  "type": "object",
+  "properties": {
+    "_meta": { "$ref": "envelope.schema.json" },
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "termini": { "type": "string" },
+    "source": { "type": "string" },
+    "miles_total": { "type": "number" },
+    "miles_by_grade": { "type": "object" },
+    "pct_protected": { "type": ["number", "null"] },
+    "crashes_total": { "type": ["integer", "null"] },
+    "member_segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "grade": { "type": "string" },
+          "length_m": { "type": "number" },
+          "crashes": { "type": ["integer", "null"] }
+        },
+        "required": ["label", "grade", "length_m", "crashes"],
+        "additionalProperties": false
+      }
+    },
+    "interchanges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "lines": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "label", "lines"],
+        "additionalProperties": false
+      }
+    },
+    "note": { "type": "string" },
+    "see_also": {
+      "type": "object",
+      "properties": {
+        "routes_index": { "type": "string" }
+      },
+      "required": ["routes_index"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["_meta", "id", "name", "termini", "source", "miles_total", "miles_by_grade",
+               "pct_protected", "crashes_total", "member_segments", "interchanges",
+               "note", "see_also"],
+  "additionalProperties": false
+}

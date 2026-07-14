@@ -26,6 +26,12 @@ honors those schemas.
   nav, data-quality badges, and disclaimers. **All tier labeling must go
   through `BSD.badgeHTML()` / `BSD.noticeHTML()`** so "data quality is always
   visible" stays uniform.
+- `pipeline/emit_api.py` — writes the agent-facing static API (`site/api/v1/`,
+  `site/llms.txt`, `site/sitemap.xml`) from the committed `site/data/`
+  contract. If a change to this file alters an endpoint's output shape, the
+  matching hand-written schema under `site/api/v1/schemas/` must be updated
+  in the same PR — CI (`pipeline/check_api.py`) and reviewers will catch
+  drift, but it's on you to know where that source of truth lives.
 
 ## Swap the obstruction data source
 
