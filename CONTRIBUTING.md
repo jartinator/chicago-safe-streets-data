@@ -125,3 +125,20 @@ stage specifically:
   `pipeline/config.py` and updating `SCHEMA.md` in the same PR.
 - Never invent alderman names — `site/data/aldermen.json` is filled manually
   from the official lookup or left null.
+
+## Local git housekeeping
+
+This repo is often open in several worktrees/chats at once, and merged
+branches + dead worktree admin dirs pile up locally (the remote side is
+handled by GitHub's "delete branch on merge"). Run the sweeper any time:
+
+```
+python .claude/tools/git_tidy.py           # dry-run: show what's removable
+python .claude/tools/git_tidy.py --apply   # actually remove it
+```
+
+It only ever removes a worktree that is idle (no live session-guard
+heartbeat), merged into `origin/main`, and clean, and only deletes branches
+`git branch -d` accepts — so live sessions and unmerged work are safe. It
+also purges the ghost `.git/worktrees/*` dirs that `git worktree prune`
+can't delete under OneDrive.
