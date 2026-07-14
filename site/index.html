@@ -7,6 +7,25 @@
 <meta name="description" content="On Your Left! — Chicago bike safety, on the record. Crash, infrastructure, and council accountability data by ward.">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="assets/css/style.css">
+<link rel="alternate" type="application/json" href="/api/v1/index.json">
+<link rel="alternate" type="text/plain" href="/llms.txt">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "On Your Left! — Chicago bike safety, on the record",
+  "description": "Police-reported cyclist crash data, bikeway network quality, and City Council accountability for Chicago, rebuilt weekly from the Chicago Data Portal and other public sources.",
+  "url": "https://jartinator.github.io/chicago-safe-streets-data",
+  "license": "City of Chicago Data Portal Terms of Use (data.cityofchicago.org); derived analyses by On Your Left!",
+  "distribution": [
+    {
+      "@type": "DataDownload",
+      "encodingFormat": "application/json",
+      "contentUrl": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json"
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <div class="map-wrap">

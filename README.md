@@ -46,6 +46,24 @@ Use it to spot patterns worth acting on, not to prove causation.
 Every layer in the UI carries a **real / proxy / mock / crowdsourced / no-data-yet**
 badge at all times. Full field documentation: [SCHEMA.md](SCHEMA.md).
 
+## For agents (static API)
+
+Everything under `/api/v1/` is a static, versioned, additive JSON namespace,
+generated (`pipeline/emit_api.py`) from the same committed `site/data/`
+contract as the human site — not a live service, so there's nothing to
+authenticate, rate-limit, or keep running. It never mutates: new fields and
+endpoints get added, existing ones don't change shape without a
+`CONTRACT_VERSION` bump.
+
+- Start at [`llms.txt`](llms.txt) or [`/api/v1/index.json`](api/v1/index.json)
+  — either one lists every endpoint, its size, and a fetch recipe for common
+  questions.
+- Every file's shape is a hand-written [JSON Schema](site/api/v1/schemas/),
+  validated in CI (`pipeline/check_api.py`) — the schemas are the contract,
+  not derived from the code that writes them.
+- The human site's synthetic bike-lane-obstruction demo layer is excluded
+  from this namespace entirely; every response says so.
+
 ## Repo layout
 
 ```
