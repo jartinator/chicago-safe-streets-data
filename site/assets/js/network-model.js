@@ -127,13 +127,15 @@
 
   // ---- Main routes ("rail vs bus") helpers — spec v2 §1/§2/§3/§9 ----
 
-  // One solid color per named line (spec §9) — the 14 street + 7 trail
+  // One solid color per named line (spec §9) — the 13 street + 7 trail
   // roster, exactly as listed. roosevelt/vincennes are demoted to
   // connectors (spec §2) and carry no line color; 312-riverrun and
-  // green-bay joined the trail roster after the spec (DECISIONS.md #26/#27).
+  // green-bay joined the trail roster after the spec (DECISIONS.md #26/#27);
+  // milwaukee + jackson-washington merged into one L-shaped
+  // milwaukee-washington through-line (DECISIONS.md #28).
   const LINE_COLORS = {
     // street lines
-    "milwaukee":            "#1d4ed8",
+    "milwaukee-washington": "#1d4ed8",
     "elston":               "#ea580c",
     "halsted":              "#dc2626",
     "damen":                "#eab308",
@@ -142,7 +144,6 @@
     "clark":                "#0891b2",
     "state-indiana":        "#4d7c0f",
     "mlk-drive":            "#92400e",
-    "jackson-washington":   "#6b21a8",
     "lawrence":             "#881337",
     "marquette":            "#1e40af",
     "lake":                 "#a16207",
@@ -775,7 +776,7 @@
     pinAttractMeters: 350,
     terminusPairMeters: 300,
     footSnapMeters: 300,
-    EXPLICIT_MERGES: [{ id: "nw-terminus", lines: ["milwaukee", "elston"], end: "north" }],
+    EXPLICIT_MERGES: [{ id: "nw-terminus", lines: ["milwaukee-washington", "elston"], end: "north" }],
     coupletMaxMeters: 800,
     coupletAngleDeg: 15,
     coupletOverlapMin: 0.6,

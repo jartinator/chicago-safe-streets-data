@@ -598,3 +598,26 @@ environment forced a deviation. Newest last.
     gate rather than following the new per-grade filtering — a floored
     background is supposed to read sparse. See
     `docs/superpowers/specs/2026-07-13-network-tiers-design.md` §12.
+
+34. **Milwaukee + Jackson–Washington merge into one L-shaped through-line —
+    roster moves to 13 street + 7 trail = 20 lines.** The two lines already
+    shared the Loop trunk (#28) and physically met at the same downtown point
+    (Milwaukee's east end == Jackson–Washington's west start, ~41.884,
+    -87.6135), so on the schematic they read as one rider's journey:
+    Jefferson Park → down Milwaukee Ave → the Loop → out Washington/Jackson to
+    Austin. The roster now expresses that as a single line `milwaukee-washington`
+    ("Milwaukee–Washington Line", termini Jefferson Park ⇄ Austin), carrying
+    Milwaukee's blue `#1d4ed8`; the old `milwaukee`/`jackson-washington` ids and
+    the purple `#6b21a8` retire. Config-only edit to `data/main_routes.json`
+    (union of both `streets` lists; the internal Jackson/Washington couplet
+    still collapses to one centerline via the schematic couplet rule, and the
+    detail card still names the one-way pair). The 4-way Loop trunk of #28
+    drops to 3-way (`clark|lake|milwaukee-washington`) by construction, and the
+    render-time `EXPLICIT_MERGES` NW-terminus join now targets
+    `milwaukee-washington`. Old `?line=milwaukee` / `?line=jackson-washington`
+    deep links alias to the merged id so shared links still resolve. Downstream
+    pipeline products that key on roster ids (news `matches.routes`, API line
+    lists) pick up the new id on the next full pipeline run — the two committed
+    site products the network map reads (`main_routes.geojson`,
+    `network_nodes.json`) are rebuilt here via `build_main_routes` /
+    `build_network_nodes`, the same code path `refresh_reporting.py` uses.
