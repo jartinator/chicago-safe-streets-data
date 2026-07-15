@@ -79,7 +79,7 @@ Top 25 crash clusters (~100 m grid, ≥ 2 crashes):
 ## findings.json — tier per finding
 `[{ id, title, stat, description, caveat, data_tier,
 map_state: { screen: "map"|"table", layers: [..], ward?, corridor?, filters: {dooring?} } }]`
-`map_state` is translated into `index.html` query params by the findings screen.
+`map_state` is translated into `map.html` query params by the findings screen.
 
 ## obstructions_mock.geojson — tier mock (ALWAYS)
 Normalized obstruction schema mirroring Bike Lane Uprising's confirmed public

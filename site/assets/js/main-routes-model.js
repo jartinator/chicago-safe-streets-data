@@ -6,7 +6,7 @@
  * grade-colored strokes) and to render the per-line report cards. */
 (function (root) {
   // BSD.lineBadgeTier lives in common.js, which every page that loads this
-  // file loads first (index.html: common.js -> map-model.js ->
+  // file loads first (map.html: common.js -> map-model.js ->
   // main-routes-model.js -> map.js). In Node, common.js isn't required by
   // the test harness ahead of time, so pull it in directly there.
   const BSD = (typeof module !== "undefined" && module.exports)
