@@ -636,3 +636,36 @@ landed the same session:
 - Couplet note polish: title-case street names; name the better street.
 - Owner referrals (unchanged from §15): `?overlays=quality` deep-link
   retirement; Milwaukee + Jackson–Washington through-run roster change.
+
+### Follow-up pass (same session, post-QA-gate)
+
+Shipped from the §17 CD-endorsed list:
+- **Capsule/pin de-confliction** — interchange pins under a capsule
+  footprint (~140 m) are suppressed; the transfer pill already marks the
+  transfer. Capsule records carry their position for the check.
+- **Interchange pins gated to z > 11** — they fuse into blobs at the
+  citywide fit; the metro lines carry the network there.
+- **Legend swatch differentiation** — `nothing` is now an empty outlined
+  box, `paint` a solid bar with a hairline stripe; they no longer read as
+  cousins at 9 px.
+- **Hollow hover tooltip** — a hollow stretch says "No bikeway here — you
+  ride with traffic on this stretch." on hover (couplet stretches keep the
+  couplet note).
+- **Couplet note polish** — street names title-cased (directionals and
+  ordinals preserved).
+
+Deliberately deferred (owner said the geographic Map tab covers exactness,
+so these are low-value):
+- **Post-closure cross-section min-bend sweep** — the residual sub-30°
+  bends are mostly the intentional 0.6–4° lean between pinned sections;
+  the few larger ones sit across pin boundaries where a sweep would risk
+  the exact-closure / pin-passthrough guarantees for marginal gain.
+- **312 RiverRun attraction** — it is a genuinely separate trail 956 m
+  from North Branch; forcing a join would fabricate a connection that
+  isn't there (provenance ethos). It renders clean as its own short line.
+- **Exact-vertical N-S spines** and the **60→150 axis trade** — not
+  needed; the parallel lean reads as designed and no residual 145–147°
+  bearings survived the corridor vote.
+
+Still owner decisions (unchanged): `?overlays=quality` deep-link
+retirement; the Milwaukee + Jackson–Washington through-run roster change.

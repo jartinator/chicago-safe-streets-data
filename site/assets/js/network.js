@@ -192,11 +192,21 @@
                             // hollow: { lineIds, grade, display: "nothing", rails: [a, b], center }
   const strandRecords = []; // { key, lineId, count, idx, grade, display, layer, center }
 
+  // Source street names arrive SHOUTING from CDOT ("JACKSON"); title-case
+  // them for prose, preserving directionals (N/S/E/W) and ordinal suffixes
+  // (31ST, 79TH) that shouldn't be lowercased.
+  function titleCaseStreet(name) {
+    return String(name || "").toLowerCase().replace(/\b[a-z0-9]+\b/g, (w) => {
+      if (/^[nsew]$/.test(w)) return w.toUpperCase();
+      if (/^\d+(st|nd|rd|th)$/.test(w)) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    });
+  }
   function coupletNoteFor(lineId) {
     const spine = NET.spines.get(lineId);
     if (!spine || !spine.coupletPairs || spine.coupletPairs.length === 0) return null;
     const pair = spine.coupletPairs[0];
-    return `Runs as a ${BSD.esc(pair.base)}/${BSD.esc(pair.donor)} one-way pair — drawn as one line; each stretch shows the better facility of the pair.`;
+    return `Runs as a ${BSD.esc(titleCaseStreet(pair.base))}/${BSD.esc(titleCaseStreet(pair.donor))} one-way pair — drawn as one line; each stretch shows the better facility of the pair.`;
   }
 
   function drawSpine(lineMeta, spine) {
@@ -245,7 +255,10 @@
             lineCap: "butt", lineJoin: "round",
           });
           rail.on("click", (e) => { L.DomEvent.stop(e); onLineClick(lineId); });
-          if (coupletNote) rail.bindTooltip(coupletNote, { sticky: true, className: "couplet-tip" });
+          // Cheap insurance against misreading a hollow run as a rendering
+          // artifact: hovering the gap says what it means.
+          rail.bindTooltip(coupletNote || "No bikeway here — you ride with traffic on this stretch.",
+            { sticky: true, className: "couplet-tip" });
           sliceGroup.addLayer(rail);
           return rail;
         });
@@ -374,9 +387,20 @@
         pane: "capsulesPane", icon: capsuleIcon(c.bearing, c.count), interactive: false,
       });
       layers.capsules.addLayer(marker);
-      capsuleRecords.push({ marker, bearing: c.bearing, count: c.count });
+      capsuleRecords.push({ marker, bearing: c.bearing, count: c.count, pt: c.pt });
     });
   })();
+
+  // A capsule already says "transfer here" better than a plain circle, so
+  // suppress any interchange pin sitting under a capsule's footprint —
+  // otherwise the Loop hub stacks a pin cluster behind the pill.
+  function underCapsule(latlng) {
+    return capsuleRecords.some((c) => {
+      const mLng = 111320 * Math.cos((c.pt[0] * Math.PI) / 180);
+      const d = Math.hypot((latlng[0] - c.pt[0]) * 111320, (latlng[1] - c.pt[1]) * mLng);
+      return d <= 140;
+    });
+  }
 
   // Re-derive strand offsets for the current zoom (pixel-constant spacing).
   function applyStrandOffsets() {
@@ -866,6 +890,7 @@
     return marker;
   }
   NET.interchanges.forEach((n) => {
+    if (underCapsule(n.latlng)) return; // the capsule already marks this transfer
     layers.nodesInterchange.addLayer(makeNodeMarker({
       lat: n.latlng[0], lng: n.latlng[1], label: n.label, lines: n.lines,
     }, "interchange"));
@@ -944,7 +969,10 @@
     // would double every line name (main label + two termini).
     setLayerVisible(layers.terminusLabelsStreets, state.overlays.has("main") && z >= BSDNet.ZOOM.corridorLabels);
     setLayerVisible(layers.terminusLabelsTrails, state.overlays.has("trails") && z >= BSDNet.ZOOM.corridorLabels);
-    setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z >= BSDNet.ZOOM.interchangeNodes);
+    // Interchange pins wait one zoom past the citywide fit: at z11 the
+    // downtown cluster fuses into unreadable blobs (the Lake-corridor
+    // "88"), and the metro lines already communicate the network there.
+    setLayerVisible(layers.nodesInterchange, state.overlays.has("nodes") && z > BSDNet.ZOOM.interchangeNodes);
     setLayerVisible(layers.nodesOrientation, state.overlays.has("nodes") && z >= BSDNet.ZOOM.corridorLabels);
     // Corridor labels are for connector-tier streets: coarser floor === "any"
     // gate on purpose — once a floor thins the background mesh it's meant to

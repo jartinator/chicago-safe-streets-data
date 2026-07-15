@@ -184,18 +184,20 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 .read-swatch { width: 26px; height: 9px; flex: none; border-radius: 2px; }
 .read-swatch.read-offstreet { background: #334155; }
 .read-swatch.read-protected { background: #64748b; }
+/* paint reads as a SOLID bar wearing a hairline stripe; nothing reads as
+ * an EMPTY outlined box — at 9px the two must not look like cousins
+ * (both were "gray with a light middle" before). */
 .read-swatch.read-paint {
   background: #64748b;
   background-image: linear-gradient(#fff 0 0);
-  background-size: 100% 2.5px;
+  background-size: 100% 1.5px;
   background-position: center;
   background-repeat: no-repeat;
 }
 .read-swatch.read-nothing {
   background: none;
-  border-top: 2.5px solid #64748b;
-  border-bottom: 2.5px solid #64748b;
-  height: 9px; box-sizing: border-box; border-radius: 0;
+  border: 1.5px solid #94a3b8;
+  height: 9px; box-sizing: border-box; border-radius: 2px;
 }
 .quality-footnote { margin: 0.2rem 0 0; font-size: 0.78rem; }
 .capsule-glyph {
