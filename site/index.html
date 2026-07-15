@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Map — On Your Left!</title>
-<meta name="description" content="On Your Left! — Chicago bike safety, on the record. Crash, infrastructure, and council accountability data by ward.">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<title>On Your Left! — Chicago bike safety, on the record</title>
+<meta name="description" content="On Your Left! turns Chicago's public crash, infrastructure, and City Council data into a ward-by-ward record of how safe the streets are for people on bikes. Rebuilt weekly, every number labeled by source. Human site + open JSON API for AI agents.">
+<link rel="canonical" href="https://jartinator.github.io/chicago-safe-streets-data/index.html">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="alternate" type="application/json" href="api/v1/index.json">
 <link rel="alternate" type="text/plain" href="llms.txt">
+<meta property="og:title" content="On Your Left! — Chicago bike safety, on the record">
+<meta property="og:description" content="A ward-by-ward record of Chicago cyclist crashes, bikeway quality, and City Council accountability. Rebuilt weekly from public data, with an open JSON API for AI agents.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jartinator.github.io/chicago-safe-streets-data/index.html">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -28,14 +32,8 @@
 </script>
 </head>
 <body>
-<div class="map-wrap">
-  <div id="map"></div>
-  <aside class="map-side" id="side"></aside>
-</div>
-<script src="vendor/leaflet/leaflet.js"></script>
+<main class="page home" id="app"></main>
 <script src="assets/js/common.js"></script>
-<script src="assets/js/map-model.js"></script>
-<script src="assets/js/main-routes-model.js"></script>
-<script src="assets/js/map.js"></script>
+<script src="assets/js/home.js"></script>
 </body>
 </html>

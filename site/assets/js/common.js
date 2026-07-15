@@ -36,7 +36,8 @@
   };
 
   const NAV = [
-    ["index.html", "Map"],
+    ["index.html", "Home"],
+    ["map.html", "Map"],
     ["network.html", "Network"],
     ["findings.html", "Findings"],
     ["table.html", "Explore Data"],

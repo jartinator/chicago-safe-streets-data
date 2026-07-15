@@ -1194,7 +1194,7 @@
     const corridorFeats = corridorGroups.get(streetLabel) || [feature];
     const corridorLength = corridorFeats.reduce((sum, f) => sum + (f.properties.length_m || 0), 0);
     const corridor = encodeURIComponent(props.street);
-    const link = `index.html?layers=crashes,infrastructure&corridor=${corridor}`;
+    const link = `map.html?layers=crashes,infrastructure&corridor=${corridor}`;
 
     detail.innerHTML = `
       <div>

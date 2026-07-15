@@ -9,7 +9,7 @@
   const B = window.BSD;
   const BM = window.BSDMap;
   const MR = window.BSDMainRoutes;
-  B.initPage("index.html");
+  B.initPage("map.html");
 
   const map = L.map("map", { zoomSnap: 0.5 }).setView([41.87, -87.66], 11);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {

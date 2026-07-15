@@ -65,7 +65,8 @@ Every file opens with a `_meta` envelope: api_version/contract_version identify 
 There is NO obstruction data in this API. The human site's obstruction map layer is synthetic mock data shown for UI preview purposes only, has no api/v1 endpoint, and must never be cited as real.
 
 ## Human pages
-https://jartinator.github.io/chicago-safe-streets-data/index.html — interactive map
+https://jartinator.github.io/chicago-safe-streets-data/index.html — home / orientation page (what this is, headline data, who it's for, how to use the agent layer)
+https://jartinator.github.io/chicago-safe-streets-data/map.html — interactive map
 https://jartinator.github.io/chicago-safe-streets-data/methodology.html — how every number is computed
 https://jartinator.github.io/chicago-safe-streets-data/ward.html?ward=NN — one ward's printable one-pager (query-param driven: one HTML file serves all 50 wards, NN is 01-50)
 https://jartinator.github.io/chicago-safe-streets-data/contributing.html — downloads and docs

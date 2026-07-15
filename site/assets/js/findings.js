@@ -68,7 +68,7 @@
           }
 
           const queryString = params.toString();
-          exploreUrl = "index.html" + (queryString ? "?" + queryString : "");
+          exploreUrl = "map.html" + (queryString ? "?" + queryString : "");
         }
 
         // Title with badge

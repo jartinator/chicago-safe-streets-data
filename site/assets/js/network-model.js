@@ -8,7 +8,7 @@
  * that spec's node derivation and geometry helpers unchanged (§11).
  * The network map's concerns (v2 §1): three tiers (trails / main routes /
  * connectors), an opt-in quality border, and an opt-in comfort floor. No
- * safety data lives here — that's the transportation map's job (index.html
+ * safety data lives here — that's the transportation map's job (map.html
  * / map.js). */
 (function (root) {
   // BSD.mixSegments (common.js) backs qualityMixSegments below — common.js is
