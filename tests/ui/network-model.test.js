@@ -106,18 +106,20 @@ assert.strictEqual(N.serializeOverlays(new Set()), "none", "serializeOverlays: e
 assert.strictEqual(N.parseOverlays("none").size, 0, "parseOverlays: 'none' sentinel -> empty set");
 
 // ---- LINE_COLORS / lineStyle ----
+// milwaukee + jackson-washington merged into one L-shaped through-line
+// (DECISIONS.md #28): 13 street + 7 trail = 20 entries.
 const EXPECTED_LINE_COLORS = {
-  milwaukee: "#1d4ed8", elston: "#ea580c", halsted: "#dc2626", damen: "#eab308",
+  "milwaukee-washington": "#1d4ed8", elston: "#ea580c", halsted: "#dc2626", damen: "#eab308",
   kedzie: "#7c3aed", california: "#db2777", clark: "#0891b2", "state-indiana": "#4d7c0f",
-  "mlk-drive": "#92400e", "jackson-washington": "#6b21a8", lawrence: "#881337",
+  "mlk-drive": "#92400e", lawrence: "#881337",
   marquette: "#1e40af", lake: "#a16207", "83rd": "#15803d",
   lakefront: "#0369a1", bloomingdale: "#16a34a", "major-taylor": "#ca8a04",
   "north-shore-channel": "#0d9488", "north-branch": "#3f6212",
   "312-riverrun": "#4f46e5",
   "green-bay": "#a21caf",
 };
-assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS, "LINE_COLORS: exactly the 21 roster entries");
-assert.strictEqual(N.lineStyle("milwaukee").color, N.LINE_COLORS.milwaukee, "lineStyle: known line uses LINE_COLORS entry");
+assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS, "LINE_COLORS: exactly the 20 roster entries");
+assert.strictEqual(N.lineStyle("milwaukee-washington").color, N.LINE_COLORS["milwaukee-washington"], "lineStyle: known line uses LINE_COLORS entry");
 assert.strictEqual(N.lineStyle("not-a-real-line").color, N.FALLBACK_LINE_COLOR, "lineStyle: unknown line id falls back");
 
 // ---- darkenColor / lightenColor / trail styles ----

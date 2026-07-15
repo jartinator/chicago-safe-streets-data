@@ -68,11 +68,19 @@
   // including the retired "quality" — are simply never checked below, so
   // they're ignored silently) &floor=any|paint|protected &corridor=<street>
   // &line=<roster line id>.
+  // milwaukee + jackson-washington merged into one L-shaped through-line
+  // (DECISIONS.md #28). Old shared ?line= links resolve to the merged id so
+  // they still land on a route instead of silently dropping.
+  const LEGACY_LINE_ALIASES = {
+    "milwaukee": "milwaukee-washington",
+    "jackson-washington": "milwaukee-washington",
+  };
+  const rawLine = BSD.qs().get("line") || "";
   const state = {
     overlays: BSDNet.parseOverlays(BSD.qs().get("overlays")),
     floor: BSDNet.parseFloor(BSD.qs().get("floor")),
     corridor: BSD.qs().get("corridor") || "",
-    line: BSD.qs().get("line") || "",
+    line: LEGACY_LINE_ALIASES[rawLine] || rawLine,
   };
   function syncURL() {
     BSD.setParams({
@@ -1099,7 +1107,7 @@
       <div id="connector-tint-note" class="muted caption" style="display:${state.overlays.has("connectors") ? "" : "none"};">
         connector tints reflect facility type (green built, lavender mellow) — not a safety metric
       </div>
-      <p class="muted caption">Schematic view — lines simplified, shifted up to ~250 m · <a href="index.html">true geometry on the Map tab</a></p>
+      <p class="muted caption">Schematic view — lines simplified, shifted up to ~250 m · <a href="map.html">true geometry on the Map tab</a></p>
 
       <hr class="panel-divider">
 
@@ -1142,7 +1150,7 @@
   // note travels with the map, not just the panel.
   const chip = document.createElement("div");
   chip.className = "schematic-chip";
-  chip.innerHTML = `Schematic view — lines simplified, shifted up to ~250 m · <a href="index.html">true geometry on the Map tab</a>`;
+  chip.innerHTML = `Schematic view — lines simplified, shifted up to ~250 m · <a href="map.html">true geometry on the Map tab</a>`;
   document.querySelector(".map-wrap").appendChild(chip);
 
   // Empty-state notices for stub datasets: driven directly off feature

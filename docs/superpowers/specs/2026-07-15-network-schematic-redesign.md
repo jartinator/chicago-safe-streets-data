@@ -18,7 +18,7 @@ Owner directives (outrank everything here): **#1** routes-not-roads,
 
 ## 1. Concept
 
-Every roster line (14 street + 7 trail) is built at render time into **one
+Every roster line (13 street + 7 trail) is built at render time into **one
 continuous spine**, schematized to long straight runs at disciplined angles,
 pinned exactly through interchange nodes and shared termini, with quality —
 including *nothing* — encoded as always-on structural "ink" on a
@@ -125,7 +125,7 @@ The draft's orphan `pinSnap 150` is deleted.
 **Explicit merges** (`SCHEMATIC.EXPLICIT_MERGES`): merges the owner's
 directive #4 demands but that exceed the generic thresholds are declared,
 not threshold-fished. One entry ships:
-`{ id: "nw-terminus", lines: ["milwaukee", "elston"], end: "north" }`
+`{ id: "nw-terminus", lines: ["milwaukee-washington", "elston"], end: "north" }`
 (measured 532 m apart — a real place, one node). The Loop hub and the
 North Shore Channel / North Branch river join (201 m) fall out of the
 generic thresholds and need no entry. 312 RiverRun attaches as a branch
@@ -172,7 +172,7 @@ const SCHEMATIC = {
   pinAttractMeters: 350,
   terminusPairMeters: 300,
   footSnapMeters: 300,
-  EXPLICIT_MERGES: [{ id: "nw-terminus", lines: ["milwaukee", "elston"], end: "north" }],
+  EXPLICIT_MERGES: [{ id: "nw-terminus", lines: ["milwaukee-washington", "elston"], end: "north" }],
   coupletMaxMeters: 800,
   coupletAngleDeg: 15,
   coupletOverlapMin: 0.6,
