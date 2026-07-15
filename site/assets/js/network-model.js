@@ -1191,11 +1191,50 @@
         cur = from;
       }
       if (pathParts.length === 0) continue;
+      // Double-back rejection: when a corridor's two banks connect at only
+      // ONE end, the farthest node pair is bank-end-A ↔ bank-end-B and the
+      // "diameter" walks up one bank and back down the other — the North
+      // Shore Channel drew 15.8 km over an ~11 km corridor, corrupting the
+      // mix-bar denominator. Walk the path and truncate at the first
+      // substantial part that mostly re-covers corridor already walked.
+      // The tell for a doubled bank is SUSTAINED re-coverage: a long
+      // unbroken run of path within ~180 m of corridor already walked. A
+      // per-part fraction test either misses the Channel's banks (too
+      // tight) or truncates the Lakefront where it legitimately snakes
+      // near itself (too loose); sustained length separates the two.
+      const dbCell = 50;
+      const visited = new Set();
+      const dbKey = (p) => Math.round(p[0] / dbCell) + ":" + Math.round(p[1] / dbCell);
+      const dbNear = (q) => {
+        const cx = Math.round(q[0] / dbCell), cy = Math.round(q[1] / dbCell);
+        for (let dx = -3; dx <= 3; dx++) {
+          for (let dy = -3; dy <= 3; dy++) {
+            if (visited.has((cx + dx) + ":" + (cy + dy))) return true;
+          }
+        }
+        return false;
+      };
+      const walked = [];
+      let truncated = false;
+      for (const part of pathParts) {
+        if (!part.locked) {
+          let sustained = 0;
+          for (let q = 1; q < part.pts.length; q++) {
+            if (dbNear(part.pts[q])) sustained += xyDist(part.pts[q - 1], part.pts[q]);
+            else sustained = 0;
+            if (sustained > 800) { truncated = true; break; }
+          }
+          if (truncated) break;
+        }
+        walked.push(part);
+        part.pts.forEach((q) => visited.add(dbKey(q)));
+      }
+      if (walked.length === 0) continue;
       compParts.push({
-        parts: pathParts,
-        head: pathParts[0].pts[0],
-        tail: pathParts[pathParts.length - 1].pts[pathParts[pathParts.length - 1].pts.length - 1],
-        lenM: pathParts.reduce((s, p) => s + p.lenM, 0),
+        parts: walked,
+        head: walked[0].pts[0],
+        tail: walked[walked.length - 1].pts[walked[walked.length - 1].pts.length - 1],
+        lenM: walked.reduce((s, p) => s + p.lenM, 0),
       });
     }
     if (compParts.length === 0) return usable;
@@ -1913,7 +1952,20 @@
         }]);
       });
       parts = tracePath(parts, o);
-      const spine = buildLineSpine(parts, { ...o, preOrdered: true });
+      // Thames rescale (QA gate item 6): trail simplification scales with
+      // length — a 22-mile North Branch at 15° rounding and 400 m runs
+      // reads as noise, not shoreline character; the 2.7-mile 606 keeps
+      // the finer treatment.
+      let kindOpts = o;
+      if (kind === "trail") {
+        const totalLen = parts.reduce((s, p) => s + (p.lenM || 0), 0);
+        kindOpts = {
+          ...o,
+          minRunMeters: { ...o.minRunMeters, trail: Math.max(o.minRunMeters.trail, totalLen / 15) },
+          trailRoundDeg: totalLen > 10000 ? 30 : o.trailRoundDeg,
+        };
+      }
+      const spine = buildLineSpine(parts, { ...kindOpts, preOrdered: true });
       if (!spine) return;
       // Donor-street grade overlays: project each donor part's endpoints
       // onto the spine -> a measure range carrying the donor grade.
@@ -1938,7 +1990,7 @@
         if (mA == null || mB == null) return null;
         return { m0: Math.min(mA, mB), m1: Math.max(mA, mB), grade: p.grade };
       }).filter(Boolean);
-      rawSpines.set(line.id, { spine, overlays: overlayRanges, kind, coupletPairs });
+      rawSpines.set(line.id, { spine, overlays: overlayRanges, kind, coupletPairs, kindOpts });
     });
 
     // -- 3. Control points (v3 §2.5).
@@ -2034,6 +2086,69 @@
       });
     });
 
+    // Corridor pin straightening (QA gate item 5): each control point was
+    // repositioned onto a drawn-line crossing, but the crossings scatter a
+    // few dozen meters around the corridor's true axis line — sections
+    // between pins then tilt by slightly DIFFERENT amounts (Lake wore four
+    // near-horizontal bearings against a perfectly horizontal trunk) or
+    // dump the drift as jog shelves (Milwaukee). Fit each corridor's pin
+    // cluster to one axis line and slide the pins onto it (perpendicular
+    // moves only, capped, fixed trunk endpoints untouched). Two passes so
+    // crossing corridors settle against each other's moves.
+    // Per corridor: length-weighted dominant-axis vote over the raw
+    // geometry, then slide the corridor's pins onto ONE fitted axis line
+    // (perpendicular moves only, capped at 130 m, fixed trunk endpoints
+    // and pins far off the fit untouched). Crossing corridors mostly move
+    // pins along each other's axes, so two passes settle them.
+    const dominantAxis = (spine) => {
+      const votes = new Map();
+      const kept = rdpXYIndices(spine.xy, o.cornerToleranceMeters);
+      for (let k = 1; k < kept.length; k++) {
+        const a = spine.xy[kept[k - 1]], b = spine.xy[kept[k]];
+        const len = xyDist(a, b);
+        if (len < 200) continue;
+        const brg = bearingDeg(b[0] - a[0], b[1] - a[1]);
+        let bestAxis = null, bestD = Infinity;
+        o.AXES_DEG.forEach((ax) => {
+          const d = angDist180(brg, ax);
+          if (d < bestD) { bestD = d; bestAxis = ax; }
+        });
+        if (bestD > 20) continue; // off-family run: no vote
+        votes.set(bestAxis, (votes.get(bestAxis) || 0) + len);
+      }
+      let axis = null, w = 0, total = 0;
+      votes.forEach((len, ax) => { total += len; if (len > w) { w = len; axis = ax; } });
+      return axis != null && w / (total || 1) >= 0.7 ? axis : null;
+    };
+    for (let pass = 0; pass < 2; pass++) {
+      [...rawSpines.entries()]
+        .filter(([, r]) => r.kind === "street")
+        .forEach(([lineId, { spine }]) => {
+          const axis = dominantAxis(spine);
+          if (axis == null) return; // genuinely multi-axis corridor — leave it be
+          const u = unitOf(axis);
+          const n = [-u[1], u[0]];
+          const hits = [];
+          cps.forEach((cp) => {
+            if (cp.fixed || !cp.lines.has(lineId)) return;
+            let best = Infinity;
+            for (let i = 0; i < spine.xy.length - 1; i++) {
+              best = Math.min(best, pointSegDistance(cp.xy, spine.xy[i], spine.xy[i + 1]));
+            }
+            if (best <= o.pinAttractMeters) hits.push(cp);
+          });
+          if (hits.length < 2) return;
+          const cx = hits.reduce((s, cp) => s + cp.xy[0], 0) / hits.length;
+          const cy = hits.reduce((s, cp) => s + cp.xy[1], 0) / hits.length;
+          hits.forEach((cp) => {
+            const off = (cp.xy[0] - cx) * n[0] + (cp.xy[1] - cy) * n[1];
+            if (Math.abs(off) <= 130) {
+              cp.xy = [cp.xy[0] - off * n[0], cp.xy[1] - off * n[1]];
+            }
+          });
+        });
+    }
+
     // Termini bookkeeping.
     const termini = [];
     rawSpines.forEach(({ spine }, lineId) => {
@@ -2111,7 +2226,7 @@
 
     // -- 4. Per-line pins + schematization.
     const spines = new Map();
-    rawSpines.forEach(({ spine, overlays, kind, coupletPairs }, lineId) => {
+    rawSpines.forEach(({ spine, overlays, kind, coupletPairs, kindOpts }, lineId) => {
       const pins = [];
       const t0 = termini.find((t) => t.lineId === lineId && t.end === "start");
       const t1 = termini.find((t) => t.lineId === lineId && t.end === "end");
@@ -2138,7 +2253,7 @@
       });
       (extraPins.get(lineId) || []).forEach((p) => pins.push(p));
 
-      const schem = schematizeSpine(spine, pins, { ...o, kind });
+      const schem = schematizeSpine(spine, pins, { ...kindOpts, kind });
       const graded = gradeStretches(spine, overlays, o);
       const trunkRanges = spine.stretches.filter((s) => s.locked)
         .map((s) => ({ key: s.key, m0: s.m0, m1: s.m1 }));

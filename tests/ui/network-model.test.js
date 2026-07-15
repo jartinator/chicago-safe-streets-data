@@ -627,4 +627,17 @@ assert.strictEqual(N.displayGrade("bogus"), "nothing", "displayGrade: unknown gr
   assert.ok(total < 4300, `tracePath: one bank + at most the short links survive (got ${Math.round(total)} m, not ~8 km)`);
 }
 
+// -- tracePath: two banks joined at only ONE end (the North Shore Channel
+// shape) — the "diameter" walks up bank A and back down bank B; the
+// sustained-re-coverage rule must truncate the doubled bank.
+{
+  const bankA = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 0]));
+  const bankB = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 160]), { grade: "paint" });
+  const northLink = xyPart([[4000, 0], [4000, 160]]);
+  const traced = N.tracePath([bankA, bankB, northLink], {});
+  const total = traced.reduce((s, p) => s + p.lenM, 0);
+  assert.ok(total < 5000,
+    `tracePath: the doubled-back bank truncates — one bank + link, not ~8.2 km (got ${Math.round(total)} m)`);
+}
+
 console.log("network-model OK");

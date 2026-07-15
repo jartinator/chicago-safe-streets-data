@@ -581,3 +581,58 @@ roster change.
   closure choice, better-grade couplet pairing, cores-in-linesPane
   crossing fix, pin-constant reconciliation, scope cuts and owner
   referrals.
+
+---
+
+## 17. Addendum — §13 QA gate outcome (same day, post-implementation)
+
+The studio reconvened on the implemented map (three designer critiques →
+CD verdict). **Verdict: ship-after-fixes**; all six endorsed punch items
+landed the same session:
+
+1. **Hollow crossings** — hollow stretches now render as two offset hue
+   rails (§15.3 variant) with NO white casing or core under them; the
+   casing is sliced across built ranges only. A hollow run no longer
+   severs lines it crosses (was: Major Taylor visually broke under 83rd's
+   hole).
+2. **Drained ≠ nothing** — `nothing` stretches never drain under a
+   comfort floor: absence is floor-independent, so hollow hue rails and
+   drained gray solids stay distinct statements at floor=protected.
+3. **Trail double-backs** — `tracePath` truncates sustained re-coverage
+   (>800 m of path within ~150 m of corridor already walked), so a
+   two-banks-joined-at-one-end trail draws one bank, not both (North
+   Shore Channel drew 15.8 km over an ~11 km corridor). Two-bank fixtures
+   added.
+4. **Label collisions** — placed-box collision pass (flip → slide),
+   longest lines claim space first; terminus labels stack at shared pins
+   (the Loop terminal now lists its four lines like a station board).
+5. **Corridor discipline** — per-corridor dominant-axis vote (length-
+   weighted, ≥70% to qualify) slides that corridor's control points onto
+   one fitted axis line (perpendicular moves ≤130 m, two passes); the jog
+   fallback is gated to single-run sections (multi-run failures dogleg).
+   Kills the Milwaukee jog-ladder and Lake's four-bearing scatter.
+6. **Thames rescale** — trail simplification scales with length:
+   `minRunMeters.trail = max(400, total/15)`, `trailRoundDeg` 30 over
+   10 km (15 under). North Branch reads as bold bends, the 606 keeps its
+   finer profile.
+
+### Recorded follow-ups (CD-endorsed, future sessions)
+
+- Capsule/pin stacking at trunk joints: distance-based capsule dedupe
+  (`braidWidthPx`-scaled), suppress interchange pins inside capsule
+  footprints, clamp pill anchors to strand extent.
+- Zoom-gate or shrink interchange pins below ~z12 (Lake-corridor pin
+  fusion at the citywide fit).
+- 312 RiverRun orphan stub: attract to the North Branch spine or
+  suppress below z12.
+- Legend swatch differentiation: paint vs nothing read as cousins at
+  small sizes.
+- Hollow hover tooltip ("no bikeway here — you ride with traffic").
+- Exact-vertical N-S spines with terminal elbows vs. today's uniform
+  parallel lean — decide with fresh eyes.
+- 60-axis → 150-axis trade: revisit only if residual 145–147° bearings
+  persist after the corridor vote (they did not in this session's data).
+- Post-closure min-bend sweep for sub-30° elbows between km-scale runs.
+- Couplet note polish: title-case street names; name the better street.
+- Owner referrals (unchanged from §15): `?overlays=quality` deep-link
+  retirement; Milwaukee + Jackson–Washington through-run roster change.

@@ -173,20 +173,23 @@
     return selectedLineIds != null && !lineIds.some((id) => selectedLineIds.has(id));
   }
 
-  /* ---------------- draw: spines (v3 §4) ----------------
-   * Per line: ONE white casing polyline over the whole spine (the only
-   * continuous layer), then per quality stretch, in this spine's own
-   * insertion order: offstreet's darkened band (casing pane, over the
-   * white), the hue slice, and its stripe (paint) or core (nothing) —
-   * stripes/cores render immediately after their own spine's hue slices,
-   * NOT in a global pane, so a hollow run never knocks a white channel
-   * through a line it merely crosses (v3 §4.1). Interior caps are butt;
-   * a round cap on a slice would bulge over the neighboring core and read
-   * as a blob at every quality transition. */
+  /* ---------------- draw: spines (v3 §4, hollow per QA-gate fix 1) ----------------
+   * Per line: white casing slices over the BUILT ranges only, then per
+   * quality stretch, in this spine's own insertion order: offstreet's
+   * darkened band (casing pane, over the white), the hue slice, and its
+   * paint stripe. `nothing` stretches render as TWO OFFSET HUE RAILS with
+   * no casing and no white core (the spec §15.3 variant): a white
+   * casing/core under a hollow run severed every line it crossed —
+   * Major Taylor visually broke where 83rd's hole crossed it — which is
+   * the exact artifact this redesign exists to kill. Stripes render
+   * immediately after their own spine's hue slices, NOT in a global pane.
+   * Interior caps are butt; a round cap would bulge over the neighboring
+   * rails and read as a blob at every quality transition. */
 
   const casingRecords = []; // { lineIds, layer, strandCount }
   const bandRecords = [];   // { lineIds, layer }
-  const sliceRecords = [];  // { lineIds, grade, display, layer, stripeLayer, coreLayer }
+  const sliceRecords = [];  // solid: { lineIds, grade, display, layer, stripeLayer }
+                            // hollow: { lineIds, grade, display: "nothing", rails: [a, b], center }
   const strandRecords = []; // { key, lineId, count, idx, grade, display, layer, center }
 
   function coupletNoteFor(lineId) {
@@ -205,18 +208,50 @@
     const sliceGroup = isTrail ? layers.trails : layers.lines;
     const coupletNote = coupletNoteFor(lineId);
 
-    const casingLayer = L.polyline(spine.latlngs, {
-      pane: casingPane, color: "#ffffff", weight: 9, opacity: 1,
-      lineCap: "butt", lineJoin: "round",
+    // Casing slices over contiguous BUILT ranges only — hollow ranges get
+    // no casing, so crossing lines show through the rails' gap.
+    const casingRanges = [];
+    let open = null;
+    spine.stretches.forEach((s) => {
+      if (s.locked || BSDNet.displayGrade(s.grade) === "nothing") { open = null; return; }
+      if (open && Math.abs(open.m1 - s.m0) < 0.01) { open.m1 = s.m1; }
+      else { open = { m0: s.m0, m1: s.m1 }; casingRanges.push(open); }
     });
-    casingGroup.addLayer(casingLayer);
-    casingRecords.push({ lineIds: [lineId], layer: casingLayer, strandCount: 1 });
+    casingRanges.forEach((r) => {
+      const latlngs = BSDNet.sliceSpineByMeasure(spine, r.m0, r.m1);
+      if (latlngs.length < 2) return;
+      const casingLayer = L.polyline(latlngs, {
+        pane: casingPane, color: "#ffffff", weight: 9, opacity: 1,
+        lineCap: "butt", lineJoin: "round",
+      });
+      casingGroup.addLayer(casingLayer);
+      casingRecords.push({ lineIds: [lineId], layer: casingLayer, strandCount: 1 });
+    });
 
     spine.stretches.forEach((s) => {
       if (s.locked) return; // interlined trunk range — rendered once, below
       const display = BSDNet.displayGrade(s.grade);
       const latlngs = BSDNet.sliceSpineByMeasure(spine, s.m0, s.m1);
       if (latlngs.length < 2) return;
+
+      if (display === "nothing") {
+        // Hollow = two offset hue rails (offsets are pixel-constant,
+        // re-derived per zoom by applyRailOffsets). The rails never drain
+        // under a comfort floor (QA-gate fix 2): "no facility at all" is
+        // floor-independent and must never converge with drained gray.
+        const rails = [0, 1].map(() => {
+          const rail = L.polyline(latlngs, {
+            pane: slicePane, color: lineColor(lineId), weight: 1.2, opacity: 1,
+            lineCap: "butt", lineJoin: "round",
+          });
+          rail.on("click", (e) => { L.DomEvent.stop(e); onLineClick(lineId); });
+          if (coupletNote) rail.bindTooltip(coupletNote, { sticky: true, className: "couplet-tip" });
+          sliceGroup.addLayer(rail);
+          return rail;
+        });
+        sliceRecords.push({ lineIds: [lineId], grade: s.grade, display, rails, center: latlngs });
+        return;
+      }
 
       if (display === "offstreet") {
         // Darkened-hue band: a per-stretch w9 slice over the white casing
@@ -238,21 +273,15 @@
       if (coupletNote) hue.bindTooltip(coupletNote, { sticky: true, className: "couplet-tip" });
       sliceGroup.addLayer(hue);
 
-      let stripeLayer = null, coreLayer = null;
+      let stripeLayer = null;
       if (display === "paint") {
         stripeLayer = L.polyline(latlngs, {
           pane: slicePane, color: "#ffffff", weight: 2, opacity: 1,
           lineCap: "butt", lineJoin: "round", interactive: false,
         });
         sliceGroup.addLayer(stripeLayer);
-      } else if (display === "nothing") {
-        coreLayer = L.polyline(latlngs, {
-          pane: slicePane, color: "#ffffff", weight: 3.6, opacity: 1,
-          lineCap: "butt", lineJoin: "round", interactive: false,
-        });
-        sliceGroup.addLayer(coreLayer);
       }
-      sliceRecords.push({ lineIds: [lineId], grade: s.grade, display, layer: hue, stripeLayer, coreLayer });
+      sliceRecords.push({ lineIds: [lineId], grade: s.grade, display, layer: hue, stripeLayer });
     });
   }
 
@@ -359,6 +388,20 @@
     capsuleRecords.forEach((c) => c.marker.setIcon(capsuleIcon(c.bearing, c.count)));
   }
 
+  // Hollow rails are also pixel-constant offsets from the spine center,
+  // re-derived on every zoom step (rec._railOffsetPx is set by
+  // restyleSlice from the current fillPlan).
+  function applyRailOffsets() {
+    sliceRecords.forEach((rec) => {
+      if (!rec.rails) return;
+      const px = rec._railOffsetPx || 0;
+      const mpp = BSDNet.metersPerPixel(rec.center[0][0], map.getZoom());
+      rec.rails.forEach((rail, i) => {
+        rail.setLatLngs(BSDNet.offsetLatLngs(rec.center, (i === 0 ? -1 : 1) * px * mpp));
+      });
+    });
+  }
+
   /* ---------------- restyle machinery (floor / selection / zoom) ---------------- */
   // Everything restyles via setStyle on existing polylines — geometry is
   // never rebuilt. Below-floor stretches DRAIN: hue -> DRAINED_COLOR at
@@ -370,26 +413,34 @@
     const lineId = rec.lineIds[0];
     const dim = isDimmed(rec.lineIds) ? 0.6 : 1;
     const selected = rec.lineIds.some(isLineSelected);
-    const drained = !BSDNet.meetsFloor(rec.grade, state.floor);
     const scaled = 6 * weightFactor;
     const plan = BSDNet.fillPlan(rec.display, scaled);
-    let hueOpacity = dim * (drained ? BSDNet.SCHEMATIC.drainedOpacity : 1);
-    if (plan.hollowFallback) hueOpacity *= BSDNet.SCHEMATIC.hollowFallbackOpacity;
+
+    if (rec.rails) {
+      // Hollow rails: hue always — absence is floor-independent (QA-gate
+      // fix 2), so `nothing` never drains to gray. Below the clamp the
+      // rails collapse onto the centerline at fallback opacity.
+      const hollow = plan.coreWidth > 0;
+      const railWeight = hollow ? (scaled - plan.coreWidth) / 2 : scaled;
+      rec._railOffsetPx = hollow ? (plan.coreWidth + railWeight) / 2 : 0;
+      rec.rails.forEach((rail) => rail.setStyle({
+        color: lineColor(lineId),
+        weight: railWeight + (selected ? 0.5 : 0),
+        opacity: dim * (hollow ? 1 : BSDNet.SCHEMATIC.hollowFallbackOpacity),
+      }));
+      return;
+    }
+
+    const drained = !BSDNet.meetsFloor(rec.grade, state.floor);
     rec.layer.setStyle({
       color: drained ? BSDNet.DRAINED_COLOR : lineColor(lineId),
       weight: scaled + (selected ? 2 : 0),
-      opacity: hueOpacity,
+      opacity: dim * (drained ? BSDNet.SCHEMATIC.drainedOpacity : 1),
     });
     if (rec.stripeLayer) {
       rec.stripeLayer.setStyle({
         weight: Math.max(plan.stripeWidth, 0.1),
         opacity: plan.stripeWidth > 0 ? dim : 0,
-      });
-    }
-    if (rec.coreLayer) {
-      rec.coreLayer.setStyle({
-        weight: Math.max(plan.coreWidth, 0.1),
-        opacity: plan.coreWidth > 0 ? dim : 0,
       });
     }
   }
@@ -652,7 +703,23 @@
     });
     return best;
   }
-  function lineLabelPlacement(lineId, spine) {
+  // Collision bookkeeping (QA-gate fix 4): label boxes are estimated in
+  // layer-pixel space at the citywide build zoom (~ name.length × 6.5 px
+  // wide, 14 px tall). Resolution order: preferred side -> flipped side ->
+  // slide along the run (±60/±120 px). Two overlapping labels at the
+  // default view are illegible — that's a fail, not polish.
+  const placedLabelBoxes = [];
+  function labelBox(latlng, offsetPx, name) {
+    const pt = map.latLngToLayerPoint(latlng);
+    const w = name.length * 6.5, h = 14;
+    return { x: pt.x + offsetPx[0] - w / 2, y: pt.y + offsetPx[1] - h / 2, w, h };
+  }
+  function boxCollides(b) {
+    return placedLabelBoxes.some((o) =>
+      !(b.x + b.w < o.x || o.x + o.w < b.x || b.y + b.h < o.y || o.y + o.h < b.y));
+  }
+
+  function lineLabelPlacement(lineId, spine, name) {
     let best = null;
     for (let i = 0; i < spine.latlngs.length - 1; i++) {
       const len = segMeters(spine.latlngs[i], spine.latlngs[i + 1]);
@@ -665,7 +732,8 @@
     // Travel direction in east/north meters; left of travel = (-n, e).
     const e = (b[1] - a[1]) * mLng, n = (b[0] - a[0]) * M_PER_DEG_LAT;
     const norm = Math.hypot(e, n) || 1;
-    let leftE = -n / norm, leftN = e / norm;
+    const travelE = e / norm, travelN = n / norm;
+    let leftE = -travelN, leftN = travelE;
     const mpp = BSDNet.metersPerPixel(mid[0], map.getZoom());
     const clearM = BSDNet.SCHEMATIC.labelClearPx * mpp;
     const probe = [
@@ -673,20 +741,42 @@
       mid[1] + (leftE * BSDNet.SCHEMATIC.labelOffsetPx * mpp) / mLng,
     ];
     if (distToOtherSpines(probe, lineId) < clearM) { leftE = -leftE; leftN = -leftN; }
-    // Screen px: x = east, y = -north.
-    const offset = [
-      Math.round(leftE * BSDNet.SCHEMATIC.labelOffsetPx),
-      Math.round(-leftN * BSDNet.SCHEMATIC.labelOffsetPx),
+
+    const offsetFor = (lE, lN) => [
+      Math.round(lE * BSDNet.SCHEMATIC.labelOffsetPx),
+      Math.round(-lN * BSDNet.SCHEMATIC.labelOffsetPx),
     ];
-    return { latlng: mid, offset };
+    const slideTo = (slidePx) => [
+      mid[0] + (travelN * slidePx * mpp) / M_PER_DEG_LAT,
+      mid[1] + (travelE * slidePx * mpp) / mLng,
+    ];
+    // Candidate order: hand-rule side, flipped side, then slides along the
+    // run on the hand-rule side.
+    const candidates = [
+      { latlng: mid, offset: offsetFor(leftE, leftN) },
+      { latlng: mid, offset: offsetFor(-leftE, -leftN) },
+      { latlng: slideTo(60), offset: offsetFor(leftE, leftN) },
+      { latlng: slideTo(-60), offset: offsetFor(leftE, leftN) },
+      { latlng: slideTo(120), offset: offsetFor(leftE, leftN) },
+    ];
+    const pick = candidates.find((c) => !boxCollides(labelBox(c.latlng, c.offset, name))) || candidates[0];
+    placedLabelBoxes.push(labelBox(pick.latlng, pick.offset, name));
+    return pick;
   }
 
-  (mainRoutesData.lines || []).forEach((lineMeta) => {
+  // Long lines first, so the network's anchors claim space before the
+  // short lines squeeze in around them.
+  const labelOrder = (mainRoutesData.lines || []).slice().sort((a, b) => {
+    const sa = NET.spines.get(a.id), sb = NET.spines.get(b.id);
+    return ((sb ? sb.m[sb.m.length - 1] : 0) - (sa ? sa.m[sa.m.length - 1] : 0));
+  });
+  const terminusCells = new Map(); // shared-terminus stacking (merged pins)
+  labelOrder.forEach((lineMeta) => {
     const spine = NET.spines.get(lineMeta.id);
     if (!spine) return; // no_data lines: nothing to label, never fabricate
     const color = lineColor(lineMeta.id);
     const isTrail = lineMeta.source === "osm_trails";
-    const place = lineLabelPlacement(lineMeta.id, spine);
+    const place = lineLabelPlacement(lineMeta.id, spine, lineMeta.name);
     if (place) {
       const tooltip = L.tooltip({
         permanent: true, direction: "center", className: "line-label", offset: place.offset,
@@ -696,13 +786,21 @@
       (isTrail ? layers.lineLabelsTrails : layers.lineLabelsStreets).addLayer(tooltip);
     }
     // Terminus labels only earn their ink on long lines — on a short line
-    // (the 606 is 2.7 mi) they just triple the mid-line label.
+    // (the 606 is 2.7 mi) they just triple the mid-line label. Lines
+    // sharing a merged terminus pin stack their labels instead of
+    // overprinting.
     const spineMeters = spine.m[spine.m.length - 1] || 0;
     if (spineMeters > 8000) {
       const terminusGroup = isTrail ? layers.terminusLabelsTrails : layers.terminusLabelsStreets;
       [spine.latlngs[0], spine.latlngs[spine.latlngs.length - 1]].forEach((pt) => {
+        const cell = Math.round(pt[0] * 2000) + ":" + Math.round(pt[1] * 2000); // ~50 m
+        const stackIdx = terminusCells.get(cell) || 0;
+        terminusCells.set(cell, stackIdx + 1);
         terminusGroup.addLayer(
-          L.tooltip({ permanent: true, direction: "top", className: "terminus-label", offset: [0, -6] })
+          L.tooltip({
+            permanent: true, direction: "top", className: "terminus-label",
+            offset: [0, -6 - stackIdx * 12],
+          })
             .setLatLng(pt)
             .setContent(`<span style="color:${color}">${BSD.esc(lineMeta.name)}</span>`)
         );
@@ -836,6 +934,7 @@
     }
     // Strand spacing is pixel-constant, so it changes on EVERY zoom step.
     applyStrandOffsets();
+    applyRailOffsets();
   }
 
   function updateDeclutter() {
@@ -868,6 +967,7 @@
   restyleAll();
   restyleStaticWeights();
   applyStrandOffsets();
+  applyRailOffsets();
 
   /* ---------------- deselect triggers ---------------- */
   map.on("click", deselect);
