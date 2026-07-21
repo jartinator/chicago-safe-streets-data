@@ -966,3 +966,45 @@ Two trade-offs worth knowing about:
   never appears under `/api/v1/` in any form — `index.json`'s
   `no_synthetic_data` field and `llms.txt`'s matching disclaimer say so
   explicitly, so an agent doesn't go looking for it.
+
+## PLANNED (not yet published): smart_streets_enforcement.json — tier real
+
+**Status: pending FOIA — no file exists yet, and nothing below is contract
+until it ships.** Publishing this file (and any keys it adds) requires the
+usual `CONTRACT_VERSION` bump at that time; it is documented here now so the
+placeholder Data Sources card, the FOIA request, and the integration plan
+(`docs/superpowers/plans/2026-07-21-smart-streets-enforcement-integration.md`)
+all point at one agreed shape.
+
+Violation-level records from Chicago's Smart Streets pilot (automated camera
+enforcement of bike/bus lane and bus stop violations, CDOT + Dept. of
+Finance, Nov 2024–present). No public dataset exists (verified 2026-07-21);
+a FOIA request is prepared — see `docs/foia/smart-streets-enforcement.md`.
+Target shape, mirroring the fields the Tribune's reporting shows are already
+compiled:
+
+```
+{ data_tier: "real", as_of, note,
+  source: "foia" | "portal",       // portal, if the city ever publishes it
+  violations: [{
+    id,                            // citation/notice number as released, else row index
+    occurred_at,                   // ISO datetime
+    location,                      // address / block / intersection as released
+    lat, lng,                      // null until geocoded (geocoding is derived work)
+    violation_type,                // "bike_lane" | "bus_lane" | "bus_stop"
+    outcome,                       // "warning" | "citation"
+    fine_amount,                   // USD int; null for warnings / if withheld
+    company_name,                  // commercial/fleet registrant; null for private
+                                   // individuals (expected redacted)
+    ward,                          // null until spatially joined (derived)
+    data_tier: "real" }] }
+```
+
+Rules already settled: records with a geocodable location may ALSO be
+projected into the normalized obstruction schema (`obstructions_mock.geojson`
+section above — `obstruction_type: "vehicle_in_lane"` / `"delivery_vehicle"`,
+real `company_name`, `data_tier: "real"`), which is exactly the swap-in path
+that schema was built for; geocodes and ward joins are derived enrichment and
+never overwrite the released fields; if the FOIA yields only aggregate
+figures, they become an article-/response-sourced static finding, not a
+mappable layer.
