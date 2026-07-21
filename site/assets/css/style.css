@@ -176,15 +176,56 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   padding-left: 2rem; box-sizing: border-box;
 }
 
-/* Quality-border grade legend (spec §3). */
-.quality-legend { margin: 0 0 0.5rem 1.6rem; }
-.quality-legend-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }
-.quality-swatch { width: 22px; flex: none; }
+/* "How to read a line" legend (schematic redesign v3 §9.1): the four
+ * structural inks in a neutral hue, heaviest to hollow. Quality is
+ * intrinsic and always on — this replaces the v2 quality-border toggle. */
+.read-legend { margin: 0.6rem 0 0.5rem; }
+.read-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }
+.read-swatch { width: 26px; height: 9px; flex: none; border-radius: 2px; }
+.read-swatch.read-offstreet { background: #334155; }
+.read-swatch.read-protected { background: #64748b; }
+/* paint reads as a SOLID bar wearing a hairline stripe; nothing reads as
+ * an EMPTY outlined box — at 9px the two must not look like cousins
+ * (both were "gray with a light middle" before). */
+.read-swatch.read-paint {
+  background: #64748b;
+  background-image: linear-gradient(#fff 0 0);
+  background-size: 100% 1.5px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.read-swatch.read-nothing {
+  background: none;
+  border: 1.5px solid #94a3b8;
+  height: 9px; box-sizing: border-box; border-radius: 2px;
+}
 .quality-footnote { margin: 0.2rem 0 0; font-size: 0.78rem; }
 .capsule-glyph {
   display: inline-block; width: 20px; height: 11px; flex: none;
   background: #fff; border: 1.5px solid #1a2330; border-radius: 6px;
 }
+
+/* Couplet disambiguation note (v3 §6). */
+.couplet-note { font-size: 0.78rem; margin: 0.35rem 0 0; }
+.couplet-tip { font-size: 0.72rem; max-width: 220px; white-space: normal; }
+
+/* Schematic provenance chip on the map (v3 §9.6). */
+.schematic-chip {
+  position: absolute; left: 10px; bottom: 10px; z-index: 800;
+  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--line);
+  border-radius: 6px; padding: 0.25rem 0.55rem;
+  font-size: 0.7rem; color: var(--ink-soft); pointer-events: auto;
+}
+.schematic-chip a { color: inherit; }
+
+/* Terminus labels (v3 §8): line name at both spine ends, z >= 11. */
+.terminus-label {
+  background: transparent; border: none; box-shadow: none;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; opacity: 0.9;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+.terminus-label::before { display: none; }
 
 /* Comfort floor segmented control (spec §5). */
 .comfort-floor { margin: 0.6rem 0; }
@@ -211,7 +252,8 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   background: var(--line); margin: 0.2rem 0 0.35rem;
 }
 .mix-bar .mix-seg { height: 100%; }
-.mix-bar .mix-seg.grade-paint {
+.mix-bar .mix-seg.grade-paint,
+.mix-bar .mix-seg.level-paint {
   background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(255,255,255,.45) 3px 6px);
 }
 .mix-legend { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; font-size: 0.76rem; color: var(--ink-soft); }
@@ -232,10 +274,23 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 .roster-row .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roster-row.no-data { opacity: 0.6; }
+/* Roster mini-bars (v3 §9.4): the four-ink swatch dialect doesn't survive
+ * 60×6 px, so rows carry a degraded dialect at 8 px tall — solid-dark /
+ * solid / diagonal hatch / hollow outline box — in the mix palette. */
 .mini-mix {
-  display: flex; width: 60px; height: 6px; flex: none; border-radius: 3px; overflow: hidden; background: var(--line);
+  display: flex; width: 60px; height: 8px; flex: none; border-radius: 3px; overflow: hidden; background: var(--line);
 }
 .mini-mix span { height: 100%; }
+.mini-mix .mm-offstreet { background: #0c4a6e; }
+.mini-mix .mm-protected { background: #0b6e4f; }
+.mini-mix .mm-paint {
+  background: #f59e0b;
+  background-image: repeating-linear-gradient(45deg, transparent 0 2px, rgba(255,255,255,.55) 2px 4px);
+}
+.mini-mix .mm-nothing {
+  background: none; box-sizing: border-box;
+  border: 1.5px solid #94a3b8; border-left: none; border-right: none;
+}
 
 /* Interlining capsule transfer marker (spec §6): white pill, dark outline,
  * rotated perpendicular to travel via inline transform on the inner span. */
@@ -333,6 +388,76 @@ dialog.modal::backdrop { background: rgba(16,32,43,.55); }
 .op-action { margin: .9rem 0 .4rem; padding: .7rem; background: #f0fdf4; border-left: 3px solid var(--accent, #0b6e4f); }
 .op-foot { margin-top: .9rem; padding-top: .5rem; border-top: 1px solid var(--line);
   font-size: .68rem; color: var(--ink-soft); letter-spacing: .01em; }
+
+/* ---- home / landing page ---- */
+.home { max-width: 1080px; }
+.home h2 { margin: 0 0 .3rem; font-size: 1.4rem; }
+
+.home-hero {
+  padding: 1.4rem 0 1.2rem; border-bottom: 1px solid var(--line); margin-bottom: 1.4rem;
+}
+.home-hero h1 { font-size: 2.3rem; line-height: 1.12; margin: 0 0 .6rem; letter-spacing: -0.01em; }
+.home-lead { font-size: 1.12rem; line-height: 1.55; color: var(--ink); max-width: 60ch; margin: 0 0 1rem; }
+.home-cta-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .9rem; }
+.home-cta-row .btn { font-size: 1rem; padding: .55rem 1.1rem; }
+.home-hero-note { font-size: .9rem; color: var(--ink-soft); margin: 0; max-width: 60ch; }
+
+/* headline data strip */
+.home-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: .8rem; margin: 0 0 .5rem;
+}
+.home-stat {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .5rem;
+  transition: border-color .12s ease, transform .12s ease;
+}
+.home-stat:hover { border-color: var(--accent); transform: translateY(-2px); }
+.home-stat-main { display: flex; flex-direction: column; gap: .35rem; text-decoration: none; }
+.home-stat-num { font-size: 2.2rem; font-weight: 800; line-height: 1; color: var(--ink); }
+.home-stat-label { font-size: .9rem; color: var(--ink-soft); line-height: 1.35; }
+.home-stat-badge { margin-top: auto; }
+.home-stats-foot { margin: .2rem 0 0; }
+
+/* key-function + audience cards */
+.home-func, .home-audience { display: flex; flex-direction: column; }
+.home-func h3, .home-audience h3 { font-size: 1.1rem; margin-bottom: .35rem; }
+.home-func p, .home-audience p { margin: 0 0 .9rem; font-size: .95rem; }
+.home-func .btn { align-self: flex-start; margin-top: auto; }
+.home-audience-links { display: flex; flex-direction: column; gap: .3rem; margin-top: auto; }
+.home-audience-links a { font-size: .92rem; font-weight: 600; text-decoration: none; }
+.home-audience-links a:hover { text-decoration: underline; }
+
+/* agent layer — deliberately distinct dark panel */
+.home-agent {
+  background: #10202b; color: #e8eef2; border-radius: 12px;
+  padding: 1.5rem 1.6rem; margin-top: 2.2rem;
+}
+.home-agent h2 { color: #fff; }
+.home-agent h3 { color: #cfe0ea; font-size: 1rem; margin: 1.2rem 0 .4rem; }
+.home-agent p { color: #c3d0da; max-width: 70ch; }
+.home-agent code { background: rgba(255,255,255,.08); color: #eaf4ee; }
+.home-agent a { color: #7fd1a8; }
+.home-agent .muted { color: #9fb2bf; }
+.agent-copy {
+  display: flex; align-items: stretch; gap: .5rem; margin: .4rem 0;
+  background: #0a161e; border: 1px solid #24404f; border-radius: 8px; padding: .5rem .6rem;
+}
+.agent-copy code {
+  flex: 1; overflow-x: auto; white-space: pre; background: none; color: #eaf4ee;
+  padding: .15rem 0; font-size: .86rem; align-self: center;
+}
+.agent-copy-btn {
+  flex: 0 0 auto; background: #1d3242; border-color: #315063; color: #dfeaf0; font-size: .8rem;
+}
+.agent-copy-btn:hover { border-color: var(--accent); background: #24414f; }
+.home-agent-foot { font-size: .86rem; color: #9fb2bf !important; margin-top: 1.1rem; }
+
+@media (max-width: 560px) {
+  .home-hero h1 { font-size: 1.8rem; }
+  .home-lead { font-size: 1.02rem; }
+  .home-stat-num { font-size: 1.9rem; }
+}
 
 /* Print rules are scoped to the one-pager page (body.onepager-page) so no
  * other page's print output changes. The .banner (fixture-data warning) is

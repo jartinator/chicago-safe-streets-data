@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Obstructions (synthetic demo) — On Your Left!</title>
-<meta name="description" content="On Your Left! — SYNTHETIC demonstration data only: a schema preview of bike-lane obstruction reports, pending a real data source.">
+<title>Map — On Your Left!</title>
+<meta name="description" content="On Your Left! — Chicago bike safety, on the record. Crash, infrastructure, and council accountability data by ward. Open JSON API for AI agents at /llms.txt.">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="llms-txt" href="llms.txt">
@@ -13,9 +13,14 @@
 </head>
 <body>
 <noscript><p><a href="llms.txt">AI agents &amp; developers: start here — llms.txt</a> · <a href="api/v1/index.json">JSON API index</a></p></noscript>
-<main class="page" id="app"></main>
+<div class="map-wrap">
+  <div id="map"></div>
+  <aside class="map-side" id="side"></aside>
+</div>
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="assets/js/common.js"></script>
-<script src="assets/js/obstructions-preview.js"></script>
+<script src="assets/js/map-model.js"></script>
+<script src="assets/js/main-routes-model.js"></script>
+<script src="assets/js/map.js"></script>
 </body>
 </html>
