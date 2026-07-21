@@ -9,7 +9,7 @@ tracked) — this folder links to them.
 |---|---|---|
 | CDOT historical Bike Lane Mileage Tracker (+ City Clerk fallback) | `cdot-bikeway-mileage-history.md` | Drafts in Gmail (2026-07-12), not yet sent |
 | CDOT bicycle count data (2009 study, counters, Replica, 2023 ridership claims) | [`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`](../outbox/2026-07-13--foia--cdot--bicycle-count-data.md) | Ready to send — anchors verified 2026-07-13 |
-| DOF/CDOT Smart Streets enforcement data (bike/bus lane camera violations, commercial fleet attribution) | `smart-streets-enforcement.md` → [`docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md`](../outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md) | **Sent 2026-07-21** — reply due 2026-07-28 (ext. 2026-08-04) |
+| DOF/CDOT Smart Streets enforcement data (bike/bus lane camera violations, commercial fleet attribution) | `smart-streets-enforcement.md` → [`docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md`](../outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md) | **Sent + acknowledged 2026-07-21** (DOF F146238-072126, +5 extension) — response due 2026-08-04 |
 
 - **`log.md`** — one row per request: date sent, tracking #, statutory due
   date, status. Update it the day anything is sent or answered.
