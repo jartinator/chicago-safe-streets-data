@@ -5,7 +5,7 @@ to: DOFfoia@cityofchicago.org (cc cdotfoia@cityofchicago.org; or GovQA portal: c
 subject: FOIA request — Smart Streets pilot violation data (bike/bus lane camera enforcement)
 drafted: 2026-07-21
 sent: 2026-07-21
-tracking: — (email submission — no auto-assigned number; fill in if DOF's acknowledgment assigns one)
+tracking: F146238-072126 (DOF); cc spawned CDOT S146292-072126, closed same day (not keeper → referred to DOF)
 tracker: #33
 ---
 
@@ -30,8 +30,9 @@ https://www.chicago.gov/city/en/depts/fin/supp_info/fin_foia.html before
 sending, or just use the GovQA portal, which needs no email.*
 
 **SENT 2026-07-21** via Gmail (from the draft prepared the same day).
-Statutory clock: reply due 2026-07-28 (5 business days), extendable to
-2026-08-04; nudge 2026-07-30 if no acknowledgment. See `docs/foia/log.md`
+See the Outcome log at the bottom of this file — both departments
+acknowledged same-day via GovQA; DOF invoked a +5 extension, **response
+due 2026-08-04**; nudge 2026-08-06 if nothing. See `docs/foia/log.md`
 row 4.
 
 ---
@@ -131,6 +132,30 @@ Sincerely,
   production, no burden argument).
 - [x] **No prior public release found** — no MuckRock or other posted
   Smart Streets data extract surfaced in searches.
-- [ ] **DOF FOIA email** — `DOFfoia@cityofchicago.org` per search results;
+- [x] **DOF FOIA email** — `DOFfoia@cityofchicago.org` per search results;
   chicago.gov unreachable from this environment to confirm directly.
-  Verify on the Finance FOIA page before emailing, or submit via GovQA.
+  RESOLVED 2026-07-21: the address works — DOF acknowledged with tracking
+  # F146238-072126 (see Outcome log).
+
+## Outcome log
+
+- **2026-07-21 (send):** emailed to DOFfoia@cityofchicago.org, cc
+  cdotfoia@cityofchicago.org. Both departments routed it into the GovQA
+  Records Center — so the "verify the DOF email" open item resolved
+  itself: the address works and email submissions get tracking numbers
+  after all.
+- **2026-07-21 (DOF acknowledgment):** request received, reference
+  **F146238-072126**. Same day, DOF invoked the +5-business-day extension
+  under 5 ILCS 140/3(e), checking the "consultation with another public
+  body" reason — consistent with DOF needing to coordinate with CDOT
+  and/or Hayden AI on the violation data. **Response due 2026-08-04.**
+  Signed April Lundberg, Department of Finance.
+- **2026-07-21 (CDOT):** the cc was opened as its own request
+  (**S146292-072126**) and closed the same day: CDOT "is not the keeper
+  of the requested information… the most likely keeper is the Department
+  of Finance," citing Duncan Publishing v. City of Chicago (each
+  department is a separate public body). Expected and harmless — the cc
+  did its job (no wrong-door bounce at DOF; DOF is processing on the
+  merits). Signed G. Rubenstein, CDOT FOIA Officer.
+- **Next checkpoint:** if nothing arrives by **2026-08-06**, send the
+  polite nudge on F146238-072126 (a session can draft it here).

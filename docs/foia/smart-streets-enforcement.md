@@ -1,9 +1,12 @@
 # Smart Streets enforcement data — request dossier
 
 **Request body:** [`docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md`](../outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md)
-**Status:** SENT 2026-07-21 (email to DOF, cc CDOT) — reply due 2026-07-28,
-extendable to 2026-08-04; nudge 2026-07-30 if no acknowledgment. See
-`log.md` row 4.
+**Status:** SENT + ACKNOWLEDGED 2026-07-21 — DOF reference
+**F146238-072126**, +5-business-day extension invoked (consultation with
+another public body, 5 ILCS 140/3(e)) → **response due 2026-08-04**; nudge
+2026-08-06 if nothing. CDOT's cc became S146292-072126, closed same day as
+"not the keeper" with a referral to DOF (expected — DOF is processing on
+the merits). Full outcome log in the outbox file; see `log.md` row 4.
 **Target layer:** first real (non-mock, non-proxy) obstruction-adjacent
 dataset — see the "Smart Streets Enforcement (pending FOIA)" card on the
 Data Sources page and the planned contract in `SCHEMA.md`.
