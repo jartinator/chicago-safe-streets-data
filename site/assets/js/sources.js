@@ -104,6 +104,21 @@
       metaId: "obstructions"
     },
     {
+      id: "smart_streets",
+      name: "Smart Streets Enforcement (pending FOIA)",
+      short: "Smart Streets",
+      origin: "City of Chicago Smart Streets pilot (CDOT + Dept. of Finance, Hayden AI cameras) — via FOIA request, not yet received",
+      tier: "stub",
+      cadence: "N/A — records request in progress",
+      description: "Camera-enforced bike lane, bus lane, and bus stop violations from the city's downtown Smart Streets pilot (warnings from Nov 2024, tickets from Dec 2024), including commercial-fleet registrant names — enforcement-grade obstruction data, unlike self-reported 311 signals. No public dataset exists (verified July 2026; the Chicago Tribune obtained its July 2026 delivery-company fine figures via a records request), so this layer is empty until the city answers our FOIA request to the Department of Finance for the violation-level records.",
+      limitations: "Not yet integrated — a FOIA request is prepared and awaiting response; nothing renders anywhere until real records arrive. When they do: downtown pilot zone only (Roosevelt–North Ave–Ashland–Lake Michigan), so coverage is geographically sparse by design; private individuals' registrant names are expected to be redacted (commercial fleets are not); locations will need geocoding before any map use.",
+      links: [
+        { text: "Our FOIA request (repo)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md" },
+        { text: "City Smart Streets page", url: "https://www.chicago.gov/city/en/depts/fin/provdrs/parking_and_redlightcitationadministration/svcs/smart-streets.html" }
+      ],
+      metaId: null
+    },
+    {
       id: "wards",
       name: "Ward Boundaries (2023 remap)",
       short: "Wards",
