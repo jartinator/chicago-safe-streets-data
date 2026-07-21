@@ -63,8 +63,11 @@ they're trying to do** — same data, different framing and output shape:
 - Design principle: **stateless server, smart client** — no accounts/auth; the
   tool *descriptions* carry the weight so a calling agent self-selects or asks a
   clarifying question. Every tool returns a **file**, not a UI view.
-- Flagged for its own pass: `get_foia_trends()` over Chicago's **public** FOIA log
-  (dataset `u9qt-tv7d`) — see the FOIA-seam note below.
+- A live research thread of its own: `get_foia_trends()` over Chicago's **public**
+  FOIA request log (dataset `u9qt-tv7d`) — surface what people repeatedly ask the
+  city for but that isn't published yet. It gets its own evidence brief
+  (`evidence/foia-log.md`), a stimulus vignette, and a disposition in the synthesis.
+  See the FOIA-seam note below for why this is in scope while ingestion is not.
 
 **The observation that makes this study tractable:** intent differentiation is
 **orthogonal to mechanism.** "Talking points with the caveats attached" could be an

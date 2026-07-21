@@ -28,7 +28,7 @@ compounds. Route as follows:
 |---|---|---|
 | Orchestration (you, the main loop) | strongest available | Judgment, quality control, and gatekeeping the stop point live here. |
 | Evidence web research (3 domain agents) | Sonnet | Search-and-verify with citation discipline; parallelize. `access-mechanisms.md` must *live-verify*, not infer from memory. |
-| Persona interviews (11 agents) | Sonnet | In-character reasoning grounded in a written evidence base. Sonnet holds character and resistance well. |
+| Persona interviews (13 agents) | Sonnet | In-character reasoning grounded in a written evidence base. Sonnet holds character and resistance well. |
 | Per-interview needs-extraction memos | Sonnet, escalate to strongest if an interview is rich/contradictory | Structured extraction against the extended memo template in `04-researcher-addendum.md`. |
 | Seamlessness eval (`06`) | Sonnet cold agents; **strongest** grader | Measuring agent behavior against a rubric, not interviewing. |
 | Cross-interview synthesis + the REPORT | strongest available, ONE agent or the main loop itself | The deliverable. Never parallelize, never downgrade. |
@@ -59,8 +59,8 @@ Two warnings, both deliberate:
    closes the gap. Write results to `interviews/_eval-results.md`. This tells the
    orchestrator where the real gaps are — to *flag* to the interviewer, never to
    feed to personas.
-4. **Interviews.** For each of the 11 personas (the 9 in
-   `../user-needs/personas/` plus the 2 new ones here), run an interview: the
+4. **Interviews.** For each of the 13 personas (the 9 in
+   `../user-needs/personas/` plus the 4 new ones in `personas/` here), run an interview: the
    persona agent gets its persona file + `../user-needs/personas/_shared-rules.md`
    + `personas/_agentic-overlay.md` + `02-stimulus-access-experiences.md`; the
    interviewer follows `../user-needs/01-lead-researcher.md` +
@@ -80,9 +80,13 @@ Two warnings, both deliberate:
    stack* — with a recommendation, and stop. Implementation decisions belong to the
    maintainer after review. File any human-only follow-ups (e.g. a hosting/spend
    decision) on tracker issue #33 with an `[agent-api]` prefix.
-9. **Build** — only after an explicit human go — in fresh sessions per
-   `07-build-orchestration.md` (skill-first almost certainly; MCP only if it
-   survived the overkill test and the human accepts server ownership).
+9. **Build** — not covered here yet. The build-orchestration playbook
+   (`07-build-orchestration.md`, mirroring
+   `docs/superpowers/cost-savings-orchestration.md`) is authored **after** the
+   study runs and the maintainer picks a mechanism, so its phase map is
+   transcribed from the approved REPORT rather than guessed. Skill-first is the
+   likely shape; an MCP tranche is gated on surviving the overkill test *and* the
+   human accepting server ownership.
 
 **Quality gates:**
 - Every latent need has an inference basis (a workaround, misreading, or
