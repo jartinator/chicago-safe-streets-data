@@ -1,11 +1,11 @@
 ---
-status: ready
+status: sent
 initiative: foia
 to: DOFfoia@cityofchicago.org (cc cdotfoia@cityofchicago.org; or GovQA portal: chicago.gov/publicrecords → Finance)
 subject: FOIA request — Smart Streets pilot violation data (bike/bus lane camera enforcement)
 drafted: 2026-07-21
-sent: —
-tracking: —
+sent: 2026-07-21
+tracking: — (email submission — no auto-assigned number; fill in if DOF's acknowledgment assigns one)
 tracker: #33
 ---
 
@@ -29,8 +29,10 @@ the bottom. One open item: the DOF FOIA email was found via search
 https://www.chicago.gov/city/en/depts/fin/supp_info/fin_foia.html before
 sending, or just use the GovQA portal, which needs no email.*
 
-A Gmail draft of this letter was created 2026-07-21 (subject as in front
-matter). Fill in the signature name and fire.
+**SENT 2026-07-21** via Gmail (from the draft prepared the same day).
+Statutory clock: reply due 2026-07-28 (5 business days), extendable to
+2026-08-04; nudge 2026-07-30 if no acknowledgment. See `docs/foia/log.md`
+row 4.
 
 ---
 
