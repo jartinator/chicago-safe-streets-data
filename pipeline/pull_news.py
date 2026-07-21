@@ -18,16 +18,19 @@ Idempotent: re-running overwrites cleanly.
 import argparse
 import json
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import requests
 
 from config import (NEWS_FEEDS, NEWS_USER_AGENT, NEWS_FEED_MAX_BYTES, RAW_DIR,
                     PROPOSED_PROJECTS_PATH,
-                    NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT)
+                    NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT,
+                    NEWS_RESOLVE_TIMEOUT_S, NEWS_RESOLVE_ATTEMPTS,
+                    NEWS_RESOLVE_BACKOFF_S)
 from socrata import write_json
 
 _HEADERS = {
@@ -51,15 +54,43 @@ def fetch_feed(url):
         return None
 
 
-def resolve_redirect(url):
-    """Final URL after redirects (Google News links are opaque redirectors),
-    or the original URL on any failure — a working redirect link beats none."""
-    try:
-        resp = requests.head(url, headers={"User-Agent": NEWS_USER_AGENT},
-                             timeout=15, allow_redirects=True)
-        return resp.url or url
-    except requests.RequestException:
-        return url
+# Google's redirector rejects bare HEAD requests outright (issue #42), so
+# resolution is a streamed GET — headers-only download — that looks like an
+# ordinary reader: browser-like Accept headers, same honest bot User-Agent.
+_RESOLVE_HEADERS = {
+    "User-Agent": NEWS_USER_AGENT,
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+               "*/*;q=0.8"),
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def _google_host(url):
+    host = urlparse(url).netloc.lower()
+    return host == "google.com" or host.endswith(".google.com")
+
+
+def resolve_redirect(url, get_fn=requests.get, sleep_fn=time.sleep):
+    """Publisher URL behind a Google News redirect, or the original URL on
+    any failure — a working redirect link beats none. A response that never
+    leaves google.com (consent/interstitial page instead of a redirect)
+    counts as unresolved and gets the same one retry as a network error."""
+    for attempt in range(NEWS_RESOLVE_ATTEMPTS):
+        if attempt:
+            sleep_fn(NEWS_RESOLVE_BACKOFF_S)
+        try:
+            resp = get_fn(url, headers=_RESOLVE_HEADERS,
+                          timeout=NEWS_RESOLVE_TIMEOUT_S,
+                          allow_redirects=True, stream=True)
+        except requests.RequestException:
+            continue
+        try:
+            final = resp.url or url
+        finally:
+            resp.close()
+        if not _google_host(final):
+            return final
+    return url
 
 
 def _iso_pubdate(text):
@@ -152,14 +183,22 @@ def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
 
     # Title dedup FIRST (direct feeds are listed before the aggregator, so
     # they win), so Google items that merely re-surface an allowlisted
-    # outlet's own story are dropped before paying one HEAD request each to
-    # resolve their opaque redirect links. A second pass after resolution
+    # outlet's own story are dropped before paying one resolution request
+    # each for their opaque redirect links. A second pass after resolution
     # catches URL-level duplicates that only become visible once resolved.
     dedup_items(feeds)
+    attempted = resolved = 0
     for feed in feeds:
         if feed["kind"] == "google_news":
             for item in feed["items"]:
                 item["url"] = resolve_fn(item["url"])
+                attempted += 1
+                if not _google_host(item["url"]):
+                    resolved += 1
+    if attempted:
+        # Keeps a resolution regression (issue #42: 54/57 items stuck on
+        # redirect URLs) visible in every run's log.
+        print(f"  {resolved}/{attempted} google links resolved")
     return dedup_items(feeds)
 
 
