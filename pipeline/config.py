@@ -188,13 +188,17 @@ NEWS_WINDOW_DAYS = 90
 NEWS_MAX_ITEMS = 60
 NEWS_FEED_MAX_BYTES = 5 * 1024 * 1024
 
-# Google News link resolution (issue #42): the redirector rejects bare HEAD
-# requests, so resolution follows redirects with a streamed GET, browser-like
-# Accept headers, a longer timeout, and one retry with backoff. Unresolvable
-# links keep the working redirect URL — never drop the item.
+# Google News link resolution (issue #42): following the redirect gets a JS
+# interstitial from datacenter IPs, so resolution instead replays the
+# documented "batchexecute" decode Google's own front-end uses (scrape a
+# signature+timestamp off the article stub page, then POST them to the
+# batchexecute RPC to get the real publisher URL back). Unresolvable links
+# keep the working redirect URL — never drop the item.
 NEWS_RESOLVE_TIMEOUT_S = 20
 NEWS_RESOLVE_ATTEMPTS = 2  # first try + one retry
 NEWS_RESOLVE_BACKOFF_S = 2
+GNEWS_ARTICLE_URL_TMPL = "https://news.google.com/rss/articles/{article_id}"
+GNEWS_BATCHEXECUTE_URL = "https://news.google.com/_/DotsSplashUi/data/batchexecute"
 
 # Proposed & in-progress bikeway projects — hand-curated editorial roster
 # (the main_routes.json pattern): statuses are volunteer-reviewed with
