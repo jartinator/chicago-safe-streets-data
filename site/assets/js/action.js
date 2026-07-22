@@ -502,15 +502,72 @@
       (cite ? `, per <a href="${BSD.esc(cite.url)}" target="_blank" rel="noopener">${BSD.esc(cite.source || "citation")}</a>` : "");
   }
 
+  // Freshness lead (user-needs P4): "status as of" / "last checked" has to be
+  // the first thing a reader's eye hits on a proposed-project card, not a
+  // footnote after the description — the validation study's whole finding
+  // was that a status shown without its date/citation reads as current when
+  // it may not be. Per-project status_as_of wins; the top-level roster as_of
+  // is the fallback so a project can never render with no date, and always
+  // doubles as "last checked" (when this roster was last pulled/reviewed).
+  // Plain <strong> + a left border (no color-only signal) so it still reads
+  // in black-and-white print/screenshots.
+  function freshnessLeadHTML(p) {
+    const rosterAsOf = projectsData && projectsData.as_of;
+    const statusDate = p.status_as_of || rosterAsOf;
+    let text = `Status as of <strong>${BSD.esc(fmtDate(statusDate))}</strong>`;
+    if (rosterAsOf) {
+      text += ` · last checked <strong>${BSD.esc(fmtDate(rosterAsOf))}</strong>`;
+    }
+    return `<div class="freshness-lead" style="font-size: .85rem; ` +
+      `border-left: 3px solid var(--accent); padding: .15rem .6rem; margin-bottom: .4rem;">` +
+      text + `</div>`;
+  }
+
+  // "Flag an error on this card" (user-needs P4): the non-editorial, public
+  // correction channel — no accounts on this site, GitHub handles identity
+  // and the audit trail. Prefills the repo's own "Data issue" form fields
+  // (see .github/ISSUE_TEMPLATE/data_issue.yml) with this project's key facts
+  // so the report is auditable without the reporter re-typing them, and tags
+  // it with the same type/data label that template uses.
+  function flagIssueURL(p) {
+    const rosterAsOf = projectsData && projectsData.as_of;
+    const statusDate = p.status_as_of || rosterAsOf;
+    const title = `Data correction: proposed project ${p.id} — ${p.name}`;
+    const body = [
+      `Project: ${p.name} (id: \`${p.id}\`)`,
+      `Current status: ${p.status}`,
+      `Status as of: ${fmtDate(statusDate)}`,
+      "",
+      "What's wrong:",
+      "",
+      "What it should be:",
+      "",
+      "Source:",
+      "",
+      "_Filed from the proposed-projects card on On Your Left! — site/data/proposed_projects.json_",
+    ].join("\n");
+    return `https://github.com/jartinator/chicago-safe-streets-data/issues/new` +
+      `?title=${encodeURIComponent(title)}` +
+      `&body=${encodeURIComponent(body)}` +
+      `&labels=${encodeURIComponent("type/data")}`;
+  }
+
+  function flagLinkHTML(p) {
+    return `<a href="${BSD.esc(flagIssueURL(p))}" target="_blank" rel="noopener" ` +
+      `class="fine-print" style="display:inline-block; margin-top:.3rem;">Flag an error on this card →</a>`;
+  }
+
   function proposedSectionHTML(ward) {
     const projects = getProjectsForWard(projectsData, ward);
     if (!projects.length) return ""; // no section — citywide card covers the rest
     let html = sectionHeadingHTML("Proposed & in progress here", "derived");
     html += `<div class="kv-list">`;
     projects.forEach(p => {
-      html += `<div><strong>${BSD.esc(p.name)}</strong> — ${BSD.esc(p.status)}` +
+      html += `<div>` + freshnessLeadHTML(p) +
+        `<strong>${BSD.esc(p.name)}</strong> — ${BSD.esc(p.status)}` +
         ` <span class="muted">(${statusReviewedHTML(p)})</span>`;
       if (p.description) html += `<div class="fine-print">${BSD.esc(p.description)}</div>`;
+      html += flagLinkHTML(p);
       html += `</div>`;
     });
     html += `</div>`;
@@ -782,7 +839,8 @@
 
     html += `<div class="kv-list">`;
     projects.forEach(p => {
-      html += `<div style="margin-bottom:.6rem;"><strong>${BSD.esc(p.name)}</strong>` +
+      html += `<div style="margin-bottom:.6rem;">` + freshnessLeadHTML(p) +
+        `<strong>${BSD.esc(p.name)}</strong>` +
         (Array.isArray(p.wards) && p.wards.length
           ? ` <span class="muted">· Ward${p.wards.length > 1 ? "s" : ""} ${BSD.esc(p.wards.join(", "))}</span>` : "") +
         `<div><em>${BSD.esc(p.status)}</em> <span class="muted">— ${statusReviewedHTML(p)}</span></div>`;
@@ -801,6 +859,7 @@
       } else {
         html += `<div class="fine-print muted">No recent news coverage found — that measures press attention, not project activity.</div>`;
       }
+      html += flagLinkHTML(p);
       html += `</div>`;
     });
     html += `</div>`;
