@@ -91,17 +91,16 @@
     {
       id: "obstructions",
       name: "Bike Lane Obstructions",
-      short: "Obstructions (demo)",
-      origin: "MOCK demonstration data (schema mirrors Bike Lane Uprising's public submission fields)",
-      tier: "mock",
-      cadence: "regenerated each pipeline run",
-      description: "Reports of bike lanes blocked by cars, debris, or other obstructions. This is entirely synthetic MOCK data for schema demonstration — Bike Lane Uprising has no public API yet.",
-      limitations: "Entirely synthetic — no real reports, so it never renders on the main maps; it lives only on a gated, watermarked demo page. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
+      short: "Not published",
+      origin: "Not published by On Your Left!",
+      tier: "stub",
+      cadence: "N/A",
+      description: "On Your Left! publishes NO bike-lane obstruction data — no synthetic layer, no live feed. If you see a blocked bike lane, report it directly to Bike Lane Uprising.",
+      limitations: "Nothing to caveat — this dataset does not exist on this site. Ask Bike Lane Uprising for obstruction reports.",
       links: [
-        { text: "Synthetic demo page (gated)", url: "obstructions-preview.html" },
         { text: "Bike Lane Uprising", url: "https://www.bikelaneuprising.com" }
       ],
-      metaId: "obstructions"
+      metaId: null
     },
     {
       id: "smart_streets",

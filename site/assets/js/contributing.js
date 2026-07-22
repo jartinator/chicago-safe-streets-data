@@ -57,11 +57,6 @@
       calc: "Totals violations at fixed camera locations — a proxy for aggressive driving that exists only where cameras are installed, not where violations actually occur."
     },
     {
-      name: "obstructions_mock.geojson", tier: "mock",
-      title: "Blocked-lane reports (demo only)", sourceId: "obstructions", sourceName: "Obstructions (demo)",
-      description: "Fake sample data showing what real obstruction reports would look like — not real reports."
-    },
-    {
       name: "planned_routes.geojson", tier: "stub",
       title: "Planned bike routes (empty)", sourceId: "planned_routes", sourceName: "Planned routes",
       description: "Placeholder for future CDOT planned-route data; no structured feed exists yet."
@@ -142,18 +137,18 @@
 
   const OBSTRUCTION_FIELDS = [
     { name: "id", type: "string", description: "Unique identifier for the obstruction report." },
-    { name: "obstruction_type", type: "enum", description: "Category of obstruction. Placeholder enum (pending Bike Lane Uprising consultation): vehicle_in_lane, delivery_vehicle, debris, construction, poor_design, snow_ice, other." },
+    { name: "obstruction_type", type: "enum", description: "Category of obstruction: vehicle_in_lane, delivery_vehicle, debris, construction, poor_design, snow_ice, other." },
     { name: "photo_count", type: "integer", description: "Number of photos attached to the report (0–5)." },
-    { name: "plate_state", type: "string", description: "License plate state (always mock data in this demo)." },
-    { name: "plate_number", type: "string", description: "License plate number (always fake \"MOCK…\" values in mock data)." },
-    { name: "company_name", type: "string", description: "Business or service name if identifiable (generic placeholders only in mock data)." },
+    { name: "plate_state", type: "string", description: "License plate state, if identifiable." },
+    { name: "plate_number", type: "string", description: "License plate number, if identifiable." },
+    { name: "company_name", type: "string", description: "Business or service name, if identifiable." },
     { name: "notes", type: "string", description: "Free-form description provided by the reporter." },
     { name: "metro_city", type: "string", description: "Chicago neighborhood or general location." },
     { name: "lat", type: "number", description: "Latitude coordinate." },
     { name: "lng", type: "number", description: "Longitude coordinate." },
     { name: "occurred_at", type: "ISO 8601", description: "Timestamp when the obstruction was reported." },
     { name: "crash_occurred", type: "boolean", description: "Whether the obstruction resulted in a crash." },
-    { name: "data_tier", type: "string", description: "Data source tier (always \"mock\" in this demonstration)." }
+    { name: "data_tier", type: "string", description: "Data source tier of whatever feed is eventually plugged in." }
   ];
 
   async function render() {
@@ -234,23 +229,22 @@
       tableContainer.appendChild(table);
       app.appendChild(tableContainer);
 
-      // ---- Section 2: Obstruction schema (placeholder) ----
+      // ---- Section 2: Normalized obstruction schema (swap-in target, no file published) ----
       const obstSchema = document.createElement("div");
       const obstructionHeading = document.createElement("h2");
-      obstructionHeading.innerHTML = `Obstruction schema (placeholder) ${BSD.badgeHTML("mock")}`;
+      obstructionHeading.innerHTML = `Normalized obstruction schema (no file currently published)`;
       obstSchema.appendChild(obstructionHeading);
 
       const obstCard = document.createElement("div");
       obstCard.className = "card";
       obstCard.innerHTML = `
-        <p>This schema is designed to be swappable so real Bike Lane Uprising data — or another city's obstruction source — can drop in without re-architecting. Each field is defined below:</p>
+        <p>On Your Left! does not publish any obstruction data today — see a blocked bike lane? report it at <a href="https://www.bikelaneuprising.com" target="_blank" rel="noopener">Bike Lane Uprising</a>. This schema documents the shape a future obstruction feed (e.g. a Smart Streets FOIA delivery, or a real Bike Lane Uprising feed) would be normalized into, so it can drop in without re-architecting. Each field is defined below:</p>
         <dl style="margin-top: 1rem;">
           ${OBSTRUCTION_FIELDS.map(f => `
             <dt><code>${BSD.esc(f.name)}</code> (${BSD.esc(f.type)})</dt>
             <dd style="margin-bottom: 0.8rem;">${BSD.esc(f.description)}</dd>
           `).join("")}
         </dl>
-        <p style="margin-top: 1.2rem; font-size: 0.88rem; color: var(--ink-soft);"><strong>Note on obstruction_type:</strong> The enum value is a placeholder pending consultation with Bike Lane Uprising to align on their real categorization. This demonstrates the pipeline's readiness to accept live obstruction reports once a data-sharing agreement is in place.</p>
       `;
       obstSchema.appendChild(obstCard);
       app.appendChild(obstSchema);
@@ -278,7 +272,7 @@
       extendCard.innerHTML = `
         <p>This project is built to be reused:</p>
         <ul>
-          <li><strong>Swap the obstruction connector:</strong> Point the pipeline at a real feed (Bike Lane Uprising's eventual API, or your city's 311 equivalent) — the schema is designed to accept real data without re-architecting. Modify <code>make_mock_obstructions.py</code>'s successor to pull from the live source.</li>
+          <li><strong>Add an obstruction connector:</strong> Point the pipeline at a real feed (Bike Lane Uprising's eventual API, a Smart Streets FOIA delivery, or your city's 311 equivalent) — the normalized obstruction schema above is designed to accept real data without re-architecting. Add a new pull script that projects the live source into that schema.</li>
           <li><strong>Add an analysis layer:</strong> The pipeline structure supports new aggregate outputs and toggle controls in the front-end. Add a new Python module to compute derived metrics and emit a new JSON file.</li>
           <li><strong>Fork for another city:</strong> Replace the dataset IDs in <code>pipeline/config.py</code> with your city's Socrata portal IDs, update the ward geometry in the spatial-join step, and regenerate.</li>
         </ul>

@@ -89,10 +89,29 @@
       `<span class="op-value">${valueHTML}</span></div>`;
   }
   const noData = `<span class="muted">no data this run</span>`;
+  // Two visual bands so three uncertain numbers (safety index, menu money,
+  // legislative record) never read as one certain verdict alongside the two
+  // directly-counted numbers (crashes, bikeway mileage). Plain inline style
+  // mirrors the existing "Media coverage" divider below — border-top +
+  // bold survives print (no color/background dependency).
+  function sectionLabel(text, note) {
+    return `<div class="op-section-label" style="margin-top:.75rem;padding-top:.4rem;border-top:1px solid currentColor;font-weight:bold;">${B.esc(text)}${note ? ` <span class="muted" style="font-weight:normal;">${note}</span>` : ""}</div>`;
+  }
+  // Committee-vs-floor caveat (P3): council_records.json carries only
+  // sponsorship + workflow status (Introduced/Passed/Adopted/Failed to
+  // Pass/Substituted/Placed on File) — never a recorded floor vote, and
+  // never a committee-vs-floor split. Most measures pass by voice vote.
+  // State this plainly wherever legislative/sponsorship data shows up —
+  // silence here reads as false certainty, not honest absence.
+  const COMMITTEE_VS_FLOOR_BRIEF =
+    `<span class="muted">Record shows sponsorship &amp; final status only — committee action vs. floor vote is not distinguished in the source, and most measures pass by voice vote (no recorded roll call).</span>`;
+  const COMMITTEE_VS_FLOOR_PLAIN =
+    `The city's public record shows who sponsored a proposal and whether it eventually passed — it doesn't separately record what happened in committee versus a final floor vote. Most things pass on a voice vote, with no one's name attached to a "yes" or "no."`;
 
   function briefBody(o) {
     const r = o.windows && o.windows.recent, p = o.windows && o.windows.prior;
     let html = "";
+    html += sectionLabel("Measured", "— directly counted, not modeled");
     html += kv("Cyclist crashes (12 mo)", r
       ? `<strong class="op-big">${B.fmt(r.crashes)}</strong> <span class="muted">vs ${B.fmt(p ? p.crashes : null)} prior 12 mo</span>`
       : noData, "real");
@@ -106,15 +125,18 @@
       ? `<strong>${B.esc(String(o.pctProtected))}%</strong> <span class="muted">of ${B.fmt(o.bikewayMiles)} bikeway mi</span>` : noData, "real");
     html += kv("% of streets with any bike infrastructure", o.pctRoads != null
       ? `<strong>${B.esc(String(o.pctRoads))}%</strong>` : noData, "real");
-    html += kv("Concern rank", o.concern
-      ? `${B.fmt(o.concern.score)} / 100 — rank ${o.concern.rank} of ${o.concern.total} <span class="muted">(relative, higher = worse — <a href="methodology.html#ward-index">methodology</a>)</span>`
-      : noData, "derived");
     if (o.topCorridors.length) {
       html += kv("Top corridors in/near this ward", o.topCorridors.map(c =>
         `${B.esc(c.street)} <span class="muted">(${B.fmt(c.crashes)} crashes near bikeway)</span>`).join("<br>"), "real");
     }
+    html += sectionLabel("Derived & proxy", "— modeled, estimated, or third-party — read alongside Measured, not as one verdict");
+    html += kv("Concern rank", o.concern
+      ? `${B.fmt(o.concern.score)} / 100 — rank ${o.concern.rank} of ${o.concern.total} <span class="muted">(relative, higher = worse — <a href="methodology.html#ward-index">methodology</a>)</span>`
+      : noData, "derived");
     html += kv("Menu-money on bike/traffic-calming", o.menuBikeSpent != null
-      ? `${B.money(o.menuBikeSpent)} <span class="muted">of ${B.money(o.menuTotalSpent)} total — unverified extract, cross-check before citing</span>`
+      ? `${B.money(o.menuBikeSpent)} <span class="muted">of ${B.money(o.menuTotalSpent)} total — source: ` +
+        `<a href="https://www.wardwisechicago.org" target="_blank" rel="noopener">Ward Wise</a> (Chi Hack Night volunteer ` +
+        `project), an unverified extract — cross-check against the ward office before citing</span>`
       : noData, "proxy");
     if (o.nextMeeting) {
       // Up to two agenda highlights (this ward's items first, then safety
@@ -128,10 +150,12 @@
       html += kv("Next committee hearing",
         `${B.esc(fmtDate(o.nextMeeting.date))} — ${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}` +
         (o.nextMeeting.comment ? `<div class="fine-print">${B.esc(o.nextMeeting.comment)}</div>` : "") +
-        highlights, "real");
+        highlights +
+        `<div class="fine-print">${COMMITTEE_VS_FLOOR_BRIEF}</div>`, "real");
     } else {
       html += kv("Next committee hearing",
-        `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>`, "real");
+        `<span class="muted">nothing scheduled — <a href="https://chicityclerkelms.chicago.gov/Meetings" target="_blank" rel="noopener">official calendar</a></span>` +
+        `<div class="fine-print">${COMMITTEE_VS_FLOOR_BRIEF}</div>`, "real");
     }
     // "In the news" (brief register only — the print one-pager's audience).
     // Outlet always named (coverage ≠ endorsement); explicit empty state so
@@ -151,6 +175,7 @@
   function plainBody(o) {
     const r = o.windows && o.windows.recent, p = o.windows && o.windows.prior;
     let html = "";
+    html += sectionLabel("What we actually counted");
     if (r) {
       const dir = p && p.crashes != null && r.crashes != null
         ? (r.crashes > p.crashes ? "That is more than the year before" :
@@ -179,11 +204,14 @@
         <strong>${o.topCorridors.map(c => B.esc(c.street)).join(", ")}</strong>.</p>`;
     }
     if (o.menuBikeSpent != null) {
+      html += sectionLabel("Estimates & other sources", "— not directly counted by us, read with care");
       html += `<p class="op-plain">Every ward gets about $1.5 million a year to spend on streets
         ("menu money"). ${o.alderman ? `Your alderperson` : `This ward's office`} has put
         <strong>${B.money(o.menuBikeSpent)}</strong> of it toward bike safety and traffic calming, out of
-        ${B.money(o.menuTotalSpent)} spent overall. <span class="muted">(This number comes from a volunteer
-        project and hasn't been double-checked against city paperwork yet.)</span></p>`;
+        ${B.money(o.menuTotalSpent)} spent overall. <span class="muted">Source:
+        <a href="https://www.wardwisechicago.org" target="_blank" rel="noopener">Ward Wise</a>, a volunteer
+        project by Chi Hack Night — this number hasn't been double-checked against city paperwork yet, so
+        cross-check it before you cite it.</span></p>`;
     }
     // ONE suggested action — the plain register never ends on fear.
     const subject = encodeURIComponent(`Bike safety in Ward ${o.ward}`);
@@ -201,6 +229,7 @@
       html += `<p class="op-plain muted">City Council's next street-safety meeting:
         ${B.esc(fmtDate(o.nextMeeting.date))} (${B.esc(String(o.nextMeeting.committee).replace(/^Committee on /, ""))}).${wardNote}
         Anyone can send a written comment.</p>`;
+      html += `<p class="op-plain muted">${COMMITTEE_VS_FLOOR_PLAIN}</p>`;
     }
     return html;
   }
@@ -233,7 +262,10 @@
           On Your Left! · data as of ${B.esc(o.asOf || "unknown")} · crash records: Chicago Data Portal
           (recent months provisional; dooring undercounted) · counts are raw, not ridership-normalized ·
           concern rank is a relative comparison across wards, not an absolute risk grade ·
-          menu-money is an unverified proxy · sponsorships ≠ votes ·
+          menu-money is an unverified <a href="https://www.wardwisechicago.org" target="_blank" rel="noopener">Ward Wise</a>
+          extract (Chi Hack Night volunteer project), cross-check before citing ·
+          sponsorships ≠ votes — the record shows sponsorship &amp; final status only, not committee vs. floor action,
+          and most measures pass by voice vote (no recorded roll call) ·
           methodology &amp; caveats: the Methods page on this site
         </footer>
       </article>`;
