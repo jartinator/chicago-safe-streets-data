@@ -329,6 +329,32 @@ INJURY_SEVERITY_MAP = {
     "NO INDICATION OF INJURY": "none",
 }
 
+# Divvy (Lyft-operated bikeshare) trip data — PLANNED, not yet published.
+# SCAFFOLDING ONLY (see pipeline/pull_divvy.py docstring): a monthly trip
+# export is 100MB+ zipped, too large to fetch/validate in a normal pipeline
+# run here, so this stanza and the pull script exist so a future session can
+# run the real ingest without re-deriving the source/shape decisions. Mirrors
+# the Smart Streets "FOIA-pending" precedent (SCHEMA.md "PLANNED (not yet
+# published)") for "we know the source, we haven't validated the output."
+# Modern feed (system_data.csv Data Portal set is deprecated/frozen); Lyft
+# publishes monthly ZIPs of station-level and trip-level CSVs to this public,
+# unauthenticated S3 bucket — see https://divvybikes.com/system-data.
+DIVVY_S3_BASE_URL = "https://divvy-tripdata.s3.amazonaws.com/"
+# Bucket is a public S3 listing (?list-type=2) rather than a Socrata API —
+# pull_divvy.py lists it to find the most recent monthly file rather than
+# hard-coding a filename that goes stale every month.
+DIVVY_S3_LIST_URL = "https://divvy-tripdata.s3.amazonaws.com/?list-type=2"
+DIVVY_USER_AGENT = ("chicago-safe-streets-data/1.0 (+https://github.com/"
+                     "jartinator/chicago-safe-streets-data)")
+# Station-level aggregation output (not yet built/published this PR) — a
+# per-ward trip-density proxy for cycling VOLUME, never a per-rider risk
+# rate (crashes / trips is explicitly forbidden — see pull_divvy.py).
+DIVVY_WARD_EXPOSURE_PATH = SITE_DATA_DIR / "divvy_ward_exposure.json"
+# Safety cap: a single monthly trip CSV can exceed 100MB unzipped. If a
+# fetched archive exceeds this, pull_divvy.py aborts rather than parsing —
+# same "fail honest, don't guess" posture as the rest of the pipeline.
+DIVVY_MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024
+
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
 CONTRACT_VERSION = "1.15"
