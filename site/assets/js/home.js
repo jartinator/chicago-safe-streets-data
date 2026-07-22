@@ -193,6 +193,10 @@
       `<button type="button" class="btn agent-copy-btn" data-copy="${id}">Copy</button></div>`;
     return `<section class="section-gap home-agent">` +
       `<h2>For AI agents & builders: the machine-readable layer</h2>` +
+      `<p class="home-agent-clarify">This isn't a chatbox on this site — there's nothing here to ` +
+      `type into. It's a way to point an AI assistant you already use (Claude, ChatGPT, or similar) ` +
+      `at our published files, which are the same files a human can download. And when we don't ` +
+      `have something, assistants are asked to say "not published" instead of guessing.</p>` +
       `<p>Every number on this site is also a documented, versioned JSON endpoint. ` +
       `<code>llms.txt</code> is a plain-language index written for language models — it lists ` +
       `every endpoint, what each answers, and how much to trust it. No key, no sign-up, ` +
