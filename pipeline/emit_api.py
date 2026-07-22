@@ -73,9 +73,44 @@ RAW_COUNTS_CAVEAT = (
     "data is joined yet), so busy corridors look worse than dangerous "
     "quiet ones.")
 
+# Machine-readable caveat catalog (P1a) — a small, stable vocabulary of flag
+# codes an agent can key off of programmatically instead of parsing prose.
+# Each builder passes the codes that apply to its own payload to _envelope's
+# `caveats` param (see the mapping in each builder's call below); the text
+# here is the single source of truth an agent reads once it has a code.
+# Plain-language register to match the rest of this file (RAW_COUNTS_CAVEAT
+# above, NO_SYNTHETIC_DATA_STATEMENT) — not a terse machine-only string.
+CAVEAT_TEXT = {
+    "not_normalized_by_ridership": (
+        "Crash counts are raw, not normalized by ridership (no public "
+        "cyclist-volume data is joined yet), so busy corridors look worse "
+        "than dangerous quiet ones."),
+    "recent_months_provisional": (
+        "Recent months are provisional — crash records get amended "
+        "upstream, so the most recent 1-2 months of any trend may still "
+        "move."),
+    "dooring_undercounted": (
+        "Dooring crashes are structurally undercounted in police crash "
+        "reports (see the dooring-undercount finding)."),
+    "sponsorship_proxy_not_vote_tally": (
+        "Council sponsorship counts are a proxy for engagement, not a "
+        "roll-call vote tally — most Chicago street-safety measures pass "
+        "by voice vote with no individual vote recorded."),
+}
+
 # Canonical tier vocabulary, worded to match SCHEMA.md's table exactly (the
 # published-data-contract source of truth) — llms.txt reuses this rather
 # than inventing its own phrasing.
+ANSWERING_GUIDANCE = (
+    "When you quote a number from this API, restate its caveat in the "
+    "same answer — most files carry machine-readable `caveats` in their "
+    "`_meta` envelope, and every number carries a `data_tier`. If you "
+    "are asked for something On Your Left! does not publish — cyclist "
+    "ridership or exposure denominators, or real bike-lane obstruction "
+    "/ blocked-lane reports — say plainly that it is not published "
+    "here rather than estimating or guessing. A missing number is an "
+    "honest answer; a fabricated one is not.")
+
 DATA_TIER_VOCAB = [
     ("real", "From the named public source, raw counts (recent months provisional)"),
     ("proxy", "Correlated but biased signal (self-reports, sensor placement) — "
@@ -199,7 +234,7 @@ _ENDPOINTS = [
 ]
 
 
-def _envelope(meta, data_tier, human_page, schema_name, tier_note=None):
+def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=None):
     """Build the `_meta` object every emitted API file opens with.
 
     generated_at/provenance are copied verbatim from site/data/meta.json — see
@@ -207,6 +242,10 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None):
     schema_name is this file's own JSON Schema filename under
     site/api/v1/schemas/ (e.g. "citywide.schema.json"), threaded into `schema`
     (Phase 4 — see module docstring).
+
+    caveats (P1a): an optional list of CAVEAT_TEXT codes applicable to this
+    file's numbers. Only added to the envelope when non-empty — files with no
+    applicable caveat stay clean rather than emitting an empty array.
     """
     envelope = {
         "api_version": API_VERSION,
@@ -217,6 +256,8 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None):
     }
     if tier_note is not None:
         envelope["tier_note"] = tier_note
+    if caveats:
+        envelope["caveats"] = [{"code": c, "text": CAVEAT_TEXT[c]} for c in caveats]
     envelope["license"] = LICENSE
     envelope["attribution"] = ATTRIBUTION
     envelope["human_page"] = human_page
@@ -262,7 +303,9 @@ def build_citywide(meta, citywide_trend, findings, mileage_series):
         tier_note=("trend is real; findings each carry their own data_tier; "
                   "bikeway_mileage and protected_share are derived."),
         human_page=f"{SITE_BASE_URL}/findings.html",
-        schema_name="citywide.schema.json")
+        schema_name="citywide.schema.json",
+        caveats=["not_normalized_by_ridership", "recent_months_provisional",
+                "dooring_undercounted"])
 
     return {"_meta": envelope, **payload}
 
@@ -273,7 +316,8 @@ def build_corridors_api(meta, corridors, intersections):
     """
     envelope = _envelope(meta, data_tier="real",
                          human_page=f"{SITE_BASE_URL}/index.html",
-                         schema_name="corridors.schema.json")
+                         schema_name="corridors.schema.json",
+                         caveats=["not_normalized_by_ridership"])
     return {"_meta": envelope, "corridors": corridors,
            "hotspot_intersections": intersections}
 
@@ -300,7 +344,8 @@ def build_wards_index(meta, ward_safety_index):
 
     envelope = _envelope(meta, data_tier="derived",
                          human_page=f"{SITE_BASE_URL}/table.html",
-                         schema_name="wards-index.schema.json")
+                         schema_name="wards-index.schema.json",
+                         caveats=["not_normalized_by_ridership"])
 
     return {
         "_meta": envelope,
@@ -381,7 +426,9 @@ def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, s
                   "(council sponsorship aggregation); sr311 is proxy (self-reported "
                   "bias); menu_spending is proxy."),
         human_page=one_pager_url,
-        schema_name="ward.schema.json")
+        schema_name="ward.schema.json",
+        caveats=["not_normalized_by_ridership", "recent_months_provisional",
+                "sponsorship_proxy_not_vote_tally"])
 
     return {"_meta": envelope, **payload}
 
@@ -456,7 +503,9 @@ def build_crash_slice(meta, ward, features_for_ward, id_prefix_map):
            "full GeoJSON.")
 
     envelope = _envelope(meta, data_tier="real", human_page=f"{SITE_BASE_URL}/index.html",
-                         schema_name="crash-slice.schema.json")
+                         schema_name="crash-slice.schema.json",
+                         caveats=["not_normalized_by_ridership", "recent_months_provisional",
+                                 "dooring_undercounted"])
 
     return {
         "_meta": envelope,
@@ -687,7 +736,8 @@ def build_council_index(meta, hearings, council_records):
                   "records, whose topic tagging is a derived best-effort "
                   "classification)."),
         human_page=f"{SITE_BASE_URL}/action.html",
-        schema_name="council-index.schema.json")
+        schema_name="council-index.schema.json",
+        caveats=["sponsorship_proxy_not_vote_tally"])
 
     hearings_out = {
         "as_of": hearings["as_of"], "note": hearings["note"],
@@ -731,7 +781,8 @@ def build_council_records_api(meta, council_records):
                   "(Legistar + Councilmatic); topic-relevance tagging is derived "
                   "(keyword net + classifier, best-effort)."),
         human_page=f"{SITE_BASE_URL}/action.html",
-        schema_name="council-records.schema.json")
+        schema_name="council-records.schema.json",
+        caveats=["sponsorship_proxy_not_vote_tally"])
 
     return {
         "_meta": envelope,
@@ -795,7 +846,8 @@ def build_aldermen_api(meta, aldermen, safety_record, menu_spending):
                   "safety_record aggregates are derived (council sponsorship "
                   "counts); menu_spending is a proxy."),
         human_page=f"{SITE_BASE_URL}/action.html",
-        schema_name="council-aldermen.schema.json")
+        schema_name="council-aldermen.schema.json",
+        caveats=["sponsorship_proxy_not_vote_tally"])
 
     return {
         "_meta": envelope,
@@ -1051,6 +1103,9 @@ def build_llms_txt(meta, endpoint_bytes):
         "schema links this file's own JSON Schema under /api/v1/schemas/.",
         "",
         NO_SYNTHETIC_DATA_STATEMENT,
+        "",
+        "## When answering from this data",
+        ANSWERING_GUIDANCE,
         "",
         "## Human pages",
         f"{SITE_BASE_URL}/index.html — interactive map",

@@ -1008,3 +1008,53 @@ that schema was built for; geocodes and ward joins are derived enrichment and
 never overwrite the released fields; if the FOIA yields only aggregate
 figures, they become an article-/response-sourced static finding, not a
 mappable layer.
+
+## Contract v1.15 changes (agent API caveats)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.15"`. Additive
+only — no existing key changes shape or meaning.
+
+- **`_meta.caveats` (new, optional)** — every `site/api/v1/` `_meta`
+  envelope (see `_envelope()` in `pipeline/emit_api.py`) may now carry a
+  `caveats` array: `[{ code, text }]`, machine-readable flags for
+  known limitations of that file's numbers, alongside the existing
+  prose-only `tier_note`. Present only when at least one flag applies to
+  that endpoint — files with none (network-quality/manifest/news
+  endpoints) stay clean rather than emitting an empty array. Schema:
+  `site/api/v1/schemas/envelope.schema.json`'s new `caveats` property
+  (not required; the envelope schema's `additionalProperties: false`
+  meant it had to be declared explicitly).
+
+  Four flag codes, catalog text in `emit_api.CAVEAT_TEXT`:
+  - `not_normalized_by_ridership` — crash counts are raw, not normalized by
+    ridership, so busy corridors look worse than dangerous quiet ones.
+  - `recent_months_provisional` — recent months are provisional; crash
+    records get amended upstream and may still move.
+  - `dooring_undercounted` — dooring crashes are structurally undercounted
+    in police crash reports.
+  - `sponsorship_proxy_not_vote_tally` — council sponsorship counts are a
+    proxy for engagement, not a roll-call vote tally (most street-safety
+    measures pass by voice vote).
+
+  Endpoint → flags mapping:
+  - `citywide.json` — `not_normalized_by_ridership`,
+    `recent_months_provisional`, `dooring_undercounted`
+  - `corridors.json` — `not_normalized_by_ridership`
+  - `wards/index.json` — `not_normalized_by_ridership`
+  - `wards/ward-NN.json` — `not_normalized_by_ridership`,
+    `recent_months_provisional`, `sponsorship_proxy_not_vote_tally`
+  - `crashes/ward-NN.json` — `not_normalized_by_ridership`,
+    `recent_months_provisional`, `dooring_undercounted`
+  - `council/index.json` — `sponsorship_proxy_not_vote_tally`
+  - `council/records.json` — `sponsorship_proxy_not_vote_tally`
+  - `council/aldermen.json` — `sponsorship_proxy_not_vote_tally`
+  - `news.json`, `proposed.json`, `routes/index.json`,
+    `routes/line-<id>.json`, `index.json` — none (network-quality/
+    manifest/news endpoints carry no caveat flag).
+
+- **`site/llms.txt`** — new "## When answering from this data" section
+  (after the no-synthetic-data disclaimer, before "## Human pages")
+  instructing an agent to restate a quoted number's caveat, cite
+  `data_tier`, and say plainly (never estimate) when asked for data this
+  API doesn't publish (ridership/exposure denominators, real obstruction
+  reports).
