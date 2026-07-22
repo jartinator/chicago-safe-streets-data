@@ -30,10 +30,38 @@
   // all-"no data" printout for a ward that has data.
   const wardNorm = /^\d+$/.test(ward) ? String(Number(ward)) : ward;
   if (!wardNorm || !/^\d+$/.test(wardNorm) || Number(wardNorm) < 1 || Number(wardNorm) > 50) {
+    const chipList = `<p class="chip-toc">${Array.from({ length: 50 }, (_, i) =>
+      `<a href="ward.html?ward=${i + 1}">Ward ${i + 1}</a>`).join("")}</p>`;
     app.innerHTML = `<h1>Ward one-pager</h1>
-      <p>Pick a ward to build a printable one-page report:</p>
-      <p class="chip-toc">${Array.from({ length: 50 }, (_, i) =>
-        `<a href="ward.html?ward=${i + 1}">Ward ${i + 1}</a>`).join("")}</p>`;
+      <p>Know your alderperson's name but not your ward number? Type it below:</p>
+      <p><input type="text" id="aldLookup" placeholder="Type your alderperson's name"
+        class="op-plain" style="width:100%;max-width:24rem;padding:.4rem;box-sizing:border-box;"
+        autocomplete="off"></p>
+      <div id="aldResults" class="fine-print"></div>
+      <p>Or pick a ward to build a printable one-page report:</p>
+      ${chipList}`;
+    // Self-locating resolver (P7): no offline geocoder or community-area
+    // crosswalk exists in this repo, so the sanctioned fallback is a
+    // client-side, dependency-free alderman-name filter over aldermen.json.
+    // Degrades gracefully — the ward-chip list above always works even if
+    // this fetch fails.
+    B.loadJSON("data/aldermen.json").then(data => {
+      const input = document.getElementById("aldLookup");
+      const results = document.getElementById("aldResults");
+      const wards = (data && data.wards) || [];
+      input.addEventListener("input", () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) { results.innerHTML = ""; return; }
+        const matches = wards.filter(w => w.alderman && w.alderman.toLowerCase().includes(q));
+        results.innerHTML = matches.length
+          ? `<p class="chip-toc">${matches.map(w =>
+              `<a href="ward.html?ward=${B.esc(w.ward)}">Ward ${B.esc(w.ward)} — ${B.esc(w.alderman)}</a>`).join("")}</p>`
+          : `<p class="muted">no match — browse all wards below</p>`;
+      });
+    }).catch(() => {
+      // No aldermen data this run: input stays inert, chips remain the
+      // fallback path.
+    });
     return;
   }
 
@@ -108,6 +136,9 @@
     // "In the news" (brief register only — the print one-pager's audience).
     // Outlet always named (coverage ≠ endorsement); explicit empty state so
     // no-coverage never reads as all-quiet (validation study 2026-07-13).
+    // P2: media coverage sits in its own labeled section so a reader never
+    // reads news volume as a safety number — the divider must survive print.
+    html += `<div class="op-section-label" style="margin-top:.75rem;padding-top:.4rem;border-top:1px solid currentColor;font-weight:bold;">Media coverage (not a safety measure)</div>`;
     html += kv("In the news (90 days)", o.news.length
       ? o.news.slice(0, 3).map(n =>
           `${B.esc(fmtDate(n.published))} · <span class="muted">${B.esc(n.source || "unknown outlet")}</span> · ` +
@@ -201,7 +232,9 @@
         <footer class="op-foot">
           On Your Left! · data as of ${B.esc(o.asOf || "unknown")} · crash records: Chicago Data Portal
           (recent months provisional; dooring undercounted) · counts are raw, not ridership-normalized ·
-          sponsorships ≠ votes · methodology &amp; caveats: the Methods page on this site
+          concern rank is a relative comparison across wards, not an absolute risk grade ·
+          menu-money is an unverified proxy · sponsorships ≠ votes ·
+          methodology &amp; caveats: the Methods page on this site
         </footer>
       </article>`;
 
