@@ -1,206 +1,426 @@
-# Interview: chi-ward-office
+# Interview: chi-ward-office (Marcus Webb, composite persona)
 
-## Round 1 transcript
+**Run date:** 2026-07-21
+**Stimulus:** `02-data-inventory.md`, data contract **v1.14** (reflects `main` as of 2026-07-21 — home/orientation page, ward one-pager, methodology page, static agent API, news-coverage layer, proposed-projects roster, PeopleForBikes BNA score, obstructions moved to gated preview)
+**Interviewer:** Lead Researcher (LR)
+**Participant:** Marcus Webb — chief of staff, North-Side-lakefront-adjacent ward office (persona: `personas/chi-ward-office.md`)
 
-## Round-1 Interview Transcript — Persona: Marcus Webb, Chief of Staff (Chicago ward office)
+*(This is a re-run of a prior interview against an earlier stimulus version. It
+is written fresh against v1.14 rather than assuming continuity with any prior
+transcript, since the study protocol treats each run as its own instrument.)*
+
+---
+
+## Transcript
 
 ### 1. Context
 
-**Interviewer:** Can you describe your role, and walk me through the last decision you influenced — or tried to — about street safety?
+**LR:** Walk me through your role, and the last decision you tried to influence about street safety — what did that actually involve, step by step?
 
-**chi-ward-office:** I'm chief of staff for our alderwoman — I run the office day to day so she can be in five places at once. Last one was three weeks ago. We've got a stretch of Lincoln that residents have been calling about for two years, and CDOT finally brought us a design for a protected lane between Addison and Belmont — buffered posts, some parking removal. I set up what we call the pre-brief: I sit down with our CDOT liaison, usually a project manager named Andrea, two days before anything goes to the community, and I make her walk me through exactly what changes, block by block, how many spots we lose, and what the crash history looks like on that stretch. Then I write a one-pager for my alderwoman — one page, front only, because she reads it in the car between a school assembly and a ward night. Bullet one is always "what changes for parking," because that's what the merchants on that corridor will ask about first, not safety. Bullet two is the crash number, if I've got one I trust. Bullet three is what happened in the last ward that did something similar, because she's going to get asked "did this work anywhere else." Then we had the community meeting in the field house basement — probably ninety people, half organized by the two block clubs that always show up, half merchants from the Lincoln retail strip. It went fine, actually, because we had the numbers. But I've seen it not go fine.
+**Marcus:** Last one was three weeks ago. CDOT wants to do a road diet on a stretch near the Metra stop — one travel lane each direction instead of two, protected bike lane, left-turn pockets at the two signalized intersections. My alder's inclined to support it because it's on-brand, but we've got a CAPS meeting Thursday and a guy who owns the hardware store on that block has already printed flyers. So my job for two weeks was: get my alder a page she can hold in her hand that says what happens to crashes on that block if we do this, what it costs, whether parking actually goes away, and whether the hardware store guy has any data behind him or just a bad feeling. I pulled crash data off the city portal myself, called CDOT's liaison for the ward-level counts because the portal export doesn't do it by corridor cleanly, and built a slide in about four hours the night before.
 
-**Interviewer:** Who do you need to convince, and what does "convinced" look like for them?
+**LR:** Who do you need to convince, and what does "convinced" look like for them?
 
-**chi-ward-office:** Three different audiences, three different bars. My alderwoman — she needs to feel like she won't get burned in six months, so "convinced" for her is "can I defend this if Streetsblog or a challenger brings it up." The merchants — they don't care about crash data at all, they care about parking spaces, full stop, and the only thing that moves them is another merchant from another corridor telling them their sales didn't tank. And CDOT — I don't have to convince CDOT of anything, I have to get them to move fast enough and bring me paper I can actually use, because their timeline and our community-meeting calendar are never the same clock.
+**Marcus:** Two audiences, really. My alder — she needs to feel like she won't get outflanked by a challenger next cycle over "war on cars" stuff, so convinced for her means: I can defend this in a debate and it won't cost me votes. And the room Thursday — eighty, ninety people, half of whom already decided. Convinced for them mostly isn't going to happen in one meeting, but "she didn't dodge it and she had real numbers" buys credibility even from people who vote no.
 
-**Interviewer:** What information sources do you touch in a normal week for this work?
+**LR:** What information sources do you touch in a normal week for this?
 
-**chi-ward-office:** Constituent calls and emails — that's the real currency, I mean that literally, I keep a tally by issue every week for the alderwoman's Monday briefing. 311 counts when I want to see if a corridor's "hot." CDOT briefing docs when they send them, which is inconsistent. The ATA ward letter — they send one every year now with our ward's crash numbers, I read the whole thing, my alderwoman reads the first line and maybe the map. Streetsblog and Block Club, because if something's happening in our ward I need to know before a reporter calls me about it, not after. And the City Clerk's eLMS for committee agendas, mostly so I know when Pedestrian and Traffic Safety is taking something up that touches us.
+**Marcus:** Constituent calls and emails — that's the real currency, I log volume by issue category. 311 counts for the ward, CDOT liaison when I can get her on the phone, the ATA ward letter that lands in my inbox once a year with crash numbers, Streetsblog and Block Club because my alder gets tagged on Twitter — sorry, X — whenever they run a story, and eLMS for committee agendas so I know when Ped and Traffic Safety is taking something up that touches us.
 
 ### 2. Current practice & workarounds
 
-**Interviewer:** Tell me about the last time you needed a number, map, or chart about bike safety. Where did you go? What did you do with it? How long did it take?
+**LR:** Tell me about the last time you needed a number, map, or chart about bike safety. Where'd you go, what did you do with it, how long did it take?
 
-**chi-ward-office:** That Lincoln Avenue brief. I needed crash counts on that specific stretch, before and after a similar treatment somewhere comparable, so I could tell my alderwoman "here's what usually happens." First stop was the CDOT liaison — I just called Andrea and asked her to pull it, because CDOT has access to stuff I don't, or claims to. That took four days to come back, and when it did it was two sentences in an email, not a chart. So in parallel I went to the city's crash data portal myself and tried to filter it to a bounding box around that corridor — I am not good at that, I'll be honest, I roped in my intern, a poli-sci kid from DePaul, and he spent an afternoon in a spreadsheet getting me a count. Total elapsed time, from when I needed the number to when I had something I trusted enough to put in the one-pager: about five days. That's a normal timeline for me. If I'd had it same-day I'd have had a better meeting with the merchants, because I'd have had time to also grab something on the parking-removal precedent instead of promising to follow up.
+**Marcus:** That road-diet slide I just described. City data portal, "Traffic Crashes — Crashes" dataset — I filtered by a lat/long box I eyeballed around the corridor because there's no clean "give me this street" filter, exported to CSV, opened in Excel, built a pivot table by year, then manually tagged which rows were actually cyclist involved because the injury classification field isn't intuitive. Probably ninety minutes just wrangling data, then another hour making it look like something my alder wouldn't be embarrassed to hold up. I do this more than I'd like to admit.
 
-**Interviewer:** What have you built yourself — spreadsheets, saved searches, screenshots, hand counts — because nothing gave it to you directly?
+**LR:** What have you built yourself — spreadsheets, screenshots, FOIA requests, hand counts — because nothing gave it to you directly?
 
-**chi-ward-office:** I keep a running spreadsheet, just for our ward, of every bike-and-street-safety-adjacent 311 complaint by block, going back about eighteen months, because I got tired of not knowing which blocks were "loud" versus which were actually dangerous — those are not the same list, and I need to know which one I'm looking at before I walk into a meeting. I also keep screenshots. When Ward Wise puts out their menu-money map, I screenshot our ward's page every quarter and drop it in a folder, because their site's changed its layout on me twice and I didn't want to lose the history. And I have a standing doc, basically a brag sheet and a scar sheet both, of every safety project in the ward — what got promised, what got built, what got killed — because when a resident says "you promised us a bike lane on Damen three years ago," I need the receipts fast, not a FOIA.
+**Marcus:** I keep a running spreadsheet — has for three years — of every 311 bike-lane complaint in the ward with the block, so when someone says "nobody complains about that corner" I can show them six calls from four different addresses. I've also got a shared doc with two other chiefs of staff where we compare menu-money spend categories year over year because OBM's PDFs are garbage for that — you can't diff them, you have to manually re-key every line. And I keep screenshots of Streetsblog and Block Club articles that mention our ward by name, filed by year, because if a reporter calls asking "didn't your alder say X in 2024," I need to find it in under five minutes, not by scrolling Twitter.
 
-**Interviewer:** Tell me about a time data — or the lack of it — sank an argument you were making.
+**LR:** Tell me about a time data — or the lack of it — sank an argument you were making.
 
-**chi-ward-office:** Not mine directly, but it's the story I tell my alderwoman every time she gets nervous about a bike lane, because it's the cautionary tale in this business right now. A ward on the South Side had a protected lane and a protected intersection already installed — design done, contractors done — and the alderman there got a room of eighty furious people at a community meeting after the fact, reopened it, and made CDOT rip it back out. Fall 2025. I know people on that staff. What I heard secondhand is they didn't have a defensive packet ready — no before-and-after crash numbers on that exact stretch, no answer for the parking complaints, nothing showing it working somewhere comparable — so when the room turned, there was nothing to hand out that changed anyone's mind, and the alderman took the politically safe route, which was to side with the room. I use that constantly internally: "we are not going to be that meeting." It's why I push CDOT so hard for the pre-brief now, because the lesson wasn't "don't do bike lanes," it was "don't walk into that room without the data already printed."
+**Marcus:** The 18th Street thing next door taught everybody in this business a lesson, even though it wasn't my ward. Ald. Dowell had a room of eighty angry people and CDOT's design work was already in the ground, but nobody in that room had cross-corridor before/after numbers ready to answer "prove it's safer," and there was no ward-level trend anybody could point to that said "wards that did this saw X." It got rolled back. My takeaway wasn't "the data didn't exist" — some of it probably did somewhere — it's that nobody had it *packaged* for that room, at that hour, in a form that wasn't going to get laughed at. That's the gap I live in every day.
 
-**Interviewer:** What data do you distrust, and what earned that distrust?
+**LR:** What data do you distrust, and what earned that distrust?
 
-**chi-ward-office:** 311 counts, for one — I use them, but I don't trust them as a safety signal, only a workload signal. I can tell you exactly which two block clubs in our ward call 311 obsessively and which blocks never call even though I'd bet money they're worse. So if someone hands me a "top complaint corridors" list built off 311, my first question is who's organized on that block, not what's actually happening there. Second, any ranking that puts our ward against other wards on a single score. Two years ago Ward Wise put out something ranking wards by bike-safety spending, and our ward looked bad — low on the list — and I got two emails from constituents forwarding it before I'd even seen it myself. I spent an afternoon figuring out it was because our menu money that cycle went heavy into ADA curb ramps, a genuinely more urgent ask that quarter, and the ranking had no way to show that. My alderwoman doesn't want to be 47th of 50 on anything with her name near it, regardless of the real reason, and I don't blame her.
+**Marcus:** 311 counts, and I use them constantly, so that's not a contradiction — it's a workload record, not a danger record. The blocks that generate calls are the ones with two or three organized residents who know how to use 311, not necessarily the most dangerous blocks. I've got silent intersections in the ward I'd bet money are worse than what's in the top of the 311 list. Also — anything that ranks wards against each other. My gut reaction to any "ward scorecard" is "who's going to screenshot this and hand it to my alder's next primary opponent," before I even look at the methodology.
 
 ### 3. Stimulus walkthrough
 
-**Interviewer:** Let me show you what a site called "On Your Left" offers. It's independent, open-source, read-only — it doesn't take reports itself, it points people to 311 and Bike Lane Uprising. There's a geographic map with crash density, bikeway network, wards, cameras. Let's start there.
+**LR:** Let me walk you through what's actually on the site now. First, the two maps — a geographic Leaflet map with crash density, bikeway grades, wards, cameras, and main routes; and a separate schematic "transit map" style network view with 21 named routes and comfort-floor filtering, no safety data on it.
 
-**chi-ward-office:** Okay — the geographic one, that I'd actually open. If I can zoom to our ward boundary and see crashes clustered on top of the bikeway layer, that's basically what I'm asking my intern to build me by hand right now. I'd use it the exact same way — pull up Lincoln, see the dots. First thing I'd check, though: is this current-year, and does it include the block I actually need? If it's six months stale I can't use it for a live brief, I'd need to caveat that to my alderwoman, "this is as of such-and-such." And the camera layer — mildly interesting, but not something I'd put in front of her unless a resident specifically asked about a ticket.
+**Marcus:** The geographic one, sure, I can see pulling that up live in a meeting if someone asks "what's actually there today" — better than me squinting at CDOT's PDF. The schematic transit-map thing, I don't know what I'd do with that in my job. It sounds like something a bike advocate shows another bike advocate. Nobody at a CAPS meeting is going to know what a "comfort floor" is, and if I said that phrase out loud in a community meeting people would think I was talking about a yoga mat.
 
-**Interviewer:** There's also a second map — a schematic, transit-style map. Twenty-one named routes, each a solid color end to end, connecting nodes, no safety data on that page.
+**LR:** There's a home page now too — an orientation landing page explaining what OYL is, headline stats, who it's for, and how to ask an AI assistant questions using something called an agent layer.
 
-**chi-ward-office:** Honestly, when you first described "colored by route, transit-style," my instinct was that the colors meant something about danger — like red route bad, green route good, the way a lot of these dashboards code things. So I'd have opened it looking for which of our routes is the risky one, and then been annoyed to learn the color's just which route it is, not how safe it is. Once I understood that, I'd probably close it. It's a nice-looking map, but I don't brief my alderwoman with a subway map of bike routes — nobody in that basement meeting is going to care that it's schematic. Not something I'd use.
+**Marcus:** Fine for a first-time visitor, I guess, not something I'd come back to. The "ask an AI assistant" part — I'll be honest, that lands weird for me. Half my job is making sure a number that goes in front of my alder is one I can trace and defend if someone challenges it. If some resident, or worse a reporter, goes and asks a chatbot "is my ward dangerous for cyclists" and gets back a number pulled from this site with no context, and then calls my office asking why we're at 44th out of 50 — I didn't put that number in anyone's hands, an AI did, and I still have to answer for it. I don't have a strong read on whether that's good or bad yet, it's just a new way I can get blindsided that didn't exist before.
 
-**Interviewer:** Findings screen — curated cards, a stat plus a caveat plus a link into the map. KSI trend, protected share, top corridors, hit-and-run, ward concentration, dooring undercount.
+**LR:** Findings page — curated cards: KSI trend, protected-lane share, street coverage, top corridors, hit-and-run, ward concentration, dooring undercount, and a PeopleForBikes BNA citywide network score with national ranking context.
 
-**chi-ward-office:** This is closer to useful, if the caveats are honest and short. "Top corridors" and "ward concentration" — if our ward shows up there, I want to know before Streetsblog does, so I'd probably check this every couple weeks just to see if anything's changed. The dooring-undercount card, I'd actually read that one out loud in a staff meeting, because we get dooring complaints and I've never had language for why the official number always feels low. That's a card I could screenshot into an email to my alderwoman with one line: "FYI, official numbers under-count this — heads up if a resident brings it up."
+**Marcus:** The citywide KSI trend, top corridors, ward concentration — that's the stuff I'd actually screenshot into a slide. The BNA score I've genuinely never heard of before you said it. "National ranking" makes me nervous by default — is Chicago 40th out of 100 cities on this thing? Because if a reporter's got that number and I don't, that's exactly the blindside scenario I hate. I'd want to know before my alder does.
 
-**Interviewer:** Ward table, sortable, CSV export, with percent protected and percent of streets with any bike infrastructure.
+**LR:** Table page — ward rankings, sortable, CSV export, percent protected and percent-with-any-bikeway columns.
 
-**chi-ward-office:** This is the one I'd actually export. If I can pull our ward's row and two or three comparison wards — say the ones adjacent to us, or ones that did something similar recently — and drop that into a spreadsheet, that's my Wednesday-before-Thursday-meeting document. I'd want the CSV specifically because I'm going to reformat it into my own one-pager anyway; nobody at a community meeting is looking at your table, they're looking at what I hand them. My only worry: is this the same methodology ATA uses in their ward letter? Because if my alderwoman gets this table from me and then ATA's letter shows a different number for the same ward, I'm the one who looks sloppy, not the dashboard.
+**Marcus:** Sortable and rankable is precisely the part that keeps me up. I will use the CSV — give me raw ward numbers all day, I'll build my own comparison in Excel where I control the framing. But a public, sortable, rankable table where anyone can click and put my ward at 44 out of 50? That's a press release waiting to happen, and it's not going to be mine.
 
-**Interviewer:** Council and alderman accountability data — sponsorship counts, recorded no-votes, committee hearings, aldermen contacts.
+**LR:** There's now a ward one-pager — printable, one URL per ward, safety index, trends, infra stats, alderman contact and sponsorship record, menu-money proxy, and recent ward-matched news — built to hand to an alderman or a neighbor.
 
-**chi-ward-office:** Now you've got my attention for a different reason — not for my own alderwoman, for the other forty-nine. When we're trying to get an ordinance through Ped and Traffic Safety, I want to know who's reliable and who's going to be a no before we walk in, and right now that's me calling other chiefs of staff I know and asking, or scrolling Legistar by hand, which is slow. If this has hearing dates pulled from eLMS in one place, that alone saves me a recurring Monday-morning task. The sponsorship counts — I'd use those, carefully, because I know "sponsorship" isn't the same as "voted yes," and if this doesn't say that clearly I'd get burned handing it to someone who assumes it does.
+**Marcus:** [pause] Okay, this is the one I have real feelings about. Structurally, this is exactly the format I need — I told you, I build a slide like this by hand every time there's a fight. If it existed pre-built I'd save myself four hours. But you said "safety index" is on it, and you said "built to hand to an alderman" — so somebody else's staffer is going to hand MY alder's one-pager to a reporter, or worse, a challenger's campaign is going to print it. I need to know: does this page make my ward look worse than it is, and can I get in front of that before it's on somebody's desk? Also — "alderman sponsorship record" on the same page as a safety score — that's basically a report card on my boss sitting at a public URL with her name on it. I did not sign up to have that built for me by a third party I don't control.
 
-**Interviewer:** And the menu-money spending data — that's a Ward Wise extract, not verified against the source PDFs.
+**LR:** Say more about the sponsorship record specifically — how would you actually react if you found it?
 
-**chi-ward-office:** This is the one where "not verified against source" is doing a lot of work, and I want to flag that hard, because I've been burned by exactly this dataset before — I told you about the ranking that made us look bad two years ago. If this is the same underlying Ward Wise scrape, I already know its blind spots, and I would never put a number from it in front of my alderwoman without checking it against our own OBM PDFs first. That's maybe twenty extra minutes of work, but it's non-negotiable for me on this one specifically.
+**Marcus:** First thing I'd do is check whether it's "sponsorship counts" or "did she vote against something." Because those are wildly different stories. If it's counting bills she co-sponsored, that's a squishy proxy — plenty of alders co-sponsor things that never move, or don't sponsor things they still vote for. If a challenger's campaign shows up at a debate with "my alder sponsored zero bike-safety ordinances this term" printed off this page, and the truth is she voted yes on everything that reached the floor but the committee chair never gave her bill a hearing, that's a real problem, and it's a problem your dashboard created even if every number on it is technically accurate.
 
-**Interviewer:** Last, the badge system — every layer marked real, proxy, mock, crowdsourced, derived, or no-data-yet — and the stated limits: no ridership normalization, obstruction data is entirely mock, no bikeway install dates, dooring undercounted.
+**LR:** And the recent ward-matched news on that same page — it matches headlines to your alderman by name?
 
-**chi-ward-office:** I like that it's labeled, genuinely — that's more honesty than I usually get from a dataset, and it means I can point to the badge instead of arguing the point myself. But I'll say this: I almost missed that the obstruction layer was mock. You described it as "mirrors Bike Lane Uprising's fields" and for a second I thought that meant it was Bike Lane Uprising's data, piped in. If I hadn't asked, I could see myself screenshotting a "blocked bike lane hotspot" map for a constituent complaint and having it be entirely made up — that would be a real problem for me, because that constituent would then go looking for their specific block and find nothing, and I'd look like I don't know my own data. That needs to be louder than a badge, for me. The no-install-dates gap is the other one that actually costs me something: half my job on this stuff is telling a resident "we did that in 2021" versus "that's from 2011," and if I can't get a date out of this, I'm back to my own scar sheet.
+**Marcus:** That's the one that actually worries me most, more than the safety index honestly. If it's pulling in any Streetsblog piece that name-drops my alder and slotting it onto her public one-pager next to a safety score, I need to know how good the matching is. Does it grab the article where she's quoted supporting a project, or does it also grab the one where a resident group blamed her for stalling something, and just... put both there with equal weight, no context? I keep my own screenshot archive precisely because I don't trust an algorithm to know which mentions are favorable, unfavorable, or just her name appearing in a caption. If this thing matches wrong — wrong ward, wrong "La Spata" versus a "La Spata" quote about something else entirely, or grabs a story about a totally different alder with a similar name — that's not just an error, that's the kind of error I get a call about from my alder at 9pm.
 
-### 4. Gap probing — briefing the alderwoman before a menu-money deadline
+**LR:** There's also a proposed-projects roster now — hand-curated cards of active bikeway/trail proposals, status plus a note, official links, and auto-joined news. No map geometry, just cards.
 
-**Interviewer:** Let's say you're prepping a briefing for your alderwoman ahead of the menu-money submission deadline — OBM wants your ward's allocation locked by end of month, and she's deciding how much goes to bike infrastructure versus repaving versus curb ramps. You open OYL. What do you look for first? Where does it fail you?
+**Marcus:** That one I'd actually use, and here's why — this is the "promised versus delivered" gap I already track by hand. If it's got a status and a status date on a project in my ward, that's a fact I can check against my own scar sheet instead of rebuilding it from memory. My only worry: who's doing the curating, and how fast does a status get updated when something actually moves? If CDOT tells me something in a briefing and this roster still says "proposed" three months later, a resident's going to trust their own eyes over your card, and honestly they should.
 
-**chi-ward-office:** First thing I look for is our ward's current numbers — crashes, percent protected, percent of streets with any bike infra — because that's the baseline I need to justify spending menu dollars on bike stuff instead of just repaving, which is always the easy, popular default. Second thing, honestly, is whether it shows what we already spent last cycle and whether it matches what we told people we'd build, because if my alderwoman is going to defend a bike allocation, she wants to say "and last time, we delivered." That second part is where it fails me hard — the menu-money layer doesn't do promised-versus-delivered, it's just a spend extract, unverified, and it's not tied to "and here's the bike lane that money became." I'd still have to build that connection myself, in my own doc, the way I do now.
+**LR:** Sources and Methodology pages — full provenance catalog and how every number's computed.
 
-**Interviewer:** Of everything OYL does NOT have, what single absence costs you most?
+**Marcus:** Good that they exist. Realistically I'm not reading the methodology page cover to cover — I'm the guy who clicks through to it for four minutes when someone's already yelling at me about a number, to see if I can find the flaw fast. It needs to answer "is this a 3-year window or 1-year, weighted how" in the first screen, not buried.
 
-**chi-ward-office:** The promised-versus-built piece, no question — for menu money specifically, but also just generally, what was announced at a press conference versus what's actually on the ground. That's the argument that wins or loses in a community meeting: "you said this in 2022, where is it." I currently keep that by hand, in a doc, off memory and old emails, and it's the single most fragile part of my whole process — if I ever leave this job, whoever replaces me loses two years of institutional memory that no dataset captures.
+**LR:** Action page — 311, Bike Lane Uprising, alderman contacts, hearings, recent news.
 
-**Interviewer:** If OYL handed you one export or artifact each week, what would it contain, and who would you forward it to?
+**Marcus:** Fine, unremarkable, this is basically what our own ward newsletter already links to.
 
-**chi-ward-office:** Ward-specific, one page: our current crash trend, our percent-protected number, anything new in the findings cards that names our ward or a corridor in it, and any committee hearing in the next two weeks that touches street safety. I'd forward that straight to my alderwoman's Monday-briefing folder, same place the constituent-call tally goes. If it also flagged when Streetsblog or Block Club published something naming our ward, that alone would be worth checking every week, because right now that's a Google Alert I half-trust.
+**LR:** And there's an obstructions preview page now — gated, watermarked — showing a synthetic, mock version of a Bike Lane Uprising-style obstruction layer, kept off the main maps and out of the API entirely, pending an actual data-sharing conversation with Bike Lane Uprising.
 
-**Interviewer:** The site refuses to normalize crash counts by ridership because it has no cyclist-volume data. Does that caveat change how you'd use it? What would you accept as good-enough exposure data?
+**Marcus:** Walk me through "synthetic" again — you mean the dots on that page aren't real obstructions, someone made them up to show what it would look like?
 
-**chi-ward-office:** It doesn't stop me from using the raw counts, but it stops me from using them the way I'd want to in the room — because the first thing a skeptical merchant says is "well of course there are more crashes, there's more bikes now, that's not the lane's fault," and without a volume number I can't answer that, I can only agree the caveat is fair and move on. I don't need anything fancy — I'm not asking for Strava-level data. If CDOT's got counter numbers from even a handful of locations on a corridor, or Divvy trip counts near it, that's good enough for me to say "ridership roughly doubled and crashes didn't," which is the sentence I actually need.
+**LR:** Correct — it's a mock-up of the format, not real reports.
+
+**Marcus:** Then I don't want it near me, and honestly I'm a little uneasy it exists at all, gated or not. Here's my nightmare: somebody on my staff, or god forbid a reporter, finds that page, doesn't read "synthetic" carefully, and screenshots a fake obstruction pin on a corner in my ward. Now I'm fielding a call about a blocked bike lane that never happened. I get that it's watermarked and behind a gate, but gates get walked through — a link gets forwarded, a screenshot loses its caption. If this ever touched a public page with my ward's name attached before it's real Bike Lane Uprising data, I'd tell my alder to have nothing to do with the whole site, full stop, because now everything else on it is suspect too. The real Bike Lane Uprising data — 65,000 reports, ticket values — I'd trust because it's crowdsourced by actual people reporting actual blocked lanes. A synthetic stand-in with the same schema, sitting one click away from my ward's one-pager? That's the kind of thing that, once burned, I don't come back from. I will say — gating it and pulling it off the real maps is at least the right instinct. Two years ago I'd have expected them to just ship it live with a small badge and call it done. This is better than that. It's just not good enough yet for me to relax about it.
+
+### 4. Gap probing
+
+**LR:** Scenario: you're briefing your alder before Thursday's committee vote — actually, let's use your CAPS meeting scenario, since that's the live one. You open OYL. What do you look for first, and where does it fail you?
+
+**Marcus:** First click is the ward one-pager for my ward, obviously, if it existed with real news matching I trusted. Second thing I look for — and it's not there — is the corridor itself, before/after. I need "this specific half-mile, this specific intersection, crashes in the two years before the lane went in versus the two years after," for a comparable corridor somewhere else in the city that already did this. Ward-level rollups don't answer "what happens on THIS block." The findings page has "top corridors" but that's about which corridors are worst, not about before/after on a corridor that got treatment. That's the single biggest hole for my Thursday-meeting use case.
+
+**LR:** Of everything OYL does not have, what single absence costs you most?
+
+**Marcus:** No business-impact data. Every fight I'm in eventually has a merchant standing up saying this kills parking and kills business. I heard there's some CDOT sales-tax study — I've seen it referenced — but if it's not on this site in some form, I still can't hand my alder anything on the economic question, and that's the question that actually swings undecided people in the room, more than the crash number does. Crash data convinces people who already care about safety. Business data convinces the people who don't.
+
+**LR:** If OYL handed you one export or artifact each week, what would it contain, and who would you forward it to?
+
+**Marcus:** Honestly — a one-page PDF, auto-generated, ward-specific: this week's new crashes in my ward with location, any council or committee action touching my ward, any new news mention of my alder with a flag for whether it reads favorable or not, and menu-money spend-to-date versus what got promised. I'd forward that to my alder every Monday morning before she does her rounds. That's worth something. What I would NOT forward automatically is anything with a ranking or score on it — I'd want to preview that myself first, every time, before it goes anywhere near her.
+
+**LR:** The site refuses to normalize by ridership — there's no counter or bikeshare-trip data, so raw crash counts aren't divided by how many people are actually riding. Does that caveat change how you'd use it? What would you accept as good-enough exposure data?
+
+**Marcus:** Honestly, I don't think about "normalization" in those words day to day — but yes, it matters, because I already know the argument that's coming at me: "your ward just has more riders, of course it has more crashes, that's not a danger problem." If the site can't answer that, someone in the room will raise it and I'll have nothing. I don't need Strava-level precision. Something like: CDOT or Divvy trip-start counts near a corridor, or even a rough census-commute-mode-share number by ward, would be enough to say "no, per rider this is still worse," or to honestly concede "yeah, we just have more riders." Either answer is useful to me. Silence on it isn't — silence just means the other side gets to assert whichever version helps them, and I can't rebut it. And I'll say — I'd rather the site keep saying "we don't know" loudly than quietly bury a shaky per-rider number that falls apart the first time someone asks how it was calculated. At least the honest caveat, I can work with. A fake-precise number I can't defend is worse than no number.
 
 ### 5. Magic-wand close
 
-**Interviewer:** One dataset that doesn't publicly exist appears, clean and current. What is it?
+**LR:** One dataset that doesn't publicly exist appears, clean and current. What is it?
 
-**chi-ward-office:** Promised-versus-delivered on every capital project by ward, tied to source — menu money, CDOT-funded, grant-funded, whatever — with dates. That's the thing I rebuild by hand every single time a resident says "you told us," and it's the thing that would save me the most actual hours.
+**Marcus:** Real installed-infrastructure history with actual dates — when a lane went in, when it changed, whether it was ever downgraded or ripped out, like what happened on 18th. Right now everybody's arguing from memory and press clips about what got installed when. A clean timeline, ward by ward, would settle more arguments in my job than any crash number, because half of my fights are actually about "what did we already promise and did we deliver it," not "is this street dangerous."
 
-**Interviewer:** One chart or map you could put on a screen in front of your hardest audience that ends an argument. Describe it.
+**LR:** One chart or map you could put on a screen in front of your hardest audience that ends an argument.
 
-**chi-ward-office:** A split screen: our corridor's crash count before and after the treatment, next to the same chart from two or three comparable wards that did the same thing, with a plain-language sales-tax or vacancy line underneath showing the merchants didn't get hurt. I know that last part exists somewhere — CDOT did an economic study on exactly this a while back — but I have never once had it sitting next to the crash chart in the same document, ready to go, and that's the exact packet I needed for the merchants in that Lincoln Avenue meeting.
+**Marcus:** Side-by-side, same corridor, before-and-after a treatment went in somewhere comparable — crash count, and right next to it, storefront vacancy or sales-tax trend, same time window. Two lines, one screen. If I can show "this happened elsewhere, safety went up, business didn't die," that's the whole meeting won in one slide. I don't need a ward score for that. I need one corridor's story told twice, safety and money, at once.
 
-**Interviewer:** What would make you stop using a site like this after trying it once?
+**LR:** What would make you stop using a site like this after trying it once?
 
-**chi-ward-office:** If a number on it contradicted the ATA ward letter or Ward Wise without an obvious explanation, I'd stop trusting it fast — I don't have time to referee two data sources against each other, I'll just default back to whichever one I already trust, which right now is the ATA letter, because they've never made us look worse than we actually are without cause. And honestly, if it's slow, or if I can't get to our ward in two clicks, I'm out — I don't explore. I've got fifty issues this week and bike safety got maybe forty minutes of it.
+**Marcus:** Getting burned by it in front of my alder. If I hand her a printout and a reporter or a challenger has a different number from the same site — because it updated, or because I grabbed a mock layer by mistake, or because the "sponsorship record" turns out to be measuring something totally different from what I assumed — I'm done, and I'll tell every other chief of staff I know to stay away too. This world runs on reputation between offices. One bad citation and the whole tool is radioactive for us, doesn't matter how good the other 90% is.
 
-## Follow-up round
+---
 
-## Round-2 Interview Transcript — Persona: Marcus Webb, Chief of Staff (Chicago ward office)
+## Analysis Memo
 
-**Interviewer:** You said your standing doc is a "brag sheet and scar sheet" for every safety project — what got promised, built, killed. Walk me through its actual structure. What fields does each entry have, how do you update it, and if promised-vs-delivered appeared in OYL tomorrow, would it fully replace that doc or just feed it?
-
-**chi-ward-office:** It's a Google Sheet, not even fancy — I keep saying I'll move it to Airtable and I never do. Columns are: project name, corridor or block, what was promised (a quote, basically — "protected lane, Addison to Belmont" copied straight out of whatever press release or CDOT letter it came from), date promised, source of the promise — was it a press conference, a CDOT letter, my alder's own mouth at a CAPS meeting, because those carry different weight when a resident throws it back at me — status, date of last real movement, and then a free-text column I call "who to call," which is just Andrea's name or whoever the current CDOT contact is, because staff turns over faster than projects finish. I update it whenever something happens, which in practice means whenever I'm forced to, usually because a resident emailed asking about it. It is not a weekly discipline, I'll be honest, it's a "oh no, what did we say in 2021" discipline.
-
-If promised-vs-delivered showed up in OYL tomorrow, clean and sourced — it would not replace this doc, it would feed it, and only partway. Here's why: my "promised" column has stuff no public dataset will ever have, because half of what I'm tracking is what my alder said out loud at a community meeting with no press release behind it. That's not FOIA-able, that's not in any city system, that's just somebody's notes from being in the room. OYL could genuinely kill the "delivered" side of my sheet, though — if it reliably told me a bike lane on Damen actually got installed and when, I'd stop hand-tracking that half and just link out. That alone would save me real time. But I'd still be running my own column for the promise itself.
-
-**Interviewer:** You said once you realized the schematic map's colors were just route identity, not danger, you'd probably close it. If that same map used color to show which routes were riskiest, would you actually use it — or is a "subway map" just the wrong form for a basement community meeting regardless of what the color encodes?
-
-**chi-ward-office:** Different question with color meaning danger, honestly. If red meant "this route has the worst crash concentration" I'd probably glance at it once, the way I'd glance at any ranking — mostly to check if our route's in it and how it reads. But I still wouldn't put it up at the field house. A schematic map strips out the actual streets, and the first thing anybody in that basement does is find their own block, their own corner, "is it the one by the Jewel." A subway-style map doesn't let them do that — there's no there there, it's an abstraction of a thing they want concretely. So even danger-colored, it's a scanning tool for me, not a briefing tool for the room. I could see using it the way I use the ATA letter's map — quick gut check, is Lincoln flagged, then I go get the real geographic view for the actual meeting. It moves from "useless" to "for my eyes only, thirty seconds," not to "something I hand my alder."
-
-**Interviewer:** You said you'd export the ward table specifically to reformat it into your own one-pager, and you're worried it won't match ATA's methodology. If OYL exported a ready-made one-pager instead of raw CSV — but the numbers still didn't match ATA's — would you use the one-pager, or does the methodology mismatch come first regardless of format?
-
-**chi-ward-office:** Methodology comes first, no contest. A pretty one-pager with a number that contradicts the ATA letter is worse for me than an ugly CSV with a number that matches, because the one-pager looks finished — it looks like something I'd hand my alder as-is — and that's exactly the moment a mismatch bites me hardest. If I export raw data and reformat it myself, I've at least had my hands in it, I've had the chance to notice "huh, that's not what ATA said" before it goes anywhere. A slick pre-made export invites me to skip that step, and skipping that step is how I get burned. So actually — and this surprises me a little saying it out loud — the CSV is safer for me specifically because it's more work. The convenience of a ready one-pager only pays off once I already trust the number, and trust here is the methodology matching, or at minimum an explicit footnote saying "we count protected mileage differently than ATA because X," something I could literally read to my alder if she asks why the numbers don't match. Without that footnote, format doesn't matter — I don't use either version for anything client-facing, I just use it to sanity-check myself before I go find ATA's number.
-
-**Interviewer:** You said the mock-obstruction badge needs to be louder. Concretely — a red banner instead of a badge, a click-through warning, or blocking the layer entirely until it's real?
-
-**chi-ward-office:** Block it, honestly, or at minimum make me click through something that isn't easy to miss. A badge sitting quietly in a corner of the legend is exactly the kind of thing I'd read once, on my first visit, and then never look at again — I don't re-read legends, I just remember "oh, that map has layers." Three months from now when a resident's yelling about a blocked bike lane and I go pull up the obstruction map fast because I'm in a hurry, I am not going to be scanning for a small badge, I'm going to be looking at dots on a street. So yes — a red banner is better than a badge, but honestly my instinct is closer to: don't let me turn that layer on without a warning that requires a click, every time, not just the first time, because staff turns over and my intern won't remember what I remember. If it's mock, treat it like something that can actively hurt me, not like a footnote.
-
-**Interviewer:** You said sponsorship counts aren't the same as voted yes, and you'd get burned handing that to another ward's chief of staff. What exactly would you need alongside sponsorship counts before you'd hand them off — prime vs. co-sponsor, actual committee vote record, something else?
-
-**chi-ward-office:** Committee vote record, full stop, that's the one that actually matters. Sponsorship tells me who was willing to put their name on something before it got hard, which is useful as a rough temperature check, but it's soft — I've seen alders co-sponsor something as a courtesy to a colleague and then go quiet or even vote it down in committee once the pressure showed up. If I'm handing a colleague's chief of staff a "who's with us" sheet before we walk into Ped and Traffic Safety, and it's built on sponsorship alone, I am setting them up to walk in assuming a yes that isn't real. Prime versus co-sponsor is a nice-to-have on top of that — tells me who actually carried it — but it doesn't fix the core problem. What I actually need is: did this member vote yes in committee, on the record, on something comparable, last time it came up. That's the only number I'd stake a strategy on. Anything short of that, I'd label it in my own head as "not a vote count" before I ever forward it, and I'd say that explicitly in the email so nobody downstream assumes more than it says.
-
-**Interviewer:** You mentioned a CDOT economic study on sales-tax or vacancy impact near protected lanes. Have you personally seen it, or is it something you've heard referenced? What would you need to verify it before putting it in front of merchants?
-
-**chi-ward-office:** Heard referenced, if I'm being straight with you — I have not personally pulled it up and read it cover to cover. It comes up in exactly the way a lot of things come up in this job: another chief of staff mentioned it at a CAPS-meeting-adjacent conversation, or Andrea referenced "there's a CDOT study on this" when I pushed her on the merchant-pushback angle, and I filed it away as "a thing that exists" without ever chasing the PDF myself, because I was busy with four other things that week. That's actually a pretty normal state for a lot of what's in my head — secondhand-but-plausible, good enough to reference in a hallway conversation, not good enough to print. Before I'd put it in front of merchants on Lincoln, I'd need three things: the actual document, not a summary of a summary; confirmation it studied a corridor comparable to ours — a retail strip, not an industrial stretch, because merchants will spot a mismatched comparison in about four seconds; and a date, because if it's from 2015 and the corridor's turned over twice since then, it's not going to survive the first question in the room. Honestly, that's the kind of thing I'd want OYL or somebody to have already done the legwork on — verified it, dated it, matched it to comparable corridors — because right now it just sits in my head as a rumor I'm scared to cite and too hopeful to drop.
-
-## Analysis memo
-
-participant: chi-ward-office
-confidence_notes: Marcus stays in-register throughout — political-operative language, audience triage, no drift into methodology jargon he wouldn't credibly have (consistent with ground rule 6). Two soft spots worth flagging as lower-confidence rather than disqualifying: (1) the Fall-2025 "South Side ward ripped out an installed protected lane" anecdote is offered as secondhand ("I know people on that staff," "what I heard secondhand") and functions cleanly as in-world cautionary lore, but it reads as a composite/illustrative event rather than a specific verifiable one — treat the *lesson he draws from it* (bring a defensive packet before the room turns) as the reliable signal, not the event's specifics. (2) In the follow-up he describes his scar-sheet's exact column structure with more precision and consistency than his own characterization of the doc ("not a weekly discipline... an 'oh no, what did we say in 2021' discipline") would predict — a genuinely neglected tracker is less likely to have such clean, stable field definitions. This is a minor internal tension, not a contradiction that undermines the needs it points to (both the promised/delivered distinction and the source-of-promise tiering recur consistently elsewhere in both rounds). Everything else — the three-audience framing, the 311 loud-vs-dangerous distinction, the ATA/Ward Wise trust hierarchy, the ridership-normalization ask — was stated once and then independently corroborated by a different answer later in the interview, which is the strongest confidence signal this method offers.
+```
+participant: chi-ward-office (Marcus Webb)
+confidence_notes: Reactions to menu-money/311/sponsorship dynamics, aldermanic
+  prerogative, and the CDOT-briefing workflow are well-grounded in the evidence
+  brief and stayed in-character throughout. The BNA-score, agent-API, and
+  network-map reactions are thinner — the persona has no documented stance on
+  cycling-network benchmarking or AI-assistant tooling, so his reactions
+  ("never heard of it," unease about a chatbot surfacing a number he didn't
+  vet) are plausible extrapolations from his general triage-first,
+  blindside-averse worldview rather than directly cited behaviors. His
+  proposed-projects and exposure-data answers are reasonable in-world guesses
+  invented for this interview, not sourced from the evidence brief, so treat
+  them as illustrative rather than strong findings. The two mandatory
+  quality-gate probes (mock obstructions, no-ridership-normalization) landed
+  solidly in-character and are the highest-confidence material in this run.
 
 stated_needs:
-  - need: Same-day (or near-same-day) sourced crash/count data for a specific corridor ahead of an already-scheduled community meeting, replacing the current ~5-day CDOT-plus-intern process.
-    evidence_quote: "That's a normal timeline for me. If I'd had it same-day I'd have had a better meeting with the merchants, because I'd have had time to also grab something on the parking-removal precedent instead of promising to follow up."
-    underlying_job: Walk into a specific, fixed-date community meeting with a defensible number already in hand rather than a promise to follow up, because a stalled answer costs him momentum and credibility in that one meeting, not in the abstract.
-  - need: A ward-scoped comparison table (his ward plus two or three adjacent/comparable wards) exportable as CSV so he can reformat it into his own one-page brief.
-    evidence_quote: "This is the one I'd actually export. If I can pull our ward's row and two or three comparison wards... that's my Wednesday-before-Thursday-meeting document."
-    underlying_job: Produce a one-page, front-only document his alderwoman can read between two events, in framing and emphasis he controls, not a dashboard she'd have to open and interpret herself.
-  - need: Committee vote records (not just sponsorship counts) attached to any alderman accountability data, so he can tell a colleague's chief of staff who is genuinely a reliable "yes."
-    evidence_quote: "What I actually need is: did this member vote yes in committee, on the record, on something comparable, last time it came up. That's the only number I'd stake a strategy on."
-    underlying_job: Whip votes accurately before an ordinance reaches Ped and Traffic Safety without setting up an ally to walk in overconfident on a vote that isn't real.
-  - need: A ridership/exposure proxy (even an imperfect one — CDOT counters at a handful of points, or Divvy trip counts) shown alongside crash counts.
-    evidence_quote: "If CDOT's got counter numbers from even a handful of locations on a corridor, or Divvy trip counts near it, that's good enough for me to say 'ridership roughly doubled and crashes didn't,' which is the sentence I actually need."
-    underlying_job: Neutralize the single most predictable merchant objection ("more bikes, of course more crashes") in real time in the room, instead of conceding the caveat and moving on empty-handed.
-  - need: A public, sourced, dated "promised vs. delivered" dataset for capital street-safety projects by ward, tied to funding source.
-    evidence_quote: "Promised-versus-delivered on every capital project by ward, tied to source... That's the thing I rebuild by hand every single time a resident says 'you told us,' and it's the thing that would save me the most actual hours."
-    underlying_job: Answer "you promised us this in 2021, where is it" credibly and fast, without relying on personal memory or a fragile hand-kept doc a successor would lose entirely.
-  - need: A weekly, ward-scoped one-page digest (crash trend, percent-protected, ward-tagged findings-card news, upcoming committee hearings) that slots into his existing Monday-briefing routine.
-    evidence_quote: "Ward-specific, one page: our current crash trend, our percent-protected number, anything new in the findings cards that names our ward or a corridor in it, and any committee hearing in the next two weeks that touches street safety. I'd forward that straight to my alderwoman's Monday-briefing folder."
-    underlying_job: Fold a new data source into an already-running weekly ritual rather than creating a second habit he has to remember to perform.
-  - need: A much harder-to-miss, recurring (not one-time) warning — ideally blocking or click-through — on any layer built from mock/synthetic data, specifically the obstruction layer.
-    evidence_quote: "Block it, honestly, or at minimum make me click through something that isn't easy to miss... don't let me turn that layer on without a warning that requires a click, every time, not just the first time, because staff turns over and my intern won't remember what I remember."
-    underlying_job: Prevent a rushed future staffer (himself or a successor) from screenshotting fabricated data into a constituent-facing reply months from now, which would visibly damage the office's credibility on that resident's specific block.
+  - need: A pre-built, ward-specific "defensive brief" artifact assembled
+      before a contentious community meeting (crash before/after on the
+      specific corridor, comparable-ward outcomes, cost, business impact).
+    evidence_quote: "By Wednesday: crashes on that corridor before/after,
+      what nearby wards did, what it cost, and something about business
+      impact — in a format your alder can absorb in the car."
+    underlying_job: Arm the alderman to survive a hostile public meeting
+      without being blindsided, in a format consumable in transit, not at
+      a desk.
+
+  - need: A weekly, forwardable, ward-scoped digest (new crashes, council/
+      committee action, alderman news mentions with a favorability flag,
+      menu-money spend-to-date vs. promised) that excludes any ranking or
+      score without his own preview first.
+    evidence_quote: "I'd forward that to my alder every Monday morning
+      before she does her rounds... What I would NOT forward automatically
+      is anything with a ranking or score on it — I'd want to preview that
+      myself first, every time."
+    underlying_job: Stay ahead of constituents, press, and challengers on
+      the alderman's own record while retaining personal narrative control
+      over anything reputationally loaded before it reaches her.
+
+  - need: Corridor-level before/after crash comparison tied to a specific
+      infrastructure treatment, not just ward-level rollups.
+    evidence_quote: "Ward-level rollups don't answer 'what happens on THIS
+      block'... That's the single biggest hole for my Thursday-meeting
+      use case."
+    underlying_job: Answer the exact question a hostile room will ask about
+      a specific, named intersection — not the citywide or ward-wide trend.
+
+  - need: A business-impact / economic-indicator counter to the "bike lanes
+      kill business" objection, available per corridor.
+    evidence_quote: "Every fight I'm in eventually has a merchant standing
+      up saying this kills parking and kills business... if it's not on
+      this site in some form, I still can't hand my alder anything on the
+      economic question."
+    underlying_job: Neutralize the recurring merchant objection with data
+      the alderman can cite in real time, not just safety data.
+
+  - need: Exposure/ridership context (even rough) to rebut the "your ward
+      just has more riders" argument — but only if it is defensible, never
+      a fabricated-precision substitute for an honest "we don't know."
+    evidence_quote: "I'd rather the site keep saying 'we don't know' loudly
+      than quietly bury a shaky per-rider number that falls apart the first
+      time someone asks how it was calculated. At least the honest caveat,
+      I can work with."
+    underlying_job: Preempt a specific, anticipated rebuttal without taking
+      on the greater risk of citing a number he cannot defend under
+      questioning.
+
+  - need: Real installed-infrastructure history with install/change/removal
+      dates, ward by ward.
+    evidence_quote: "A clean timeline, ward by ward, would settle more
+      arguments in my job than any crash number, because half of my fights
+      are actually about 'what did we already promise and did we deliver
+      it.'"
+    underlying_job: Adjudicate promise-vs-delivery disputes, which he frames
+      as more common in his job than pure safety disputes.
 
 latent_needs:
-  - need: A way to separate "organized/loud" corridors from "actually dangerous" corridors — cross-referencing 311 volume against an independent severity signal, rather than presenting 311-derived hotspot lists as danger indicators.
-    inference_basis: He maintains an 18-month, hand-built, block-level 311 spreadsheet specifically "because I got tired of not knowing which blocks were 'loud' versus which were actually dangerous — those are not the same list," and his first move on seeing any "top complaint corridors" list is to ask who's organized on that block, not what's happening there. He never asked OYL to build this distinction directly, but every reaction he gave to 311-flavored content routed through this private cross-check, including his account of the Ward Wise ranking incident.
-    risk_if_wrong: If OYL ships a 311-based "hot corridor" or hotspot card without an independent severity signal beside it, a ward-office reader could reasonably assume it already does what his own hand-built tool does, silently reintroducing the loud-vs-dangerous conflation he built that spreadsheet specifically to avoid — and once he notices, he would likely fold OYL into the same distrust bucket as the Ward Wise ranking that already burned his office once.
-  - need: Point-in-time / historical snapshotting of OYL's own figures (and layout), so a number cited in one brief can be reconciled against the same metric months later.
-    inference_basis: He screenshots the Ward Wise menu-money map every quarter specifically "because their site's changed its layout on me twice and I didn't want to lose the history" — a workaround built purely to defend against a source changing under him without notice. He separately worries that if his exported ward-table CSV and a later ATA letter diverge, "I'm the one who looks sloppy, not the dashboard" — the same underlying failure mode (a number changing or diverging with no accessible trail of when or why).
-    risk_if_wrong: Without dated snapshots or a changelog, ward staff will keep doing exactly what he does with Ward Wise today — manually screenshotting for their own archive — erasing OYL's convenience advantage for this specific recurring need; worse, a silent change could reproduce his worst-case "doesn't match ATA, I look sloppy" scenario even when OYL was correct at both points in time.
-  - need: A structured way to attach the ward office's own undocumented, verbal-provenance records (source-of-promise tier: press release vs. CDOT letter vs. the alderwoman's own spoken word) alongside official OYL data, rather than one unified "promised" dataset assuming it can replace ward-office memory.
-    inference_basis: His scar-sheet's "source of the promise" column distinguishes press release, CDOT letter, and "my alder's own mouth at a CAPS meeting" specifically "because those carry different weight when a resident throws it back at me," and he says directly that an OYL promised-vs-delivered feature "would not replace this doc, it would feed it, and only partway," because "that's not FOIA-able, that's not in any city system, that's just somebody's notes from being in the room."
-    risk_if_wrong: If OYL's promised-vs-delivered feature is designed or marketed as a comprehensive replacement for ward-level promise tracking, it will under-deliver against his real expectation (a partial, "delivered"-side supplement) and he may undervalue the real half it could own; conversely, if OYL only half-builds the sourced "delivered" side, it forfeits the one part of this problem a public dataset actually could solve.
-  - need: An audience-specific export — at minimum a distinct merchant-facing packet (a peer-corridor economic outcome paired with the crash chart) — separate from the general alderwoman one-pager, rather than one generic export assumed to serve all three audiences he described.
-    inference_basis: He drew an unprompted three-way distinction between what "convinced" means for his alderwoman (political defensibility), merchants ("they don't care about crash data at all, they care about parking spaces, full stop"), and CDOT (usable paper, fast) — and, independently in the magic-wand close, described the artifact he needed for the merchant audience as a specific split-screen structure (his corridor's crash trend next to a comparable corridor's, with a sales-tax/vacancy line beneath), structurally distinct from the alderwoman's one-pager (parking bullet, crash number, precedent bullet) he described earlier.
-    risk_if_wrong: A single well-designed ward one-pager built to satisfy the alderwoman's bar will fail the one audience he says is immune to crash data alone; a generic export gets left at the office when he walks into the retail-strip meeting, reproducing the exact gap (no economic study sitting next to the crash chart, ready to go) he named as his single highest-value missing artifact.
-  - need: A persistent, default ward-scoped view he returns to (or a push into his existing workflow) rather than a one-time "reach my ward in two clicks" affordance he re-navigates every visit.
-    inference_basis: He states a hard usage cutoff ("if I can't get to our ward in two clicks, I'm out — I don't explore") but separately describes an established habit of checking specific ward-tagged content "every couple weeks" and wanting a weekly export routed straight into an existing Monday-briefing folder — both pointing at the same constraint (bike safety gets "maybe forty minutes" of his week) that a one-time two-click path does not fully solve if he must re-navigate it every single week.
-    risk_if_wrong: If "two clicks" is satisfied only by a search box or manual filter re-applied each visit, it still adds friction on top of an already-scarce weekly budget; he is more likely to keep OYL as a passive forwarded-email habit — the way he already treats the ATA letter and his Google Alert — than as a site he actively opens and clicks through, undercutting any feature that assumes active browsing rather than a push.
+  - need: A pre-publication or private "preview my ward's page" workflow
+      before ward one-pagers, rankings, sponsorship data, or news matches
+      go live/update, so his office isn't blindsided by its own dashboard.
+    inference_basis: He repeatedly frames every ranked, scored, or
+      auto-matched artifact (table rankings, the one-pager's safety index,
+      the sponsorship record, the news-matching layer) through "who sees
+      this before I do" and "I need to get in front of it before it's on
+      somebody's desk" — not through accuracy concerns alone, but through
+      control-of-narrative concerns. He never asked for this feature; it
+      falls out of his stated fear pattern across four separate stimulus
+      reactions (table, one-pager, sponsorship record, news layer) plus his
+      explicit weekly-digest carve-out for anything scored.
+    risk_if_wrong: If his actual objection is purely about score
+      methodology or match-precision (not about advance notice), building a
+      preview/embargo workflow would be substantial engineering effort
+      solving the wrong problem — the real fix might just be clearer
+      methodology exposure and higher match confidence.
+
+  - need: A visible, auditable distinction between "sponsorship count" and
+      "recorded vote," ideally surfaced without him having to click into
+      methodology to find it.
+    inference_basis: Unprompted, he immediately interrogated what
+      "sponsorship record" measures ("is it counting bills she co-sponsored,
+      or did she vote against something... wildly different stories") before
+      forming any opinion of the feature — a spontaneous credibility check,
+      not a request. This mirrors his stated distrust pattern for 311 counts
+      ("workload record, not a danger record").
+    risk_if_wrong: If the feature already surfaces this distinction clearly
+      (the inventory does label it "sponsorship proxy, not a vote tally"),
+      this latent need may already be satisfied and the real gap is
+      discoverability/prominence, not the underlying data model.
+
+  - need: A confidence/precision indicator on automated name-matching (news
+      layer, alderman matching) that he can check before trusting a match,
+      distinct from the general tier badge system — including whether a
+      matched article is favorable, unfavorable, or merely incidental to
+      the alderman.
+    inference_basis: He spontaneously raised a specific failure mode
+      unprompted by the interviewer — wrong-alderman name collisions
+      ("a totally different alder with a similar name") and
+      favorable/unfavorable-context blindness — and tied it to a concrete
+      personal cost ("that's the kind of error I get a call about from my
+      alder at 9pm"), going further than a simple "I'd double check it"
+      answer. He separately asked for a "favorable or not" flag on news
+      mentions in his ideal weekly digest, reinforcing that the gap is
+      valence, not just identity-matching accuracy.
+    risk_if_wrong: His specific failure scenario (name collision) may be
+      an artifact of Chicago's real aldermanic namesake patterns rather
+      than a documented behavior in his evidence base; if the matching
+      system already has near-zero collision risk, this concern may be
+      lower-priority than his emphasis suggests.
+
+  - need: Corridor-tagged, ward-tagged linkage between infrastructure grade,
+      menu-money history, and the proposed-projects roster (which project,
+      which fiscal year, what was promised vs. spent vs. built).
+    inference_basis: He independently maintains a cross-office shared doc
+      re-keying OBM PDFs specifically to compare menu-spend categories,
+      separately says half his fights are "promise vs. delivered," wants
+      an install-date timeline, and reacted to the new proposed-projects
+      roster by immediately asking whether its status field would be
+      checkable against his own hand-kept scar sheet — four independent
+      workarounds/wants converging on the same underlying join (project →
+      ward → spend → status → date) that OYL's data model does not yet
+      make explicit.
+    risk_if_wrong: This may overlap heavily with the stated "installed-
+      infrastructure history" magic-wand need rather than being a truly
+      separate latent need — could be double-counting one underlying gap.
+
+  - need: A visible update-cadence/freshness signal specifically on the new
+      proposed-projects roster, since staleness there (not just inaccuracy)
+      is what he expects to get caught out by.
+    inference_basis: His only stated concern about the roster was not
+      "is the curation biased" but "how fast does a status get updated
+      when something actually moves... if a resident's going to trust
+      their own eyes over your card, and honestly they should" — he
+      volunteered the freshness failure mode without being asked about
+      update frequency.
+    risk_if_wrong: If the roster already updates on a fast, visible cadence
+      (e.g., the weekly refresh cycle documented in the inventory), this
+      need may already be met and the real gap is just surfacing the "last
+      checked" date more prominently on the card itself.
+
+  - need: Acknowledgment that gating/quarantining a synthetic layer (as OYL
+      now does with the obstructions preview) is a partial trust repair,
+      not a full one — he registers the change positively relative to a
+      hypothetical worse design, which suggests incremental provenance
+      improvements are legible to this audience and worth surfacing
+      explicitly rather than assuming distrust is binary.
+    inference_basis: Unprompted, he contrasted the current gated/watermarked
+      design favorably against what he "expected" (a live badge-only
+      version), saying "this is better than that" while still maintaining
+      the layer as a deal-breaker risk — a nuanced, two-part reaction
+      rather than a flat rejection.
+    risk_if_wrong: This is a comparatively low-stakes, low-confidence
+      inference — it rests on a single aside in an otherwise strongly
+      negative reaction, and could simply reflect generic construction
+      politeness within an otherwise resistive interview rather than a
+      genuine, generalizable signal about incremental trust-building.
 
 reactions_to_existing:
-  - feature: Geographic map (crash density, bikeway network, wards, cameras)
+  - feature: Transportation map (map.html)
     verdict: would-use
-    why: Matches almost exactly what he currently pays an intern an afternoon to build by hand ("that's basically what I'm asking my intern to build me by hand right now"); contingent on currency — he'd need to caveat staleness to his alderwoman if it isn't current.
-  - feature: Camera layer
+    why: Plausible stand-in for squinting at CDOT PDFs in a live meeting;
+      no resistance expressed.
+  - feature: Network map (network.html) / schematic transit-style map
     verdict: ignores
-    why: "Mildly interesting, but not something I'd put in front of her unless a resident specifically asked about a ticket" — no job it currently serves for him.
-  - feature: Schematic transit-style route map (21 routes, no safety data)
-    verdict: misreads, then ignores
-    why: Assumed route color encoded danger before being corrected, then judged the form itself wrong for his job regardless of what the color means — "nobody in that basement meeting is going to care that it's schematic." In the follow-up, even a danger-colored version only becomes a private 30-second scanning tool ("for my eyes only"), never something handed to his alderwoman or the room.
-  - feature: Findings screen (curated cards — KSI trend, protected share, top corridors, hit-and-run, ward concentration, dooring undercount)
+    why: "I don't know what I'd do with that in my job"; reads it as built
+      for advocates, not for his room; explicitly rejects the vocabulary
+      ("comfort floor") as unusable in a CAPS meeting.
+  - feature: Home / orientation page + "ask an AI assistant" agent-layer
+      messaging
+    verdict: ignores (first visit only) / distrusts the implication
+    why: Rates it as fine for a first-time visitor but not something he'd
+      return to; unprompted, reframes the AI-assistant framing as a new
+      blindside vector — a number he never vetted reaching his alder or a
+      reporter through a chatbot instead of through him.
+  - feature: Findings cards (KSI trend, corridors, ward concentration,
+      dooring undercount)
     verdict: would-use
-    why: The dooring-undercount card gives him language he says he currently lacks ("I've never had language for why the official number always feels low"); he'd check top-corridors/ward-concentration every couple of weeks specifically to hear about his ward before Streetsblog does.
-  - feature: Ward table (sortable, CSV export, percent protected, percent with any bike infra)
-    verdict: would-use, conditional on methodology matching ATA
-    why: The one artifact he'd actually export and reformat himself; but a methodology mismatch with the ATA ward letter would make him abandon it outright regardless of polish — confirmed explicitly in the follow-up ("methodology comes first, no contest... the CSV is safer for me specifically because it's more work").
-  - feature: Council/alderman accountability data (sponsorship counts, no-votes, committee hearings, alderman contacts)
-    verdict: would-use, conditionally
-    why: The hearings-calendar piece alone "saves me a recurring Monday-morning task" with no reservation; sponsorship counts he'd use "carefully," only forwarded with an explicit non-vote caveat, after probing revealed he actually needs committee vote records to "stake a strategy on."
-  - feature: Menu-money spending data (Ward Wise extract, unverified against source PDFs)
+    why: Directly maps to the slide he already builds by hand; would
+      screenshot into briefings.
+  - feature: PeopleForBikes BNA citywide score
+    verdict: distrusts / misreads
+    why: Unfamiliar with the metric; immediately reframes it as a
+      blindside risk ("is Chicago 40th out of 100... if a reporter's got
+      that number and I don't"). Never engages with what the score
+      actually measures — treats any unfamiliar ranking as a press threat
+      by reflex.
+  - feature: Ward table + CSV export (sortable rankings)
+    verdict: distrusts (CSV itself: would-use)
+    why: Wants raw numbers for his own framing but rejects the public,
+      sortable, rankable presentation as a "press release waiting to
+      happen."
+  - feature: Ward one-pager (ward.html)
+    verdict: would-use AND distrusts simultaneously
+    why: Format matches his exact defensive-brief workaround (saves him
+      hours), but the bundling of safety index + sponsorship record +
+      auto-matched news on one public, alderman-attributed URL reads as a
+      third party publishing a report card on his boss he doesn't control.
+  - feature: Alderman sponsorship record
     verdict: distrusts
-    why: Directly triggered by a prior incident where an unverified ranking made his ward look bad without context (ADA curb-ramp spending), costing him an afternoon of damage control; he'd never use a figure from it without a roughly-20-minute cross-check against OBM source PDFs — "non-negotiable for me on this one specifically."
-  - feature: Badge / limits system (real, proxy, mock, crowdsourced, derived, no-data-yet)
-    verdict: approves in principle, but misreads one instance and distrusts the current strength of the mock-data warning
-    why: Calls the labeling itself "more honesty than I usually get from a dataset," but nearly read "mirrors Bike Lane Uprising's fields" as meaning the obstruction data *was* Bike Lane Uprising data, and separately concludes a quiet legend badge is too easy to miss on a rushed future visit — wants it blocked or click-through, recurring, not a one-time label.
+    why: Immediately probes whether it's a sponsorship-count proxy or an
+      actual vote tally, per his evidence-based distinction between
+      "co-sponsored" and "voted no" — anticipates a challenger
+      weaponizing the ambiguity.
+  - feature: News-coverage layer (ward/alderman-matched)
+    verdict: distrusts
+    why: Names it as the single most worrying new feature — fears mismatched
+      or context-blind matches (wrong alderman, unfavorable article
+      surfaced without framing) landing on a page bearing his alderman's
+      name.
+  - feature: Proposed & in-progress projects roster
+    verdict: would-use, conditionally
+    why: Maps directly onto his hand-kept "promised vs. delivered" scar
+      sheet; would check status/status-date against his own record, but
+      distrusts it if the update cadence lags what he hears in CDOT
+      briefings.
+  - feature: Sources / Methodology pages
+    verdict: would-use (narrowly)
+    why: Values their existence as a rebuttal tool but would only consult
+      them reactively, under fire, for the specific weighting/window
+      question — not read proactively.
+  - feature: Action page (311, BLU, alderman contacts, hearings, news)
+    verdict: uses
+    why: "Basically what our own ward newsletter already links to" — low
+      excitement, unsurprising, already-familiar territory.
+  - feature: Obstructions preview page (mock, gated, watermarked)
+    verdict: distrusts (strongly — flagged as a deal-breaker category),
+      with qualified acknowledgment of the gating as a partial improvement
+    why: Immediately worried about a screenshot escaping the gate/watermark
+      and being mistaken for a real obstruction in his ward; states this
+      single failure mode alone would end his office's use of the entire
+      site, not just this layer — while separately conceding the
+      gated/quarantined design is better than the live-badge-only version
+      he expected.
+  - feature: No-ridership-normalization caveat
+    verdict: uses (as an anticipated rebuttal, wants it filled — but
+      explicitly prefers the honest caveat over a shaky substitute number)
+    why: Does not use "normalization" as a term, but immediately maps the
+      caveat onto a specific, already-anticipated opposing argument
+      ("your ward just has more riders") and says silence on it costs him
+      the room; would accept rough proxies (trip-start counts, commute
+      mode share) as good enough, but explicitly ranks an honest "we don't
+      know" above a fake-precise number he couldn't defend.
 
-data_they_bring: A weekly constituent call/email tally that feeds his alderwoman's Monday briefing (his literal words: "the real currency"); 311 counts used only as a workload/organizing signal, never a safety signal, cross-checked against his own 18-month hand-built block-level spreadsheet; a named CDOT liaison relationship and a fixed "pre-brief" ritual two days before any community meeting; the ATA's annual ward letter as his default-trusted crash-number baseline; Streetsblog and Block Club monitoring as an early-warning function so a reporter never catches him flat-footed; the City Clerk's eLMS/Legistar for committee agendas; quarterly screenshots of Ward Wise's menu-money map as an ad hoc historical archive against silent site changes; a standing "scar sheet / brag sheet" spreadsheet of every ward safety project (promise text, date, source-of-promise tier, status, a "who to call" contact); and secondhand, hallway-sourced institutional lore (like the CDOT economic/sales-tax study) that circulates among chiefs of staff as "plausible but unverified," useful in conversation but never citable as-is.
+data_they_bring: A hand-built, block-level crash spreadsheet pivoted from
+  the city crash portal by lat/long box (since there's no clean corridor
+  filter); a running 311-complaint log by block used to counter "nobody
+  complains about that corner"; a cross-office shared doc re-keying OBM
+  menu-spend PDFs year over year (because the PDFs can't be diffed);
+  a screenshots-by-year archive of press mentions of the alderman, kept
+  for fast retrieval under a reporter's deadline.
 
-deal_breakers: (1) Any OYL number that contradicts the ATA ward letter or Ward Wise without an obvious, citable explanation — he says he'd stop trusting the site fast and default back to ATA, "because they've never made us look worse than we actually are without cause," since he has no bandwidth to referee two sources against each other. (2) Slow performance or more than two clicks to reach his ward — "I don't explore," given roughly forty minutes a week for this entire topic. (3) A polished, ready-made export (e.g., a finished one-pager) that looks done enough to hand his alderwoman as-is while carrying an unreconciled methodology difference from ATA — its very polish removes the moment he'd otherwise catch the mismatch himself, which is precisely the scenario he says burns him hardest. (4) A synthetic/mock layer (obstruction data) discoverable only via an easily-missed badge, which he treats as an active liability rather than a neutral gap, since it could put fabricated data in front of a specific constituent's block.
+deal_breakers: (1) Any mock/synthetic layer (the obstructions preview)
+  being mistaken for real data and attributed to his ward, even once,
+  even behind a gate — he says this alone ends his office's trust in the
+  whole site. (2) Being blindsided by a reporter, challenger, neighboring
+  office, or now an AI assistant citing a number from the site that his
+  own office didn't have first, especially a ranking, score, or news
+  match. (3) An ambiguous or misleading derived metric (sponsorship count
+  read as a vote record) being weaponized by name against his alderman.
+  (4) A fabricated-precision exposure/ridership number offered in place of
+  an honest data gap — he would rather the site say nothing than say
+  something indefensible.
 
-vocabulary: "pre-brief" (his fixed two-days-out ritual with the CDOT liaison before anything goes public); "one-pager, front only" (the format defined by his alderwoman's real reading conditions — a car between two events); "the room" / "that basement meeting" (the community-meeting audience whose reaction determines political outcomes, distinct from any data-driven audience); "loud vs. actually dangerous" (his term for the gap between 311-organizing intensity and real crash risk); "hot corridor" (a 311-workload signal, explicitly not a safety claim in his usage); "defensive packet" (a pre-assembled bundle of numbers ready before a hostile meeting, drawn directly from the South Side cautionary tale); "scar sheet" / "brag sheet" (his standing promise-tracking document); "receipts" (documentary proof he needs on hand — not a FOIA — when a resident invokes a past promise); "promised-versus-delivered" (his term of art for the single biggest data gap in his world); "menu money" (aldermanic discretionary capital budget, the OBM-governed process the flagged spending layer maps to); "who to call" (his tracking column for the current live contact on a stalled project, reflecting staff turnover as an operating risk); "sanity-check" (reformatting raw data himself before trusting it, versus accepting a finished export); "burned" (his repeated term for the reputational cost of citing a number that later gets contradicted in public).
+vocabulary: constituents, "the ward," menu / menu money, CDOT, "the
+  commissioner," committee, "my alder," briefing, one-pager, "the
+  community process," CAPS meeting, ward night, "we got forty calls,"
+  precinct, prerogative, "workload record" (his own coinage for 311, in
+  deliberate contrast to "danger record"), "press liability," "blindside."
+  He never adopts interviewer terms like "danger index," "normalization,"
+  "agent layer," or "comfort floor" — flags "comfort floor" explicitly as
+  meaningless outside advocacy circles and treats "agent layer" purely as
+  the interviewer's jargon, translating it back to "an AI assistant
+  answering questions" in his own words.
+```
