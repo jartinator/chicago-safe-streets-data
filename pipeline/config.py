@@ -357,7 +357,7 @@ DIVVY_MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.15"
+CONTRACT_VERSION = "1.16"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM

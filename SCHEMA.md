@@ -1062,3 +1062,81 @@ only — no existing key changes shape or meaning.
   `data_tier`, and say plainly (never estimate) when asked for data this
   API doesn't publish (ridership/exposure denominators, real obstruction
   reports).
+
+### data/commitments.json — checked-in editorial roster (pipeline INPUT), tier real
+
+Curated editorial roster (not pipeline-derived) of the City of Chicago's
+*published* bikeway-network commitments, each with a direct citation — kept
+separate from anything OYL measures itself (the `data/main_routes.json`
+pattern). Top level: `note` (methodology + FOIA cross-reference), then
+`commitments: [{ id, text, number, unit, year_committed, deadline (nullable),
+source_name, citations: [url], data_tier: "real" }]`. Consumed by
+`pipeline/commitments_metrics.py::build_commitments_finding` to produce the
+`commitments-vs-delivered` finding in `findings.json`; the finding is skipped
+entirely if the roster is empty. Add new commitments only with a citable
+public source — never inferred or estimated numbers.
+
+## PLANNED (not yet published): divvy_ward_exposure.json — tier proxy
+
+**Status: scaffolding only — no real numbers exist yet, and nothing below is
+contract until it ships.** `pipeline/pull_divvy.py` and the `pipeline/config.py`
+Divvy stanza exist so a future session can run the real ingest without
+re-deriving the source/shape decisions; it has not been run in this PR
+because a monthly Divvy trip export is 100MB+ and validating that volume of
+real numbers for publication is out of scope here (mirrors the Smart Streets
+`smart_streets_enforcement.json` FOIA-pending precedent above). Publishing
+this file (and any keys it adds) requires the usual `CONTRACT_VERSION` bump
+at that time.
+
+Per-ward Divvy trip-density, aggregated from Lyft's public monthly trip
+exports (`divvy-tripdata.s3.amazonaws.com` — the modern feed; the old Data
+Portal "Divvy Trips" set is deprecated). Trips are grouped to station level,
+then station points are joined to wards by point-in-polygon. Target shape:
+
+```
+{ data_tier: "proxy", status: "ok" | "no_data_yet", as_of, source_key, note,
+  wards: [{ ward, trip_count }] }
+```
+
+Rules already settled: this is a SYSTEM-AREA-BIASED PROXY FOR CYCLING VOLUME,
+NOT EXPOSURE — it covers Divvy trips only (not all cycling), and station
+placement itself skews downtown/North Side vs. the West Side, so an absent or
+low ward count means fewer stations, not necessarily less riding. This number
+is never divided by, or used to divide, crash counts — no per-rider risk rate
+is ever computed from it; it is published only as ward-level CONTEXT beside
+crash counts (a future ward-page integration, not this PR).
+
+## Contract v1.16 changes (obstruction-layer removal; promise-vs-delivered seed; Divvy scaffolding)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.16"`, and
+`site/data/meta.json`'s `contract_version` is hand-set to match. This round is
+**not** purely additive — it includes one breaking removal (below).
+
+- **BREAKING — the synthetic obstruction layer is removed.** The published
+  file `site/data/obstructions_mock.geojson` (tier `mock`), its generator
+  `pipeline/make_mock_obstructions.py`, the gated preview page, and the
+  `obstructions` entry in `meta.json`'s `sources` are all deleted. Removing a
+  previously-published dataset file is a breaking change for any consumer that
+  fetched it. OYL now publishes **no obstruction data at all** — the site and
+  `llms.txt` say so plainly and point to Bike Lane Uprising as where real
+  blocked-lane reports go (maintainer decision; user-needs study P8 / T3). The
+  `mock` tier remains in the `DATA_TIERS` vocabulary and the normalized
+  obstruction *schema* remains documented above as a swap-in target (the
+  Smart Streets FOIA projection still targets it) — but no file is produced
+  from it. The `/api/v1/` namespace never carried obstruction data and still
+  doesn't; its disclaimer copy was updated to reflect the removal.
+
+- **Added `commitments-vs-delivered` finding** (in `findings.json`, tier
+  `derived`): pairs the 2023 Chicago Cycling Strategy's 150-new-miles /
+  80%-low-stress commitment against the current bikeway-network snapshot
+  (`bikeway_mileage_series.json`). Backed by the new curated roster
+  `data/commitments.json` (documented above) via
+  `commitments_metrics.build_commitments_finding`. The finding's caveat states
+  plainly that delivery-since-commitment is **not** measurable from OYL data
+  (no install dates) pending the ready CDOT install-date FOIA
+  (`docs/outbox/2026-07-12--foia--cdot--bikeway-mileage-history.md`, item 4).
+
+- **Divvy exposure scaffolding (PLANNED, no data published)** — see the
+  `divvy_ward_exposure.json` PLANNED section above. `pipeline/pull_divvy.py`
+  and the `config.py` Divvy stanza ship as scaffolding only; nothing is
+  published and no contract shape is added this round.
