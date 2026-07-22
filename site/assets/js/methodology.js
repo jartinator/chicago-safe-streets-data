@@ -113,9 +113,9 @@
         last refresh date, and recent months are provisional. <strong>CSV exports begin with
         “#” comment lines</strong> carrying the dataset name, tier, as-of date, and key
         caveat — strip lines starting with <code>#</code> when parsing. Findings cards carry
-        their own as-of line so screenshots stay attributable. Synthetic demonstration data (the
-        obstruction schema preview) never appears on the main maps and is watermarked wherever it
-        renders.</p>`,
+        their own as-of line so screenshots stay attributable. On Your Left! publishes no
+        obstruction data — see a blocked bike lane? report it at
+        <a href="https://www.bikelaneuprising.com" target="_blank" rel="noopener">Bike Lane Uprising</a>.</p>`,
     },
   ];
 

@@ -1,210 +1,683 @@
 # Interview: uk-ward-campaigner
 
+**Run date:** 2026-07-21
+**Stimulus:** `02-data-inventory.md`, data contract **v1.14** (re-run — see new
+areas since the last pass: home/orientation page, ward one-pager,
+methodology page, the static agent API `/api/v1` + `llms.txt`, news-coverage
+layer, proposed-projects roster, PeopleForBikes BNA score, and the
+bike-lane-obstruction layer's move to a gated `obstructions-preview.html`).
+
 ## Round 1 transcript
 
-**Interviewer:** Thanks for making time. Can you describe your role, and walk me through the last decision you tried to influence about street safety — step by step?
+**Interviewer:** Thanks for coming back. Same as before — describe your role,
+and walk me through the last decision you tried to influence about street
+safety, step by step.
 
-**Priya Shah:** I coordinate the Thameside Cyclists borough group — that's my invented patch, think somewhere between Southwark and Lewisham, twelve active volunteers, Cyclescape as our hub. Day job I'm a data analyst for a housing association, so I end up doing the numbers for the group by default, whether I want to or not.
+**Priya Shah:** Still Thameside Cyclists, still twelve volunteers, still me
+doing the numbers because I'm the one with a day job in data. The live one
+right now is a Liveable Neighbourhood consultation — new branding, same fight
+as the old LTN rows — covering a chunk of ward that includes a secondary
+school on Ilderton Road. I've got until the end of August to get a submission
+in before the committee looks at it in September.
 
-Last real one: back in April our council put out a consultation on a school streets scheme near St. Olave's — closing one road at drop-off and pickup times. I had three weeks to build the case before the committee meeting. Step one, I pulled STATS19 casualty data for that stretch of road via CycleStreets' collision reports — filtered to pedal cyclists, five years back, because the ward councillor, Councillor Fenwick, always asks "is this actually dangerous or does it just feel dangerous." Step two, I cross-checked against TfL's Strategic Cycling Analysis to show the road sits on a route-potential corridor, so it's not just a school-safety ask, it's a network ask too — that dual framing matters because it gets Environment *and* Transport committee members interested, not just the parents. Step three, I built a one-page before/after table from a similar scheme two boroughs over, because raw "school streets reduce danger" claims get torn apart — you have to show the boundary-road displacement numbers too, or the first question from a skeptical committee member is "so you've just pushed the danger onto Jamaica Road instead." That table alone took me an evening, cross-referencing three separate council reports because none of them publish it as a clean download.
+Step one was pulling the last three years of STATS19 pedal-cycle casualties
+for the roads inside the proposed boundary, via CycleStreets, because the
+scheme's opponents' opening line is always "prove it's dangerous, not just
+annoying." Step two, cross-referencing against TfL's Strategic Cycling
+Analysis again, same as always, because I need the "this is also a network
+corridor" framing to get Transport committee members interested, not just
+Education. Step three — and this is new for this round — I actually tried to
+get ahead of the boundary-displacement objection *before* anyone raised it,
+because that's the lesson from the LTN fight I told you about last time. I
+built the before/after table pre-emptively this time instead of waiting to
+be asked for it. Took most of a Sunday.
 
-Who did I need to convince? Not really the councillor — she was sympathetic already. It was the highways officer, a woman named Priti Nagra, who has to sign off that it's operationally feasible and who's seen enough badly-evidenced consultation responses to be reflexively skeptical. "Convinced," for her, means: numbers that match her own systems, a source she can independently verify, and no claim I can't defend if a resident stands up and says "you're making that up."
+Who am I convincing? Same shape as always — not the councillor, she's already
+sympathetic, it's the highways officer who has to sign off feasibility.
+Different officer this time, a man called Desmond Okafor, newer to the role,
+which actually made this one harder — I don't yet know what he distrusts by
+instinct the way I knew with Priti.
 
-What do I touch in a normal week? Cyclescape threads for what other borough groups are logging, the Healthy Streets Scorecard when it's scoring season, TfL's counter dashboard if I need a growth trend, STATS19 via CycleStreets when there's a casualty question, and honestly a lot of screenshots — screenshots of consultation PDFs, screenshots of council minutes, because none of it lives in one place.
+**Interviewer:** What information do you touch in a normal week for this
+kind of work?
 
-**Interviewer:** Tell me about the last time you needed a number, map, or chart about bike safety. Where did you go, what did you do with it, how long did it take?
+**Priya Shah:** Cyclescape for what other borough groups are logging, TfL's
+counter dashboard, STATS19 via CycleStreets when a casualty question comes
+up, the Scorecard when it's scoring season — which it isn't right now,
+that's annual — and, I'll be honest, a WhatsApp group with three other
+borough coordinators where we just ask each other "has anyone actually
+verified this stat" before using it. That last one isn't a dataset, but it's
+genuinely part of my week. It's my informal version of what I'd want a
+credibility badge to do automatically.
 
-**Priya Shah:** That's basically the St. Olave's story, but let me give you a cleaner one — a leaflet. Every year around consultation season I put together an A4 leaflet for a specific corridor, because that's what gets handed out at the school gate or posted through doors, not a link to a dashboard nobody clicks. Last one was for a stretch near Peckham Rye. I needed: a map of the road with the crash points marked, the ward's rank on the Healthy Streets Scorecard, and one line about what the ask actually is with a date attached — "protected lane by 2027," something concrete.
+**Interviewer:** Tell me about a recent time you needed a number or chart and
+what you did with it.
 
-The map bit alone took most of an evening. TfL doesn't give you a clean export you can screenshot into a leaflet — you're either in their interactive collision map, which has too much chrome and a legend that doesn't fit on an A4 page, or you're pulling raw STATS19 rows into QGIS yourself and styling it, which I can do because of the day job but most of my group can't. I ended up doing it in QGIS, exporting a PNG, and then manually adding the ward's scorecard rank as a text box because the scorecard itself is a PDF, not something I can pull a number out of programmatically. Call it three hours for one leaflet covering maybe 400 metres of road.
+**Priya Shah:** The Ilderton Road before/after table, again, but let me give
+you a different one so I'm not just repeating myself — a councillor asked me
+in May, off the cuff, "how does our ward compare to the one next door on
+cycling infrastructure, not just danger." I didn't have a clean answer. The
+Scorecard gives me a composite 0–10 but that's about the *borough*, not the
+adjacent ward within it, and boroughs contain several wards with wildly
+different infrastructure. I ended up hand-counting protected-lane kilometres
+off a council PDF map for both wards, on a Saturday, with a ruler basically,
+because there's no ward-level infrastructure-mileage number anywhere in our
+system. Two hours, and I still don't fully trust my own count.
 
-**Interviewer:** What have you built yourself — spreadsheets, saved searches, screenshots, FOIA requests — because nothing gave it to you directly?
+**Interviewer:** What have you built yourself because nothing gave it to you
+directly?
 
-**Priya Shah:** A running spreadsheet, one row per ward in our borough, columns for scorecard rank, last consultation date, councillor name and known position, and a "last data check" column so I know how stale my own numbers are. That spreadsheet is the actual product of two years of volunteer time and if I lost it I'd genuinely lose weeks rebuilding it.
+**Priya Shah:** The spreadsheet's still going — two and a half years now,
+one row per ward, and I've added a column since we last spoke: "corridor
+demand source," because I got tired of re-deriving which SCA corridor a
+given ask sits on every single time. And a new one this year, sadly: a
+column literally called "is this number still true," because council data
+gets quietly revised and I've been caught citing something that changed
+underneath me without an announcement.
 
-I've also done two FOIA requests — one asking the council for internal traffic count data at a proposed LTN boundary because the council's own consultation report cited "traffic modelling" without publishing it. Took six weeks to come back and when it did it was a PDF of a spreadsheet, not the spreadsheet, so I had to retype half of it.
+**Interviewer:** Tell me about a time data, or the lack of it, sank an
+argument.
 
-And screenshots — endless screenshots. Committee agendas, because the council's own search doesn't let you filter by topic reliably. I keep a folder called "evidence" that's honestly just forty screenshots with filenames like "casualty_data_2024_TFL_pg12.png."
+**Priya Shah:** Nothing as dramatic as the LTN meeting this round, thankfully,
+but a smaller version — I cited a "recent" cycling-growth figure from a TfL
+counter near the school in a written submission, and a committee clerk
+pointed out, politely but pointedly, that the underlying count was from
+before a major diversion went in eighteen months prior, so it wasn't
+measuring what I claimed. Small, embarrassing, entirely avoidable if the data
+had carried a date more loudly. I now check "when was this actually
+measured" before "what does this say" every single time.
 
-**Interviewer:** Tell me about a time data — or the lack of it — sank an argument you were making.
+**Interviewer:** What data do you distrust, and why?
 
-**Priya Shah:** The LTN battle two years back, not in my patch but a neighbouring borough group's, and it taught all of us a lesson. They went to a packed public meeting with a headline stat — average traffic reduction inside the scheme — and a hostile resident had done his own homework and stood up with the boundary-road numbers, which showed an increase on his specific street. The average was true. It was also useless in that room, because he only cares about his street, not the borough mean. That group lost the meeting, not because the intervention was bad, but because they presented an average where they needed a distribution. Since then the rule in our group is: never bring a mean to a room full of people who live on named streets. If I can't show the spread — how many sites went up, how many went down, by how much — I don't bring the stat at all.
+**Priya Shah:** Same answer as last time, if I'm honest — anything modelled
+rather than counted, until I've seen the assumptions, because of the Waltham
+Forest air-quality business. And now, additionally: anything that claims
+currency without a visible date stamp, because of the counter incident I just
+described. A number with no date on it is worse to me than a number that
+admits it's six months stale, because at least the second one I can adjust
+for.
 
-**Interviewer:** What data do you distrust, and what earned that distrust?
+**Interviewer:** Let's walk the stimulus. Same city, same dashboard, but it's
+grown since we last looked — On Your Left, Chicago, read-only, ward →
+corridor → intersection. First thing that's new: there's now a home page
+before you even reach a map — orientation, headline stats, who it's for, and
+apparently a section explaining how to ask an AI assistant questions against
+it directly.
 
-**Priya Shah:** Anything modelled rather than measured, until I've seen the methodology. Waltham Forest's air-quality modelling from their Mini-Holland scheme got used all over London advocacy circles — "up to six weeks added life expectancy" — and then a local blog picked the King's College methodology apart publicly, and suddenly every pro-scheme campaigner who'd cited it, including some of us, had to walk it back or defend it in real time. It wasn't wrong exactly, but it was contestable, and I got caught not knowing that going in. Now if a number comes from a model rather than a count, I ask what the model assumes before I put it on a leaflet.
+**Priya Shah:** Genuinely didn't expect that last part. My first reaction is
+mild suspicion, not excitement — "ask an AI assistant" sounds like it's
+solving a problem I don't have. I don't ask a chatbot for a casualty count, I
+pull the row myself, because if I'm going to stand in front of Desmond Okafor
+I need to know exactly where the number came from, and "the AI told me" is
+not a sentence I can survive saying out loud in that room. So on first pass,
+that section isn't for me — it reads like it's for someone earlier in the
+funnel than I am, a resident maybe, not a campaign coordinator. The
+orientation part above it, though, "who it's for" — that I'd actually use,
+because I still don't fully know what's under the hood of this tool even
+after our first conversation, and a two-minute "here's what this is and
+isn't" page would have saved me some of the confusion I had last time with
+the schematic map.
 
-I also don't trust anything without a date on it. Council data especially — I've been burned by citing a "current" bikeway map that turned out to be eighteen months stale, and the highways officer knew it before I said a word.
+**Interviewer:** Tell me more about the suspicion — is it the AI framing
+specifically, or something about trust?
 
-**Interviewer:** Let's look at what an actual dashboard offers. This is a Chicago project called On Your Left — read-only, no report submission, tracks bike-lane obstructions, infrastructure, and crashes down to ward, corridor, and intersection level. I'll go area by area. First — there are two maps. One's a geographic map with crash density, the bikeway network graded by facility quality, wards, cameras, and route overlays. The other is a schematic "transit-style" map — twenty-one named routes, each a solid color end to end, station-style interchange nodes, an optional quality border.
+**Priya Shah:** It's that an AI assistant summarizing data for me adds a
+layer between me and the source I can't independently re-derive in a
+meeting. If Desmond asks "where does that 12% come from" I need to be able
+to say "the ward table, dated this week, methodology page section 4" — I
+can't say "I asked an AI and it told me." It's not that I think the
+underlying data's worse for being served that way, it's that *I* become a
+worse witness for it. Unless — actually, hold on, is the AI just reading the
+same published files I could read myself? If it's genuinely just fetching
+the same JSON I'd otherwise download, then it's a convenience layer, not a
+different data source, and that's less alarming. But you'd need to tell me
+that loudly, because my gut reaction was "black box," not "same data, faster
+lookup."
 
-**Priya Shah:** The geographic one, immediately I know what I'd do with it — that's my QGIS evening, done for me. Crash density plus facility grade plus ward boundary in one layer is exactly the leaflet map, if I can export it cleanly. First thing I'd check is whether I can actually get a clean crop out of it without their branding eating half the page, because that killed me with TfL's tool.
+**Interviewer:** That's right — it's a static API generated from the same
+committed files as the human site, versioned, nothing hidden behind it. Let's
+come back to that. Next: the two maps. Geographic — crash density, bikeway
+grade, wards, cameras, main routes. Schematic — twenty-one named routes,
+tube-map style, three tiers, opt-in quality border, comfort-floor filter.
 
-The schematic one — okay, my first reaction, genuinely, was "oh, this is their safety-by-corridor map, like a tube map with danger coded onto it," because that's the mental model I walked in with — Space for Cycling did something similar, coding the ask onto a route. So I went looking for where the crash data sits on it. And it's not there — you said it yourself, no safety data on that page. That's a real gap for me, not just a misreading: if I'm trying to make the case for a specific corridor, I want the report card and the danger on the same object, and instead I have to hold the schematic map in one hand and the geographic map in the other and mentally merge them. In Cyclescape terms that's like keeping route commentary in one thread and the incident log in another — technically fine, practically it means I do the merging, not the tool.
+**Priya Shah:** The geographic one's still my QGIS evening done for me, same
+as before, and I still want the clean unbranded export. The schematic one —
+I remembered this time that there's no safety data on it, so I didn't make
+the same mistake of expecting a "tube map with danger coded on," which I'll
+admit is progress on my part, not the tool's. What's new to me is the
+comfort-floor filter — "Any / Paint-plus / Protected-only" — and I actually
+like that quite a bit, more than I expected to. It's the closest thing here
+to how TfL talks about "Level of Service" bands for routes, and a resident
+deciding whether their kid can ride somewhere thinks in exactly those terms:
+"is this a real protected lane or is it paint in a bus lane." I'd screenshot
+that filtered view for a "why this specific corridor, not the one three
+streets over" argument, actually, which is closer to my SCA problem than I
+expected the schematic map to ever get me.
 
-**Interviewer:** The Findings page — curated cards, each a stat with a caveat and a deep link into the map: KSI trend, protected share, street coverage, top corridors, hit-and-run, ward concentration, dooring undercount.
+**Interviewer:** Findings page — curated cards including two new ones: the
+PeopleForBikes BNA citywide network score, and the general finding-card
+model with caveats built in.
 
-**Priya Shah:** This is the bit I'd actually forward to people. Councillor Fenwick doesn't want a map, she wants a sentence with a number and a source she can drop into a committee speech. If each card genuinely has the caveat attached — not buried in a footnote — that's more discipline than most council reports show. "Ward concentration" I like a lot, that's basically our spreadsheet's job done centrally. The one I'd interrogate hardest before using is the KSI trend — I'd want to know if that's a raw count or per-something, because a raw count going up in a growing cycling city isn't the same story as a rate going up, and I've watched a committee member get gently humiliated by mixing those up before.
+**Priya Shah:** Ah — I know of PeopleForBikes' BNA from cycling-advocacy
+Twitter, it comes up when Americans compare cities to each other, but I've
+never had to use one myself, we don't have a UK equivalent, we've got the
+Healthy Streets Scorecard instead, which scores boroughs against ten
+weighted indicators, not a single network-connectivity number. So my first
+read of "0 to 100 network score" was, again, to reach for the Scorecard
+mental model — I assumed it was a danger-adjacent composite the way our
+Scorecard blends inputs and outcomes. Then you said "network quality, not
+crash data" and "not a reason not to ride," and that second phrase actually
+did the job for me immediately — it's basically PeopleForBikes pre-writing
+the caveat I'd otherwise have to write myself, the way I asked for on the
+KSI card last time. I'd use this one exactly as a citywide comparator, "how
+does Chicago's network stack up nationally," which isn't my ward fight
+directly, but it's the kind of number a councillor likes dropped into a
+speech about ambition. I would not use it as evidence about any specific
+street, and the caveat sentence is doing real work stopping me from doing
+that by accident.
 
-**Interviewer:** The Table page — ward rankings, sortable, CSV export, with percent-protected and percent-of-streets-with-bikeways columns.
+**Interviewer:** The ward one-pager — a single printable page per ward:
+safety index, trends, infra stats, alderman contact and sponsorship record,
+menu-money proxy, and recent ward-matched news, all in one document.
 
-**Priya Shah:** Now we're talking my language, that's the closest thing to the Healthy Streets Scorecard structure — a rankable number per political geography. CSV export is the single most useful word you've said so far, honestly, because it means I can pull it into my own spreadsheet and merge it with my "councillor position" column, which nothing else here is ever going to have. That's the artifact I'd actually forward weekly if I had the choice — ward rank plus movement since last week, one email to the group.
+**Priya Shah:** Now *that's* the thing I've been asking you for since the
+first conversation, without knowing it existed. This is my leaflet, more or
+less, pre-assembled. Safety index, trends, alderman info, spend, and news all
+on one printable page is exactly the object I hand-build every consultation
+season, and you're telling me it's one file per ward, already made. My
+immediate question, before I trust it for a second, is the same question I
+had about the safety index last time — how much of this can I hand to a
+resident versus a councillor's aide, because those two audiences need
+different sentences around the same numbers. A resident reads "safety index
+71" as "71% dangerous," full stop, same misreading I told you about before.
+If the one-pager doesn't carry that caveat as loudly for a *resident* register
+as it does for a *technical* one, I'd have to intercept it before handing it
+out, which defeats the point of it being pre-made.
 
-I'd want to know, though — is this one composite score, or am I looking at two separate percentages I have to weigh myself? Because the scorecard's whole value to us is that eight NGOs already fought about the weighting so I don't have to. If this table just gives me raw percentages, I'm doing the weighting myself again, which is exactly the labor the scorecard saves me.
+**Interviewer:** It says it's written in brief and plain-language registers
+specifically for handing to an alderman or a neighbour.
 
-**Interviewer:** It's currently two separate metrics, not a single weighted score. There's also a "ward safety index," a 0 to 100 comparable danger score — a blend of crashes per ten thousand population and crashes per bikeway mile, described as relative, not absolute risk.
+**Priya Shah:** Good — that's the right instinct, but I'd want to actually
+see both registers before I trust the plain-language one hasn't quietly
+dropped the "relative, not absolute" caveat in the name of being readable,
+because that's exactly the kind of thing that gets simplified away when
+someone's optimizing for a neighbour's five-second attention span. Brevity
+and honesty are in tension on that specific number, and I've been burned
+enough times to want to check, not assume.
 
-**Priya Shah:** Right, and — okay, I'll be honest, my first instinct on hearing "0 to 100 danger score" was to read it the way I'd read the Healthy Streets Scorecard's 0-to-10 — as this ward is an X out of 100 dangerous, full stop, hand it to a resident and they'll understand it as "your streets are 71% dangerous." That's the sentence I'd almost have put in a leaflet. Then you said "relative, not absolute," and that's a genuinely different and much harder sentence to write for a school-gate audience — "your ward is more dangerous than most other wards, on this specific blend of two things," is true but it doesn't fit on a leaflet, and a hostile resident who's done their homework, like our LTN example, would absolutely find and use that gap. So I'd use it in an internal committee document where I can add a paragraph of caveat, but I would not put "50/100" on a leaflet without a very careful sentence around it, because that's exactly the kind of number that survives the room for five minutes and then gets picked apart for the rest of the meeting.
+The menu-money line on it, though — same reaction as before, it's flagged
+unverified against source PDFs, so it goes on my private read of the
+one-pager, not the copy I actually hand across a table, until someone's
+spot-checked it.
 
-**Interviewer:** Council records, per-alderman sponsorship counts and no-votes, aldermen contact details, and upcoming committee hearings.
+And the ward-matched news — that's new to me and I like it more than I
+expected, actually. Half my job is knowing "did the local paper already write
+about this street" before I walk into a meeting, because if a journalist's
+already covered it, that's a different opening line than if I'm introducing
+it cold. Right now I do that by manually searching one local outlet's site
+per ward, which is tedious and I usually only do it for my own ward, not
+neighbouring ones.
 
-**Priya Shah:** This is the one I'd get most excited about and also the one I'd interrogate hardest, because it's the closest thing to candidate-pledge tracking, which is our whole model — Space for Cycling scored every ward on a specific ask and published who pledged what, publicly, by name. If your per-alderman sponsorship record can survive a hostile alderman standing up and saying "that's not accurate, I voted for that," it's genuinely valuable. But you said it's a sponsorship count, not a vote tally — that distinction matters enormously to me, because sponsoring something and voting for it are different acts of political courage, and if I present sponsorship as if it's a voting record, that's exactly the kind of thing that gets me embarrassed once and never trusted again. So I'd use it, but I'd need the label on it to be loud, not a footnote, because I guarantee some volunteer in my position would misread "sponsored" as "voted for" the first time and put it in a leaflet.
+**Interviewer:** How exactly do you use that "has the paper covered it"
+check — walk me through what changes if the news card is there versus you
+searching manually?
 
-The hearings calendar I'd use immediately and without hesitation — that's a "when do I show up" tool, no interpretation risk. The alderman contacts, same, that's just an address book, useful, unglamorous.
+**Priya Shah:** If I know a piece ran, I open my ask with "as [outlet] already
+reported" — instantly more credible than "I'm telling you this is a problem,"
+because now it's not just campaigner-says-so, it's independently
+documented. Manually, I search maybe once per consultation, for my own
+patch, and I miss things — a neighbouring ward's coverage that would've
+strengthened a network-wide argument, say. If OYL's already matched news to
+ward and alderman for me, I get the neighbouring-ward hits too, which I
+currently just don't have the time to go looking for. My one worry, and I'd
+ask this directly: how does it decide a story's "about" my ward — because a
+mis-match, a story about a different street wrongly tagged to my alderman,
+is exactly the kind of thing a hostile aide would delight in catching me
+repeating.
 
-**Interviewer:** There's also menu-money spending — an extract of aldermanic discretionary spend on bike safety per ward, and it's flagged as not verified against source documents.
+**Interviewer:** It's allowlisted RSS feeds only, matched by an auditable
+rule the site calls "via" — visible per match — and it favors precision over
+recall, so unmatched stories still show up citywide rather than being force-
+matched to a ward.
 
-**Priya Shah:** I don't have a direct London equivalent, so I'm translating on the fly here — it sounds like each ward councillor gets a small discretionary pot and this tracks how much of it went to bike safety. That's genuinely interesting as a "does your councillor put their money where their pledge is" number, which is very Space for Cycling in spirit. But "not verified against source PDFs" is the sentence that stops me. I've been burned exactly this way — cited a spend figure once from a secondary source, the highways officer pulled up the primary budget line at the meeting and it didn't match, and I looked careless in front of the one person whose trust I most needed. So this one goes in my private spreadsheet, not in anything public-facing, until someone's actually checked it against the PDFs. I'd probably assign a volunteer to spot-check five wards against source documents before I'd ever quote it to a councillor's face.
+**Priya Shah:** That "via" visibility is the bit that actually matters to me
+— if I can see *why* it thinks a story's about my ward before I repeat that
+claim, that's the same discipline as wanting the sponsorship link to point at
+a primary Legistar record instead of just asserting itself. I'd check the
+"via" once per story before quoting it, same reflex as everything else.
+Favouring precision over recall is the right call for my use case
+specifically — I'd rather manually catch three missed stories than
+accidentally cite one wrongly-matched one in front of Desmond.
 
-**Interviewer:** And finally the bike-lane obstruction layer — currently entirely synthetic, mock data, schema built to mirror a real crowdsourced tool pending a data-sharing agreement.
+**Interviewer:** Proposed and in-progress projects — a hand-curated roster of
+active bikeway proposals with a volunteer-reviewed status, status date, note,
+official links, and auto-joined news, but explicitly no geometry, because no
+machine-readable planned-bikeway layer exists anywhere.
 
-**Priya Shah:** No. That one I would not touch, and I want to say why clearly rather than just dismiss it — it's not that the idea is bad, obstruction data is exactly the kind of thing CycleStreets' Photomap fills for us in London, and I'd love a Chicago equivalent. It's that if I open a "mock" layer even once in front of my group, let alone in front of a councillor, and someone asks "where's this from" and the honest answer is "it's made up, pending a conversation," I have lost the room and possibly lost my own credibility for future visits. My persona rule, and it's a real rule I live by: I check source, date, and whether the highways officer can contradict it, before a number goes anywhere near a public meeting. A synthetic layer fails all three on principle. I'd rather have a stub that says "no data yet" — that's honest — than something that looks real and isn't. Genuinely, the badge system you're describing — real, proxy, mock, crowdsourced — I like that discipline a lot, more than most council-published data has. It's the mock badge itself doing its job, telling me not to use it. Good.
+**Priya Shah:** This is trying to be my SCA-equivalent problem from last
+time, isn't it — the "where's the demand/pipeline layer" gap I flagged. It's
+not quite that, and I want to be precise about why. TfL's Strategic Cycling
+Analysis tells me where a corridor *should* go based on modelled demand,
+independent of whether anyone's proposed it yet — it's a justification tool.
+This is a status tracker for asks that already exist, which is genuinely
+useful for a different reason: "is someone already fighting for my street, so
+I don't duplicate effort or, worse, contradict an ally's framing." That's a
+real, separate job — coordination, not justification — and I don't currently
+have a good way to check that for Chicago-shaped reasons, obviously, but even
+translating it to my own patch, I don't have a clean citywide view of "which
+of the twelve other borough groups are already working this stretch." So I'd
+actually use this, just not for the job I originally asked for. No geometry
+is a real limitation though — a card telling me a project exists on "Route X"
+without a line on a map means I still can't tell at a glance whether it
+overlaps the specific block I care about, I'd have to read the note text
+carefully every time.
 
-**Interviewer:** Let's do the scenario. You're building a ward-level campaign ask — like Space for Cycling, but for a Chicago ward. You open OYL. What do you look for first, and where does it fail you?
+**Interviewer:** Methodology page — a full explanation of how every number on
+the site is computed.
 
-**Priya Shah:** First thing, I go to the table, sort by the safety index, find the ward I'm building the ask for, and pull its rank. Second, I go looking for the equivalent of TfL's Strategic Cycling Analysis — some route-potential layer that tells me not just where the danger is but where the demand is, so my ask is "protected lane on this corridor because it's both dangerous and high-potential," not just "this ward is bad." And that's where it starts to fail me — from what you've described, the main-routes report cards are editorial, twenty-one curated corridors, which is useful but it's not the same as a demand-potential surface I could point to independently. If my ward's problem street isn't one of the twenty-one, I have no equivalent of the SCA to justify why this exact street, not the one three blocks over.
+**Priya Shah:** This is the thing I asked for indirectly last time, when I
+said I'd want the safety-index weighting one click away. My honest reaction
+is relief, and also — I probably won't read all of it, cover to cover, most
+weeks. But its existence changes what I'm willing to say out loud. If Desmond
+asks "how's this calculated" and I can say "here's the page, section on the
+safety index, here's the formula" instead of "I'm not sure, I just saw the
+number," that's the difference between looking prepared and looking like I
+copied a stat off a website. I'd read the specific section relevant to
+whatever number I'm about to cite, each time, rather than the whole document
+once. That's actually a more realistic habit for me than reading it
+cover-to-cover and remembering it — I'd bookmark the anchor for the safety
+index section specifically.
 
-Third, and this is the one that actually stops the ask cold — I go looking for a "what has this alderman pledged, publicly, that I can cite back to them at a ward night." The sponsorship data gets me partway, but Space for Cycling's whole mechanism was a public pledge tracker, yes/no, this specific ask, this specific candidate, and I don't see that here. Without it, I can build the danger case, but I can't build the accountability case, and in our world the accountability case is the one that actually moves votes.
+**Interviewer:** Now the two I most need your honest reaction to. First — as
+before, the obstruction layer. It's moved: it's no longer anywhere on the
+main maps at all, it's excluded from the API entirely, and it now lives on a
+separate, gated, watermarked preview page, clearly labeled synthetic, pending
+an actual data-sharing conversation with a real obstruction-reporting tool.
 
-**Interviewer:** Of everything OYL doesn't have, what single absence costs you most?
+**Priya Shah:** Good — that's the right move, and I'll say plainly that it's
+better than what you described last time, when it was mock but still sort of
+present on the main experience. Quarantining it, watermarking it, keeping it
+out of the API so nothing downstream can accidentally ingest it as if it were
+real — that's exactly the discipline I said I respected in the badge system
+before, just taken a step further. Would I ever open that preview page
+myself? Honestly, maybe once, out of curiosity about what the real version
+might eventually look like, the way I'd look at a mock-up in a proposal deck.
+But I would not screenshot it, quote it, or let a volunteer near it, because
+"gated and watermarked" still means someone determined enough can get a
+screenshot out of it, and a watermark doesn't stop a screenshot from
+circulating without the caption once it's out of my hands. If I were advising
+you, I'd say: good instinct, and I still wouldn't trust myself around it with
+a room full of volunteers I don't fully supervise.
 
-**Priya Shah:** No ridership data, easily. Every single crash number I've discussed today, I've silently been doing the same mental adjustment — is this ward dangerous because it's dangerous, or because loads of people cycle there so there are more chances for something to go wrong? TfL's sixty counters aren't perfect but they let me say "casualties per journey," not just "casualties." Without any exposure data at all, every raw count in this tool is one hostile resident's Freedom-of-Information request away from being reframed as "that's just because more people cycle there," and I won't have an answer.
+**Interviewer:** And second — the no-ridership-normalization position. It's
+unchanged: no cyclist-volume data joined anywhere, stated plainly, including
+now on the BNA card you just reacted to.
 
-**Interviewer:** If OYL handed you one export each week, what would it be, and who'd you send it to?
-
-**Priya Shah:** Ward table CSV, current week, with the two coverage percentages and the safety index, plus whatever changed since last week — new hearing scheduled, sponsorship count moved. I'd forward it to my own twelve volunteers, ward by ward, "here's your patch's number this week," because that's literally what our spreadsheet does manually and badly.
-
-**Interviewer:** The site refuses to normalize by ridership because it has no volume data, and says so. Does that change how you'd use it? What would you accept as good-enough exposure data?
-
-**Priya Shah:** It doesn't stop me using the raw counts, it just means I use them differently — as a "where to look," not a "how bad is it, definitively." I'd accept something rougher than TfL's counters, honestly — bikeshare trip counts by station, even just origin-destination volume from a bikeshare system, would get me most of the way, because I could at least say "high crash count, also high observed ridership here" versus "high crash count, low observed ridership" — that second one is the genuinely alarming pattern and right now this tool can't show me that distinction at all.
-
-**Interviewer:** Magic wand — one dataset that doesn't publicly exist appears, clean and current. What is it?
-
-**Priya Shah:** A public, per-alderman pledge tracker on a specific, named infrastructure ask — this exact corridor, protected by this exact year, yes or no, refreshed after every vote. That's Space for Cycling. Everything else in this tool is raw material; that's the thing that actually changes behaviour in the room, because politicians respond to being scored by name where their constituents can see it.
-
-**Interviewer:** One chart or map you could put in front of your hardest audience that ends an argument.
-
-**Priya Shah:** A single ward, one map, three layers on top of each other — crash points, with the dooring-undercount caveat visible, not hidden; the SCA-equivalent demand corridor running through it; and the alderman's sponsorship record sitting next to it as a name and a number, not an abstraction. That's the leaflet I currently spend three hours a week hand-building. If it existed pre-built, cited, and defensible, I'd stop building it myself within a month.
-
-**Interviewer:** What would make you stop using a site like this after trying it once?
-
-**Priya Shah:** One bad number presented with confidence. If I cite something from it at a committee meeting and the highways officer contradicts me from her own system, I don't come back — not because the rest of the tool is wrong, but because trust doesn't partially recover, it just resets to zero and I go back to QGIS and screenshots, which at least I know the failure modes of.
+**Priya Shah:** Also unchanged is my answer, really — it doesn't stop me
+using raw counts, it just means every one of them is a "where to look," never
+a "how bad, definitively," and I still do the same silent mental adjustment I
+described before: is this ward dangerous, or does it just have a lot of
+cyclists. What's slightly different this time is I've now seen the BNA
+score sitting next to the raw crash counts on the same Findings page, and
+that actually makes the gap more visible to me, not less — because the BNA
+score is a network-quality measure that implicitly assumes more good
+infrastructure correlates with more riders, which is a *volume-adjacent*
+claim dressed up as an infrastructure claim. If a hostile resident is sharp,
+they could point at a high-BNA, high-crash-count ward and say "see, more bike
+lanes causes more crashes," and without ridership data, nothing on this
+whole site can rebut that specific bad-faith reading cleanly. I still think a
+bikeshare-trip proxy would get me most of the way, same answer as before —
+it's not that I need TfL-grade counters, I need *something* that lets me say
+"more riders, not just more danger" in one sentence.
 
 ## Follow-up round
 
-**Interviewer:** Walk me through exactly what you'd need added to the schematic map for it to replace that manual merge — and would you trust a corridor-level rollup of ward-level danger data the same way you'd trust the geographic map's crash points?
+**Interviewer:** You said the AI-assistant section might be for someone
+earlier in the funnel than you. Who, specifically, and would you ever forward
+it to them?
 
-**Priya Shah:** Minimum, I'd want each of the twenty-one route segments coloured by tier — not a number, a tier, three or four bands, because that's readable at a glance the way the tube map itself is readable at a glance, that's the whole point of that visual language. Then a hover or click that gives me the actual figures underneath — crash count on that segment, the ward safety index for the wards it crosses, so I can go one layer deeper without leaving the page. What I would not want is the danger baked into the route's own colour permanently, the way the route identity colour is baked in now, because then I've lost "this is the Milwaukee Avenue route" as a fact and replaced it with "this is a dangerous route," and six months later when it's improved, the map's still red until someone remembers to recolour it.
+**Priya Shah:** Probably a resident who's never opened a dashboard in their
+life and wants a plain answer to "is my street dangerous" without learning
+to use a table or a map. If a neighbour asked me that on the doorstep, I
+might genuinely say "go ask the site's assistant thing, it'll walk you
+through it" — that's actually a real use, now that I say it out loud, I just
+wouldn't do it myself for anything I'm about to stand behind in a meeting.
+So: I'd forward it, but with a mental label attached — "good for a first
+look, not a citable source," the same tier I'd put a friendly explainer
+video in. I would not forward it to Desmond or to Councillor Fenwick. I'd
+forward it to the parent at the school gate who just wants to know if
+Ilderton Road is bad before deciding on a walking bus.
 
-And no, I wouldn't trust a corridor rollup the same as the geographic map's points, not automatically. A crash point is a crash point — date, location, done, I can verify it against STATS19 logic in my head even in a different country. A corridor rollup is already an aggregation decision someone made — do they weight by mile, by ward, by segment length — and that's exactly the kind of thing that quietly changes the answer depending on how you did it. I'd want the methodology one click away, same as I'd want it for the safety index. It's not that I distrust rollups on principle, it's that I've been burned by a "corridor score" before — a Space for Cycling ally rolled up borough scores into a network map and a councillor's aide found that one specific junction on her patch was worse than the segment colour implied, and made a fuss about it in public. Once bitten.
+**Interviewer:** Would that change if you knew, concretely, that the
+assistant only ever answers from the same versioned, published files a human
+could also download — no separate model-generated claims?
 
-**Interviewer:** Would a documented weighting methodology for the safety index be enough, or does trust specifically require a multi-stakeholder fight you can point to?
+**Priya Shah:** A bit, yes, and I appreciate you being precise about it just
+now rather than me having to assume the best. If it's genuinely constrained
+to citing the same published JSON, then technically I *could* use it and
+then go verify the specific file it pointed me to before repeating the claim
+— that's actually not so different from how I already treat a Findings card,
+which is also a pre-summarized version of some underlying number. The
+difference that still nags at me is that a Findings card is fixed and
+reviewable in advance by me, once, and I know exactly what it says every
+time I look at it — an assistant's phrasing of the same fact could vary
+answer to answer, and a hostile aide who asked the same assistant a slightly
+different question and got slightly different wording could make hay out of
+the inconsistency, even if the underlying number never changed. So: same
+data, lower risk than I first assumed, but not zero risk, and not something
+I'd rely on for a fixed quote I need to say identically twice.
 
-**Priya Shah:** Genuinely, a documented formula gets you most of the way there for me personally — I'm the data analyst, I can read a formula and decide whether the weighting makes sense on its own merits. But I'm not the one who has to defend it in the room. The reason the Scorecard's weighting works on a councillor or a resident is I can say "eight NGOs fought about this, including the ones who'd have benefited from weighting it the other way, and this is what they landed on" — that's a social proof, not a mathematical one. "OYL's own team chose these weights and documented them" is honest and I respect it, but it's one voice, and a hostile resident's next line is obvious: "well they built the site, of course their weighting favours whatever conclusion they wanted." I don't have that rebuttal ready with a single-author formula the way I do with the Scorecard.
+**Interviewer:** On the ward one-pager — if you had to pick only one of the
+two registers, plain-language or technical, to actually trust putting in
+front of a resident without checking it first yourself every time, which,
+and what would make you stop checking?
 
-So — practically — I'd use a well-documented single-author index in the same tier as the raw counts: fine for internal committee work, fine for my own worksheet, not the headline number I put on the leaflet next to the ward's name. If OYL ever got, say, Bike Lane Uprising, Active Trans, and a city planning voice to co-sign the weighting, that's the day it moves onto the leaflet. Until then it's a well-reasoned opinion with numbers attached, which is more than most council reports give me, to be fair.
+**Priya Shah:** The plain-language one, obviously, that's the one meant for
+the doorstep. What would make me stop checking it every time is if the
+"relative, not absolute" caveat on the safety index survived translation
+into that register in a form a resident would actually read — not "this
+index is relative" as jargon, but something like "this compares your ward to
+other wards, it's not a percentage chance of a crash." If I read that
+sentence once, in that register, and it held up, I'd trust future one-pagers
+from the same page template without re-checking each one, the same way I now
+trust a Findings card's caveat is there without re-reading the whole card
+every single time — I check the *pattern* once, then I extend trust to the
+template, not to each new instance individually. That's actually how most of
+my trust in this whole tool works, now that you make me say it: I don't
+re-verify every ward's number personally, I verify the *rule* the tool
+claims to follow once, hard, and then I trust the rule was applied
+consistently — until something breaks that trust, at which point it resets
+to zero the way I told you before.
 
-**Interviewer:** Suppose the KSI trend is a raw count, not a rate. Does that kill the card, does it move to internal-only, or is there a caveat sentence that still lets you forward it?
+**Interviewer:** On the proposed-projects roster — you said it solves a
+coordination job, not a demand-justification job. What would it need for you
+to actually use it that way, concretely, this consultation season?
 
-**Priya Shah:** It doesn't kill it, but it changes what sentence I'm allowed to write underneath it. A raw count on its own I will not forward — that's the exact trap the LTN meeting taught me, present the number that looks damning and let a hostile audience reframe it in five seconds. What would save it is a caveat that does the reframing for me, before anyone else gets to: something like "KSI count is up 12% since 2022; Chicago-wide cycling volume over the same period is not measured, so this may reflect more people cycling rather than more danger per rider." That sentence, forwarded, is actually stronger than silence, because it pre-empts the "you're just cherry-picking" line — I've named the limitation myself, in public, before a skeptic can hand it to me.
+**Priya Shah:** A status that tells me not just "active" but roughly *how*
+active — is this a funded, scheduled scheme, or is it a wishlist line item
+some councillor mentioned once at a ward forum three years ago. Right now
+"volunteer-reviewed status plus a status date and a note" sounds like it
+could cover that, if the note actually says which of those two worlds it's
+in, but I'd want that distinction to be a structured field I can scan across
+many projects at once, not prose I have to read project by project, because
+I'm trying to scan a whole ward's pipeline quickly, not read one entry
+closely. Concretely: before I submit for Ilderton Road in August, I'd want
+to check whether anything on this roster already covers that stretch, so I
+don't contradict an existing ask by proposing something incompatible — and
+for that I'd need the note to name the actual street, reliably, not just the
+route or ward, because "ward 14" is too coarse to tell me if it's my specific
+block.
 
-Without that sentence attached, it goes in the internal document, same shelf as the safety index — useful for Councillor Fenwick's private briefing, where I can talk her through it myself, not useful as a standalone card I hand to a volunteer to post on social media, because a volunteer won't carry the caveat forward the way I would.
+**Interviewer:** Last one — the news-matching "via" transparency. Would you
+actually click through and check it every time, or only sometimes, and what
+determines which?
 
-**Interviewer:** Concretely, how would you verify a sponsorship entry before citing it, and how does that differ from your menu-money check?
-
-**Priya Shah:** For sponsorship, I want the primary document, not OYL's summary of it — so if the card says Alderman X sponsored an ordinance, I want a link straight through to the actual Legistar record or whatever Chicago's equivalent of our council minutes is, not a number that just sits there asserting itself. If that link exists and the record actually says "sponsor," not "co-sponsor," not "referred," I'll cite it. If it doesn't link through, I do what I did with our own council — I go and find the primary agenda item myself before I put a name next to a number, because a councillor's aide correcting me publicly on my own group's Cyclescape thread taught me that "I read it on a summary page" is not a defence anyone respects.
-
-The difference from menu-money is really about who's doing the checking and when. Menu-money OYL has already told me is unverified against source PDFs — so the burden's explicitly on me, up front, before I ever use it, and I'd assign a volunteer to spot-check a handful of wards as due diligence, once, in advance. Sponsorship is presented as derived-but-sourced, so my check is reactive and targeted — I verify the specific entry I'm about to use, at the point of use, not the whole dataset in advance. One's "prove the dataset before anyone touches it," the other's "prove the one row you're about to say out loud."
-
-**Interviewer:** What do you actually do with a screenshot after saving it, and does the Findings-card model replace that folder?
-
-**Priya Shah:** Badly, is the honest answer — filename and a rough mental map of "that was around the Peckham consultation" is basically my search index, which is why finding something from eight months back sometimes costs me twenty minutes of squinting at thumbnails. The Findings cards wouldn't replace the folder, they'd replace maybe a third of it — the third that's me screenshotting a stat because there's nowhere else to get it cleanly. If the card exists with a live deep link and a date, I don't need my own screenshot of that stat, I just cite the card.
-
-But the folder's other job — proving what the council itself published, on a specific date, before they quietly edited the consultation page or the minutes changed on republication — no dashboard replaces that, because that's evidence of the council's own behaviour, not evidence about the street. That's the "gotcha" folder, and it stays mine regardless of what OYL does.
-
-**Interviewer:** At what geography would a ridership comparison need to live, and would a bikeshare-only proxy need its own trust caveat?
-
-**Priya Shah:** Ward table, as a third column, is the minimum useful version — station-density or trip-count per ward, sortable next to the safety index, so I can eyeball "high danger, high volume" against "high danger, low volume" the moment I'm scanning for my own ward. But the real payoff would be on the geographic map as an overlay I can toggle on the same corridor I'm already looking at, because the leaflet-building moment is exactly when I need both layers touching.
-
-And yes, absolutely it needs its own caveat, loud, same discipline as the mock badge — bikeshare-only volume undercounts personal-bike riders systematically, and in a city with real income and infrastructure disparities, that undercount probably isn't even, it's likely worse in wards with less bikeshare coverage. If that caveat isn't spelled out, I'd end up doing exactly what I warned about with the modelled Waltham Forest number — using a rough proxy as if it were a real one, until someone picks it apart in the room and I'm the one holding it.
+**Priya Shah:** Only when I'm about to repeat the claim to someone who could
+push back — Desmond, a committee document, anything with my name on it going
+somewhere official. If I'm just scanning the one-pager privately to get a
+feel for what's going on in a ward, I wouldn't click through every story, I'd
+skim headlines the way I skim my own news feed. The line for me is always
+the same one, actually, across everything we've talked about today: private
+situational awareness, no check needed; anything I'm about to say out loud
+where someone could contradict me, full check, every time, no exceptions.
+That's not really a rule about news matching specifically, it's just the
+rule, applied again.
 
 ## Analysis memo
 
 participant: uk-ward-campaigner
-confidence_notes: Priya's world (Cyclescape, STATS19 via CycleStreets, TfL's Strategic Cycling Analysis, the Healthy Streets Scorecard, FOIA turnaround times, borough/ward committee structure) is documented UK cycle-campaigning practice and she stays in-world throughout, including flagging her own translation moves ("I don't have a direct London equivalent, so I'm translating on the fly"). The one place the simulation runs slightly thin is the specificity of her reaction to Chicago's aldermanic "menu money" system — she reasons about it well by analogy (discretionary budget → "does your councillor put their money where their pledge is"), but a real UK campaigner encountering ward-level discretionary infrastructure budgets for the first time might have more confusion or more questions about mechanics than she shows; her read is a little too fluent. Her Space-for-Cycling-pledge-tracker fixation is well-evidenced and consistent across both rounds, so that latent need is high-confidence, not an artifact of one over-eager answer.
+confidence_notes: Priya stays in-world and consistent with the prior round —
+her Space-for-Cycling/Scorecard reflexes, her "check source, date, can the
+officer contradict me" rule, and her private-vs-public trust tiering recur
+naturally rather than being re-explained from scratch, which is a good sign
+the character is stable rather than improvised per-question. The one place
+the simulation runs thinner this round is her reaction to the agent API/AI-
+assistant framing: she reasons her way to a nuanced, plausible position
+(useful for residents, not for herself, contingent on data-source
+transparency), but a real UK data-analyst campaigner's first reaction to
+"ask an AI" branding in 2026 might be blunter — more dismissive or more
+alarmed about hallucination specifically — than the fairly measured, almost
+too-quick arrival at "same data, lower risk" she shows here once told how it
+works. Her read of the proposed-projects roster as solving "coordination, not
+justification" is a sharp, well-grounded distinction but is close to the line
+of her analyzing the product rather than just reacting to it; it's kept
+in-bounds because it's expressed entirely through her own translated
+experience (checking whether other borough groups are already working a
+stretch), not as a design proposal.
 
 stated_needs:
-  - need: A clean, croppable export of the geographic map (crash points + facility grade + ward boundary) suitable for a printed A4 leaflet, without tool branding/chrome consuming the page.
-    evidence_quote: "First thing I'd check is whether I can actually get a clean crop out of it without their branding eating half the page, because that killed me with TfL's tool."
-    underlying_job: Produce a physical, door-droppable, school-gate leaflet for a specific ~400m corridor within a evening, not a dashboard link nobody clicks.
-  - need: CSV export of the ward table so it can be merged into her own tracking spreadsheet (which has columns nothing in OYL will ever have, like councillor position).
-    evidence_quote: "CSV export is the single most useful word you've said so far, honestly, because it means I can pull it into my own spreadsheet and merge it with my 'councillor position' column."
-    underlying_job: Maintain a single running per-ward record that fuses OYL's numbers with her own political intelligence, refreshed weekly, forwardable to twelve volunteers ward-by-ward.
-  - need: Explicit, non-buried labeling that sponsorship counts are not vote tallies.
-    evidence_quote: "if I present sponsorship as if it's a voting record, that's exactly the kind of thing that gets me embarrassed once and never trusted again... I'd need the label on it to be loud, not a footnote."
-    underlying_job: Avoid citing a claim to a politician's face that the politician can publicly contradict, since one such error destroys her credibility for all future engagements with that audience.
-  - need: A per-alderman public pledge tracker on a specific, named infrastructure ask (yes/no, corridor, target year), refreshed after each vote.
-    evidence_quote: "A public, per-alderman pledge tracker on a specific, named infrastructure ask — this exact corridor, protected by this exact year, yes or no, refreshed after every vote. That's Space for Cycling."
-    underlying_job: Build the accountability case that "actually moves votes" — converting a danger finding into a named, public political commitment she can hold someone to at a ward night.
-  - need: A demand/route-potential layer (an SCA equivalent) independent of the 21 curated main routes, so a non-flagship street can still be justified as an ask.
-    evidence_quote: "If my ward's problem street isn't one of the twenty-one, I have no equivalent of the SCA to justify why this exact street, not the one three blocks over."
-    underlying_job: Frame a corridor ask as a dual case (danger + network demand) rather than just "this ward is bad," because dual framing is what gets both Environment and Transport-equivalent committee members to engage.
+  - need: A ward-level infrastructure-mileage comparison (not just a borough/
+    citywide composite), so she can answer "how does my ward compare to the
+    one next door" without hand-counting kilometres off a PDF map.
+    evidence_quote: "I ended up hand-counting protected-lane kilometres off a
+    council PDF map for both wards, on a Saturday, with a ruler basically,
+    because there's no ward-level infrastructure-mileage number anywhere in
+    our system."
+    underlying_job: Answer an off-the-cuff councillor question about relative
+    ward standing within hours, not days, without inventing a manual count
+    method each time.
+  - need: Loud, visible measurement dates on any statistic claiming currency,
+    not just a general "last updated" note on the site.
+    evidence_quote: "I cited a 'recent' cycling-growth figure... a committee
+    clerk pointed out... the underlying count was from before a major
+    diversion went in eighteen months prior... I now check 'when was this
+    actually measured' before 'what does this say' every single time."
+    underlying_job: Avoid citing a technically-true but functionally stale
+    number in an official submission where a clerk or officer can catch the
+    mismatch and damage her credibility.
+  - need: Explicit confirmation that an AI-assistant/agent layer answers only
+    from the same versioned published files a human could independently
+    download, not separately generated claims.
+    evidence_quote: "is the AI just reading the same published files I could
+    read myself? ... you'd need to tell me that loudly, because my gut
+    reaction was 'black box,' not 'same data, faster lookup.'"
+    underlying_job: Decide whether a new access channel is a citable-adjacent
+    convenience (safe to point a resident toward) or an unverifiable new risk
+    surface she must keep herself and her volunteers away from.
+  - need: The plain-language ward one-pager must carry the "relative, not
+    absolute" safety-index caveat in genuinely resident-legible language, not
+    have it simplified away in the name of brevity.
+    evidence_quote: "I'd want to actually see both registers before I trust
+    the plain-language one hasn't quietly dropped the 'relative, not
+    absolute' caveat in the name of being readable... Brevity and honesty are
+    in tension on that specific number."
+    underlying_job: Hand a pre-made artifact directly to a resident or
+    neighbour without having to personally intercept and re-caveat it first,
+    which is the entire point of it being pre-assembled.
+  - need: A structured (not prose-only) field on the proposed-projects
+    roster distinguishing funded/scheduled status from aspirational/wishlist
+    status, and reliable street-level (not just route/ward-level) naming.
+    evidence_quote: "I'd want that distinction to be a structured field I can
+    scan across many projects at once, not prose I have to read project by
+    project... 'ward 14' is too coarse to tell me if it's my specific block."
+    underlying_job: Quickly check, before submitting her own ask, whether an
+    existing proposal already covers or conflicts with her specific target
+    street, without reading every entry's free text closely.
 
 latent_needs:
-  - need: A distribution/spread view, not just a mean or an aggregate, for any comparative safety statistic (e.g., before/after, ward vs. ward).
-    inference_basis: She spontaneously narrated the LTN meeting loss caused by presenting a borough-wide average traffic-reduction stat to a room where a resident produced boundary-road (distribution) numbers that told a different story on his specific street; she stated the resulting standing rule is "never bring a mean to a room full of people who live on named streets. If I can't show the spread... I don't bring the stat at all." She never asked OYL for this directly, but it governs every reaction she gave to aggregated numbers (safety index, corridor rollups, KSI trend).
-    risk_if_wrong: If this is overfit to one bad memory rather than a general operating rule, OYL might over-invest in exposing distributions/spreads across every metric when campaigners actually just want the single defensible headline number most of the time — adding UI complexity for a need that's really about one specific stat type (traffic volume displacement), not a universal requirement.
-  - need: One-click, in-context access to the aggregation/weighting methodology behind any derived or rolled-up number (corridor tiers, safety index), not just a badge saying it's derived.
-    inference_basis: In the follow-up she explicitly generalized from being burned once by a corridor rollup ("Once bitten") to a standing practice: "I'd want the methodology one click away, same as I'd want it for the safety index." She distinguishes a crash point (self-verifying) from any rollup (an aggregation decision that "quietly changes the answer") — this is a structural distinction she draws unprompted, not a one-off complaint.
-    risk_if_wrong: If she's an atypically technical member of her persona class (she is literally a data analyst by trade), most real campaigners might never ask for or use a methodology link, making this a low-value affordance for the primary "just give me the leaflet number" use case; effort here could be better spent on caveats than on methodology exposition.
-  - need: Machine-readable, dated primary-source links for any claim about political action (sponsorship, spend), not just a citation to OYL's own derived summary.
-    inference_basis: She described her actual verification behavior twice — for sponsorship she wants "a link straight through to the actual Legistar record," and separately she recounted being corrected in public on Cyclescape for citing a summary rather than a primary document ("'I read it on a summary page' is not a defence anyone respects"). This is a documented behavioral pattern (what she does before citing anything to a hostile audience), not a stated feature request.
-    risk_if_wrong: If OYL is not actually sourcing sponsorship/spend data from verifiable primary records (Legistar-equivalent), promising deep links it cannot back would recreate the exact trust failure she fears — worse than not offering the feature at all.
-  - need: A caveat sentence pre-written and attached to any raw-count card (like KSI trend) that pre-empts the "you're cherry-picking / this is just more riders" objection, not merely a footnote flag that the number is a raw count.
-    inference_basis: In the follow-up she distinguished sharply between a card being merely labeled "raw count, not a rate" (which she said still would not be forwardable) and a card carrying a specific pre-written reframing sentence she could forward verbatim ("that sentence, forwarded, is actually stronger than silence, because it pre-empts the... line"). This is a specific, non-obvious design requirement she arrived at only when pressed on a hypothetical, but it is directly derived from her stated LTN-meeting lesson (own the limitation before a skeptic hands it to you), not invented.
-    risk_if_wrong: Over-engineering every card with editorializing caveat prose risks reading as advocacy spin rather than neutral evidence, which could undermine trust with a different, more skeptical audience segment (e.g., an alderman's staffer) even as it serves campaigners.
-  - need: Ridership/exposure proxy shown side-by-side with crash counts at ward level at minimum, ideally as a toggleable overlay on the geographic map at corridor level — and it does not need to be gold-standard counter data, a bikeshare-trip proxy would materially change her usage.
-    inference_basis: She independently arrived at the same "no ridership data" answer as her single biggest gap in two separate prompts (open-ended gap-probe and the explicit magic-wand-adjacent normalization question), and gave a concrete, lower bar than perfect data ("bikeshare trip counts by station... would get me most of the way") along with the specific comparison she can't currently make ("high crash count, also high observed ridership" vs. "high crash count, low observed ridership — that second one is the genuinely alarming pattern"). This is consistent, unprompted, and repeated across the interview, which is the strongest form of evidence available in this method.
-    risk_if_wrong: A bikeshare-only proxy she explicitly flagged as systematically undercounting personal-bike riders unevenly across wards (worse in low-bikeshare-coverage wards, which likely correlates with income/infrastructure disparities) could itself become a new source of the "modelled number gets picked apart" failure she described with Waltham Forest, if OYL ships it without the caveat she specifically demanded.
+  - need: A "verify the rule once, then trust the template" model of
+    engagement — she doesn't want to re-verify every individual instance of a
+    recurring artifact (ward one-pagers, Findings cards), she wants to
+    verify the underlying rule/pattern once and then extend trust to all
+    instances that claim to follow it.
+    inference_basis: She stated this explicitly and generalized it herself
+    unprompted in the follow-up: "I don't re-verify every ward's number
+    personally, I verify the rule the tool claims to follow once... and then
+    I trust the rule was applied consistently — until something breaks that
+    trust." This reframes nearly every other reaction in the interview (the
+    badge system, the "via" news transparency, the caveat language) as
+    instances of one underlying operating principle rather than isolated
+    preferences, which is a stronger and more economical inference than
+    treating each as separate.
+    risk_if_wrong: If OYL treats this as license to under-invest in per-
+    instance quality (assuming "the rule was stated once, so any instance is
+    fine"), a single visible violation of the rule (one bad ward one-pager,
+    one wrongly-matched news story) could collapse trust in the entire
+    template class at once, which is a much larger blast radius than if she
+    genuinely checked each instance independently — the tool must actually
+    earn template-level trust, not just claim it.
+  - need: A distinction, surfaced somewhere on the site, between claims that
+    are "private situational awareness" grade versus "citable to a hostile
+    official" grade — essentially a confidence/citability tier orthogonal to
+    the existing real/proxy/mock badge.
+    inference_basis: She drew this line explicitly and repeatedly across
+    unrelated features (the AI assistant, the news "via" links, generally):
+    "private situational awareness, no check needed; anything I'm about to
+    say out loud where someone could contradict me, full check, every time."
+    This is a consistent behavioral filter she applies to everything shown to
+    her, not a one-off answer to one question, and it doesn't map onto the
+    existing real/proxy/mock/crowdsourced/derived badge, which grades data
+    provenance, not situational stakes.
+    risk_if_wrong: If this is idiosyncratic to her (a data-analyst-by-trade
+    habit of mentally tiering evidence by stakes), most users may not
+    separate "private glance" from "public citation" at all, making an
+    explicit UI distinction between the two unnecessary complexity for
+    everyone except the small subset of users, like her, who face a hostile
+    technical gatekeeper as a matter of routine.
+  - need: A visible mechanism (even just a documented sentence) addressing
+    the specific bad-faith reframing risk that a high-BNA/high-crash-count
+    ward could be read as "more bike lanes causes more crashes," given no
+    ridership data exists to rebut it.
+    inference_basis: She connected two previously separate reactions
+    (the BNA score's citywide framing and the no-ridership-normalization
+    caveat) unprompted, once she saw them on the same Findings page, and
+    named a specific adversarial argument ("more bike lanes causes more
+    crashes") that nothing on the site currently has an answer to. This is a
+    new inference this round specifically because it required both stimuli
+    (BNA card + raw crash counts) to be presented together, which only
+    happened due to this run's new BNA feature — it did not exist as a
+    latent need in the prior round.
+    risk_if_wrong: This may be a low-probability adversarial argument that
+    real hostile residents rarely actually make (most objections in her prior
+    stories were about displacement and staleness, not this specific
+    correlation-causation move); over-engineering a rebuttal to a rare attack
+    vector could distract from more commonly-needed caveats.
+  - need: A per-ward or per-corridor register of "who else is already
+    working this" — a coordination signal distinct from a justification/
+    demand-potential signal — that surfaces overlapping or adjacent
+    volunteer/advocacy effort, not just official project status.
+    inference_basis: She reinterpreted the proposed-projects roster's
+    purpose for herself unprompted, distinguishing it sharply from her
+    stated SCA-equivalent ask from the prior round ("It's not quite that...
+    This is a status tracker for asks that already exist... that's a real,
+    separate job — coordination, not justification"), and grounded it in a
+    concrete translated need ("I don't have a clean citywide view of which
+    of the twelve other borough groups are already working this stretch").
+    risk_if_wrong: Chicago's civic-advocacy landscape may not have an
+    equivalent density of overlapping local groups the way London's 30
+    borough groups do, making a "who else is working this" layer solve a
+    problem that doesn't really exist at Chicago's scale or organizational
+    structure — this could be an artifact of importing a London-specific
+    organizational reality onto a different city.
 
 reactions_to_existing:
-  - feature: Geographic map (crash density + facility grade + wards + cameras)
+  - feature: Home/orientation page with AI-assistant explainer section
+    verdict: would-use (for others) / ignores (for herself)
+    why: Reads it as aimed at someone earlier in the funnel than her; would
+    forward it to a resident or neighbour as a "good first look, not
+    citable" resource, but would not use it herself for anything she has to
+    defend to a skeptical official, and her suspicion softened only
+    partially once told the assistant is constrained to the same published
+    files.
+  - feature: Schematic route map's comfort-floor filter (Any/Paint+/
+    Protected-only)
     verdict: would-use
-    why: Matches her existing QGIS workflow almost exactly ("that's my QGIS evening, done for me"), contingent on being able to export a clean, unbranded crop for a leaflet.
-  - feature: Schematic transit-style route map (21 routes, no safety data)
-    verdict: misreads then ignores-as-is
-    why: Her walked-in mental model (a "tube map with danger coded onto it," from the Space for Cycling analogy) does not match what the page actually is; once corrected, she identifies it as a genuine gap requiring manual merge with the geographic map, and specifies concrete minimum requirements (tiered coloring, not permanent baked-in danger color) before she'd trust it for her workflow.
-  - feature: Findings cards (KSI trend, ward concentration, dooring undercount, etc.)
+    why: Unprompted positive reaction, maps directly onto how she already
+    thinks about route quality tiers (TfL "Level of Service"-style bands) and
+    gives her a screenshot-able artifact for justifying a specific corridor
+    over an adjacent one, closer to her SCA-equivalent need than she expected
+    the schematic map to get her.
+  - feature: PeopleForBikes BNA citywide score
+    verdict: would-use (citywide comparator only) / distrusts (as
+    street-level evidence)
+    why: Initially misread through her Scorecard mental model as a
+    danger-adjacent composite; the "network quality, not crash data" and
+    "not a reason not to ride" caveats corrected this quickly and she
+    praised the caveat as pre-doing work she'd otherwise do herself, but she
+    flags it creates a new adversarial reading risk when placed next to raw
+    crash counts absent ridership data.
+  - feature: Ward one-pager (safety index, trends, alderman info, menu-money,
+    ward-matched news, one printable page)
     verdict: would-use, conditionally
-    why: Directly matches the "sentence with a number and a source" artifact her councillor wants; she'd forward most cards as-is but singled out KSI trend as needing rate-vs-count clarification before forwarding, and specified exactly what caveat language would rescue it.
-  - feature: Ward table (rankings, CSV export, two coverage percentages)
-    verdict: uses
-    why: Closest analog to the Healthy Streets Scorecard she already relies on; CSV export specifically named as the most valuable single word in the whole interview because it lets her merge OYL data into her own spreadsheet.
-  - feature: Ward safety index (0-100 relative score)
-    verdict: distrusts (for public use), would-use (internal)
-    why: Her first instinct was to misread it as an absolute-risk score the way she reads the Scorecard's 0-10; once corrected to "relative," she judged it too easily picked apart by a prepared hostile resident to put on a leaflet, but fine for an internal committee document with a caveat paragraph she writes herself.
-  - feature: Council records (sponsorship counts, no-votes, hearings calendar, alderman contacts)
-    verdict: would-use, conditionally / uses (hearings, contacts)
-    why: Sponsorship data is "the closest thing to candidate-pledge tracking" she wants but requires loud (not footnoted) labeling that sponsorship ≠ vote, plus a primary-source link before she'd cite it; hearings calendar and contacts she'd use immediately with no reservation, "no interpretation risk."
-  - feature: Menu-money spending (unverified against source PDFs)
-    verdict: distrusts
-    why: Explicitly parallels a past incident where she cited a secondary-source spend figure and was contradicted by the highways officer from the primary budget document in front of the person whose trust mattered most; goes into her private spreadsheet only, pending volunteer spot-checks against source PDFs.
-  - feature: Bike-lane obstruction layer (entirely mock/synthetic)
-    verdict: distrusts / would-never-use
-    why: Fails her three-part pre-use check (source, date, whether the highways officer could contradict it) "on principle" regardless of labeling; she praises the badge system itself as sound discipline and says a "no data yet" stub would be preferable to a synthetic layer, however honestly marked.
+    why: Immediately recognized as the pre-built version of the leaflet she
+    hand-assembles every consultation season; contingent on verifying the
+    plain-language register actually preserves the safety-index caveat, and
+    still treats the menu-money line as private-use-only per her established
+    unverified-data rule.
+  - feature: Ward-matched news coverage with auditable "via" match reasoning
+    verdict: would-use, conditionally
+    why: Directly replaces a manual per-ward local-news search she currently
+    only has time to do for her own ward, extending coverage to neighbouring
+    wards for free; she would check the "via" link before any public-facing
+    citation but not for private situational scanning — an instance of her
+    broader private-vs-citable tiering rule.
+  - feature: Proposed & in-progress projects roster (no geometry)
+    verdict: would-use, for a different job than justification
+    why: Reinterpreted its purpose as solving cross-group coordination
+    ("who else is already working this stretch") rather than her originally-
+    stated demand-justification gap; the lack of geometry and prose-only
+    status description limits how quickly she could scan it against her own
+    target street.
+  - feature: Methodology page
+    verdict: would-use (as a reference, not read cover-to-cover)
+    why: Its existence changes what she's willing to assert in an official
+    setting ("here's the page, here's the formula" vs. "I'm not sure"); she
+    expects to bookmark and cite specific sections at point of use rather
+    than read it in full.
+  - feature: Bike-lane obstruction layer, now gated/watermarked on a separate
+    preview page, excluded from maps and API
+    verdict: distrusts / would-never-cite, but approves of the containment
+    why: Explicitly judges this an improvement over the prior mock layer's
+    placement, praising the quarantine as consistent with the badge-system
+    discipline she praised before; still would not let a volunteer near it
+    or screenshot it, noting a watermark doesn't stop a screenshot from
+    circulating without its caption once it leaves the page.
+  - feature: No-ridership-normalization stance (unchanged, now cross-referenced
+    against the BNA score)
+    verdict: distrusts raw counts as standalone evidence, uses them as a
+    "where to look" signal
+    why: Same position as the prior round, but newly sharpened: seeing the
+    BNA score and raw crash counts on the same page surfaced a specific
+    adversarial reading (more infrastructure "causing" more crashes) that a
+    bikeshare-trip-level exposure proxy would let her pre-empt.
 
-data_they_bring: TfL's Strategic Cycling Analysis (route-potential/demand overlay independent of crash data); the Healthy Streets Scorecard (a multi-stakeholder-weighted, socially-legitimated composite score she treats as more citable than any single-author formula); STATS19 collision data via CycleStreets (granular, verifiable crash records she cross-references mentally even across countries); TfL's cycle counter network (an imperfect but real ridership-normalization source, "casualties per journey" not just "casualties"); her own two-year, hand-built ward tracking spreadsheet (rank, consultation date, councillor position, staleness flag); CycleStreets' Photomap (crowdsourced obstruction data — the real-world analog she wants OYL's mock layer to eventually become); and the Space for Cycling public per-candidate pledge-tracking model, which she repeatedly names as the single mechanism in her world that most directly converts data into political behavior change.
+data_they_bring: TfL's Strategic Cycling Analysis (demand/route-potential
+layer, independent of crash data, her benchmark for "why this street"); the
+Healthy Streets Scorecard (multi-stakeholder-weighted composite she treats as
+more citable than any single-author index, and the mental model she
+mistakenly reaches for on both the safety index and the BNA score); STATS19
+via CycleStreets (granular, dated, independently verifiable crash records);
+TfL's cycle-counter network (an imperfect but real exposure source, "more
+riders, not just more danger"); a two-and-a-half-year hand-built ward
+spreadsheet, now with an added "is this number still true" staleness column;
+an informal cross-borough WhatsApp verification habit ("has anyone actually
+checked this stat") that functions as an ad hoc trust layer OYL's badge
+system partially automates; and her own manual, ruler-on-a-PDF-map method for
+ward-level infrastructure comparison, which a ward-level mileage stat would
+retire outright.
 
-deal_breakers: (1) Any single instance of citing an OYL number at a committee meeting or to the highways-officer-equivalent that gets contradicted from that person's own primary system — she is explicit that trust "resets to zero" and does not partially recover, and she'd revert entirely to QGIS and screenshots. (2) Presenting a synthetic/mock data layer as if usable, regardless of labeling — she would not touch it even once in front of her group. (3) A composite or weighted score presented as if it carries the social legitimacy of a multi-stakeholder process (like the Scorecard) when it's actually single-author — she'd use it privately but treat public presentation of it as reputationally risky for herself.
+deal_breakers: (1) Any statistic presented as current without a visible
+measurement date, given she was already burned this round by a stale counter
+figure a clerk caught in a submission. (2) A plain-language artifact (like
+the ward one-pager) that quietly drops a load-bearing caveat (the safety
+index's "relative, not absolute" framing) in the name of readability — this
+would force her to intercept and re-caveat every pre-made artifact herself,
+destroying the labor-saving point of it existing. (3) Any single instance
+where a "rule" the site claims to follow (a badge, a caveat, a "via" match)
+turns out not to hold for one specific instance — per her newly explicit
+verify-the-rule-once-then-trust-the-template model, one broken instance
+doesn't just cost her that one number, it collapses her trust in the entire
+class of artifact.
 
-vocabulary: "convinced" (a specific, definable bar of proof for a skeptical technical gatekeeper, not general persuasion); "the ask" (the specific, dated infrastructure request attached to a campaign, e.g. "protected lane by 2027"); "displacement" / "boundary-road numbers" (danger or traffic pushed onto an adjacent street by an intervention); "a mean vs. a distribution/spread" (her core epistemic distinction for what survives a hostile public meeting); "relative, not absolute" (the safety-index framing she treats as true-but-leaflet-unsafe); "sponsorship vs. vote" (a load-bearing political distinction she insists must be loud, not footnoted); "primary source" / "primary document" (verification standard — a summary or secondary citation is not a defensible citation); "exposure" / "casualties per journey" (her term for ridership-normalized risk, as opposed to a raw count); "the gotcha folder" (her screenshot archive proving what a council published on a specific date, as evidence of the council's behavior, not the street's danger); "pledge tracker" (Space-for-Cycling-style public yes/no political commitment, her single highest-value missing artifact).
+vocabulary: "the ask" / "corridor" / "displacement" / "boundary-road numbers"
+/ "mean vs. distribution" / "relative, not absolute" / "primary source" /
+"exposure" (all carried over, unchanged, from the prior round); new this
+round — "Level of Service"-style bands (her frame for the comfort-floor
+filter); "is this number still true" (her new staleness-tracking column,
+now her explicit test for any claimed-current stat); "private situational
+awareness vs. citable" (her explicit two-tier stakes framework, applied
+across the AI assistant, news matching, and one-pagers alike); "verify the
+rule once, trust the template" (her explicit description of how she extends
+or withholds trust across repeated artifacts); "coordination, not
+justification" (her distinction between the proposed-projects roster's real
+use and the SCA-equivalent gap she originally asked about).

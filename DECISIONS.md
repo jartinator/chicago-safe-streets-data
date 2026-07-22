@@ -54,26 +54,30 @@ environment forced a deviation. Newest last.
    "what ward am I in" is answered by clicking the map (client-side
    point-in-polygon).
 
-10. **Schematic network map is geometry-faithful.** Screen 2 renders real
-    geometry without a basemap (thick transit-style lines) rather than a true
-    distorted schematic — a genuine DC-Metro-style schematization is a design
-    project of its own; this keeps the "read the network" job without inventing
-    geography.
-    - *2026-07-13:* geometry-faithful, but straightened at render time. Raw
-      CDOT/OSM vertices every few meters made lines read smudgy/squiggly at
-      metro-map stroke widths, so the network screen now runs all drawn
-      geometry through Ramer–Douglas–Peucker (40 m tolerance,
-      `BSDNet.schematicLatLngs`). Vertices are only dropped, never moved or
-      invented, and endpoints survive so segments stay connected — still not
-      a distorted schematic.
-    - *2026-07-13 (same day, metro-map pass 2):* trail strokes slimmed to the
-      main routes' 6/9 px (tiers now read by outline color, not bulk), all
-      stroke weights scale with zoom (`BSDNet.zoomWeightFactor`, 0.6 at the
-      citywide fit → 1 at street zoom), and holes inside a roster line are
-      bridged with straight strokes in a lightened line color
-      (`BSDNet.gapSegments` + `lightenColor`) so every line reads connected.
-      The pale shade is the honesty marker: inferred continuity, never
-      presented as surveyed geometry.
+10. **The network map is a deliberate schematic; the geographic map stays
+    geometry-faithful.** *(Revised 2026-07-15 at the owner's direction —
+    spec `docs/superpowers/specs/2026-07-15-network-schematic-redesign.md`.)*
+    Screen 2 (network.html) draws each roster line as one continuous
+    schematized spine: geometry is straightened to a disciplined angle set,
+    interchanges are consolidated to shared pinned points, and positions are
+    approximate by design — a drawn line may sit up to ~250 m from its true
+    alignment (enforced by `SCHEMATIC.maxDisplacementMeters`). We still
+    never invent facilities: connectivity, quality grades — including
+    "nothing," which marks stretches with no mapped bikeway — and all quoted
+    mileage come from source data, and the map carries an always-visible
+    "schematic view" note. The transportation map (index.html) remains
+    geometry-faithful and is the reference for where things actually are.
+    - *(prior entries retained as history)*
+    - *2026-07-12 (original):* geometry-faithful, no distorted schematic —
+      "a genuine DC-Metro-style schematization is a design project of its
+      own." That design project is what the 2026-07-15 revision delivered.
+    - *2026-07-13:* geometry-faithful, but straightened at render time via
+      Ramer–Douglas–Peucker (40 m, `BSDNet.schematicLatLngs`; connectors
+      still draw this way). Vertices dropped, never moved or invented.
+    - *2026-07-13 (metro-map pass 2):* uniform 6/9 px strokes, zoom-scaled
+      weights (`BSDNet.zoomWeightFactor`), holes bridged with lightened
+      strokes — superseded by the 2026-07-15 spine model, where a hole is a
+      structural "nothing" stretch of the line itself.
 
 11. **Spatial params.** Nearest-bikeway threshold 30 m in EPSG:26916 (UTM 16N);
     intersection hotspots are ~100 m grid clusters (≥2 crashes), top 25
@@ -594,3 +598,26 @@ environment forced a deviation. Newest last.
     gate rather than following the new per-grade filtering — a floored
     background is supposed to read sparse. See
     `docs/superpowers/specs/2026-07-13-network-tiers-design.md` §12.
+
+34. **Milwaukee + Jackson–Washington merge into one L-shaped through-line —
+    roster moves to 13 street + 7 trail = 20 lines.** The two lines already
+    shared the Loop trunk (#28) and physically met at the same downtown point
+    (Milwaukee's east end == Jackson–Washington's west start, ~41.884,
+    -87.6135), so on the schematic they read as one rider's journey:
+    Jefferson Park → down Milwaukee Ave → the Loop → out Washington/Jackson to
+    Austin. The roster now expresses that as a single line `milwaukee-washington`
+    ("Milwaukee–Washington Line", termini Jefferson Park ⇄ Austin), carrying
+    Milwaukee's blue `#1d4ed8`; the old `milwaukee`/`jackson-washington` ids and
+    the purple `#6b21a8` retire. Config-only edit to `data/main_routes.json`
+    (union of both `streets` lists; the internal Jackson/Washington couplet
+    still collapses to one centerline via the schematic couplet rule, and the
+    detail card still names the one-way pair). The 4-way Loop trunk of #28
+    drops to 3-way (`clark|lake|milwaukee-washington`) by construction, and the
+    render-time `EXPLICIT_MERGES` NW-terminus join now targets
+    `milwaukee-washington`. Old `?line=milwaukee` / `?line=jackson-washington`
+    deep links alias to the merged id so shared links still resolve. Downstream
+    pipeline products that key on roster ids (news `matches.routes`, API line
+    lists) pick up the new id on the next full pipeline run — the two committed
+    site products the network map reads (`main_routes.geojson`,
+    `network_nodes.json`) are rebuilt here via `build_main_routes` /
+    `build_network_nodes`, the same code path `refresh_reporting.py` uses.

@@ -24,7 +24,15 @@ if _TOKEN:
 def _get(url, params, retries=4):
     delay = 2
     for attempt in range(retries + 1):
-        resp = _SESSION.get(url, params=params, timeout=120)
+        try:
+            resp = _SESSION.get(url, params=params, timeout=120)
+        except requests.RequestException:
+            # Issue #56: retry on transient network errors (ReadTimeout, ConnectionError, etc.)
+            if attempt == retries:
+                raise
+            time.sleep(delay)
+            delay *= 2
+            continue
         if resp.status_code == 200:
             return resp
         if attempt == retries:

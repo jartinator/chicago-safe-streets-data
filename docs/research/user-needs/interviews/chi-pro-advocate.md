@@ -1,356 +1,485 @@
-# Interview: chi-pro-advocate
+# Interview: chi-pro-advocate (Reyna Delgado)
 
-## Round 1 transcript
-
-**Interviewer:** Let's start with your role. Describe what you do, and walk me through the last decision you influenced — or tried to — about street safety. What did that actually involve, step by step?
-
-**Reyna:** I'm the advocacy manager, basically the ward-liaison person, for a regional active-transportation nonprofit — think of us as the folks who send the ward letters. The last real fight was the citizen bike-lane-blockage ordinance back in February. It passed the Committee on Pedestrian and Traffic Safety — La Spata's committee — and I thought we had it. I'd sat in the gallery for that committee vote, I'd emailed testimony to three alders' chiefs of staff, and then it went to full Council and got wiped out, like 2-to-1 against. I remember standing outside Council chambers with our policy director, Marcus, both of us just — stunned, honestly, because everyone had told us committee passage was the hard part. That was the moment I learned the hard way: committee and full Council are not the same fight, and if you only track "did it pass committee," you will get blindsided. Now every legislative tracker I keep has two columns, not one.
-
-More routine than that, though: every quarter I build the ward letters. Fifty of them, one per alderperson, each with current deaths and serious injuries by mode in their ward, framed against citywide trend — fatal crashes down 30 percent since 2021, but 72 percent of last year's fatalities involved speeding. I did the last batch in April for budget season, because that's when alders are thinking about menu money for the next fiscal year and you want your letter landing on a desk right when they're deciding whether protected bike lane resurfacing beats another round of alley repaving.
-
-**Interviewer:** Who do you need to convince, and what does "convinced" look like for them?
-
-**Reyna:** Two different audiences, honestly. There's the alderperson and their chief of staff — for them, convinced looks like a menu-money line item, or at minimum them showing up to co-sponsor something at committee. And then there's the room at a ward night — actual constituents, some of whom are furious that a bike lane took away street parking. For them, convinced looks like not walking out and calling their alderman's office the next morning to complain. Those two audiences want completely different things from the same number. The alderman's office wants something they can put in a press release. The community meeting wants something that doesn't feel like it's talking down to them or hiding something.
-
-**Interviewer:** What information sources do you touch in a normal week for this work?
-
-**Reyna:** The city's crash data portal — the Traffic Crashes dataset, I pull it via the Socrata query interface when I need something specific, or I go find whatever CDOT's Fall Traffic Crashes report says because that's the citation everyone recognizes. Ward Wise's menu-money map, when I need to check what an alderman actually spent versus what they promised at a community meeting. Bike Lane Uprising's dashboard, when I'm building the case that a particular corridor has a blockage problem. The City Clerk's Legistar system, God help me, to check hearing dates and bill status — it's clunky but it's the source of record. And a lot of texting other advocacy people — Better Streets folks, sometimes someone from Chi Hack Night — to sanity-check a number before I put it in front of an alderman's staff.
+**Run date:** 2026-07-21
+**Stimulus:** `02-data-inventory.md`, data contract **v1.14** (post-PR #51 — home/orientation page,
+ward one-pager, methodology page, static agent API, news-coverage layer, proposed-projects
+roster, PeopleForBikes BNA score, obstructions moved to gated preview page)
+**Persona:** Reyna Delgado, advocacy manager, Chicago regional active-transportation nonprofit
+(composite/fictional; see `personas/chi-pro-advocate.md` and evidence briefs
+`evidence/chicago-system.md`, `evidence/us-thinktank.md`)
 
 ---
 
-**Interviewer:** Tell me about the last time you needed a number, map, or chart about bike safety. Where did you go, what did you do with it, how long did it take?
+## Transcript
 
-**Reyna:** Two weeks ago. We had a ward night in the 15th Ward — Ald. Lopez's turf, the Archer Avenue fight — and I needed current KSI numbers for that ward specifically, not citywide, because if I show up with a citywide chart someone in that room is going to say "that's not my street." So I pulled the raw crash CSV from the city portal, filtered by the ward field, cross-referenced against the 2023 ward remap because the boundaries shifted and half my old saved queries were wrong, and built a one-page handout in about two and a half hours. That's actually fast for me — sometimes it's a full afternoon, especially if I have to double-check dooring numbers because I know those are undercounted and I don't want to say "there were only three dooring incidents this year" if I know it's really more like ten to fifteen unreported.
+**Researcher:** Thanks for making time. Let's start with your actual work. Describe your role, and
+walk me through the last decision you tried to influence about street safety — step by step, what
+did that involve?
 
-**Interviewer:** What have you built yourself — spreadsheets, saved searches, screenshots, FOIA requests, hand counts — because nothing gave it to you directly?
+**Reyna:** Two weeks ago I was prepping testimony for the Committee on Pedestrian and Traffic
+Safety — there was a hearing on the Archer Avenue redesign, which Lopez has been slow-walking for
+two years. My job was to hand the committee something they couldn't wave off. Step by step: I
+pulled the ward crash numbers for the 15th from our own quarterly letter draft — which was already
+three weeks stale because our data person was out — then I called CDOT's community liaison to ask
+if the corridor mileage numbers had changed since our last cycle, then I built a one-page PDF with
+three bullets: deaths/injuries in the ward year to date, what % of Archer has any protection, and
+the "72% of fatalities involve speeding" citywide line we always lead with. Took me about four
+hours, mostly waiting on CDOT to call back and reformatting a table so it didn't look like a
+spreadsheet dump.
 
-**Reyna:** Oh, the ward letter template itself is entirely homemade — it's a Google Sheet with a macro Marcus's predecessor built that pulls from a saved Socrata query and spits out fifty separate one-pagers, one per ward, with the alderman's name and district mail-merged in. I maintain a separate spreadsheet just tracking hearing dates by hand, because Legistar's calendar is not reliable for "is this actually happening this week" — I've shown up to City Hall for a hearing that got moved and nobody updated the page. I also keep a running doc of which alders have had bike lanes ripped out or stalled — Dowell and 18th Street is the big one on that list now — because that's the kind of thing that doesn't live in any dataset but comes up constantly in strategy meetings.
+**Researcher:** Who did you need to convince, and what does "convinced" look like for them?
 
-**Interviewer:** Tell me about a time data — or the lack of it — sank an argument you were making.
+**Reyna:** La Spata's committee, technically, but really I was writing for the aldermen who show up
+undecided — the ones who haven't been burned yet by an angry ward night. Convinced looks like: they
+ask CDOT a follow-up question in the hearing instead of just thanking us for our testimony. That's
+the tell. If nobody on the dais asks a number-based question, we lost the room to whoever spoke
+after us about parking.
 
-**Reyna:** The 18th Street thing, actually, was partly a data failure on our side. When Dowell started pushing to rip out the protected intersection, we scrambled to make the case that ridership on that corridor justified keeping it, and we had... nothing. No counter data, no bikeshare trip counts for that segment, nothing that showed usage. We had crash data, we had the design rationale from CDOT, but "how many people actually ride here" — we could not produce that number, and it let the removal argument stand unchallenged. I remember Marcus saying in the debrief, "we keep losing this fight because we can prove danger but we can't prove demand."
+**Researcher:** What information sources do you touch in a normal week for this?
 
-**Interviewer:** What data do you distrust, and what earned that distrust?
-
-**Reyna:** 311. Full stop. Everybody in this world knows 311 bike-lane-blockage reports are basically decorative — CDOT has said publicly, repeatedly, that they use it for "aggregate hotspot identification," not enforcement. I've had constituents at ward nights ask me, "I called 311 six times about that same truck, why hasn't anything happened," and I have to explain that 311 isn't wired to any ticketing action. That's a genuinely demoralizing thing to say out loud to someone. It also means 311 volume is biased toward wards where people already know to call — so a low 311 count doesn't mean a safe corridor, it might just mean nobody there bothers calling anymore. I distrust it, but I still cite it sometimes, carefully, because it's the only thing available for some corridors.
-
----
-
-**Interviewer:** I want to walk you through what a dashboard called On Your Left — OYL — actually has. It's independent, open-source, read-only — doesn't take reports itself, points people to 311 and Bike Lane Uprising instead. It's got two maps, a findings page, a ward table, a sources page, and so on. Let's go screen by screen. First, the transportation map — crash density, the bikeway network colored by facility grade, wards, cameras, and a mock obstruction layer, plus main-route overlays.
-
-**Reyna:** Okay, the crash density and facility grade together, on one map — that's actually useful, that's the kind of overlay I'd screenshot for a one-pager if I could zoom to just my ward. I'd want to check the facility-grade categories match what CDOT itself calls things, because if I say "protected" and someone from CDOT engineering is in the room and their internal classification disagrees, I look sloppy. The camera layer — sure, fine, that's context. The mock obstruction heat, though — I want to be very clear about this, because it's a landmine. If I put something up that looks like Bike Lane Uprising data and it's actually synthetic, and someone in the audience happens to know Bike Lane Uprising — and in my rooms, someone always does, because Christina's org is well known here — I will get called out, publicly, for using fake data. That's not a small caveat for me, that's a "do not put this on a screen in front of an audience" flag, full stop, no matter how many times the badge says "mock."
-
-**Interviewer:** Understood — hold that thought, we'll come back to it in the gap section. Next, the network map — this is the schematic transit-style map, 21 named routes each colored solid end to end, no safety data on that page at all.
-
-**Reyna:** Honestly? I'd glance at it once and probably not come back. It's pretty, it's the kind of thing that's nice for a general-audience explainer post, but it has no crash data on it, which means it doesn't do anything for my actual job. My job is connecting infrastructure to danger and to money. A map that's just "here are the named corridors" without KSI numbers attached is a marketing map, not an advocacy tool. I'd use it maybe once, to orient a new intern who doesn't know the city's bike network yet, and then never open it again.
-
-**Interviewer:** Findings page — curated cards, stat plus caveat plus deep link, things like KSI trend, protected share, street coverage, top corridors, hit-and-run, ward concentration, dooring undercount.
-
-**Reyna:** Now this I like more, at least in concept. The dooring-undercount card especially — if it actually says out loud "official records only include reportable crashes," that's language I can use, because I already say that verbally at every hearing and having it written down somewhere citable saves me from being the only person in the room making that claim. The ward concentration card — I'd want to know exactly how it's computing "concentration," because if it's raw counts and not something like CDOT's High Injury Network weighting, severity-weighted over a few years, I'm going to get pushback from a CDOT engineer at a task force meeting who'll say "that's not how we define high-injury." I've had that exact argument before, at a Neighborhood Bike Network task force session for a different corridor, where an engineer took apart my citywide number because I hadn't weighted it the way CDOT does internally.
-
-**Interviewer:** Table page — sortable ward rankings, CSV export, plus percent-protected and percent-streets-with-bikeways columns.
-
-**Reyna:** This is the one I'd actually build my ward letters from, if the numbers check out. CSV export is the whole ballgame for me — I don't need a beautiful chart, I need something I can pull into my mail-merge sheet. But — and this is the thing that would kill it for me in about five minutes — the first thing I'd do is take three or four wards I already know cold from our own letters, like the 15th and the 3rd, and compare OYL's numbers against mine. If even one ward is off — and it will probably be off, because our letters use a slightly different date cutoff or count serious injuries differently than whatever the site's using — I now have to explain the discrepancy to my own team before I trust any of it. One unexplained mismatch and I stop using the table for anything I'd put in front of an alderman, and I go back to building it by hand. That's not me being precious, that's just what happens the first time your own boss asks "why does the website say 4 and our letter says 6."
-
-**Interviewer:** Council and alderman accountability data — Legistar-based legislation records with an automated topic tag, contested roll-call votes, sponsorship counts, and separately, aldermen contacts and committee hearings from the City Clerk.
-
-**Reyna:** Okay, this is where I get skeptical fast, because of the 18th Street thing and the February ordinance. If this shows me a single "status" field on a bill, that's actively dangerous for my work — I lived through committee-pass, full-Council-fail, and if a staffer or a volunteer looks at OYL and sees "passed" because it passed committee, and then repeats that to a reporter or at a community meeting, that's a real credibility problem for us, not just an abstraction. I need it to distinguish committee stage from full Council, and I need to see who voted no, because "who's the alder there, and did they vote against it" is basically the only currency I have when I'm trying to get an alderman to move. Sponsorship counts I'll use, cautiously, because I already know most safety stuff passes by voice vote — so sponsorship really is often all we get, and I appreciate that the caveat matches what I already tell people. The hearing dates and contacts, if they're accurate and current — that alone might replace my hand-kept spreadsheet, honestly, that's a real time-saver, assuming it doesn't go stale the way Legistar itself sometimes does.
-
-**Interviewer:** Menu-money spending — a proxy layer, described as a Ward Wise extract, not verified against source PDFs.
-
-**Reyna:** I already use Ward Wise directly for this, so an unverified extract of a thing I already go to the source for isn't adding much — unless it's joined to something Ward Wise doesn't do well, like tying a menu-money line to a specific crash corridor or a specific bikeway segment. If it's just "here's spending by ward" with a "not verified against source PDFs" disclaimer, I'll probably still go to Ward Wise directly, because at least I know exactly what they scraped and from where.
-
-**Interviewer:** And the badge system generally — real, proxy, mock, crowdsourced, derived, no-data-yet — plus the stated limitations: no ridership normalization, mock obstructions, dooring undercount, no install dates on the bikeway network.
-
-**Reyna:** The badges themselves, I actually appreciate as a concept — it's the right instinct, because half my job at a hearing is pre-empting the "where's this number from" question. But a badge only works if I can recite the provenance out loud without opening a laptop, and "derived" alone doesn't tell me enough — derived how? The ward safety index being described as "not absolute risk, just relative" — I'd want to interrogate that hard before I ever used it in a hearing, because a single opaque danger score is exactly the kind of thing that gets torn apart by a CDOT engineer who knows the real High Injury Network methodology weights by severity over a rolling window. If I can't explain the weighting out loud, I won't use the number, full stop — I'd rather cite a weaker number I understand than a stronger one I'd fumble defending. No install dates on the bikeway network is a real gap for me too — when I'm arguing that an alderman under-delivered on a promise, "when was this actually built" matters as much as "does it exist," and I don't have another good source for that either, so that's a limitation I'd just live with, not a dealbreaker.
+**Reyna:** The city's crash portal directly — the raw Traffic Crashes dataset, because our letters
+need it fresher than anything else publishes it. Ward Wise for menu money, because nobody else has
+that scraped and clean. Bike Lane Uprising's dashboard when a company keeps showing up blocking the
+same lane. Legistar, painfully, for hearing dates and who sponsored what. And a group text with two
+other advocacy staffers where we just ask each other "does anyone have current numbers for the
+32nd?"
 
 ---
 
-**Interviewer:** Now the scenario. You're prepping to brief an alderman's office before a menu-money deadline — say, budget season, the kind of moment you described earlier. You open OYL. What do you look for first, and where does it fail you?
+**Researcher:** Tell me about the last time you needed a number, map, or chart about bike safety
+and it actually took real effort to get.
 
-**Reyna:** First thing I do is find my ward filter, if there is one, and go straight for the ward table — I want the KSI numbers and the coverage percentage for that one ward, side by side, because that's the two-fact combo that makes an alderman's staffer sit up: "your ward has X serious injuries and only Y percent of your streets have any bike infrastructure." Where it fails me is the moment I try to cross-reference it against last quarter's actual spending on bike safety specifically — because from what you've described, the menu-money layer is a raw Ward Wise extract, not broken out into "safety-relevant" spending versus repaving or lighting or whatever else menu money covers. What I actually need in that meeting is "the alderman promised X, spent Y on bike-relevant projects, and here's the KSI trend since." Without that promised-versus-delivered slice, I still have to go build that comparison by hand in a spreadsheet, which is exactly what I do now. So it saves me the crash-data half of the prep and none of the money half.
+**Reyna:** The 18th Street thing. After Dowell ordered CDOT to rip out the protected intersection,
+I needed to know: had *any* crash reduction shown up in the months it was installed, so we could
+argue removing it was reversing a safety gain, not just an aesthetic call. That data doesn't exist
+in any one place. I ended up hand-counting crash records from the portal for a six-block radius, by
+date, cross-referencing against the CDOT install date I got from a Streetsblog article because
+CDOT itself won't publish exact install dates. Took the better part of a day. And in the end the
+sample was so small — a few months, one corridor — that legally I couldn't say anything stronger
+than "no increase in serious injuries during the period of protection," which is a weak sentence to
+put in front of an alderman who wants to reopen the block to parking.
 
-**Interviewer:** Of everything OYL does not have, what single absence costs you most?
+**Researcher:** What have you built yourself because nothing gave it to you directly?
 
-**Reyna:** No ridership data, easily. It's the exact gap that cost us the 18th Street fight. Every time an alderman's office pushes back with "nobody actually uses this lane," I have nothing quantitative to counter with except crash counts, and crash counts alone let them say "well if nobody's riding there, of course there aren't many crashes, so it's not a priority." I need something — bikeshare trip counts, even counter data at a handful of locations — that lets me say "here's how many people are actually on this street." Without it I'm always half a step behind that argument.
+**Reyna:** The ward letters, obviously — quarterly, by hand, in a shared Google Doc template, fifty
+times over. A spreadsheet that cross-references menu money categories against what Ward Wise
+labels "bike/ped" versus what CDOT calls "traffic calming," because those two sources don't agree
+and I have to reconcile them by eye. And a personal doc I keep of committee-vote outcomes, because
+Legistar doesn't make it easy to see "passed committee, died on the floor" as a single fact — I
+watched that happen to the citizen-reporting ordinance in February and almost cited it as "passed"
+in a follow-up email before I double-checked.
 
-**Interviewer:** If OYL handed you one export or artifact every single week, what would it contain and who would you forward it to?
+**Researcher:** Tell me about a time data — or the lack of it — sank an argument you were making.
 
-**Reyna:** A one-page-per-ward PDF, auto-generated, with current KSI by mode, the coverage percentage, top crash corridor in that ward, and any hearing or menu-money deadline coming up in the next 30 days for that ward — basically my quarterly ward letter, but weekly and without me building the mail merge by hand. I'd forward it straight to whichever alder's chief of staff I'm currently working, and probably CC Marcus. That would save me actual days of work a quarter, if I trusted the numbers — which, again, hinges entirely on that first cross-check against our own letters coming back clean.
+**Reyna:** The Archer testimony, actually — a follow-up. An alderman's staffer asked me point blank:
+"how many actual cyclists use this corridor, so I know if this is worth the parking we're
+removing?" I had nothing. I had crash counts, I had lane-mileage, I had zero ridership. I said "we
+don't have a good number for that" and you could watch the room recalibrate — like our whole ask
+suddenly weighed less. That one stings because I don't think there IS a good public number for that
+in Chicago. Bikeshare trip counts exist but Archer isn't near a Divvy-dense area.
 
-**Interviewer:** The site refuses to normalize by ridership because it has no volume data, and it says so. Does that caveat change how you'd use it? What would you accept as good-enough exposure data?
+**Researcher:** What data do you distrust, and what earned that distrust?
 
-**Reyna:** It doesn't change whether I'd use the crash counts — I already use raw crash counts today, so I'm not worse off. But it means I can never use it to answer the "is this corridor actually dangerous per rider, or just busy" question, which is precisely the question that comes up in every merchant-objection meeting and every aldermanic-prerogative fight. Good enough for me wouldn't need to be perfect — divvy or bikeshare trip-start/end counts by station, or even just Chicago Department of Transportation's own counter-program numbers if they publish anything, would be miles better than nothing. I don't need Strava-level precision. I need something I can point to and say "ridership on this block is not zero," because that's usually the whole argument.
+**Reyna:** 311 bike-lane complaints — because we've been told to our face by CDOT liaisons that they
+don't drive enforcement, they're "for pattern identification only," which is bureaucratic for "we
+collect it so people feel heard." I used it once in testimony as a volume signal and a CDOT witness
+immediately said "that's not enforcement data, that's just what people reported," in a tone that
+made it sound like I didn't know that, which undercut me in front of the room. Now I only use it as
+color, never as a headline number.
 
 ---
 
-**Interviewer:** Magic wand — one dataset that doesn't publicly exist appears, clean and current. What is it?
+**Researcher:** I want to walk you through what a dashboard called On Your Left is doing today.
+It's read-only, doesn't take reports, drills ward to corridor to intersection, and every layer
+carries a real/proxy/mock/crowdsourced/derived badge. There's also a static agent API now so an AI
+assistant can query the same data. Let's go screen by screen and I'll ask your gut reaction to each
+before I say more.
 
-**Reyna:** Verified menu-money spending, broken out by category, tied to ward, with a promised-versus-actually-completed field, refreshed close to real time instead of scraped from quarterly PDFs. That's the dataset that would change my job the most, because it's the one thing every alderman's office can be held to that isn't about crash trends at all — it's about whether they did what they said they'd do with their own discretionary money. Ward Wise built their whole project around this exact gap and it's still not really solved.
+First: there's a new home page — plain-language orientation, headline stats, who it's for, and a
+section on asking an AI assistant questions through the "agent layer." Reaction?
 
-**Interviewer:** One chart or map you could put on a screen in front of your hardest audience that ends an argument. Describe it.
+**Reyna:** Honestly the AI-assistant framing makes me suspicious before I even see the numbers.
+Every "ask our AI" thing I've touched in the last year has been a chatbot wrapper someone bolted on
+to look modern, and none of them cite a source I could read into a hearing record. If it's
+literally just querying the same published JSON, fine, but I'd want to test it on something I
+already know cold — like ward 15 crash counts — before I'd trust an answer it gave a resident.
 
-**Reyna:** Picture the 15th Ward, just that ward, one map. Crash markers sized by severity, dooring flagged separately with the undercount caveat printed right on the legend, overlaid on the bikeway network colored by facility grade — protected versus painted versus nothing — and a small callout box in the corner that says "X percent of surface streets here have any bike infrastructure, citywide average is Y." No danger index, no single score, just the layered facts side by side so a room full of skeptical residents and an aldermanic staffer can look at the same map and see: here's where people got hurt, here's what protection exists, here's how this ward stacks up. That's the picture that ends the "why do we need this bike lane" argument, because it doesn't ask anyone to trust a formula — they can see it.
+**Researcher:** Noted — we'll come back to the agent layer specifically. Next: the transportation
+map, with crash density, bikeway network by facility grade, wards, cameras, main-route overlays.
+Mock obstructions are no longer shown here.
 
-**Interviewer:** What would make you stop using a site like this after trying it once?
+**Reyna:** Good, actually — that's the right call, because if I'd opened this map eight months ago
+and seen fake obstruction dots sitting next to real crash dots, that's the kind of thing that gets
+screenshotted and used against us by someone at a community meeting who says "see, they're making
+stuff up." Facility grade by color I'd use for exactly what I did with Archer — showing "here's the
+gap in protection" visually instead of in a table. I'd want to zoom to ward first, though; a
+citywide map is not what I open before a hearing about one corridor.
 
-**Reyna:** One bad number in front of an audience. If I pull up the ward table at a community meeting, someone in the room — and there's always someone, some retired engineer or a Bike Lane Uprising volunteer or just a very online resident — says "that number's wrong, I know because I FOIA'd this myself," and I can't explain the discrepancy on the spot, I will never open that tab again in public. I've had that exact kind of moment happen with other tools before, some well-meaning civic-tech project that showed up, demoed at a Hack Night, everyone got excited, and then six months later nobody maintained it and the numbers were two years stale and I'd already been burned once trusting it. I don't have room in my week to be the one re-verifying somebody else's dashboard before every hearing — if I have to do that anyway, I'll just keep building it myself the way I already do.
+**Researcher:** There's also a network map — a schematic transit-style map of 21 named main routes,
+with a comfort-floor filter and no safety data at all on that page.
 
-## Follow-up round
+**Reyna:** That one's not for me. It's pretty, but I don't bring a "how legible is the network"
+argument to a hearing — I bring "people got hurt here." If a resident asked me to help them plan a
+commute I might send them there, but that's not my job description.
 
-**Note on the follow-up items received**
+**Researcher:** Findings page — curated cards: KSI trend, protected share, street coverage, top
+corridors, hit-and-run, ward concentration, dooring undercount, and the PeopleForBikes BNA citywide
+score with national ranking context.
 
-I read `chi-pro-advocate.md`, `_shared-rules.md`, and `02-data-inventory.md` as instructed, and I'm ready to continue the interview in character as Reyna. But the four "follow-up questions" I was handed aren't round-2 interview probes — they're study-orchestration questions (drafting the analysis memo, checking mandatory-probe coverage, sequencing the next persona, deciding whether to run round 2 now). Per `docs/research/user-needs/01-lead-researcher.md`, that entire checklist — the structured memo with `stated_needs`/`latent_needs`/`reactions_to_existing`/etc., protocol compliance checks, and persona sequencing — is explicitly the **Lead Researcher's** job, not the **Persona Agent's**. I'm the persona agent: my only mandate under `_shared-rules.md` is to answer interview questions *as Reyna*, staying inside what she'd plausibly know.
+**Reyna:** The KSI trend and ward concentration cards, I'd screenshot those into a slide deck
+tomorrow, assuming the caveat text is actually readable and not buried. The BNA score I don't know
+what to do with — is 100 good? Compared to what other city? I've genuinely never had anyone at a
+hearing ask me "what's Chicago's BNA score," and I don't think an alderman's staffer would know
+what it means without me explaining it first, which means it's homework, not ammunition. I'd read
+the caveat before I'd repeat the number out loud.
 
-Reyna has no in-world knowledge of "round 2 probes," "the lead-researcher protocol," "mandatory probes," "the next persona in the study," or an "analysis memo" — she doesn't know she's a simulated informant in a UX study at all. Forcing her to answer those four items in character would violate shared-rule 2 ("stay inside your knowledge... never suddenly acquire expertise your character wouldn't have") and would produce exactly the kind of fan-fiction the protocol warns against. So rather than fabricate an in-character non-answer, I'm flagging the mismatch instead of pretending to resolve it as Reyna.
+**Researcher:** Table page — ward rankings, sortable, CSV, with percent-protected and
+percent-streets-with-bikeways columns.
 
-What I can confirm from my own read of the docs, staying in my actual lane (persona agent, not orchestrator):
+**Reyna:** This I'd actually use for the reconciliation work I described — checking Ward Wise's
+numbers against something else. CSV export matters a lot to me; I don't want to copy-paste fifty
+rows out of a webpage.
 
-- No actual round-2 interview questions were included in this handoff — items 1-4 are all meta/process questions addressed to whoever runs the study loop, not to Reyna.
-- If real round-2 probes are drafted (i.e., substantive follow-ups on her episodes — the 18th Street ridership gap, the February ordinance committee/floor split, the ward-table cross-check, the menu-money promised-vs-delivered ask), send those and I'll answer them in character with the same episodic/resistant craft as round 1.
-- Decisions about whether round 1 already satisfies the two mandatory probes, whether to draft the `stated_needs`/`latent_needs` memo now, and whether to advance to the next persona (`chi-ward-office`, etc.) belong with the Lead Researcher role/human running the study, per `01-lead-researcher.md` — not with me, since I don't have visibility into what other persona interviews have or haven't been run, or into the study's tracking state.
+**Researcher:** Ward one-pager — one HTML file per ward, printable: safety index, trends, infra
+stats, alderman contact and sponsorship record, menu-money proxy, recent ward-matched news.
 
-No files were edited. Relevant paths reviewed: `/home/user/chicago-safe-streets-data/docs/research/user-needs/personas/chi-pro-advocate.md`, `/home/user/chicago-safe-streets-data/docs/research/user-needs/personas/_shared-rules.md`, `/home/user/chicago-safe-streets-data/docs/research/user-needs/02-data-inventory.md`, `/home/user/chicago-safe-streets-data/docs/research/user-needs/01-lead-researcher.md`.
+**Reyna:** [leans in] Okay, this is the first thing you've shown me that's literally the artifact I
+build by hand every quarter. So now I have real questions. The safety index — is that comparable
+ward to ward, or relative within itself? Because if ward 15's "safety index" moved from 40 to 45
+that means nothing to me unless I know whether that's percentile-based or some raw score, and I
+will absolutely get asked "what does 45 mean" by someone in the room, and "it's a percentile blend
+of crashes per 10k and crashes per bikeway-mile" is a sentence I'd need to have memorized before I'd
+say it out loud. Second — the sponsorship record. Does it show committee AND floor votes
+separately, or just "sponsored"? Because if Lopez's staffer looks at this and it just says
+"sponsored," they'll say "he was FOR it" about something he later gutted on the floor, and that's
+exactly the kind of mismatch that would blow up on me if I handed this to a reporter. Third, the
+menu-money — you said "proxy," not verified against source PDFs. That's a real problem for me
+specifically, because Ward Wise already does menu money and if your number doesn't match theirs,
+the first thing a ward staffer does is pull up Ward Wise on their phone mid-meeting and go "that's
+not what it says here." One mismatch I can't explain and I stop using this for anything
+ward-specific, full stop.
 
-## Analysis memo
+**Researcher:** To be clear on the sponsorship data — it tracks sponsorship counts and recorded
+no-votes, and it's explicitly labeled a sponsorship proxy, not a vote tally.
+
+**Reyna:** Then it needs to say that in bold, not in a footnote, because "proxy" is a word data
+people use and a word alderman's staff will skip right past. If it just shows a number of bills
+sponsored, somebody will read that as "this alderman is good on bike safety" and I've watched that
+exact mistake get someone's testimony torn apart in committee before — because sponsorship is often
+just a courtesy signature, not commitment. Show me the no-votes prominently or don't bother.
+
+**Researcher:** Sources and methodology pages — full provenance catalog, tier badges, and how every
+number is computed.
+
+**Reyna:** This is the page I'd actually screenshot to defend myself if someone challenges a number
+in the room — "here, this is exactly how it's built, here's the source." That's worth more to me
+than most of the visualizations, honestly, because my job half the time is surviving the
+cross-examination after I say a number out loud.
+
+**Researcher:** Action page — 311, Bike Lane Uprising, alderman contacts, hearings, recent news.
+
+**Reyna:** The hearing calendar I'd use — I currently track that by hand and it's the single most
+annoying thing I do every week. If it's actually current the week I need it, that alone might get me
+to open this site regularly, more than any map would.
+
+**Researcher:** And there's a new obstructions preview page — gated, watermarked, explicitly
+synthetic, quarantined off the main maps, pending an actual Bike Lane Uprising conversation.
+
+**Reyna:** [flat] I want to be really clear about this one. I know Bike Lane Uprising's real
+dataset — 65,000-plus reports, refreshed every few hours, used in actual litigation. If I clicked
+into a preview page and it wasn't obviously, aggressively labeled fake — big watermark, can't
+mistake it for real — I would assume for one confused second that OYL had struck a data deal with
+BLU, and then I'd be furious when I found out it was made up. That's the fastest way to lose me
+permanently, not just on this feature — on the whole site. Because now I have to ask "what ELSE
+here isn't what it looks like?" Gating it behind a warning and excluding it from the API entirely
+is the right instinct. But I'd want it to not exist at all in a public build, honestly — synthetic
+crash-adjacent data is the one category where "clearly labeled" isn't good enough for me, because
+the whole reason a mock layer is dangerous is that it doesn't stay clearly labeled once someone
+screenshots it into a flyer without the watermark.
+
+**Researcher:** Let's talk about the "no ridership normalization" caveat directly — the site says
+it doesn't normalize by ridership because no cyclist-volume data is joined yet. Does that caveat
+change how you'd use it?
+
+**Reyna:** It doesn't change whether I'd use the raw counts — I already use raw counts today,
+because that's all Chicago has, full stop, the same way CDOT's own High Injury Network doesn't
+normalize by ridership either, it's just severity-weighted crash density. So on that specific point
+OYL isn't behind CDOT. But saying the caveat out loud is exactly what saved me nothing in that
+Archer meeting — the staffer's question wasn't "does OYL normalize," it was "do YOU have a
+ridership number," and neither of us did. What I'd accept as good-enough exposure data: honestly,
+Divvy trip counts by station, imperfect as they are, would be something — at least I could say
+"here's a lower-bound proxy for people who biked near here" instead of nothing. Or even a rough
+count of 311 bike-complaint volume as an activity proxy, labeled honestly as biased toward wards
+with engaged residents — I'd rather have a bad proxy I can caveat than the silence I have now. A
+BNA-style network score doesn't answer this for me at all — that's about the streets, not the
+riders on them, and I said that already about the findings card.
+
+---
+
+**Researcher:** Let's do the new pieces you haven't reacted to yet. The news-coverage layer —
+recent bike-safety headlines from RSS feeds, matched to wards, aldermen, routes, projects, with an
+auditable link showing why each match was made.
+
+**Reyna:** The "why matched" link is the only reason I wouldn't immediately distrust this. My fear
+walking in was: some algorithm decides a story about a shooting near a bike lane counts as "ward 15
+bike safety news" and now I'm associated with a mismatch I didn't check. If I can click through and
+see the actual matching logic, I could maybe use this to catch news I missed for a ward I don't
+cover closely. But I'd never cite it directly in testimony — I'd use it to go find the original
+article and cite that instead. It's a lead generator, not a source.
+
+**Researcher:** Proposed and in-progress projects — a hand-curated roster of active bikeway/trail
+proposals, volunteer-reviewed status with a status date and note, official links and citations, no
+map geometry.
+
+**Reyna:** "Volunteer-reviewed" is doing a lot of work in that sentence and I'd want to know who the
+volunteers are before I'd put this in front of an alderman's staffer, because the fastest way CDOT
+discredits us is finding one stale or wrong status on a project list and using it to imply
+everything we cite is sloppy. No geometry doesn't bother me — I don't need a line on a map, I need
+to know if Archer's redesign is "approved," "stalled," or "dead," and a status date tells me whether
+that's this month's truth or six months old. If the status date is old I'd treat the whole card as
+suspect until I called CDOT myself to confirm — which, honestly, is exactly the phone call I
+already make today, so this doesn't remove work unless the update cadence is fast and visible.
+
+**Researcher:** And the agent API — you reacted early with suspicion. Walk me through what would
+change your mind.
+
+**Reyna:** I'd want to ask it the exact question that burned me — "how many cyclists use Archer
+Avenue" — and see if it says "I don't have that data" instead of hallucinating a number, because
+that's the actual failure mode I'm scared of. A chatbot that confidently invents a ridership figure
+because it pattern-matched from somewhere is worse than the silence I have now, because now a
+staffer might repeat a wrong number in a hearing and attribute it to "the data." If every response
+links back to the actual published file with the tier badge, and it just refuses when there's no
+data, I could see forwarding it to a ward staffer who doesn't want to learn to read a CSV. But I'd
+test it myself first, on my own turf, before I ever pointed a stranger at it.
+
+---
+
+**Researcher:** Picture you're prepping for a council hearing next Tuesday on a ward you don't
+normally cover. You open OYL. What do you look for first, and where does it fail you?
+
+**Reyna:** First thing I do is the ward one-pager for that ward, because that's the fastest way to
+get oriented on unfamiliar turf. Where it fails me: if the alderman's sponsorship record doesn't
+distinguish committee votes from floor votes, I have to go verify in Legistar anyway, which means
+the one-pager saved me zero time on the part I actually needed saved.
+
+**Researcher:** Of everything OYL does not have, what single absence costs you most?
+
+**Reyna:** Ridership. I said it already and I'll say it again — it's the one question I get asked
+that I have no answer for, in any dataset, from anyone, and it's the one that makes a room stop
+taking us seriously mid-sentence.
+
+**Researcher:** If OYL handed you one export or artifact each week, what would it contain, and who
+would you forward it to?
+
+**Reyna:** A one-page PDF per ward that's actually current — crash trend, sponsorship record with
+committee-vs-floor distinction, and this week's hearing dates if any — and I'd forward it straight
+to whichever ATA staffer covers that ward's letter that quarter, because it would replace the four
+hours I spend building that by hand. But only once I've caught it lying to me zero times.
+
+---
+
+**Researcher:** Magic wand — one dataset that doesn't publicly exist appears, clean and current.
+What is it?
+
+**Reyna:** Cyclist volume counts, ward by ward, updated regularly — actual bike traffic counters or
+something as good as them, not proxies. If that existed I could finally answer the Archer question
+and I'd trust every crash rate on this site twice as much.
+
+**Researcher:** One chart or map you could put in front of your hardest audience that ends an
+argument.
+
+**Reyna:** A single ward map showing crash severity concentration overlaid with menu-money spend on
+safety versus everything else, side by side, so a room can see in one glance "this ward has the
+worst numbers and the least money went to fixing it." That argument makes itself if the chart is
+honest and doesn't need me to say a word.
+
+**Researcher:** What would make you stop using a site like this after trying it once?
+
+**Reyna:** One number that contradicts a source I already trust, that I can't explain to a room.
+That's it. Doesn't even need to be big — a ward count off by ten, a "sponsored" that should've said
+"co-sponsored, later voted no." One unexplainable mismatch and I go back to building my own
+spreadsheets, because my job doesn't survive being wrong in public.
+
+---
+
+## Analysis Memo
 
 ```
-participant: chi-pro-advocate
-confidence_notes: >
-  Interview stayed inside Reyna's documented world throughout — ward letters,
-  menu money, Legistar, 311's no-enforcement policy, the Feb 2026 ordinance,
-  the 2025 18th Street removal — and her reasoning tracked the persona brief's
-  "how you think" bullets closely (committee-vs-floor, "one mismatch kills
-  it," the mock-data landmine), which is reassuring but means some of that
-  specificity should be read as the brief's texture restated, not new
-  measurement. The ridership/demand gap recurs three separate times (stated
-  need, magic-wand-adjacent scenario answer, deal-breaker discussion) with
-  consistent framing — a good signal of a stable underlying need. The
-  weakest, most speculative moment is her list of "good-enough exposure
-  data" (Divvy trip counts, CDOT counter-program) — plausible for her role
-  but reaches slightly past what the brief documents about her (which stops
-  at "can prove danger, can't prove demand") into naming specific data
-  sources; treat that specific list as lower-confidence texture rather than
-  a verified want.
-
-  The persona agent's "follow-up round" response declined to answer the
-  four items sent to it, correctly identifying them as lead-researcher
-  orchestration questions rather than round-2 interview probes. No new
-  substantive data resulted from that round; this memo is built entirely
-  from the round-1 transcript, which the persona agent flagged as already
-  containing two rounds' worth of probing (open context, workarounds,
-  stimulus walkthrough, gap probing, magic wand) in a single continuous
-  session.
+participant: chi-pro-advocate (Reyna Delgado)
+confidence_notes: The persona's specificity about committee-vs-floor voting and Ward Wise
+  reconciliation is well-grounded in the evidence brief. Weaker ground: her reaction to the agent
+  API is plausible extrapolation (advocacy staff distrust of AI chatbots) rather than something
+  directly documented in the evidence base — flagged as informed inference, not a citable fact.
+  Her reaction to the network map (dismissive, "not my job") is a confident in-character read but
+  is thinner than her ward-letter material since the evidence base says little about advocates'
+  network-legibility use cases one way or the other.
 
 stated_needs:
-  - need: Two-stage legislative status (committee vs. full Council), with roll-call no-votes visible
-    evidence_quote: "I need it to distinguish committee stage from full Council, and I need to see who voted no, because 'who's the alder there, and did they vote against it' is basically the only currency I have when I'm trying to get an alderman to move."
-    underlying_job: Avoid repeating the February-ordinance mistake — trusting a single "passed" signal that collapses committee and floor outcomes — and identify exactly which alder to pressure next.
+  - need: A ward one-pager that separates committee votes from full-Council floor votes in
+      sponsorship/legislative records, not a single "status" or "sponsored" field.
+    evidence_quote: "if it just says 'sponsored,' they'll say 'he was FOR it' about something he
+      later gutted on the floor, and that's exactly the kind of mismatch that would blow up on me"
+    underlying_job: Defend a legislative claim in front of a hostile or skeptical room without
+      being corrected live by someone who knows the real vote history.
 
-  - need: Ward-level KSI + infrastructure-coverage percentage, filterable to one ward, side by side
-    evidence_quote: "I want the KSI numbers and the coverage percentage for that one ward, side by side, because that's the two-fact combo that makes an alderman's staffer sit up."
-    underlying_job: Build the single strongest fact-pair for a specific alderman's office in one glance, replacing a hand-built ward letter.
+  - need: Menu-money figures that reconcile with (or explicitly diverge from and explain) Ward
+      Wise's numbers, since her audience will cross-check live.
+    evidence_quote: "if your number doesn't match theirs, the first thing a ward staffer does is
+      pull up Ward Wise on their phone mid-meeting... One mismatch I can't explain and I stop using
+      this for anything ward-specific, full stop."
+    underlying_job: Avoid public credibility loss when a number is checked against a source her
+      audience already trusts more than OYL.
 
-  - need: CSV export of ward rankings she can pull into her existing mail-merge sheet
-    evidence_quote: "CSV export is the whole ballgame for me — I don't need a beautiful chart, I need something I can pull into my mail-merge sheet."
-    underlying_job: Feed her homemade Google Sheet macro that mail-merges fifty ward letters, without rebuilding her production pipeline around a new tool.
+  - need: A weekly per-ward export/artifact (crash trend + sponsorship w/ committee-vs-floor +
+      that week's hearing dates) to replace her hand-built quarterly ward letter.
+    evidence_quote: "A one-page PDF per ward that's actually current... I'd forward it straight to
+      whichever ATA staffer covers that ward's letter that quarter, because it would replace the
+      four hours I spend building that by hand."
+    underlying_job: Stop rebuilding the same artifact from scratch every quarter under time
+      pressure with stale inputs.
 
-  - need: Mock/synthetic data made unmistakable, not just badge-labeled, when it resembles a known real dataset (Bike Lane Uprising)
-    evidence_quote: "If I put something up that looks like Bike Lane Uprising data and it's actually synthetic... that's a 'do not put this on a screen in front of an audience' flag, full stop, no matter how many times the badge says 'mock.'"
-    underlying_job: Protect her personal and organizational credibility in rooms where a Bike Lane Uprising-literate attendee is statistically near-certain to be present.
+  - need: A current, reliable hearing calendar (Committee on Pedestrian and Traffic Safety).
+    evidence_quote: "I currently track that by hand and it's the single most annoying thing I do
+      every week. If it's actually current the week I need it, that alone might get me to open this
+      site regularly."
+    underlying_job: Know when and what to prepare testimony for without manually monitoring
+      Legistar.
 
-  - need: Facility-grade classification that matches CDOT's own internal terminology
-    evidence_quote: "I'd want to check the facility-grade categories match what CDOT itself calls things, because if I say 'protected' and someone from CDOT engineering is in the room and their internal classification disagrees, I look sloppy."
-    underlying_job: Use the same vocabulary as the technical authority in the room so her framing can't be dismissed as amateur.
-
-  - need: Transparent, recitable methodology behind any "ward concentration" or safety-index score (ideally severity-weighted like CDOT's High Injury Network)
-    evidence_quote: "If it's raw counts and not something like CDOT's High Injury Network weighting... I'm going to get pushback from a CDOT engineer... I've had that exact argument before."
-    underlying_job: Never bring a number to a task-force meeting she can't defend against an engineer who knows the real methodology.
-
-  - need: Auto-generated weekly per-ward one-pager (KSI by mode, coverage %, top corridor, upcoming hearing/menu-money deadlines) she can forward directly
-    evidence_quote: "A one-page-per-ward PDF, auto-generated... basically my quarterly ward letter, but weekly and without me building the mail merge by hand."
-    underlying_job: Eliminate the manual, quarterly, stale-within-weeks ward-letter production cycle that is currently her team's single biggest recurring time cost.
-
-  - need: Menu-money spending broken into safety-relevant category, tied to a specific corridor/bikeway segment, with a promised-vs-delivered field
-    evidence_quote: "What I actually need in that meeting is 'the alderman promised X, spent Y on bike-relevant projects, and here's the KSI trend since.' Without that promised-versus-delivered slice, I still have to go build that comparison by hand."
-    underlying_job: Hold a specific alderman accountable to their own stated commitment using their own discretionary spending, in the exact meeting where that leverage matters (budget season).
-
-  - need: Some non-zero ridership/exposure proxy (bikeshare trip counts, corridor counter-program data), even if imprecise
-    evidence_quote: "I need something I can point to and say 'ridership on this block is not zero,' because that's usually the whole argument."
-    underlying_job: Counter the "nobody rides here, so it's not a priority" objection that directly cost her the 18th Street fight.
+  - need: An honest, un-hallucinating answer from the agent API when asked a question with no
+      underlying data (e.g., ridership), rather than a plausible-sounding invented number.
+    evidence_quote: "A chatbot that confidently invents a ridership figure... is worse than the
+      silence I have now, because now a staffer might repeat a wrong number in a hearing and
+      attribute it to 'the data.'"
+    underlying_job: Prevent a junior/less-data-literate colleague from unknowingly citing a
+      fabricated number in public.
 
 latent_needs:
-  - need: A documented, checkable methodology (date cutoffs, injury-severity definitions) attached to every ward number, not just an accurate number
-    inference_basis: >
-      She described a specific verification ritual — comparing OYL's numbers
-      against 3-4 wards she already knows cold from her own letters — and
-      predicted the mismatch will come not from OYL being "wrong" but from a
-      different date cutoff or injury-severity definition than her letters
-      use. She said one unexplained mismatch, discoverable by her own boss,
-      ends her use of the table entirely.
-    risk_if_wrong: >
-      If OYL's team optimizes only for numeric accuracy and not for
-      surfacing *why* two legitimate methodologies disagree, she will hit an
-      explainable-but-undocumented mismatch, be unable to resolve it on the
-      spot in front of her team, and permanently discard the ward table —
-      even though the underlying numbers may have been defensible.
+  - need: A ridership/exposure proxy layer (even an imperfect one, honestly labeled) surfaced
+      adjacent to crash and safety-index numbers — not just a caveat that none exists.
+    inference_basis: She independently proposed two concrete substitute proxies unprompted (Divvy
+      trip counts, 311 volume "labeled honestly as biased") when asked what she'd accept as
+      good-enough — she is not merely tolerating the absence, she has already identified workaround
+      candidates because the absence has cost her in a real meeting (the Archer staffer question).
+    risk_if_wrong: If OYL never surfaces any exposure proxy, its safety-index and crash-rate numbers
+      stay permanently vulnerable to the single question that has already sunk one of her
+      arguments; if it adds one without her level of caveat rigor, it risks becoming exactly the
+      kind of unexplainable number that would trigger her stated deal-breaker.
 
-  - need: Provenance/caveat text that travels with exported artifacts (PDF, CSV), not just displayed on the web page
-    inference_basis: >
-      She said a badge "only works if I can recite the provenance out loud
-      without opening a laptop," and separately asked for the dooring
-      undercount caveat to be "written down somewhere citable" so she isn't
-      the only person in the room saying it. Her actual working artifacts are
-      printed one-pagers and PDFs handed out at ward nights and school-gate-
-      style meetings, not a browser tab she has open live.
-    risk_if_wrong: >
-      If caveats (dooring undercount, 311 bias, mock-vs-real, index
-      methodology) exist only as web-page decoration and are stripped out
-      when she exports to CSV or requests the weekly PDF, her downstream
-      ward letters will present numbers as more precise/certain than OYL
-      itself claims — reintroducing exactly the defensibility gap she is
-      most anxious about.
+  - need: Provenance/methodology material written so it can be recited verbatim in a hostile room,
+      not just read for her own understanding.
+    inference_basis: She singled out the sources/methodology pages as "worth more to me than most
+      of the visualizations" specifically because her job is "surviving the cross-examination after
+      I say a number out loud" — she evaluates every page by whether she could defend it live, not
+      whether she personally understands it.
+    risk_if_wrong: If methodology text reads well to a data-literate reader but isn't quotable in
+      one breath, it will look present on paper but fail in the actual use moment (a hearing),
+      which the study can't detect without watching her actually testify.
 
-  - need: Ward-boundary version handling (2023 remap) built into any ward-filtered query or export
-    inference_basis: >
-      She described having to manually cross-reference against the 2023
-      ward remap because "the boundaries shifted and half my old saved
-      queries were wrong" — an unprompted, specific workaround for a data
-      versioning problem, not a hypothetical.
-    risk_if_wrong: >
-      If OYL's ward filter doesn't account for the remap (or doesn't say
-      which boundary vintage it uses), she will get silently misassigned
-      historical crashes for a ward, reproducing the exact error she
-      currently catches by hand — and won't necessarily catch it a second
-      time if she trusts the tool to have handled it.
+  - need: The mock-obstructions layer excluded from any build she might link a stranger to, not
+      merely watermarked/gated — i.e., her trust threshold for synthetic data adjacent to a real,
+      named, litigated real-world dataset (Bike Lane Uprising) is categorically stricter than for
+      other proxy/derived tiers.
+    inference_basis: Unprompted, she generalized from the single feature to the whole site
+      ("now I have to ask what ELSE here isn't what it looks like") and explicitly said watermark
+      labeling "isn't good enough for me" for this category specifically, distinguishing it from
+      her calmer reaction to other proxy-tier data (311, menu-money) earlier in the interview.
+    risk_if_wrong: Overbuilding trust-repair here (e.g., more aggressive watermarking) could satisfy
+      a casual user while missing that her actual bar is non-existence in any public-facing build —
+      a stricter, costlier requirement than the current design assumes.
 
-  - need: A visible freshness/maintenance signal (last-updated date, active-maintenance indicator) surfaced prominently, not buried
-    inference_basis: >
-      Unprompted, she volunteered a story about "some well-meaning
-      civic-tech project" that demoed at Hack Night, generated excitement,
-      then went unmaintained for six months with numbers two years stale —
-      and named this as the reason she'd stop using a new tool after one bad
-      experience, before any accuracy problem even occurs.
-    risk_if_wrong: >
-      If OYL is accurate but doesn't visibly signal its own currency/
-      maintenance status, she pattern-matches it to the dead civic-tech
-      project from memory and never gives it a second try, independent of
-      actual data quality.
-
-  - need: Reliable, change-aware hearing/deadline data (not a mirror of Legistar's current unreliability)
-    inference_basis: >
-      She keeps a hand-maintained spreadsheet of hearing dates specifically
-      because "Legistar's calendar is not reliable for 'is this actually
-      happening this week'" and described showing up to City Hall for a
-      hearing that had been moved with no page update.
-    risk_if_wrong: >
-      If OYL's hearing-date feature is built as a simple Legistar pass-
-      through without a staleness check or independent verification signal,
-      it inherits Legistar's exact failure mode, and she has no reason to
-      retire her hand-kept spreadsheet even if the feature exists.
-
-  - need: Audience-specific framings/exports of the same underlying number (press-release-ready vs. plain-language-for-residents)
-    inference_basis: >
-      She explicitly distinguished two audiences who "want completely
-      different things from the same number" — an alderman's office that
-      wants press-release material, and a ward-night room that wants
-      language that doesn't feel like it's talking down to them or hiding
-      something — implying a single generic export would still require her
-      to manually rewrite it for whichever room she's walking into.
-    risk_if_wrong: >
-      If OYL ships one canonical artifact per ward with one register of
-      language, she still does the audience-adaptation work by hand for
-      every ward night, capturing only part of the time she currently
-      spends building materials.
+  - need: A comparative, not just descriptive, ward view — danger/need vs. money actually spent —
+      as the unit of political argument, not raw ward stats alone.
+    inference_basis: Her unprompted magic-wand answer combined two datasets OYL already has
+      separately (safety index, menu-money) into one overlay and said the argument "makes itself"
+      without her needing to speak — she is describing a combination the site doesn't currently
+      offer as a single view, inferred from what she reached for when given a free choice.
+    risk_if_wrong: If this reads as "she just wants a chart," the real signal — that her political
+      argument's entire structure is disparity-between-two-existing-numbers, not either number
+      alone — could get lost, leading to a chart feature that shows both numbers without forcing
+      the comparison she actually needs.
 
 reactions_to_existing:
-  - feature: Transportation map (crash density + facility-grade bikeway overlay)
+  - feature: Transportation map (crash density + facility grade, mock obstructions removed)
     verdict: would-use
-    why: "Screenshot for a one-pager if I could zoom to just my ward" — but conditional on facility-grade taxonomy matching CDOT's internal terms, or she risks looking sloppy in front of an engineer.
+    why: Matches her actual testimony-prep pattern (visualizing a protection gap), and she
+      explicitly approved of obstructions being removed from it as reputational risk mitigation.
 
-  - feature: Mock obstruction layer (on the transportation map)
-    verdict: distrusts
-    why: Explicitly named as a public-credibility landmine because it visually resembles real Bike Lane Uprising data; badge labeling alone does not neutralize the risk in her rooms, where a Bike Lane Uprising-literate attendee is near-certain to be present.
-
-  - feature: Schematic network map (21 named routes, no safety data)
+  - feature: Network map (schematic, no safety data)
     verdict: ignores
-    why: "A marketing map, not an advocacy tool" — no KSI data means it doesn't connect infrastructure to danger or money, the only two things her job runs on. Would use once for onboarding a new intern, then never again.
+    why: Out of scope for her job description ("I don't bring a 'how legible is the network'
+      argument to a hearing"); she'd redirect residents there but wouldn't use it herself.
 
-  - feature: Findings page — dooring undercount card
+  - feature: Findings cards — KSI trend, ward concentration
+    verdict: uses
+    why: Directly screenshot-into-deck material, matching her existing citywide framing lines.
+
+  - feature: Findings card — PeopleForBikes BNA score
+    verdict: ignores / misreads-risk
+    why: No context for what a good score is relative to other cities; she flags it as homework
+      she'd have to explain rather than ammunition she could deploy, and worries a staffer would
+      need it pre-explained.
+
+  - feature: Ward table + CSV export
     verdict: would-use
-    why: Gives her citable, written-down language for a caveat she already states verbally at every hearing, reducing her exposure as "the only person in the room making that claim."
+    why: Fits her existing reconciliation workflow (cross-checking scraped sources against each
+      other); CSV format specifically named as necessary.
 
-  - feature: Findings page — ward concentration card
-    verdict: distrusts (pending methodology disclosure)
-    why: Will misread as CDOT's High Injury Network methodology if not explicitly severity-weighted; she has been publicly corrected on exactly this point before by a CDOT engineer at a task force session.
+  - feature: Ward one-pager
+    verdict: would-use, conditionally / distrusts pending verification
+    why: Matches her core artifact exactly, but she flagged three specific unresolved risks
+      (safety-index interpretability, sponsorship granularity, menu-money reconciliation) any one
+      of which she said would break trust if wrong.
 
-  - feature: Ward table (sortable rankings, CSV export, % protected, % streets with bikeways)
+  - feature: Sources / methodology pages
+    verdict: uses
+    why: Named as her go-to defense artifact for hostile-room cross-examination — valued for
+      recitability, not just accuracy.
+
+  - feature: Action page (hearings calendar, contacts, 311/BLU links)
+    verdict: would-use
+    why: The hearing calendar specifically replaces a manual tracking task she already described
+      as her most annoying recurring chore.
+
+  - feature: Obstructions preview page (gated, watermarked, synthetic)
+    verdict: distrusts
+    why: Recognizes the real Bike Lane Uprising dataset by name and scale; treats any synthetic
+      stand-in — however labeled — as a categorical credibility hazard that would generalize into
+      distrust of the whole site if surfaced carelessly.
+
+  - feature: News-coverage layer (auditable ward/alder/route matching)
+    verdict: would-use, narrowly
+    why: Values the "why matched" audit link as a lead-generation tool but would never cite the
+      aggregation itself in testimony — treats it as a pointer to primary sources, not a source.
+
+  - feature: Proposed-projects roster (volunteer-reviewed status)
     verdict: would-use, conditionally
-    why: Best fit to her actual production workflow (mail-merge feed) — but gated entirely on a clean cross-check against 3-4 wards she already knows from her own letters; one unexplained mismatch and she discards it for anything alderman-facing.
+    why: Wants to know who "volunteer-reviewed" means and treats stale status dates as reason to
+      independently verify by phone — doesn't remove her existing CDOT-call workaround unless
+      update cadence is visibly fast.
 
-  - feature: Council/legislation records with single automated "status" field
-    verdict: distrusts
-    why: Named as "actively dangerous" — collapsing committee-pass and full-Council-fail into one status field is precisely the mistake that blindsided her org in February 2026 and could propagate false "passed" claims through her network.
+  - feature: Static agent API / "ask an AI assistant"
+    verdict: distrusts, pending her own test
+    why: Primed to distrust by prior experience with unsourced chatbot wrappers; would only trust
+      it after personally testing it on a question she already knows the answer to, and specifically
+      wants to see it refuse rather than hallucinate on missing-data questions (ridership).
 
-  - feature: Roll-call votes, sponsorship counts, hearing dates/contacts (Legistar-derived)
-    verdict: would-use
-    why: Roll-call no-votes are "basically the only currency" she has with alders; sponsorship counts usable cautiously since she already tells people most safety items pass by voice vote; hearing dates/contacts could replace her hand-kept spreadsheet outright if accurate and not stale.
+data_they_bring: Quarterly hand-built ward letters (crash data by ward, sourced from the raw city
+  crash portal directly rather than any secondary dashboard); a personal reconciliation spreadsheet
+  cross-referencing Ward Wise menu-money categories against CDOT's own labels; a private log of
+  committee-vs-floor vote outcomes because Legistar doesn't surface that distinction cleanly;
+  manual hand-counts of crash records against unpublished CDOT install dates (sourced from press
+  coverage, not CDOT itself) when she needs before/after evidence; a hearing-date tracking habit
+  maintained entirely by hand.
 
-  - feature: Menu-money layer (unverified Ward Wise extract)
-    verdict: ignores
-    why: Duplicates a source she already goes to directly (Ward Wise) with no added trust; would become useful only if joined to a specific crash corridor or bikeway segment, which it currently is not.
+deal_breakers: A single ward number that contradicts a source she already trusts (Ward Wise,
+  Legistar, her own letters) that she cannot explain live in a room; a sponsorship field that reads
+  as support when the real record includes a later no-vote; any synthetic/mock data that isn't
+  unmistakably and permanently distinguishable from a real, named dataset (Bike Lane Uprising) she
+  already knows in detail; an AI-assistant answer that invents a number instead of declining.
 
-  - feature: Badge system (real/proxy/mock/crowdsourced/derived/no-data-yet) + stated limitations
-    verdict: would-use, with reservations
-    why: Approves of the concept (pre-empts the "where's this number from" question she fields constantly) but "derived" alone is insufficient — she needs to be able to recite the provenance out loud without a laptop. No-install-dates gap is accepted as a limitation, not a dealbreaker.
-
-  - feature: Ward safety index ("not absolute risk, just relative")
-    verdict: distrusts
-    why: An opaque single score is "exactly the kind of thing that gets torn apart" by a CDOT engineer familiar with real High Injury Network weighting; she will not use a number she can't defend, even if it's the stronger number.
-
-data_they_bring: >
-  City crash-data portal (Socrata query interface) and CDOT's Fall Traffic
-  Crashes report as the recognized citation; Ward Wise's menu-money map;
-  Bike Lane Uprising's dashboard for corridor blockage cases; the City
-  Clerk's Legistar system as source-of-record for hearings/bill status,
-  despite its unreliability; an informal cross-advocate texting network
-  (Better Streets, Chi Hack Night) used to sanity-check numbers before they
-  reach an alderman's staff; a homemade Google Sheet with a mail-merge macro
-  that generates fifty ward letters from a saved Socrata query; a
-  hand-maintained hearing-date spreadsheet built specifically because
-  Legistar's own calendar is unreliable; a hand-kept running list of alders
-  who have had bike lanes ripped out or stalled (not captured in any
-  dataset); manual knowledge of the 2023 ward remap needed to correct stale
-  saved queries.
-
-deal_breakers: >
-  (1) Any single ward number she can't explain when it's challenged live —
-  by a resident, a CDOT engineer, or a Bike Lane Uprising volunteer —
-  especially in front of her own boss or a hostile public room; one
-  unexplained mismatch against her own ward letters ends her use of that
-  data source, full stop.
-  (2) A mock/synthetic layer that could be mistaken for real Bike Lane
-  Uprising data on a shared screen — badge labeling alone does not clear
-  this bar for her.
-  (3) A single collapsed "status" field on legislation that hides the
-  committee-vs-full-Council distinction — named as "actively dangerous"
-  given the February 2026 ordinance's committee-pass/floor-fail split.
-  (4) An opaque risk/danger index she cannot recite and defend the
-  weighting of out loud against a CDOT engineer.
-  (5) A tool that pattern-matches to the "demo-then-die" civic-tech
-  lifecycle she's been burned by before — no visible signal of ongoing
-  maintenance reads as a reason to distrust it pre-emptively, before any
-  accuracy issue even surfaces.
-
-vocabulary: >
-  ward, alder / alderperson, chief of staff, menu money, aldermanic
-  prerogative, KSI / "deaths and serious injuries," testimony, the
-  committee (Committee on Pedestrian and Traffic Safety), full Council,
-  roll-call vote, voice vote, CDOT, "the portal" (city crash-data portal),
-  Vision Zero, high-crash corridor / High Injury Network, "our letter"
-  (the ward letter), turnout, "who's the alder there?", ward night, dooring,
-  KSI trend, protected / painted / no infrastructure, coverage percentage,
-  promised-versus-delivered, "prove danger but can't prove demand,"
-  citywide vs. ward-specific framing, aldermanic-prerogative fight,
-  merchant-objection meeting.
+vocabulary: ward, alder, menu money, prerogative, KSI / "deaths and serious injuries," testimony,
+  the committee, CDOT, "the portal," high crash corridor, "our letter," "who's the alder there?",
+  sponsored vs. co-sponsored vs. voted no, safety index (used skeptically, not natively — she
+  interrogates rather than adopts this term), proxy (used as a term of suspicion), volunteer-
+  reviewed (used to flag an unresolved credibility question).
 ```

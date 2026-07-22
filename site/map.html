@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Map — On Your Left!</title>
-<meta name="description" content="On Your Left! — Chicago bike safety, on the record. Crash, infrastructure, and council accountability data by ward.">
+<meta name="description" content="On Your Left! — Chicago bike safety, on the record. Crash, infrastructure, and council accountability data by ward. Open JSON API for AI agents at /llms.txt.">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="assets/css/style.css">
-<link rel="alternate" type="application/json" href="api/v1/index.json">
-<link rel="alternate" type="text/plain" href="llms.txt">
+<link rel="llms-txt" href="llms.txt">
+<link rel="alternate" type="text/plain" href="llms.txt" title="llms.txt — AI agent data contract">
+<link rel="alternate" type="application/json" href="api/v1/index.json" title="JSON API discovery index">
 </head>
 <body>
+<noscript><p><a href="llms.txt">AI agents &amp; developers: start here — llms.txt</a> · <a href="api/v1/index.json">JSON API index</a></p></noscript>
 <div class="map-wrap">
   <div id="map"></div>
   <aside class="map-side" id="side"></aside>

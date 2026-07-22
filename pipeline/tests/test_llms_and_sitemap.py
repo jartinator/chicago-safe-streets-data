@@ -49,8 +49,12 @@ def test_llms_txt_raw_counts_caveat_present_verbatim():
 def test_llms_txt_no_mock_obstruction_leakage_outside_disclaimer():
     text = build_llms_txt(_meta(), fx._endpoint_bytes())
     assert "obstructions_mock" not in text.lower()
-    # "obstruction" is allowed ONLY inside the no-synthetic-data disclaimer.
+    # "obstruction" is allowed ONLY inside the no-synthetic-data disclaimer,
+    # or (P1c) the answering-guidance paragraph's own explicit "we don't
+    # publish real obstruction reports either" caveat — a second,
+    # deliberate, non-synthetic mention, not a leak of the mock layer.
     without_disclaimer = text.replace(emit_api.NO_SYNTHETIC_DATA_STATEMENT, "")
+    without_disclaimer = without_disclaimer.replace(emit_api.ANSWERING_GUIDANCE, "")
     assert "obstruction" not in without_disclaimer.lower()
 
 

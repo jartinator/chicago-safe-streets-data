@@ -31,6 +31,19 @@
       "type": "string",
       "description": "Present iff data_tier == 'mixed' — explains which sections carry which tier."
     },
+    "caveats": {
+      "type": "array",
+      "description": "Machine-readable caveat flags applicable to this endpoint's numbers. Present only when at least one applies. See CAVEAT_TEXT in pipeline/emit_api.py.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "enum": ["not_normalized_by_ridership", "recent_months_provisional", "dooring_undercounted", "sponsorship_proxy_not_vote_tally"] },
+          "text": { "type": "string" }
+        },
+        "required": ["code", "text"],
+        "additionalProperties": false
+      }
+    },
     "license": {
       "type": "string"
     },

@@ -484,7 +484,8 @@ def test_build_index_endpoints_have_example_questions():
 def test_build_index_no_synthetic_data_statement_present():
     out = build_index(_meta(), _endpoint_bytes())
     assert "obstruction" in out["no_synthetic_data"].lower()
-    assert "synthetic" in out["no_synthetic_data"].lower()
+    assert "no obstruction data" in out["no_synthetic_data"].lower()
+    assert "bikelaneuprising.com" in out["no_synthetic_data"].lower()
 
 
 def test_build_index_fetch_recipes_reference_known_urls():

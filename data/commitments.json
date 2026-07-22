@@ -1,0 +1,47 @@
+{
+  "note": "Curated editorial roster of the City of Chicago's published bikeway-network commitments, with citations, kept separate from anything OYL measures itself. It exists to pair against OYL's own snapshot-built `site/data/bikeway_mileage_series.json` so readers can see the promise next to the network as it stands today. Delivery-since-2023 is NOT measurable from OYL data: the CDOT Bike Routes layer carries no install-date field, so the mileage series is built forward from snapshots (first snapshot 2026-07-11) with no way to attribute miles to when they were built. A FOIA requesting per-segment install / as-built dates from CDOT is drafted and ready to send: docs/outbox/2026-07-12--foia--cdot--bikeway-mileage-history.md (item 4). Only commitments with a direct citation below are listed; nothing here is inferred or estimated.",
+  "commitments": [
+    {
+      "id": "150-new-miles",
+      "text": "150 miles of new bikeways",
+      "number": 150,
+      "unit": "miles",
+      "year_committed": 2023,
+      "deadline": null,
+      "source_name": "Chicago Department of Transportation, 2023 Chicago Cycling Strategy",
+      "citations": [
+        "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
+        "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
+      ],
+      "data_tier": "real"
+    },
+    {
+      "id": "80-percent-low-stress",
+      "text": "80% of the new bikeway miles built low-stress (protected lanes, neighborhood greenways, or off-street trails)",
+      "number": 80,
+      "unit": "percent",
+      "year_committed": 2023,
+      "deadline": null,
+      "source_name": "Chicago Department of Transportation, 2023 Chicago Cycling Strategy",
+      "citations": [
+        "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
+        "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
+      ],
+      "data_tier": "real"
+    },
+    {
+      "id": "70-percent-half-mile-access",
+      "text": "70% of Chicago residents living within a half-mile of low-stress biking",
+      "number": 70,
+      "unit": "percent",
+      "year_committed": 2023,
+      "deadline": null,
+      "source_name": "Chicago Department of Transportation, 2023 Chicago Cycling Strategy",
+      "citations": [
+        "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
+        "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
+      ],
+      "data_tier": "real"
+    }
+  ]
+}

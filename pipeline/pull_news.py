@@ -17,17 +17,22 @@ Idempotent: re-running overwrites cleanly.
 """
 import argparse
 import json
+import re
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import requests
 
 from config import (NEWS_FEEDS, NEWS_USER_AGENT, NEWS_FEED_MAX_BYTES, RAW_DIR,
                     PROPOSED_PROJECTS_PATH,
-                    NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT)
+                    NEWS_PROJECT_QUERY_PHRASES_PER_PROJECT,
+                    NEWS_RESOLVE_TIMEOUT_S, NEWS_RESOLVE_ATTEMPTS,
+                    NEWS_RESOLVE_BACKOFF_S, GNEWS_ARTICLE_URL_TMPL,
+                    GNEWS_BATCHEXECUTE_URL)
 from socrata import write_json
 
 _HEADERS = {
@@ -51,15 +56,130 @@ def fetch_feed(url):
         return None
 
 
-def resolve_redirect(url):
-    """Final URL after redirects (Google News links are opaque redirectors),
-    or the original URL on any failure — a working redirect link beats none."""
+# Headers for the decode-params fetch below — looks like an ordinary reader:
+# browser-like Accept headers, same honest bot User-Agent (issue #42).
+_RESOLVE_HEADERS = {
+    "User-Agent": NEWS_USER_AGENT,
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+               "*/*;q=0.8"),
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+_GNEWS_ARTICLE_ID_RE = re.compile(r"/rss/articles/([^/?]+)")
+_GNEWS_SIG_RE = re.compile(r'data-n-a-sg="([^"]+)"')
+_GNEWS_TS_RE = re.compile(r'data-n-a-ts="([^"]+)"')
+
+# The batchexecute RPC id ("Fbv4je") and the literal garturlreq payload shape
+# are undocumented, reverse-engineered from Google News' own front-end
+# (issue #42) — preserved byte-for-byte except the interpolated id/ts/sig.
+_GNEWS_RPC_ID = "Fbv4je"
+_GNEWS_GARTURLREQ_TMPL = (
+    '["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,'
+    'null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"{id}",'
+    '{ts},"{sig}"]'
+)
+
+
+def _google_host(url):
+    host = urlparse(url).netloc.lower()
+    return host == "google.com" or host.endswith(".google.com")
+
+
+def _gnews_article_id(url):
+    """The opaque article id (query string stripped) from a
+    news.google.com/rss/articles/<id> URL, or None if the url isn't that
+    shape — nothing to decode (issue #42)."""
+    match = _GNEWS_ARTICLE_ID_RE.search(url)
+    return match.group(1) if match else None
+
+
+def _gnews_decode_params(article_id, get_fn):
+    """(sig, ts) scraped off the article's stub page, or None when either
+    attribute is missing — decode isn't possible for this article (caller
+    keeps the original redirect url). Raises requests.RequestException on a
+    network failure so the caller's retry/backoff can catch it."""
+    resp = get_fn(GNEWS_ARTICLE_URL_TMPL.format(article_id=article_id),
+                  headers=_RESOLVE_HEADERS, timeout=NEWS_RESOLVE_TIMEOUT_S)
+    sig_match = _GNEWS_SIG_RE.search(resp.text)
+    ts_match = _GNEWS_TS_RE.search(resp.text)
+    if not sig_match or not ts_match:
+        return None
+    return sig_match.group(1), ts_match.group(1)
+
+
+def _gnews_batchexecute(article_id, ts, sig, post_fn):
+    """The real publisher URL from the batchexecute RPC, or None if the
+    response doesn't parse the way we expect. The response format is
+    undocumented and may change without notice (issue #42) — every parsing
+    step below is defensive and returns None rather than raising. Raises
+    requests.RequestException on a network failure so the caller's
+    retry/backoff can catch it."""
+    inner = [_GNEWS_RPC_ID,
+             _GNEWS_GARTURLREQ_TMPL.format(id=article_id, ts=ts, sig=sig)]
+    envelope = [[inner]]
+    payload = "f.req=" + quote(json.dumps(envelope))
+    resp = post_fn(GNEWS_BATCHEXECUTE_URL,
+                   headers={"Content-Type":
+                            "application/x-www-form-urlencoded;charset=UTF-8",
+                            "User-Agent": NEWS_USER_AGENT},
+                   data=payload, timeout=NEWS_RESOLVE_TIMEOUT_S)
+    # The body is NOT one JSON document: it's a sequence of length-prefixed
+    # JSON-array chunks (")]}'" magic prefix, then repeating "<byte len>\n
+    # <array>\n"), so parse it line by line rather than json.loads-ing the
+    # whole thing. Scan each array-shaped line for the wrb.fr/Fbv4je envelope
+    # whose element [2] is a JSON string holding the real URL at index [1].
     try:
-        resp = requests.head(url, headers={"User-Agent": NEWS_USER_AGENT},
-                             timeout=15, allow_redirects=True)
-        return resp.url or url
-    except requests.RequestException:
+        for line in resp.text.splitlines():
+            line = line.strip()
+            if not line.startswith("[["):
+                continue
+            try:
+                chunk = json.loads(line)
+            except ValueError:
+                continue
+            for entry in chunk:
+                if (isinstance(entry, list) and len(entry) > 2
+                        and entry[0] == "wrb.fr" and entry[1] == _GNEWS_RPC_ID):
+                    return json.loads(entry[2])[1]
+        return None
+    except (IndexError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _retry_network(fn, sleep_fn):
+    """Call fn() up to NEWS_RESOLVE_ATTEMPTS times with NEWS_RESOLVE_BACKOFF_S
+    backoff between tries, swallowing requests.RequestException. Returns
+    fn()'s result (which may itself be None — a non-network decode miss is
+    not retried), or None if every attempt raised."""
+    for attempt in range(NEWS_RESOLVE_ATTEMPTS):
+        if attempt:
+            sleep_fn(NEWS_RESOLVE_BACKOFF_S)
+        try:
+            return fn()
+        except requests.RequestException:
+            continue
+    return None
+
+
+def resolve_redirect(url, get_fn=requests.get, post_fn=requests.post,
+                      sleep_fn=time.sleep):
+    """Publisher URL behind a Google News redirect, decoded via the
+    batchexecute RPC Google's own front-end uses (issue #42 — following the
+    redirect gets a JS interstitial from datacenter IPs), or the original URL
+    on any failure — a working redirect link beats none."""
+    article_id = _gnews_article_id(url)
+    if article_id is None:
+        return url  # not a /rss/articles/ link — nothing to decode
+
+    params = _retry_network(lambda: _gnews_decode_params(article_id, get_fn),
+                             sleep_fn)
+    if not params:
         return url
+    sig, ts = params
+
+    real_url = _retry_network(
+        lambda: _gnews_batchexecute(article_id, ts, sig, post_fn), sleep_fn)
+    return real_url or url
 
 
 def _iso_pubdate(text):
@@ -152,14 +272,22 @@ def build_feeds(feed_configs, fetch_fn=fetch_feed, resolve_fn=resolve_redirect):
 
     # Title dedup FIRST (direct feeds are listed before the aggregator, so
     # they win), so Google items that merely re-surface an allowlisted
-    # outlet's own story are dropped before paying one HEAD request each to
-    # resolve their opaque redirect links. A second pass after resolution
+    # outlet's own story are dropped before paying one resolution request
+    # each for their opaque redirect links. A second pass after resolution
     # catches URL-level duplicates that only become visible once resolved.
     dedup_items(feeds)
+    attempted = resolved = 0
     for feed in feeds:
         if feed["kind"] == "google_news":
             for item in feed["items"]:
                 item["url"] = resolve_fn(item["url"])
+                attempted += 1
+                if not _google_host(item["url"]):
+                    resolved += 1
+    if attempted:
+        # Keeps a resolution regression (issue #42: 54/57 items stuck on
+        # redirect URLs) visible in every run's log.
+        print(f"  {resolved}/{attempted} google links resolved")
     return dedup_items(feeds)
 
 
