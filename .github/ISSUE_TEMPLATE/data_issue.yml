@@ -13,7 +13,7 @@ body:
     attributes:
       label: Dataset / file
       description: Which published file or source dataset?
-      placeholder: "site/data/obstructions_mock.geojson  (or Socrata id pr57-gg9e)"
+      placeholder: "site/data/crashes_cyclist.geojson  (or Socrata id pr57-gg9e)"
     validations:
       required: true
   - type: textarea

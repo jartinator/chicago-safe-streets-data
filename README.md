@@ -2,11 +2,12 @@
 
 On Your Left! (OYL) — a Chicago bike-safety evidence dashboard. *Chicago bike safety, on the record.*
 
-An independent, open-source, **read-only** dashboard that shows where bike-lane
-obstructions, bike infrastructure type, and cyclist-involved traffic crashes
-overlap across Chicago — drillable from **ward → corridor → intersection**.
-Built for advocates and residents, and to give aldermen ward-specific
-visibility into problem areas.
+An independent, open-source, **read-only** dashboard that shows where bike
+infrastructure type and cyclist-involved traffic crashes overlap across
+Chicago — drillable from **ward → corridor → intersection**. Built for
+advocates and residents, and to give aldermen ward-specific visibility into
+problem areas. OYL publishes no bike-lane-obstruction data of its own — see a
+blocked bike lane? report it at Bike Lane Uprising (below).
 
 **This is an evidence layer, not a collection layer.** It accepts no reports,
 has no accounts, and no forms. See a problem in the real world? Report it where
@@ -39,7 +40,7 @@ Use it to spot patterns worth acting on, not to prove causation.
 | Ward boundaries (2023 remap) | real | Clean spatial-join target; redrawn only at redistricting. |
 | [311 Service Requests](https://data.cityofchicago.org/d/v6vf-nfxy) (bike-related) | proxy | Self-reported — biased toward wards with engaged 311 users; request-type names shift over time (we filter by substring). |
 | Camera violations — [speed](https://data.cityofchicago.org/d/hhkd-xvj4) / [red-light](https://data.cityofchicago.org/d/spqx-js37) | proxy | Aggressive-driving proxy, not crashes; exists only at fixed camera locations, so sparse and location-biased. |
-| Bike-lane obstructions | **mock** | Entirely synthetic demonstration data — never rendered on the main maps; lives only on a gated, watermarked demo page (`obstructions-preview.html`). Schema mirrors Bike Lane Uprising's public submission fields (they have no public API); the category enum is a placeholder pending a data-sharing conversation. |
+| Bike-lane obstructions | *not published* | OYL publishes no obstruction data at all. See a blocked bike lane? Report it at [Bike Lane Uprising](https://www.bikelaneuprising.com). |
 | City Council legislation — [Legistar Web API](https://webapi.legistar.com/v1/chicago) | real | Frozen at 2023-06-21 — Chicago's council migrated to a new system (eLMS) after that date with no confirmed public API. The gap is now covered post-2023 by Chicago Councilmatic (below), so `council_records.json` overall is current to the present even though the Legistar half alone is frozen. |
 | [Chicago Councilmatic](https://chicago.councilmatic.org) (DataMade) | real | A republished mirror of the official council record, not the city's own system — current post-2023 (covers the Legistar gap, above), but exactly how its scraper reaches Chicago's post-migration source isn't verifiable from outside DataMade. Contested-vote data only surfaces genuine roll-call splits (~1.4% of post-2023 votes); attendance is deliberately not published (see DECISIONS.md). |
 
@@ -61,8 +62,8 @@ endpoints get added, existing ones don't change shape without a
 - Every file's shape is a hand-written [JSON Schema](site/api/v1/schemas/),
   validated in CI (`pipeline/check_api.py`) — the schemas are the contract,
   not derived from the code that writes them.
-- The human site's synthetic bike-lane-obstruction demo layer is excluded
-  from this namespace entirely; every response says so.
+- OYL publishes no obstruction data at all — not in this API, not on the
+  human site; every response says so.
 
 ## Repo layout
 
@@ -72,8 +73,7 @@ pipeline/    Python: Socrata pulls -> spatial join (crash -> nearest bikeway
 site/        Static front-end (vanilla JS + vendored Leaflet):
              index (geographic map), network (schematic map), findings,
              table (+ CSV export), sources, methodology, action, ward
-             (printable one-pager, brief/plain registers), contributing,
-             obstructions-preview (gated synthetic demo)
+             (printable one-pager, brief/plain registers), contributing
 data/snapshots/   Dated copies of the CDOT Bike Routes layer
 SCHEMA.md    Published data contracts (the site's data/ files ARE the dataset)
 DECISIONS.md Reasoned calls where the project docs were silent

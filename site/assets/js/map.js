@@ -70,9 +70,8 @@
     shade: B.qs().get("shade") || "density",
   };
 
-  // Obstructions (mock tier) are deliberately absent: synthetic data never
-  // renders on a primary map surface. See obstructions-preview.html and
-  // DECISIONS.md.
+  // Obstructions are absent: On Your Left! publishes no obstruction data at
+  // all. See DECISIONS.md; report a blocked lane to Bike Lane Uprising.
   const LAYERS = [
     { id: "mainroutes", label: "Main routes", tier: "derived" },
     { id: "crashes", label: "Cyclist crashes", tier: "real" },

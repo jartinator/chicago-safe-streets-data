@@ -2075,8 +2075,6 @@ def main():
              "records": len(sr311), "date_range": None},
             {"id": "cameras", "name": "Speed/Red-light Camera Violations", "tier": "proxy",
              "records": len(cameras), "date_range": None},
-            {"id": "obstructions", "name": "Bike-lane Obstructions", "tier": "mock",
-             "records": None, "date_range": None},
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
              if mellow_gj["features"] else []) + (

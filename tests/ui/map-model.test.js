@@ -47,7 +47,7 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
   M.DENSITY_RAMPS.obstructions, undefined,
-  "no obstructions ramp: mock data never renders on primary map surfaces (see obstructions-preview.html)"
+  "no obstructions ramp: On Your Left! publishes no obstruction data at all"
 );
 
 // ---- rampColor ----
