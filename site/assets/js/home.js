@@ -209,6 +209,10 @@
       `caveat attached; an advocate can prep a ward one-pager for public comment; ` +
       `a council staffer can check their ward's record — all by asking, instead ` +
       `of clicking through the site.</p>` +
+      `<p class="home-agent-clarify">There's no chatbox on this site — you use an ` +
+      `assistant you already have. It reads the same published files anyone can ` +
+      `download, and when we don't publish something, assistants are asked to say ` +
+      `&ldquo;not published here&rdquo; rather than guess.</p>` +
       `<p class="muted">Paste this into an assistant that can browse the web:</p>` +
       copyBlock("agent-oneliner", oneLiner) +
       `<p class="home-agent-foot">Building something? Point code at the open JSON ` +

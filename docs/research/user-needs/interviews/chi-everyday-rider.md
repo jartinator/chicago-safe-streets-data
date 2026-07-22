@@ -1,207 +1,280 @@
-# Interview: chi-everyday-rider
+# Interview: chi-everyday-rider (Jess Morales)
 
-## Round 1 transcript
+**Run date:** 2026-07-21
+**Stimulus:** `02-data-inventory.md`, data contract **v1.14** (re-run — includes home/orientation page, ward one-pager, methodology page, static agent API + plain-language "ask an AI assistant" section, news-coverage layer, proposed-projects roster, PeopleForBikes BNA score, obstructions moved to gated preview page)
+**Persona file:** `personas/chi-everyday-rider.md` · **Evidence base:** `evidence/everyday-civic.md`
 
-**Interviewer:** Thanks for making time — I know you're coming off a shift. Let's start simple. Tell me about your role, and the last time you tried to influence a decision about street safety. What did that actually involve, step by step?
+---
 
-**chi-everyday-rider:** I mean, "influence a decision" makes it sound way more official than what I do. I'm a nurse, I work at a hospital up in Near North, and I bike there most days when it's not icy, with my son Mateo in the trailer for the first leg because I drop him at school on the way. So the "decision" I actually made — back in maybe April — was just: do I keep taking Milwaukee Avenue down toward Elston, or do I switch us over to a side street after that guy got hit by a truck near the Jewel on Milwaukee. I saw it on Block Club, they had a little write-up, "cyclist critically injured," and there was a photo of a ghost bike a few days later. So for like two weeks I rerouted us onto Kimball and then cut over, which added maybe six minutes but felt safer. That's the whole decision. There wasn't a meeting. There wasn't a document. I just changed which street we rode on.
+## Transcript
 
-**Interviewer:** Who did you need to convince, if anyone — and what would "convinced" have looked like?
+**Researcher:** Thanks for making time. Tell me about your role — when you touch anything about street safety, what's actually going on?
 
-**chi-everyday-rider:** Honestly just myself and my husband, Danny. He was the one who said "just take Kimball for a while, I don't care if it's slower." That was the whole negotiation. I guess if you want a bigger version — there was one time I mentioned it to Mateo's teacher, Ms. Alvarez, at pickup, like "hey, is the school doing anything about kids getting dropped off by bike, the corner's kind of a mess in the morning," and she said she'd bring it up, and nothing happened, so. That's about as far as "convincing someone" goes for me.
+**Jess:** I mean, "role" makes it sound official. I'm a nurse, I bike to Prentice — well, the Near North one, whichever — three, four days a week when it's not ice season, and I've got my kid in a trailer behind me for the school drop-off first. The last "decision" I made about street safety was like two weeks ago when I rerouted off Milwaukee near the six-corners mess because someone posted a photo in our Facebook group of a truck just parked dead in the bike lane by the Jewel. I didn't look anything up. I just went a block over the next morning.
 
-**Interviewer:** What information sources do you actually touch in a normal week, related to this?
+**Researcher:** Walk me through that morning a little more — what did you actually see, and what did you do with it?
 
-**chi-everyday-rider:** Block Club Chicago, because it's basically the news for our neighborhood now — real news, not the Facebook stuff. There's an Avondale parents group on Facebook, and honestly half of what I know about anything comes from someone posting in there, like "does anyone know why there's cones blocking the bike lane on Kimball again" and forty people arguing in the comments. I follow a couple of bike accounts on Instagram that repost crash news. And then just — what I see. Like I notice things. If a bike lane's got a car parked in it every single day at the same spot, I don't need a dataset to tell me that, I see it at 6:45 in the morning with a kid strapped in behind me.
+**Jess:** Someone in the "Avondale Neighbors" group posted a phone photo, like 7am, captioned "AGAIN" with three exclamation points. A bunch of people commented their own near-misses at that same spot. I didn't screenshot it or save it, I just remembered "okay, that block, bad idea today" and took Kimball instead for like a week. Then I forgot about it and went back to normal.
 
-**Interviewer:** Tell me about the last time you needed an actual number, map, or chart about bike safety — not just a vibe. Where'd you go, what'd you do with it, how long did it take?
+**Researcher:** Who do you need to convince when something like this happens — is there anyone you're trying to persuade, or is it just you deciding for yourself?
 
-**chi-everyday-rider:** Okay, honestly? Almost never do I go looking for a number. The one time I can think of, my coworker Denise — she's a charge nurse, she's more of a "read the news" person than me — she sent me a link to some Streetsblog thing with a chart about how bike crashes went up even though the city's been adding lanes, and I looked at it for like ninety seconds in the break room between patients and then went back to work. I didn't save it, I didn't do anything with it. It just made me feel worse about the ride home that day. That's basically the whole experience of "using data" for me — someone else finds it, packages it into a sentence I can understand, and I absorb it and move on.
+**Jess:** Honestly usually just me. I'm not trying to convince anybody of anything. If I ever did try to convince someone it'd be my husband, that it's safe enough to keep towing Mia instead of driving. He already thinks I'm nuts for doing it in March.
 
-**Interviewer:** Have you ever built anything yourself — a spreadsheet, a saved search, screenshots — because nothing gave you the answer directly?
+**Researcher:** What information sources do you touch in a normal week for anything like this?
 
-**chi-everyday-rider:** I have a folder in my phone photos literally called "bike stuff." It's screenshots of Block Club maps, a screenshot of a text from Priya — she's a mom from pickup who bikes too — where she sent me a photo of a truck parked across the whole bike lane on Fullerton with the caption "reported it lol we'll see." That's it. That's my system. I don't have a spreadsheet. I called 311 exactly once, about a pothole on our actual street, not even bike-lane related, and it took like six weeks but it did get filled. So my whole workaround is: screenshots, texts, and one 311 call that worked eventually.
+**Jess:** Block Club Chicago, because it's just in my regular news feed. The Facebook group. Sometimes my coworker who bikes from Logan Square tells me stuff. That's really it. I've never opened a "portal." I called 311 once about a pothole on Kedzie — took like six weeks but it did get patched eventually.
 
-**Interviewer:** Tell me about a time data — or the lack of it — sank an argument you were trying to make.
+**Researcher:** Tell me about a time data, or the lack of it, sank an argument you were making, or made you unsure of something.
 
-**chi-everyday-rider:** The teacher thing, kind of. When I brought up the drop-off corner to Ms. Alvarez, she asked something like "well is it actually dangerous or does it just feel that way," and I didn't have anything. I couldn't say "here's how many crashes happened at that corner," I just had a feeling from riding through it every day. If I'd had even one real number — like, "two kids almost got hit here this year" — I think that lands different than "it feels sketchy to me." Instead it just kind of died there. Nobody followed up, including me.
+**Jess:** Okay, here's one — after that Block Club piece this spring about cyclist crashes going up citywide, I got kind of freaked out and told my husband maybe we should stop the trailer thing. He said "well are more people biking now too, so of course it's up" and I had no comeback. I didn't know. Neither of us knew. So the number just sat there scaring me without actually telling either of us anything useful, and it ended in "let's just be careful" which is what we always say anyway.
 
-**Interviewer:** And what data, if any, do you actively distrust? What earned that?
+**Researcher:** What data do you distrust, and what earned that distrust?
 
-**chi-everyday-rider:** The speed cameras and red-light cameras. A hundred percent. Everyone in my neighborhood thinks those are a money grab, not a safety thing — I've seen the articles, the ones saying the tickets hit Black and Latino neighborhoods way more, like double. So when the city says "cameras equal safety," I just don't buy it, and I don't think most people I know do either. It reads as "the city found a new way to fine us," not "the city is protecting my kid." That's earned distrust, not paranoia — I've literally gotten a ticket in the mail for going four miles over near a school and thought, this isn't about safety, this is about the budget.
+**Jess:** Speed cameras. There's one on my way to a friend's on Elston and I swear it's a moneymaker, not a safety thing — I read that thing about how they hit Black and Latino ZIP codes way harder, so when the city says "it's for safety" I kind of roll my eyes. And 311 — I don't think reporting an obstruction does anything. I've never heard of anyone's bike lane complaint leading to an actual ticket.
 
-**Interviewer:** Let's look at something. There's a site called On Your Left — OYL — that's trying to be an independent, evidence-based bike safety picture of Chicago. It's not run by the city, it doesn't take reports, it just shows what's out there — crashes, bike lanes, obstructions, ward info — down to the intersection level, and every piece of information is labeled real, guessed-at, made-up-for-now, crowdsourced, or calculated, so you know how much to trust it. I want to walk you through it piece by piece and just get your gut reaction to each part. First — there are two maps. One's a regular street map showing where crashes happen and what kind of bike lane is where. The other one looks like a subway map, all the main bike routes as colored lines, like a train system, but it doesn't show any safety information on it at all, just the routes.
+---
 
-**chi-everyday-rider:** Wait, so one map has the crash stuff and the subway-looking one doesn't have any of that? That seems backwards to me — the pretty one is the one I'd actually open first because it looks like something I already understand, like the CTA map, and then it wouldn't tell me anything about safety? I think I'd get halfway through looking at that one going "okay so is Milwaukee good or not" and there's nothing there. I'd probably close it and not even bother going back to the other map, honestly, because now I think the site's confusing.
+**Researcher:** I want to show you something called On Your Left — it's an independent site, not run by the city, about Chicago bike safety. Can I walk you through what's on it, piece by piece, and you tell me your gut reaction to each?
 
-**Interviewer:** That's a fair reaction — noted. Let's look at the regular map with the crash dots on it.
+**Jess:** Sure, but fair warning, if it looks like a government website I'm probably out in ten seconds.
 
-**chi-everyday-rider:** Okay, so, if I'm picturing dots on Milwaukee and Elston and those main streets I ride — yeah, I mean, that's basically confirming what I already feel, which is "those are busy, scary streets." But I'll be honest, my first read of a map like that is not "oh good, information," it's "oh god." Like if I saw a cluster of dots right by the Jewel on Milwaukee, my brain goes "see, I was right, that street is dangerous," and I might just decide to drive Mateo to school that day instead of biking, not go looking for a safer bike route. It doesn't really show me the good way, it shows me the scary way. What I actually want is more like — green means somebody figured out this is fine, here's your way. Not "here's every place it went wrong."
+**Researcher:** First thing — there's a home page now. It explains what the site is, has some headline numbers, says who it's for, and has a plain-language section about asking an AI assistant questions using something called an "agent layer."
 
-**Interviewer:** That's useful — noted as a misreading risk too, since busy streets often just have more of everything, riders included, not necessarily more danger per rider. Next: "Findings" — cards with a stat and a short caveat, like "KSI trend is down 8% citywide" or "11% of streets have any bike infrastructure," each one links into the map.
+**Jess:** Okay that's... actually not bad? Like, it doesn't just dump a map on me first. "Who it's for" — I like that, that's the first thing I'd look for, does this apply to me. The "ask an AI assistant" thing though — what does that even mean, like I ask ChatGPT "is Milwaukee Ave safe" and it knows this website exists? Because I wouldn't know to do that. If it's more like "type a question right here" that's interesting, that's basically what I want — I don't want to browse, I want to ask "is my street okay" and get an answer.
 
-**chi-everyday-rider:** What's KSI? ...Okay if you have to tell me that, that's kind of the problem, right? I read that and I think "this is not for me, this is for city planner people." The 11% streets one I get — that just sounds bad, like, only one in ten streets has a bike lane at all? — but even that, I don't know what I do with that number. Am I supposed to email someone that? Feel mad about it? It's citywide anyway, it's not telling me about Avondale.
+**Researcher:** What would you need to check before trusting an answer like that?
 
-**Interviewer:** There's also a table — every ward ranked, sortable, and you can download it as a CSV.
+**Jess:** Whether it's actually using real numbers or just guessing. Like if I ask an AI thing and it just makes something up that sounds confident, that's worse than nothing, because I'd believe it. Does it say where the number came from?
 
-**chi-everyday-rider:** Nope. I'm not downloading a CSV, whatever that even opens in — Excel, right? I don't have Excel on my phone and I'm doing this at a red light or on my lunch break, not at a desktop with a spreadsheet program open. That's an instant close-the-tab for me. If you have to tell me to download something, you've lost me already.
+**Researcher:** It does — every number links back to the source and a badge that says real, proxy, mock, or a few other tiers.
 
-**Interviewer:** Understood. There's also council data — which aldermen sponsored bike-safety legislation, recorded votes, upcoming committee hearings on traffic safety, and something called "menu money," which is spending each alderman controls, showing how much of it went to bike stuff in their ward.
+**Jess:** Okay good, but "badge" — like a little icon? I'd need it to be really obvious, like a color, not a word I have to hover over. And what's "proxy" — is that like, not real?
 
-**chi-everyday-rider:** Okay, the menu money one actually lands for me, that's the one thing so far I've heard of in real life — I read a Block Club piece once about our alderman repaving a street with menu money and people in the comments arguing about whether it should've gone to bike lanes instead. So if the site told me straight up "your alderman spent X dollars of menu money on bike stuff this year," that I'd actually screenshot and maybe send to the Facebook group. The sponsorship and votes stuff, less so — I don't really know what a "sponsorship" means for a law, and hearings, I'm not going to a hearing, I have a six-year-old and a work schedule, that's not happening.
+**Researcher:** Good question — we'll get to that. Next: there's a transportation map with crash dots, and a separate "network map" that's more like a subway-style diagram of bike routes, with route quality tiers and a filter for "protected only."
 
-**Interviewer:** Now, there's a badge system — every piece of data is tagged real, proxy, mock, crowdsourced, derived, or no-data-yet. Real means official records. Proxy means it's standing in for something else, like camera tickets standing in for "aggressive driving." Mock means it's fake, made up as a placeholder — right now that's the bike-lane-obstruction layer, the one about cars blocking bike lanes. Crowdsourced means regular people submitted it.
+**Jess:** The crash-dot map — that's the one that would just scare me, honestly. If I open it and see my street covered in red dots I'm driving that day, not riding smarter. I don't need the dots, I need "which way IS good." The subway-map one, with the "protected only" filter — okay wait, that one I'd actually use. That's basically "show me the route that isn't just paint," which, yes, that's the actual question. Paint doesn't stop a truck. If I could type "Avondale to Near North" and it just highlighted the protected way, I'd screenshot that and use it every day.
 
-**chi-everyday-rider:** Fake?? Wait, so if I looked at the obstruction map — cars blocking the bike lane — and it's just made up, not real reports? That's kind of a big deal to bury in a badge. I think I'd have scrolled past that little tag without reading it, honestly, and thought "oh good, someone's tracking who blocks the bike lane," and then found out later it's pretend and felt kind of tricked. That's the one thing on here I'd be genuinely annoyed about if I found out after the fact instead of before. If it's not real, just don't show it to me like it's a map yet, or say it way louder than a little badge I have to hover over — I'm not hovering over anything, I'm on my phone.
+**Researcher:** You mentioned "just paint" — what does protected mean to you versus paint?
 
-**Interviewer:** That's a really important reaction, thank you. Last piece — there's a page that says "here's what to do about it": links to 311, to a separate app called Bike Lane Uprising where you report obstructions, and alderman contact info for all 50 wards.
+**Jess:** Protected is like there's an actual curb or posts or something between me and the cars. Paint is just a line, which a truck driver ignores exactly the same as no line, in my experience. So when I said "is it protected or just paint" earlier that's literally the only bike-lane fact that matters to me on a route.
 
-**chi-everyday-rider:** That's the part I'd actually use. Priya already uses Bike Lane Uprising, she posts the reports in our group, so if OYL is just pointing me to that plus giving me my alderman's actual email in one place, that's genuinely handy, because right now if I wanted to email our alderman I'd have to go Google "who is my alderman" and then dig around the city site for twenty minutes, and I just... don't. I've never emailed her. Not once. If it's one tap, maybe.
+**Researcher:** There's also a findings page — cards with one stat and a caveat each. One says the citywide "KSI trend," another says a network-quality score from an outside group called PeopleForBikes with a line saying "not a reason not to ride."
 
-**Interviewer:** Let's do a scenario. It's a Tuesday night. Mateo's school year is starting soon, you're thinking about the route you'll do this fall — maybe you're also wondering whether it's worth emailing your alderman about the corner near the school. You open OYL. What do you look for first, and where does it fail you?
+**Jess:** "KSI" — no idea what that is, and I'm not going to guess. If you have to tell me it's "killed or seriously injured" I'm going to think "why didn't you just say that." The PeopleForBikes score — a citywide grade, like a report card for the whole city? That's trivia to me, that's not my street. But I noticed the "not a reason not to ride" line — that's actually the first time something on this list has tried to talk me down instead of just scaring me, and I appreciate that, genuinely.
 
-**chi-everyday-rider:** I'd type in — well, I'd try to type in — our actual streets. Like Kimball and Belmont, or wherever we cross. I want it to just tell me "this route: fine, this route: not fine," like a stoplight, red-yellow-green. If it opens on some big citywide map with a ton of toggles and layers I have to turn on and off, I'm out within like ten seconds, I don't have the patience for that at a red light with a kid yelling behind me. Where it fails me is there's no "type in your route" thing at all, from what you've described — it's citywide dots and ward rankings and a subway map, and I have to go find my two streets myself and squint at the dots. And even if I find them, it's crash dots, not "is this route good," so I still don't get an actual answer, I get raw scary information I have to interpret myself. That's the same work I'm already doing eyeballing it every morning, it's just not on my phone in a friendlier form.
+**Researcher:** There's a sortable ward table with a CSV download, and a whole page of "methodology" explaining how every number is calculated.
 
-**Interviewer:** Of everything OYL doesn't have — what's the single absence that costs you the most?
+**Jess:** "Download the CSV" — that's an instant close-the-tab for me, I'm not opening that on my phone at a red light, I don't even know what I'd do with a CSV. The methodology page, no offense, that's for the person who built the thing, not me. I trust that it exists somewhere for someone to check, but I'm never clicking it.
 
-**chi-everyday-rider:** Honestly — how many bikes actually use these streets. Because right now if I see "Milwaukee has more crashes than some side street," my brain reads that as "Milwaukee's more dangerous," but isn't it possible Milwaukee just has way more people biking on it, so of course there's more crashes, there's more bikes? Nobody tells me that. I want to know like, per rider, is my street actually risky, or is it just busy. That, and honestly the traffic-camera and 311 stuff — I don't trust either of those anyway, so it not existing doesn't bother me that much. It's the "how many of us are even out there" number I don't have anywhere.
+**Researcher:** Here's one built specifically for a single ward — a one-page printable sheet with a safety score, infrastructure stats, the alderman's contact info and what they've sponsored, some menu-money spending, and recent news matched to that ward.
 
-**Interviewer:** If OYL sent you one thing a week — an email, a text, whatever — what would it contain, and who would you forward it to?
+**Jess:** Okay, THIS is the one. This is the thing I'd actually forward. If it's one page, has my alderman's name and email right there, and it's already filled in with MY ward — I don't even have to know my ward number, right? Because I only know my alderman's name, not the ward number.
 
-**chi-everyday-rider:** Something like: "Here's what happened on your two or three streets this week, here's your alderman's menu money update, here's one thing you could do if you want." Like a little digest. And I'd forward it straight to Priya and probably post the good parts in the Avondale group, because that's genuinely how everything reaches me and how I'd pass it on — it's not going to be me visiting a website every Sunday, it's going to be a screenshot in a group chat.
+**Researcher:** It's `ward.html?ward=` and then a number.
 
-**Interviewer:** The site refuses to show a "risk per rider" number because it has no bike-volume data yet, and it says so plainly. Does that caveat change how you'd use it?
+**Jess:** See, that already loses me a little — I'd have to know it's ward 35 or whatever mine is. If there was just a "type your address" box that took me straight there, I'd actually use it. Would I hand it to a neighbor? Yeah, if it's genuinely one page and not five tabs of jargon. Would I email it to my alderman? Maybe, if the site tells me what to actually say — like the "menu money" part, if it says "your alderman spent $0 of menu money on bike stuff last year, here's their email," that's the kind of thing that'd get me off my couch for the two minutes it takes to fire off an email. I did that for Mia's teacher last month because the school app made it one tap.
 
-**chi-everyday-rider:** Not really, because I already assumed nobody has that number — I just wish they did. If they said "we don't have this yet" clearly, in normal words, not some tiny disclaimer, I'd respect that more than if they pretended the crash map was the whole story. What would count as good enough for me? Even something dumb, like Divvy trip counts by street, or honestly just — I don't know — "surveyed X riders, this is roughly how busy this street is." I'm not picky about how scientific it is, I just want somebody to at least try instead of only counting the bad stuff.
+**Researcher:** There's also a "sources" page listing every dataset and its known limits, and an "action" page with 311 links, Bike Lane Uprising, alderman contacts, upcoming hearings, and recent news.
 
-**Interviewer:** Last section — magic wand. One dataset that doesn't exist today just appears, clean and current. What is it?
+**Jess:** Sources page — never. Action page, maybe, if it's short. "Upcoming hearings" — I'm not going to a hearing, let's be real, I have a 12-hour shift and a six-year-old. But the alderman contact and "here's what to say" part of that, sure.
 
-**chi-everyday-rider:** How many kids get biked or walked to which schools, and near-misses, not just actual crashes. Because crashes are the stuff that already went wrong. I want to know about the close calls — the near-misses right by the school gate — before something actually happens to somebody's kid, not after.
+**Researcher:** There's a "contributing" page for people who want to fork the code or swap in data for another city.
 
-**Interviewer:** One chart or map you could put in front of your hardest audience — for you, that's maybe your husband, or the school, or your alderman — that would end an argument?
+**Jess:** That's not remotely for me, that's for whoever built this.
 
-**chi-everyday-rider:** Honestly, simplest thing: a map of just our neighborhood, our actual streets, colored red, yellow, green for "safe to bike with a kid, okay, don't." Not crash dots I have to count myself, not a score out of a hundred I don't know how to read — just red yellow green, like a traffic light, on the three streets I actually use. If Danny saw that and Kimball was green and Milwaukee was red, that conversation's over in ten seconds. That's the whole thing. That ends more arguments in my house than any chart with numbers on it ever would.
+**Researcher:** There's also news coverage now — recent Block Club and Streetsblog-type headlines automatically matched to your ward, your alderman, or a specific route or project, with a note on how the match was made.
 
-**Interviewer:** And what would make you stop using a site like this after trying it once?
+**Jess:** Wait, that's basically what I already do manually — I read Block Club and put it together myself in my head, "oh that's near me." If the site's already doing that matching for me, that's actually useful, that's the same trust I already give Block Club, just organized. Though — "how the match was made," I don't care about that part, I'd just want to see the headline and trust it's roughly right.
 
-**chi-everyday-rider:** If the first thing I see is a big citywide map with a bunch of toggles and I can't find my own street fast — gone. If it tells me to download something. If it uses a word like "corridor" or "percentile" or whatever that KSI thing was without explaining it in plain English right there. And honestly, if it scares me without giving me anything to actually do — like if all it does is show me dots and danger and doesn't say "here's who to email" or "here's the safer way," I'll just close it and go back to trusting my own eyes and whatever Priya posts in the group. That's been working fine for me so far, and it's a lot less effort than any of this.
+**Researcher:** There's a roster of proposed and in-progress bike projects too — cards with a status, official links, and any news about them — but no map lines yet, because there's no public data on where planned bikeways will actually go.
 
-## Follow-up round
+**Jess:** Okay so if my street's on some "proposed" list I'd want to know THAT for sure, that's actually more useful than crash dots — "hey they're planning to fix this" is hope, a map of red dots is just dread. Kind of annoying there's no map though — like just tell me if it's near me, don't make me guess from a card.
 
-**Interviewer:** Let's go back to that 311 call and the screenshot folder. Walk me through what happened between making the 311 call and the pothole actually getting filled — did you follow up, did you assume it was ignored at some point? And do you ever go back and look at the screenshots, or does saving one end the action for you?
+---
 
-**chi-everyday-rider:** Okay so the 311 thing — I called it, I think a Tuesday, and I got a ticket number, like a confirmation number, and I wrote it on a Post-it and stuck it on the fridge, which sounds very "my mom" of me but that's what I did. And then honestly I forgot about it for like three weeks. I didn't check an app, I didn't call back, I just kind of assumed it went into a hole — no pun intended — and nothing was going to happen. Then one day Danny was like "hey they filled the pothole" because he noticed it on his way to get the car, and I remember being genuinely surprised, like "oh, that actually worked?" So there was no checking-back step, there was just forgetting and then being surprised. I never once opened whatever app tracks that.
+**Researcher:** Now there's a section called "what OYL deliberately doesn't have." The first one: no ridership data, so numbers aren't adjusted for how many people actually bike somewhere — the site says this out loud. Does that change how you'd use it?
 
-And the screenshots — no, I don't go back and look at them. That folder is not a reference library, it's more like a junk drawer. Saving the screenshot is the whole action, honestly. Like when Priya sends me the truck-blocking-the-lane photo, I save it, I feel like "okay, this is documented, this is real, this happened" and then I move on with my day. I've never once scrolled back through "bike stuff" going "let me see what I saved in March." If OYL wants to replace something, it's probably that feeling — the "okay, now it's real, now it's somewhere" feeling — not an actual checking-back habit, because I don't have one of those to replace. I don't follow up on anything. I barely followed up on my own kid's dentist appointment last year.
+**Jess:** Yeah — actually this is exactly the thing that got me and my husband stuck. He said "well are more people biking" and neither of us knew. If the site itself says "we don't know how many people ride here, so don't read crash counts as risk-per-rider," that's honestly more trustworthy than a site that pretends it does know. But also it kind of makes the crash map even less useful to me — if I can't tell "busy street with lots of riders and a few crashes" from "empty street where every ride is a coin flip," then what am I even looking at?
 
-**Interviewer:** On the subway-style route map — suppose it showed protected lane versus paint versus nothing, no crash data at all. Would you ever open it for that, or is a map with zero safety info dead to you regardless?
+**Researcher:** What would you accept as good-enough substitute for that missing ridership number?
 
-**chi-everyday-rider:** Hm. Okay, that's actually different from what I pictured. If it's telling me "this is a real protected lane" versus "this is just some white paint that a truck parks on top of anyway," that's not nothing, that's actually kind of the thing I care about most, more than crash dots honestly. Because paint doesn't stop anybody. So — yeah, I think I'd open that one. I take it back a little, what I said before. I think what I was really reacting to was it looking empty and pretty at the same time, like a toy, with nothing under the hood. If it's got protected-versus-paint-versus-nothing on it, that's not empty, that's just a different kind of safety info than crash dots, and honestly that might be the one I'd trust more, because that's not "something went wrong here," that's "this street was actually built right or it wasn't." I just need the subway map to not be decoration. If it's just pretty lines with no content, dead to me. If it's got that lane-type layer, I'd open it before the crash map, probably.
+**Jess:** I don't know, like a bike-counter thing? I've seen those little signs that count bikes going by, there's one on the 606 I think. Even just "busy" / "quiet" would be something. Or honestly — just tell me the protected-route thing and skip the crash count entirely, since that's the part I actually trust to mean something.
 
-**Interviewer:** Say OYL rated Kimball green, and a few weeks later there's a Block Club write-up about a crash on Kimball. Does that break your trust in the whole rating system, just that one rating, or do you go back to eyeballing it yourself?
+**Researcher:** Last stimulus piece — there used to be a fake bike-lane-obstruction layer shown right on the main map. It's been moved off to its own separate page now, watermarked, and labeled as entirely made-up data, not from the main maps or the API.
 
-**chi-everyday-rider:** Honestly, one bad headline isn't going to nuke the whole thing for me, if that's what you're asking. I know how this works — I work in a hospital, I know one bad outcome doesn't mean the whole protocol's wrong. If Kimball's green and something happens there, my first thought is "okay, that's awful, I hope whoever it was is okay," and my second thought is probably "well, one crash on a green street doesn't mean it's actually red now," same way one pothole doesn't mean the whole street's broken. What would actually break it for me is a pattern — if I saw two or three Block Club write-ups on "green" streets over a few months and it started feeling like green doesn't mean anything. Or if it happened on a street I specifically remember feeling nervous about anyway, where the green rating already didn't match my gut — that's the one that'd make me go "see, I never trusted that anyway, back to eyeballing it myself." So it's less about one incident and more about whether the rating ever matched what my own eyes were already telling me. If it lines up with my gut most of the time, one bad week doesn't sink it.
+**Jess:** Wait, made up? Like — not real obstructions, someone just typed in pretend blocked lanes?
 
-**Interviewer:** On "Divvy trip counts by street" — had you thought about that before today, or was that the first thing that came to mind in the moment?
+**Researcher:** Correct — synthetic, standing in for a data source they don't have yet.
 
-**chi-everyday-rider:** Ha — no, be honest, I made that up right then. I don't ride Divvy, I have my own bike with the trailer hitch on it, I've genuinely never opened that app. It just popped into my head because I see the Divvy bikes everywhere and figured, well, somebody at the company must know how many people ride down Milwaukee versus some side street, so that seemed like a plausible place a number like that could come from. I wasn't going to go look it up myself, though — that's not a real answer of "here's where I'd go," that's more like a guess of "here's where such a number could possibly exist." If you're asking would I actually go dig around Divvy's website for ridership stats — no, absolutely not, same reason I won't download a CSV. And if I'm being honest about the other half of your question — do I actually care how scientific the proxy is, or am I just going to keep ignoring the caveat either way — probably the second one a little bit. Like, if OYL just quietly used Divvy numbers or whatever and didn't make a big deal of it being imperfect, I'd take it at face value and not think twice. I'm not going to interrogate the methodology. I just want the site to have tried something instead of a blank space where that answer should be.
+**Jess:** That's... weird, honestly. If I opened a "blocked lane" layer and it turned out to be fake, I would feel kind of tricked, even if there's a watermark. I skim, I'm not reading fine print at a red light. The fact that they took it off the real map is good — I would've 100% treated fake dots as real trucks and rerouted for nothing. But why have it at all? The actual thing I want is the Bike Lane Uprising kind of report — real photos, real trucks, right now. If your fake version and the real Bike Lane Uprising app looked similar, I'd trust the wrong one eventually. I'd rather it just say "we don't have this yet, here's the Bike Lane Uprising link" than show me pretend data anywhere, gated or not.
 
-**Interviewer:** If the obstruction map were built from real Bike Lane Uprising crowdsourced reports — labeled crowdsourced, not invented — would that be enough to trust and act on, or would you still want the city to verify each report first?
+**Researcher:** Fair — noted. Let's do a scenario. You're deciding whether to bike Mia to school tomorrow, or whether to email your alderman about something. You open the site cold. What do you look for first, and where does it fail you?
 
-**chi-everyday-rider:** No, that'd be enough, actually — that'd be more than enough. That's basically what Priya's already doing, and I already trust her report more than I'd trust some city inspector who's never ridden that block. If it says "crowdsourced" and it's real people like Priya actually posting real photos, I don't need the city to double-check it first. Honestly the city verifying it might make me trust it less, a little, because then it's back to being their thing, and their thing is slow — remember, my pothole took six weeks. A crowdsourced report that's labeled honestly as crowdsourced, with real people behind it, that's a "yeah, I believe that, I'll go around that block" thing for me. The only version I don't want is the fake one pretending to be either.
+**Jess:** First thing, I want to type my address or at least my neighborhood and get "here's the safe-ish way to your kid's school," today, right now. It fails me if the first screen is a citywide map with a legend and twelve toggles — that's exactly what makes me close the tab. It also fails me if I have to know my ward number or figure out what "corridor" means.
 
-**Interviewer:** The crash counts on OYL are also city data, same source as the camera tickets. So why trust the crash dots enough to reroute in April but write off a city ridership number?
+**Researcher:** Of everything OYL doesn't have, what single absence costs you the most?
 
-**chi-everyday-rider:** That's a fair one. I think it's not really "city data, yes or no" for me, it's more "what's the city trying to do with it." A crash report is just — something happened, an ambulance came, somebody wrote it down. There's no angle in that, nobody's making money off "a cyclist got hit." But a speed camera ticket, there's a mailbox at the end of that with my forty dollars in it, and I've seen articles saying that mailbox fills up way more in neighborhoods like mine. So it's not "I distrust anything city," it's "I distrust anything where the city has a reason to want a certain answer." If they added a ridership count tomorrow, I don't think I'd assume that's rigged, unless it started being used to argue against putting a bike lane somewhere — like if the city used a low ridership number as an excuse to not fix Kimball, then yeah, I'd start side-eyeing it the same way I side-eye the cameras. Right now it just doesn't exist, so it hasn't had the chance to disappoint me yet.
+**Jess:** An actual "type your two addresses, get a route" thing. Everything here is city-shaped, not trip-shaped. I don't think in wards, I think in "my house to her school."
 
-## Analysis memo
+**Researcher:** If OYL handed you one export or artifact every single week, what would it contain, and who would you forward it to?
 
+**Jess:** Honestly, probably nothing weekly — I don't want a newsletter from a data site. But if it was event-based, like "your alderman is voting on something near you this month," I'd forward that one to the Facebook group, not to any one person. That's how stuff spreads in my world — somebody posts it and twenty people see it.
+
+---
+
+**Researcher:** Magic wand — one dataset that doesn't exist publicly just appears, clean and current. What is it?
+
+**Jess:** Real-time "is this lane blocked right now" — like Waze but for bike lanes, from actual riders, not made up. That, or a bike-counter number for every street so the crash counts finally mean something.
+
+**Researcher:** One chart or map you could put in front of your hardest audience — say, your husband — that ends the argument about the trailer?
+
+**Jess:** A route from our house to Mia's school, one line, colored to show it's protected the whole way, with maybe a little "X people ride this route a day" number next to it so it's not just a crash count. If that line is green the whole way, argument over.
+
+**Researcher:** What would make you stop using a site like this after trying it once?
+
+**Jess:** If the first thing I see is a citywide map covered in red with no plain-English explanation. Or if I have to download anything. Or if it uses three acronyms in the first paragraph. I'll give a site one try, maybe two if a friend specifically told me to check one page. After that I'm back to Block Club and the Facebook group.
+
+**Researcher:** This has been really helpful, Jess. Thank you.
+
+**Jess:** Sure — hope somebody actually reads this instead of just building more maps nobody like me opens.
+
+---
+
+## Analysis Memo
+
+```
 participant: chi-everyday-rider
-confidence_notes: Stays firmly in-register throughout — nurse/parent-cyclist vocabulary, dismissal of planner jargon, consistent time-and-attention constraints (6:45am rides with a kid in the trailer, red lights, hospital break room, "don't have Excel on my phone"). Matches the documented persona closely (intermediary-mediated civic info, camera distrust tied to ProPublica-style coverage, "menu money" known only from a single Block Club article, misreads a crash-density map as "those streets are dangerous" on first exposure). Three things worth flagging as lower-confidence rather than disqualifying, not contradictions: (1) her motive-based trust framework, articulated cleanly in the follow-up ("it's not city data yes or no for me, it's what the city's trying to do with it"), is more analytically tidy than the rest of her voice — treat the underlying distinction (trust tracks incentive, not source-official-ness) as reliable, but its crispness as somewhat polished by the interview format. (2) The Divvy-trip-counts suggestion was self-flagged by her as improvised in the moment ("be honest, I made that up right then") — it should not be read as a real workaround or a source she'd actually pursue, only as evidence that she'll accept an unscientific proxy without interrogating it, which she also states directly and separately. (3) Her reaction to the schematic/subway map inverted between rounds (from "I'd close it and not go back" to "I'd open it before the crash map") once told it could show protected-vs-paint infrastructure type — this is a legitimate update on new information, not a contradiction, but it means the reactions_to_existing verdict for that feature is conditional on which version of the feature she's reacting to.
+confidence_notes: Jess's reactions to the address-search / route-lookup gap are
+  strongly grounded in the evidence base (personal-relevance-over-citywide-
+  aggregate is the persona's central documented trait) and felt solid. Her
+  read of the "ask an AI assistant" framing is more speculative — the evidence
+  base says nothing about AI-assistant literacy for this demographic, so her
+  reaction (curious but wants provenance, confused about whether it's a
+  chatbox on-site or an external tool) is a plausible but lower-confidence
+  extrapolation rather than something directly licensed by the evidence brief.
+  Her reaction to the news-coverage layer ("that's what I already do manually")
+  is well-grounded (intermediary literature). Her reaction to the mock-
+  obstructions page runs slightly hotter than the evidence base explicitly
+  supports — the brief documents appetite for Bike Lane Uprising-style real
+  reporting, not a specific reaction to synthetic/watermarked data, so that
+  portion is a reasonable in-character inference rather than a directly cited
+  finding.
 
 stated_needs:
-  - need: A route-specific, plain-signal rating ("red/yellow/green," "fine/not fine") for her own two or three streets, not a citywide map she has to interpret herself.
-    evidence_quote: "I want it to just tell me 'this route: fine, this route: not fine,' like a stoplight, red-yellow-green... just red yellow green, on the three streets I actually use. If Danny saw that and Kimball was green and Milwaukee was red, that conversation's over in ten seconds."
-    underlying_job: Get an instant, arguable answer to "is my specific route okay today" without personally interpreting raw crash dots at a red light with a kid yelling behind her, and be able to end a specific recurring household disagreement (with Danny, about which street to take) in seconds rather than through a felt argument.
-  - need: Plain-language explanation of any technical term inline, not a term she has to already know or look up.
-    evidence_quote: "What's KSI? ...if you have to tell me that, that's kind of the problem, right? I read that and I think 'this is not for me, this is for city planner people.'"
-    underlying_job: Parse a stat within the few seconds of attention she actually has (a lunch break, a red light) without leaving the site to decode vocabulary, and not be signaled out of the intended audience by the site's own word choice.
-  - need: No required downloads or desktop-only formats (CSV/spreadsheet) — everything usable on a phone in-line.
-    evidence_quote: "Nope. I'm not downloading a CSV, whatever that even opens in — Excel, right? I don't have Excel on my phone... That's an instant close-the-tab for me. If you have to tell me to download something, you've lost me already."
-    underlying_job: Consume the answer entirely inside the single mobile interaction she already has, without acquiring a new tool, app, or device just to finish looking something up.
-  - need: A single, one-tap bundle of "what to do about it" — 311, Bike Lane Uprising, and her specific alderman's contact — instead of separate lookups.
-    evidence_quote: "That's the part I'd actually use... right now if I wanted to email our alderman I'd have to go Google 'who is my alderman' and then dig around the city site for twenty minutes, and I just... don't. I've never emailed her. Not once. If it's one tap, maybe."
-    underlying_job: Convert a vague, already-felt grievance (the drop-off corner, a blocked lane) into a completed civic action inside her actual window of attention — because without a frictionless bundled path, the lookup cost alone is enough to make her never act, evidenced by never once emailing her alderman despite wanting to.
-  - need: A much louder, unmissable flag — not a hover badge — on any layer that is mock/fabricated rather than real.
-    evidence_quote: "If it's not real, just don't show it to me like it's a map yet, or say it way louder than a little badge I have to hover over — I'm not hovering over anything, I'm on my phone."
-    underlying_job: Avoid the specific betrayal of trust that comes from screenshotting and mentally filing something as "documented, this is real" (her own words for what saving a screenshot means to her) only to learn later it was invented — a mistake she says would make her "genuinely annoyed."
-  - need: A weekly, pushed digest scoped to her own streets plus one alderman fact plus one suggested action, delivered to her rather than requiring a return visit.
-    evidence_quote: "Something like: 'Here's what happened on your two or three streets this week, here's your alderman's menu money update, here's one thing you could do if you want.'... it's not going to be me visiting a website every Sunday, it's going to be a screenshot in a group chat."
-    underlying_job: Fit into her actual, already-working information pattern (passive receipt via intermediaries, then forwarding into Priya/the Facebook group) instead of asking her to build a new habit of initiating visits, which nothing in her current practice suggests she would sustain.
-  - need: A single, forwardable, plain-English sentence on menu-money spending on bike infrastructure, per alderman/ward.
-    evidence_quote: "if the site told me straight up 'your alderman spent X dollars of menu money on bike stuff this year,' that I'd actually screenshot and maybe send to the Facebook group."
-    underlying_job: Arm the one civic behavior she already reliably performs — sharing a fact into the Avondale Facebook group — with a concrete, self-contained number, since "menu money" is the only piece of municipal-finance vocabulary she already has real-world grounding in (from a specific Block Club article).
-  - need: A per-rider or ridership-normalized risk figure, not just raw crash density, so busy streets aren't automatically read as more dangerous streets.
-    evidence_quote: "isn't it possible Milwaukee just has way more people biking on it, so of course there's more crashes, there's more bikes? Nobody tells me that. I want to know like, per rider, is my street actually risky, or is it just busy."
-    underlying_job: Distinguish "this street carries a lot of bike traffic" from "this street is dangerous to bike on," so a route decision (or a decision to stop biking a route at all, as she did on Milwaukee in April) is based on actual relative risk rather than raw event counts that scale with how many people are already using the street.
-  - need: A layer distinguishing protected bike lanes from paint-only lanes from no infrastructure at all.
-    evidence_quote: "If it's telling me 'this is a real protected lane' versus 'this is just some white paint that a truck parks on top of anyway,' that's not nothing, that's actually kind of the thing I care about most, more than crash dots honestly... paint doesn't stop anybody."
-    underlying_job: Judge whether the infrastructure on a street will actually protect her and Mateo from a specific, physical failure mode she has already witnessed (cars parked in paint-only lanes), which she treats as a more load-bearing signal than after-the-fact crash counts.
-  - need: A near-miss / close-call dataset near schools, not only completed crashes.
-    evidence_quote: "How many kids get biked or walked to which schools, and near-misses, not just actual crashes. Because crashes are the stuff that already went wrong. I want to know about the close calls... before something actually happens to somebody's kid, not after."
-    underlying_job: Get a leading indicator she can act on preemptively (e.g., raising the drop-off corner again with the school) instead of only a lagging indicator that requires a child to already have been hurt before the data exists to support her.
+  - need: A route-level "is my way to X safe" lookup by address, not a citywide map
+    evidence_quote: "First thing, I want to type my address or at least my neighborhood and get 'here's the safe-ish way to your kid's school,' today, right now."
+    underlying_job: Decide, in under a minute, whether to bike a specific trip today rather than assess citywide risk in the abstract.
+
+  - need: A one-page, plain-language ward sheet she can hand to a neighbor or email to her alderman
+    evidence_quote: "This is the one. This is the thing I'd actually forward... if it's genuinely one page and not five tabs of jargon."
+    underlying_job: Convert a moment of frustration into a low-effort, socially shareable civic action (the "one-tap email" pattern she already uses for her kid's school).
+
+  - need: A protected-vs-paint distinction on any route view, front and center
+    evidence_quote: "Paint doesn't stop a truck... that's literally the only bike-lane fact that matters to me on a route."
+    underlying_job: Make a binary go/no-go safety judgment about a specific street without needing to interpret a facility-type legend.
+
+  - need: Provenance/trust signal on any AI-generated answer (not just a confident-sounding response)
+    evidence_quote: "If it just makes something up that sounds confident, that's worse than nothing, because I'd believe it. Does it say where the number came from?"
+    underlying_job: Avoid acting on a wrong answer she has no way to independently check.
+
+  - need: Real-time or crowdsourced "is this lane blocked right now" data, not synthetic placeholder data
+    evidence_quote: "I'd rather it just say 'we don't have this yet, here's the Bike Lane Uprising link' than show me pretend data anywhere, gated or not."
+    underlying_job: Make a same-day rerouting decision using data she can trust is current and real.
 
 latent_needs:
-  - need: OYL should close the loop on its own (status pushed to her), not depend on her checking back — she has no follow-up habit to build on.
-    inference_basis: Her only completed civic-report cycle (the 311 pothole call) had no checking-back step at all — she wrote the ticket number on a Post-it, "forgot about it for like three weeks," and was "genuinely surprised" when Danny noticed it had been fixed; she never opened a tracking app. She independently confirms this is not an isolated lapse but a stable trait: "I don't follow up on anything. I barely followed up on my own kid's dentist appointment last year." Her screenshot folder shows the same pattern — she never revisits it ("I've never once scrolled back through 'bike stuff' going 'let me see what I saved'").
-    risk_if_wrong: If OYL (or the tools it points to, like 311 or Bike Lane Uprising) is designed on the assumption that users will monitor a status page or dashboard for resolution, it will silently fail for this persona type — she will simply forget the report exists, conclude nothing happened by default the way she almost did with the pothole, and any actual resolution will go uncredited to the tool, undermining the case for using it again.
-  - need: A lightweight "this is now recorded / real" confirmation moment, independent of any tracking or resolution feature — the act of documenting is itself the need being served, not a means to an end.
-    inference_basis: She describes screenshotting Priya's blocked-lane photo not as the start of a monitoring process but as a complete, self-sufficient act: "I save it, I feel like 'okay, this is documented, this is real, this happened' and then I move on with my day." She explicitly names this as the thing a tool would replace: "If OYL wants to replace something, it's probably that feeling... not an actual checking-back habit, because I don't have one of those to replace."
-    risk_if_wrong: If OYL invests in resolution-tracking or status features assuming that's the value she wants, it over-builds the wrong half of the interaction; the actual point of leverage is a fast, low-friction "this is now logged/timestamped/real" affordance (e.g., a confirmation card she can screenshot), and without it she'll keep using her ad hoc phone folder for that emotional function regardless of what tracking exists behind it.
-  - need: Any new proxy metric (e.g., a ridership number) needs a safeguard against being cited to argue against resident interests, disclosed before it is ever used that way — because her trust model tracks the city's incentive, not the metric's official-ness or source.
-    inference_basis: She trusts city-sourced crash reports enough to have rerouted her child's school ride in April, but distrusts city-sourced camera-ticket data, and in the follow-up she generalizes the rule herself, unprompted: "it's not really 'city data, yes or no' for me, it's more 'what's the city trying to do with it'... if the city used a low ridership number as an excuse to not fix Kimball, then yeah, I'd start side-eyeing it the same way I side-eye the cameras."
-    risk_if_wrong: If OYL adds a ridership/exposure metric without pre-empting its use as a rationale to deprioritize investment on low-traffic streets, the first time she sees it cited that way she will extend her camera-distrust ("money grab," "the budget, not safety") to that metric specifically — and, per her own stated pattern, that kind of earned distrust does not reverse from one bad reading, it becomes a standing default.
-  - need: Findings/cards need to carry their own source, date, and caveat legibly enough to survive being cropped and forwarded with no surrounding page context, because that is how the content will actually travel through her network.
-    inference_basis: Every distribution path she describes strips the source site's framing: Priya's blocked-lane photo circulates in the parent group as just an image with a one-line caption; her own stated plan for OYL content is "I'd forward that straight to Priya and probably post the good parts in the Avondale group... it's going to be a screenshot in a group chat," not a link; and she already described the group's characteristic failure mode — "forty people arguing in the comments" — as the natural result of information arriving without context.
-    risk_if_wrong: A card or stat correct only when read alongside an adjacent badge or methodology link will be misread once it is screenshotted and separated from that context, reproducing the exact comment-thread-argument dynamic she already lives with daily — and any resulting confusion or correction would land on OYL's credibility even though the error was introduced entirely in the forwarding, not the original page.
-  - need: The underlying rating logic (e.g., a green/yellow/red score) has to correlate with what she can already see and feel on a street, or she reverts entirely to eyeballing it herself the first time it diverges from her gut, not just the first time it's factually wrong.
-    inference_basis: When asked whether a crash on a "green" street would break her trust in the rating system, she says a single bad headline would not — "one bad outcome doesn't mean the whole protocol's wrong" — but specifically distinguishes the case where "it happened on a street I specifically remember feeling nervous about anyway, where the green rating already didn't match my gut — that's the one that'd make me go 'see, I never trusted that anyway, back to eyeballing it myself.'" This is a condition she surfaced only under direct follow-up probing, not something she volunteered as a request.
-    risk_if_wrong: If the rating algorithm weights inputs she has no visibility into (e.g., citywide crash density alone, without accounting for visible daily hazards like a car permanently parked in a lane) and it disagrees with a street she already feels is unsafe, that specific mismatch — not aggregate accuracy — is what will trigger full abandonment of the rating system, even if the system is statistically correct on average.
+  - need: An address-to-ward resolver, since she cannot self-locate on a ward-number-keyed page
+    inference_basis: She explicitly said she only knows her alderman's name, not her ward number, and stumbled on `ward.html?ward=NN` requiring a number ("that already loses me a little — I'd have to know it's ward 35 or whatever mine is"). This is a direct documented gap between the tool's addressing scheme and her stated self-knowledge, not a speculative want.
+    risk_if_wrong: If wrong, effort spent building an address lookup may be wasted if most real intermediaries (Block Club, alderman offices) already pre-link constituents to the correct ward page, making the resolver redundant rather than load-bearing.
+
+  - need: The site should proactively push time-sensitive, personally-relevant alerts (a menu-money vote, a hearing near her) rather than wait for her to visit and browse
+    inference_basis: She said she'd only act "if it were effortless and personal" and cited the one-tap teacher email as her actual behavioral bar; she also said a weekly digest is unwanted ("I don't want a newsletter from a data site") but an event-triggered nudge she'd forward to the Facebook group. This is a workaround/behavior pattern (how she actually shares things — via group repost, not direct portal visits), not a stated feature request.
+    risk_if_wrong: If wrong, a push/notification feature contradicts the site's explicit "no accounts, alerts, notifications" design decision (inventory, "What OYL deliberately is NOT") and may not be worth building for a static, no-account site; the safer minimal version is a shareable one-off artifact rather than a subscription system.
+
+  - need: A ridership/volume proxy — even an approximate one — attached wherever crash counts appear, or crash counts should be visually de-emphasized relative to protected-route status
+    inference_basis: She independently arrived at the exact gap the site's caveat describes ("are more people biking now too, so of course it's up" — a real argument that stumped her and her husband with no data to resolve it), and separately proposed her own substitute ("a bike-counter thing... even just busy/quiet would be something"). This is a need she surfaced unprompted from her own workaround/argument, before the researcher explained the caveat.
+    risk_if_wrong: If wrong, effort goes into sourcing/fabricating an approximate exposure metric that still wouldn't satisfy methodological rigor for other personas (e.g., an analyst persona) and might reintroduce exactly the "confident-sounding but shaky" data problem she said she distrusts.
+
+  - need: Clear signal for whether "ask an AI assistant" means an in-page chat box vs. an external tool (ChatGPT, etc.) pointed at the site
+    inference_basis: She misread the feature on first exposure ("like I ask ChatGPT 'is Milwaukee Ave safe' and it knows this website exists?") and asked for clarification unprompted — a documented on-the-spot misreading per persona rule 7, indicating the current inventory language ("ask an AI assistant... via the agent layer") does not disambiguate the interaction model for a non-technical reader.
+    risk_if_wrong: If wrong, this is a copy/labeling nit rather than a real architectural gap, and low-cost to fix; overweighting it risks distracting from bigger findings like the address-resolver gap.
 
 reactions_to_existing:
-  - feature: Geographic street map with crash dots and bike-lane type
-    verdict: misreads
-    why: Confirms her existing fear rather than informing a decision — "my brain goes 'see, I was right, that street is dangerous,' and I might just decide to drive Mateo to school that day instead of biking, not go looking for a safer bike route." The interviewer independently flagged this as a likely misreading, since busier streets carry more of everything, riders included, not necessarily more danger per rider — which she later confirms is exactly the gap that bothers her most ("per rider" need).
-  - feature: Schematic/subway-style route map, safety-data-free
-    verdict: misreads, then would-use (conditional)
-    why: Initially assumed it should behave like the crash map and, finding no safety info, judged the site "confusing" and said she'd likely never return to the other map either. On follow-up, once told the map could encode protected-vs-paint-vs-nothing infrastructure type, she reversed completely: "I take it back a little... if it's got that lane-type layer, I'd open it before the crash map, probably." Verdict is conditional on which content the schematic map actually carries — empty/decorative is a dead end for her; infrastructure-type is her top-priority signal.
-  - feature: Findings cards (KSI trend, "11% of streets have bike infrastructure," etc.)
-    verdict: ignores
-    why: The undefined jargon ("KSI") signaled the whole page wasn't for her; even the plain-language stat she understood (11%) left her without a next step — "I don't know what I do with that number... it's citywide anyway, it's not telling me about Avondale."
-  - feature: Sortable ward table with CSV export
-    verdict: ignores
-    why: A hard, immediate close-the-tab reaction driven purely by format, independent of the data's content — "I'm not downloading a CSV... If you have to tell me to download something, you've lost me already."
-  - feature: Menu-money spending data (per alderman/ward)
+  - feature: Home / orientation page
     verdict: would-use
-    why: The one civic-finance concept she already has real-world grounding in, from a specific Block Club article about her own alderman; she says she'd screenshot and forward a plain-language figure to the Facebook group.
-  - feature: Council data — sponsorships, recorded votes, committee hearings
-    verdict: ignores
-    why: No vocabulary or life-fit for it — "I don't really know what a 'sponsorship' means for a law, and hearings, I'm not going to a hearing, I have a six-year-old and a work schedule, that's not happening."
-  - feature: Badge/label system (real, proxy, mock, crowdsourced, derived, no-data-yet)
+    why: Liked that it opens with "who it's for" instead of a map; read as the first screen in the whole inventory that didn't create an instant close-the-tab reaction.
+
+  - feature: "Ask an AI assistant" / agent layer section
     verdict: misreads
-    why: Approves of the labeling in principle once explained, but says she would have scrolled past a hover badge without reading it on the mock obstruction layer and assumed it was real reporting — "I think I'd have scrolled past that little tag... and thought 'oh good, someone's tracking who blocks the bike lane,' and then found out later it's pretend and felt kind of tricked." This is her single clearest deal-breaker-adjacent reaction.
-  - feature: Crowdsourced obstruction data, if genuinely sourced from real reports (e.g., Bike Lane Uprising) rather than mock
-    verdict: would-use / trusts more than a city-verified version
-    why: "That'd be enough, actually — that'd be more than enough... I already trust her [Priya's] report more than I'd trust some city inspector who's never ridden that block... the city verifying it might make me trust it less."
-  - feature: "What to do about it" action page — 311, Bike Lane Uprising, alderman contacts in one place
+    why: Curious about the concept but genuinely unsure whether it means a built-in chatbox or an external AI tool; wants provenance shown before trusting any answer.
+
+  - feature: Transportation map (crash-dot map)
+    verdict: distrusts / would provoke avoidance
+    why: Explicitly said a dot-covered street would make her drive instead of ride — consistent with persona's documented "danger catalog vs. good option" framing.
+
+  - feature: Network map (schematic, protected-only filter)
     verdict: would-use
-    why: The only feature she affirmatively says she'd act on given current friction — she has never once emailed her alderman despite wanting to, purely because of lookup cost; "if it's one tap, maybe."
-  - feature: Stated absence — ridership/exposure normalization, disclosed as a known gap
-    verdict: would-use (of the caveat itself)
-    why: The explicit "we don't have this yet" framing reads as more trustworthy to her than silence or an implied claim of completeness — "I'd respect that more than if they pretended the crash map was the whole story" — provided it's in plain language, not a small disclaimer she'd skip.
+    why: Matches her one real safety criterion (protected vs. paint) and she said she'd screenshot and reuse a specific-route result daily.
 
-data_they_bring: Block Club Chicago as her primary trusted hyperlocal news source ("real news, not the Facebook stuff"); the Avondale parents' Facebook group as a live, argumentative but information-rich crowd channel; bike-safety Instagram accounts that repost crash news; direct visual pattern-spotting from riding the same route daily at 6:45am (e.g., noticing a car parked in the same bike-lane spot every day, no dataset needed); a coworker (Denise) who pre-digests Streetsblog charts into a single absorbable takeaway during a work break, which is functionally her entire "using data" experience; a phone photo folder ("bike stuff") that functions as a documentation/legitimization ritual, not a reference library she ever revisits; a single successful but entirely unmonitored 311 call (six-week resolution, discovered by accident via her husband); Priya, a fellow pickup-line parent, whose personal Bike Lane Uprising reports and texted photos she trusts more than official verification; her husband Danny as the actual decision-making audience for any safety claim in her household; and one failed attempt to escalate a concern through an institutional channel (raising the school drop-off corner with Mateo's teacher, which died for lack of any number to back it up).
+  - feature: Findings cards (KSI trend, protected share, BNA score, etc.)
+    verdict: ignores / misreads
+    why: "KSI" opaque and off-putting; BNA network score read as citywide trivia, not personally relevant — except she singled out the "not a reason not to ride" caveat line as a positive, unprompted.
 
-deal_breakers: (1) Landing on a citywide map with multiple toggles/layers instead of a route-specific answer — she gives it roughly ten seconds before closing the tab, citing literal in-the-moment conditions (a red light, a kid yelling behind her). (2) Any required download, specifically a CSV — "an instant close-the-tab," independent of what the data shows. (3) Undefined jargon ("corridor," "percentile," "KSI") without inline plain-English explanation — reads immediately as "not for me." (4) Fabricated/mock data flagged only by a hover badge rather than something loud and phone-friendly — she says this is the one thing on the entire site she'd be "genuinely annoyed" about if discovered after the fact rather than before. (5) Fear without an accompanying action — "if it scares me without giving me anything to actually do... I'll just close it and go back to trusting my own eyes and whatever Priya posts in the group."
+  - feature: Ward table + CSV export
+    verdict: ignores
+    why: "Download the CSV" is a named instinctive frustration in her persona file and she reproduced it verbatim as an instant close-the-tab trigger.
 
-vocabulary: "my street" / "our two streets" / "the corner by the Jewel" (her unit of analysis is always a specific, named place, never a corridor or citywide figure); "is it protected or just paint?" (her real infrastructure question, distinct from crash-count framing); "the scary way" vs. "the good way" (how she characterizes a crash-dot map versus the safe-route answer she actually wants); "a vibe" vs. "an actual number" (her framing for the gap between gut feeling and cited data); "documented, this is real" (what saving a screenshot accomplishes for her, emotionally, independent of any follow-up); "money grab" (cameras/red-light tickets, as distinct from safety data); "menu money" (the only municipal-budget term she has real grounding in, from one specific Block Club article); "who do I even call" / "one tap, maybe" (the threshold for whether she converts a grievance into an action); "KSI" / "corridor" / "percentile" (named explicitly as words that signal a site isn't for her); "stoplight," "red-yellow-green" (her preferred output format for a safety judgment); "eyeballing it myself" (her fallback and default mode whenever a tool fails her).
+  - feature: Methodology page
+    verdict: ignores
+    why: Values that it exists for someone else to audit; would never open it herself.
+
+  - feature: Ward one-pager
+    verdict: would-use
+    why: The single feature she said she'd forward to a neighbor or email to her alderman — contingent on it truly being one page and giving her an address-based (not ward-number-based) entry point.
+
+  - feature: Sources page
+    verdict: ignores
+    why: No stated use; not mentioned as something she'd ever open.
+
+  - feature: Action page (311, Bike Lane Uprising, alderman contacts, hearings)
+    verdict: would-use (partially)
+    why: Values alderman contact + "what to say," dismisses hearings as unreachable given her schedule.
+
+  - feature: Contributing page
+    verdict: ignores
+    why: Explicitly out-of-world for her ("that's not remotely for me").
+
+  - feature: News-coverage layer (ward/alderman/route-matched headlines)
+    verdict: would-use
+    why: Mirrors exactly how she already consumes civic information (Block Club, matched mentally to her own neighborhood); called it "the same trust I already give Block Club, just organized."
+
+  - feature: Proposed & in-progress projects roster
+    verdict: would-use (partially)
+    why: Prefers "planned" framing over crash data ("hope, not dread") but frustrated that it has no map/geometry to place it relative to her own street.
+
+  - feature: No-ridership-normalization caveat
+    verdict: uses (as a trust signal) / creates ambivalence
+    why: Recognized it as the exact gap that stumped an argument with her husband and appreciated the honesty, but said it makes the crash map itself feel less useful to her without a substitute.
+
+  - feature: Mock/synthetic obstructions layer (gated preview page)
+    verdict: distrusts
+    why: Reacted with surprise/mild betrayal on learning it was fabricated ("that's... weird, honestly... I would feel kind of tricked"); approved of its removal from the main map but questioned why it exists at all rather than just linking to Bike Lane Uprising.
+
+data_they_bring: Neighborhood Facebook group posts (photos of blocked lanes,
+  near-miss stories) as her actual real-time obstruction data source; Block
+  Club Chicago and Streetsblog articles as her crash/policy news source; word
+  of mouth from a cycling coworker; her own informal "reroute for a week"
+  memory rather than any saved record; a single 311 pothole-report experience
+  as her only direct interaction with city data infrastructure.
+
+deal_breakers: Opening on a citywide map with many toggles; being told to
+  download a CSV; three or more acronyms in the first paragraph without
+  plain-English glosses; requiring a desktop or requiring her to already know
+  her ward number; presenting synthetic/mock data anywhere she might mistake
+  for real, even behind a gate.
+
+vocabulary: "my street," "my alderman" (name, not ward number), "the corner by
+  the Jewel," "is it protected or just paint," "I saw it on Block Club,"
+  "who do I even call," "download the CSV" (said with contempt), "a
+  moneymaker, not a safety thing" (re: cameras), "made up" / "pretend data"
+  (re: mock obstructions), "trivia" (re: citywide stats not about her block).
+```
