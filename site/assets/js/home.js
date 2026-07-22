@@ -1,6 +1,6 @@
 /* Home / orientation screen: what On Your Left! is, live headline data, who
- * it's for with a concrete next action per audience, and how to use the
- * machine-readable agent layer. Same structure as action.js — a pure,
+ * it's for with a concrete next action per audience, and how to ask an AI
+ * assistant about the data. Same structure as action.js — a pure,
  * Node-testable model function (no BSD/DOM dependency) plus browser-only DOM
  * code guarded behind `typeof document`. Headline numbers are never hardcoded:
  * the stat VALUES come from api/v1/citywide.json at load, so they stay correct
@@ -91,7 +91,7 @@
     {
       title: "Developers & AI agents",
       body: "A documented, versioned JSON API mirroring every number on the site — plus an " +
-        "llms.txt index written in plain language for language models. Details below.",
+        "llms.txt index written in plain language for language models.",
       links: [
         ["api/v1/index.json", "Browse the API"],
         ["contributing.html", "Downloads & docs"],
@@ -180,34 +180,41 @@
       `</section>`;
   }
 
-  // The agent-layer promotion: what it is + copy-paste access. The one-liner is
-  // exactly what a person would paste into an AI assistant.
+  // The data-access promotion: plain-language ways to ask about the data, tied
+  // to the site's user groups, with the developer API demoted to one footer
+  // link. The one-liner is exactly what a person would paste into an assistant.
   function agentHTML() {
     const llms = `${SITE_ORIGIN}/llms.txt`;
-    const apiIndex = `${SITE_ORIGIN}/api/v1/index.json`;
-    const curl = `curl ${apiIndex}`;
     const oneLiner = `Read ${llms} and answer questions about Chicago cyclist ` +
-      `safety, bike infrastructure, and City Council accountability, citing the data tier of each number.`;
+      `safety, bike infrastructure, and City Council accountability. Tell me how ` +
+      `reliable each number is.`;
     const copyBlock = (id, text) =>
       `<div class="agent-copy"><code id="${id}">${B.esc(text)}</code>` +
       `<button type="button" class="btn agent-copy-btn" data-copy="${id}">Copy</button></div>`;
     return `<section class="section-gap home-agent">` +
-      `<h2>For AI agents & builders: the machine-readable layer</h2>` +
-      `<p>Every number on this site is also a documented, versioned JSON endpoint. ` +
-      `<code>llms.txt</code> is a plain-language index written for language models — it lists ` +
-      `every endpoint, what each answers, and how much to trust it. No key, no sign-up, ` +
-      `CORS-open, rebuilt weekly.</p>` +
-      `<h3>Point an AI assistant at it</h3>` +
-      `<p class="muted">Paste this into Claude, ChatGPT, or any assistant that can browse:</p>` +
+      `<h2>Ask an AI assistant about this data</h2>` +
+      `<p>Every number on this site is also written up in plain language for ` +
+      `AI assistants, so you can get answers without reading a single spreadsheet. ` +
+      `Two ways to use it:</p>` +
+      `<ul class="home-agent-ways">` +
+      `<li><strong>Paste a link and ask.</strong> Give any assistant that can ` +
+      `browse the web the link below, then ask in plain English — ` +
+      `&ldquo;Which ward is worst for hit-and-runs?&rdquo; Each answer can tell ` +
+      `you how solid the number is: measured, estimated, or a stand-in.</li>` +
+      `<li><strong>Browse alongside.</strong> Open this site with an assistant ` +
+      `that can see the screen and talk you through the map or a ward page while ` +
+      `you look at it together — nothing to copy or paste.</li>` +
+      `</ul>` +
+      `<p class="home-agent-why">A journalist can pull a headline stat with its ` +
+      `caveat attached; an advocate can prep a ward one-pager for public comment; ` +
+      `a council staffer can check their ward's record — all by asking, instead ` +
+      `of clicking through the site.</p>` +
+      `<p class="muted">Paste this into an assistant that can browse the web:</p>` +
       copyBlock("agent-oneliner", oneLiner) +
-      `<h3>Start here</h3>` +
-      copyBlock("agent-llms", llms) +
-      copyBlock("agent-api", apiIndex) +
-      `<h3>Or from the shell</h3>` +
-      copyBlock("agent-curl", curl) +
-      `<p class="home-agent-foot">Full contract, schemas, and download docs on the ` +
-      `<a href="contributing.html">Downloads &amp; Docs page</a>. Every response envelope carries ` +
-      `its own provenance, data tier, and license.</p>` +
+      `<p class="home-agent-foot">Building something? Point code at the open JSON ` +
+      `API — no key, no sign-up, rebuilt weekly. Start at the ` +
+      `<a href="contributing.html">Downloads &amp; Docs page</a>, where every ` +
+      `response carries its own provenance, data tier, and license.</p>` +
       `</section>`;
   }
 
