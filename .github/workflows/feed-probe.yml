@@ -1,0 +1,72 @@
+# THROWAWAY probe — never merge. Runs on its own PR to test, from a real
+# Actions runner (the environment the weekly refresh runs in), whether
+# Bing News RSS and GDELT return direct publisher URLs for Chicago
+# bike-safety queries — candidate replacements for the Google News
+# aggregator whose redirect links won't resolve from datacenter IPs
+# (issue #42). Results are read from the job log; the PR is then closed.
+name: Feed probe (throwaway)
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/feed-probe.yml
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bing News RSS — status + first link structures
+        run: |
+          UA="OnYourLeftNewsBot/1.0 (open-source Chicago bike-safety dashboard; +https://github.com/jartinator/chicago-safe-streets-data)"
+          URL='https://www.bing.com/news/search?q=%22bike+lane%22+OR+%22bike+lanes%22+Chicago&format=rss'
+          curl -sS -A "$UA" -o bing.xml -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL" || true
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          try:
+              root = ET.parse("bing.xml").getroot()
+          except Exception as e:
+              print("PARSE FAIL:", e); raise SystemExit
+          items = list(root.iter("item"))
+          print(f"items: {len(items)}")
+          for it in items[:8]:
+              print("TITLE:", (it.findtext("title") or "")[:90])
+              print("LINK :", (it.findtext("link") or ""))
+              print("DATE :", it.findtext("pubDate"))
+              print("---")
+          EOF
+
+      - name: GDELT artlist — status + URL directness + outlets
+        run: |
+          URL='https://api.gdeltproject.org/api/v2/doc/doc?query=%22bike%20lane%22%20chicago&mode=artlist&format=json&timespan=3months&maxrecords=75'
+          curl -sS -o gdelt.json -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL" || true
+          python3 - <<'EOF'
+          import json
+          from collections import Counter
+          try:
+              arts = json.load(open("gdelt.json")).get("articles", [])
+          except Exception as e:
+              print("PARSE FAIL:", e); print(open("gdelt.json").read()[:500]); raise SystemExit
+          print(f"articles: {len(arts)}")
+          print("domains:", Counter(a.get("domain") for a in arts).most_common(15))
+          for a in arts[:8]:
+              print("TITLE:", (a.get("title") or "")[:90])
+              print("URL  :", a.get("url"))
+              print("SEEN :", a.get("seendate"), "| lang:", a.get("language"))
+              print("---")
+          EOF
+
+      - name: Google News RSS control — confirm runner still gets redirect links
+        run: |
+          UA="OnYourLeftNewsBot/1.0 (open-source Chicago bike-safety dashboard; +https://github.com/jartinator/chicago-safe-streets-data)"
+          URL='https://news.google.com/rss/search?q=%22bike+lane%22+Chicago+when:90d&hl=en-US&gl=US&ceid=US:en'
+          curl -sS -A "$UA" -o goog.xml -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL" || true
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("goog.xml").getroot()
+          items = list(root.iter("item"))
+          print(f"items: {len(items)}")
+          for it in items[:3]:
+              print("TITLE:", (it.findtext("title") or "")[:90])
+              print("LINK :", (it.findtext("link") or "")[:110])
+              print("---")
+          EOF
