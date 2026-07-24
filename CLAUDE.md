@@ -23,6 +23,14 @@ The guard only **warns** — it never blocks you. It's on you (and the user) to
 move. A warning that names a *different* folder than the one you're editing is
 not a collision; only same-folder warnings matter.
 
+## No in-app Browser pane in this repo
+
+Never call `preview_start` or the `mcp__Claude_Browser__*` tools here. A browser
+preview opened against this project crashes the Claude desktop GPU process
+within ~3–5 seconds and takes the whole app down (reproduced 3× on 2026-07-23;
+evidence in `C:\Users\jared\projects\claude-crash-evidence`). Use **Playwright**
+against a local `http.server` instead — see the `verify` skill for the snippet.
+
 ## Human-task tracking & the outbox (binding for every session)
 
 Two standing conventions; follow them **as you work**, not as cleanup:

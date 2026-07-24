@@ -87,6 +87,28 @@ def window_counts(tuples, anchor_date):
     return {"recent_12mo": recent, "prior_12mo": prior, "window_end": anchor_date}
 
 
+def check_trend_window_consistency(trend, windows, label):
+    """Raise ValueError if a crash_trend block and a windows block disagree.
+
+    Both blocks publish the same trailing-12mo-vs-prior-12mo comparison, so a
+    shared anchor must give identical window_end and crash counts. Count
+    comparison is skipped when trend has no counts (insufficient_data), but the
+    anchors must still match. `label` names the record (e.g. "ward 35") in the
+    error message.
+    """
+    if trend["window_end"] != windows["window_end"]:
+        raise ValueError(
+            f"{label}: crash_trend.window_end={trend['window_end']} != "
+            f"windows.window_end={windows['window_end']}")
+    if trend["recent_12mo"] is None:
+        return
+    for key in ("recent_12mo", "prior_12mo"):
+        if trend[key] != windows[key]["crashes"]:
+            raise ValueError(
+                f"{label}: crash_trend.{key}={trend[key]} != "
+                f"windows.{key}.crashes={windows[key]['crashes']}")
+
+
 def hit_and_run_shares(tuples):
     """Hit-and-run share of all crashes and of injury crashes, pct rounded to 1 decimal."""
     total = len(tuples)
