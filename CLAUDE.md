@@ -1,27 +1,23 @@
 # CLAUDE.md
 
-## Concurrent sessions — don't work in the same tree
+## Concurrent sessions — Marge watches this
 
-This repo is frequently open in **several Claude chats at once**, all pointed at
-the same folder. When two chats edit files in the same working directory they
-step on each other ("someone is working in it RIGHT NOW, all my files are
-changing").
+This repo is frequently open in **several Claude chats at once**. Session
+collisions are now tracked machine-wide by **Marge**, the project manager
+(`/marge`, spec at `_system/marge/SPEC.md`).
 
-A session guard runs automatically (see `.claude/hooks/session_guard.py`, wired
-in `.claude/settings.json`). If it reports **`⚠️ CONCURRENT SESSION DETECTED`**,
-another chat is already live in this exact folder. When you see that warning:
+If you see **`[MARGE] CONCURRENT SESSION`**, another chat is live in this
+project — possibly in a different worktree, which still counts.
 
-1. **Stop before editing.** Do not start Writing/Editing files in the shared
-   folder.
-2. **Move to an isolated git worktree** for your work (this repo already keeps
-   worktrees under `.claude/worktrees/`), or explicitly confirm with the user
-   that it's safe to proceed here.
-3. Prefer working in a dedicated worktree for any real editing anyway, rather
-   than the shared main checkout.
+1. **Stop before editing.**
+2. **Move to an isolated git worktree** (this repo keeps them under
+   `.claude/worktrees/`), or confirm with Jared that it's safe here.
+3. Run `/marge claim chicago-safe-streets-data "<what you're doing>"` so the
+   next session sees your task, not just your existence.
 
-The guard only **warns** — it never blocks you. It's on you (and the user) to
-move. A warning that names a *different* folder than the one you're editing is
-not a collision; only same-folder warnings matter.
+The guard only **warns** — it never blocks. The older local guard
+(`.claude/hooks/session_guard.py`) is retired and no longer wired; Marge
+supersedes it.
 
 ## No in-app Browser pane in this repo
 
