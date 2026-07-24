@@ -77,6 +77,25 @@ Confirmed: **status cannot be derived deterministically from news text**, and th
 
 A small hand-curated roster (name, corridor, status, official links, evidence-news via existing route-matcher machinery) is well supported by this research: every project investigated has enough real, dated, citable news coverage to make "what's being written about it" meaningful, and every project's status is genuinely contested/nuanced enough that hand-curation (not derivation) is the only honest approach — consistent with how `main_routes.json` already treats the roster as editorial. The **risk is entirely in the matcher**, not the roster concept: bare corridor-name tokens work well for projects with unambiguous names (Archer, Grand, DLSD's "Redefine the Drive") but **fail badly for the flagship worked example** (606/Bloomingdale) unless seeded with multi-word phrases distinct from routine trail coverage, and **miss entirely** for projects whose current news lives on outlets outside today's feed allowlist (Englewood Nature Trail, Weber Spur — both real, active, fundable, in-the-news projects that Streetsblog itself has stopped tagging). Recommend: (1) per-project curated phrase lists rather than single-token matching, mirroring the multi-pattern approach `_route_matchers` already uses for shared street names; (2) treat Streetsblog tag-feed existence as a bonus signal, not a requirement, since roughly half the projects checked here have stale or absent tags despite active real-world coverage; (3) verify the CMAP BIS REST endpoint directly before deciding the roster's geometry must stay fully hand-traced — it may not need to.
 
+## Appendix: ward attribution for the roster (2026-07-23)
+
+Four roster projects shipped with empty `wards` arrays (found by a cold-agent probe in the
+agentic-layer study: a "projects near Ward 35" filter missed every untagged project). Wards
+below are the wards each project corridor **physically crosses under the 2023 remap**,
+verified geometrically: corridor geometry intersected with the committed
+`site/data/wards.geojson` (city dataset p293-wvbd) using shapely, with ±100 m buffer
+sensitivity checks. Corridor geometries: Lakefront Trail segment from `main_routes.geojson`
+(DLSD), the 606 east endpoint plus geocoded Elston/river points (Bloomingdale extension),
+grid-calibrated points at 58th/59th from Damen to Halsted (Englewood), and OSM ways named
+"Weber Spur Trail"/"Weber Industrial Lead" via Overpass (Weber Spur).
+
+| Project | Wards | Corroboration |
+|---|---|---|
+| bloomingdale-extension | 32 | Extension runs Ashland → Elston/river only — entirely Ward 32 (robust at 100 m buffer). Ald. Waguespack (32nd) is the alder quoted on pacing ([Block Club 2025-01-21](https://blockclubchicago.org/2025/01/21/the-606s-bloomingdale-trail-extension-delayed-with-completion-now-expected-by-late-2027/)). Note: the *existing* trail crosses Wards 1/26/35, but this roster entry is the extension project, which does not reach Logan Square. |
+| dusable-lsd-redesign | 2, 42, 43, 44, 46, 48 | Grand → Hollywood limits. Lakefront corridor crosses all six; 43/44/46/48 alders (Knudsen, Lawson, Clay, Manaa-Hoppenworth) are the ones active in project letters ([Block Club 2024-07-25](https://blockclubchicago.org/2024/07/25/dusable-lake-shore-drives-overhaul-focuses-too-much-on-cars-aldermen-and-advocates-say/)); Wards 42/2 cover the Grand → North Ave segment (Streeterville/Gold Coast). |
+| englewood-nature-trail | 15, 16, 17 | 58th/59th embankment, Damen → Halsted. Alds. Lopez (15th) and Coleman (16th) handle the rezoning ([Block Club 2024-08-16](https://blockclubchicago.org/2024/08/16/englewood-agro-eco-district-will-boost-neighborhood-near-future-trail-we-deserve-beautiful-spaces/)); Ward 17 is crossed around Racine (survives every buffer/lat-shift check). |
+| weber-spur | 39, 45 | OSM corridor Devon/Springfield → Elston/Kimberly through LaBagh Woods crosses exactly Wards 39 and 45 at every buffer size. Ald. Nugent (39th) is the project's alder of record ([Nadig 2026-02](https://nadignewspapers.com/federal-funds-awarded-for-planned-weber-spur-trail-on-chicagos-nw-side-as-project-delays-continue/)); the Jefferson Park/Mayfair stretch is the 45th. |
+
 ## Source index
 
 - [City of Chicago — Bloomingdale Trail Extension project page](https://www.chicago.gov/city/en/depts/cdot/supp_info/bloomingdale_trail.html) — official project name/scope; 403 on direct fetch, cited via WebSearch snippet
