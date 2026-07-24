@@ -356,6 +356,11 @@ block. Spend the attention on B4 instead.
 
 ## Sequencing
 
+> **Superseded 2026-07-23** by `REPORT-agentic-functions.md` §4 (study #1b),
+> after the maintainer reframed the layer as the primary experience with
+> adoption assumed. The findings above stand; the ordering below is kept for
+> the record but no longer governs.
+
 **Do first (cheap, targets the measured defect):**
 1. `llms.txt` stale link fix.
 2. **B1** — programmatically inlined headline answers with attached caveats.
