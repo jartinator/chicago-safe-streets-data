@@ -43,18 +43,20 @@ def test_roster_shape_matches_spec():
     # network-tiers-v2 design spec §2 (2026-07-13-network-tiers-design.md):
     # owner-signed count 14 street lines + 5 trail lines = 19; roosevelt and
     # vincennes demoted to connectors. DECISIONS.md #26 adds 312-riverrun,
-    # #27 adds green-bay -> 14 street + 7 trail = 21.
+    # #27 adds green-bay, #34 merges milwaukee + jackson-washington into
+    # milwaukee-washington -> 13 street + 7 trail = 20.
     lines = ROSTER["lines"]
-    assert len(lines) == 21
+    assert len(lines) == 20
     street = [ln for ln in lines if ln["source"] == "bike_routes"]
     trail = [ln for ln in lines if ln["source"] == "osm_trails"]
-    assert len(street) == 14 and len(trail) == 7
+    assert len(street) == 13 and len(trail) == 7
     ids = [ln["id"] for ln in lines]
     assert not ({"loop", "belmont", "31st"} & set(ids)), "dropped lines must be gone"
     assert not ({"roosevelt", "vincennes"} & set(ids)), "demoted-to-connector lines must be gone"
+    assert not ({"milwaukee", "jackson-washington"} & set(ids)), "merged-away ids must be gone"
     assert {"california", "mlk-drive", "lawrence", "marquette", "83rd"} <= set(ids)
-    assert {"milwaukee", "halsted", "clark", "kedzie", "damen", "state-indiana",
-            "elston", "lake", "jackson-washington"} <= set(ids)
+    assert {"milwaukee-washington", "halsted", "clark", "kedzie", "damen",
+            "state-indiana", "elston", "lake"} <= set(ids)
     assert {"lakefront", "bloomingdale", "major-taylor",
             "north-shore-channel", "north-branch", "312-riverrun",
             "green-bay"} <= set(ids)
@@ -109,8 +111,8 @@ def test_single_membership_line_ids_is_length_one():
     routes = _fc([_seg("m1", "MILWAUKEE", "protected")])
     out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
     props = out["features"][0]["properties"]
-    assert props["line_ids"] == ["milwaukee"]
-    assert props["line_id"] == "milwaukee"
+    assert props["line_ids"] == ["milwaukee-washington"]
+    assert props["line_id"] == "milwaukee-washington"
 
 
 def test_clip_bbox_filters_by_segment_midpoint():
@@ -155,15 +157,16 @@ def test_per_street_clip_bbox_claims_only_part_of_a_street():
     assert seg_ids == {"m-far", "r-loop"}
 
 
-def test_downtown_trunk_is_shared_by_four_lines():
+def test_downtown_trunk_is_shared_by_three_lines():
     # The shipped roster interlines the Loop stretch of RANDOLPH across
-    # milwaukee/clark/lake/jackson-washington (in roster order) so those
-    # four connect downtown and lead to the Lakefront Trail.
+    # milwaukee-washington/clark/lake (in roster order) so those three
+    # connect downtown and lead to the Lakefront Trail (DECISIONS.md #34
+    # narrowed the #28 trunk from four lines to three).
     routes = _fc([_seg("r-trunk", "RANDOLPH", "protected", mid=(41.8845, -87.622))])
     out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
     props = out["features"][0]["properties"]
-    assert props["line_ids"] == ["milwaukee", "clark", "lake", "jackson-washington"]
-    assert props["line_id"] == "milwaukee"
+    assert props["line_ids"] == ["milwaukee-washington", "clark", "lake"]
+    assert props["line_id"] == "milwaukee-washington"
 
 
 def test_street_property_emitted_on_members():
@@ -178,7 +181,7 @@ def test_street_suffix_variant_matches_roster():
     # the raw data carries both MILWAUKEE and MILWAUKEE AVE (spec §5)
     routes = _fc([_seg("m1", "MILWAUKEE AVE", "protected")])
     out = aggregate.build_main_routes(routes, STUB_TRAILS, ROSTER)
-    assert out["features"][0]["properties"]["line_id"] == "milwaukee"
+    assert out["features"][0]["properties"]["line_id"] == "milwaukee-washington"
 
 
 def test_grade_mapping_including_greenway_and_sharrow():
@@ -284,4 +287,4 @@ def test_top_level_shape_is_derived_with_lines_key():
     assert out["type"] == "FeatureCollection"
     assert out["data_tier"] == "derived"
     assert "editorial" in out["note"]
-    assert len(out["lines"]) == 21
+    assert len(out["lines"]) == 20
