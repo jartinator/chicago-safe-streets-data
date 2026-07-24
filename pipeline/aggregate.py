@@ -31,7 +31,7 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
 from council_merge import load_all_council_records
 from bna_metrics import build_bna_scores, build_bna_finding
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
-                           build_findings_core)
+                           build_findings_core, check_trend_window_consistency)
 from socrata import write_json
 from spatial_join import _first_key
 
@@ -1185,8 +1185,15 @@ def crash_ward_dates(crashes):
     return out
 
 
-def crash_trend(dates):
-    """Trailing-12-months vs the prior 12 months, anchored to the latest crash date.
+def crash_trend(dates, anchor_date=None):
+    """Trailing-12-months vs the prior 12 months.
+
+    Anchored at anchor_date when given, else at the latest date in `dates`.
+    Per-ward callers must pass the GLOBAL latest crash date so this block and
+    crash_metrics.window_counts (the `windows` block) describe the same window
+    — anchoring at the ward's own latest crash made the two blocks disagree in
+    the published per-ward files (window_end drifted by days, shifting crashes
+    across the recent/prior boundary).
 
     Calendar-year buckets would compare a partial current year against a full
     prior year and call a mid-year pipeline run "improving" purely from having
@@ -1194,10 +1201,11 @@ def crash_trend(dates):
     when the pipeline runs.
     """
     if not dates:
-        return {"direction": "insufficient_data", "window_end": None,
+        return {"direction": "insufficient_data", "window_end": anchor_date,
                 "recent_12mo": None, "prior_12mo": None, "pct_change": None}
     parsed = sorted(datetime.strptime(d, "%Y-%m-%d") for d in dates)
-    anchor = parsed[-1]
+    anchor = (datetime.strptime(anchor_date, "%Y-%m-%d") if anchor_date
+              else parsed[-1])
     recent_start = anchor - timedelta(days=365)
     prior_start = anchor - timedelta(days=730)
     if parsed[0] > prior_start:
@@ -1292,8 +1300,9 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
     infra_trend, infra_note = infra_growth_trend(wards_gdf, snapshot_dir)
 
     # Per-ward reporting series (crash_metrics): trailing-12mo windows anchored at
-    # the GLOBAL latest crash date (comparable across wards, unlike crash_trend's
-    # per-ward anchor) plus a contiguous monthly series since CRASH_START_DATE.
+    # the GLOBAL latest crash date (comparable across wards) plus a contiguous
+    # monthly series since CRASH_START_DATE. crash_trend below shares that same
+    # global anchor, and check_trend_window_consistency enforces the agreement.
     if tuples is None:
         tuples = crash_tuples(crashes)
     anchor = max((t["date"] for t in tuples), default=None)
@@ -1329,7 +1338,7 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
             "crashes_per_10k_pop": per_capita.get(w),
             "crashes_per_bikeway_mile": per_mile.get(w),
             "comparable_danger_score": blended,
-            "crash_trend": crash_trend(ward_dates.get(w, [])),
+            "crash_trend": crash_trend(ward_dates.get(w, []), anchor_date=anchor),
             "infra_growth_trend": infra_trend.get(w),
             "windows": (window_counts(tuples_by_ward.get(w, []), anchor)
                         if anchor else None),
@@ -1339,6 +1348,9 @@ def build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf, snapshot_di
         rec.update(ward_coverage_fields(
             cats_by_ward.get(w, {}),
             road_miles_by_ward.get(w) if road_miles_by_ward else None))
+        if rec["windows"] is not None:
+            check_trend_window_consistency(rec["crash_trend"], rec["windows"],
+                                           f"ward {w}")
         records.append(rec)
     # None (no score computable) sorts after every real score, including a real 0.
     records.sort(key=lambda r: (r["comparable_danger_score"] is None,

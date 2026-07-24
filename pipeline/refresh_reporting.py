@@ -38,11 +38,11 @@ from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
                        build_mellow_connectors, mellow_connector_records, build_bna,
                        build_news_items, build_proposed_projects,
-                       load_proposed_projects_roster)
+                       load_proposed_projects_roster, crash_trend)
 from bna_metrics import build_bna_finding
 from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
-                           build_findings_core)
+                           build_findings_core, check_trend_window_consistency)
 from socrata import write_json
 
 
@@ -302,8 +302,12 @@ def main():
     }
     write_json(SITE_DATA_DIR / "citywide_trend.json", citywide_trend)
 
-    # Merge windows/monthly into the existing ward records in place — danger scores,
-    # trends, and mileage need inputs this script doesn't have and are left untouched.
+    # Merge windows/monthly/crash_trend into the existing ward records in place —
+    # danger scores and mileage need inputs this script doesn't have and are left
+    # untouched. crash_trend IS recomputed here: it shares the windows anchor
+    # (the global latest crash date), and leaving the committed one in place
+    # would let the two blocks drift apart between a live pull and an offline
+    # refresh.
     wsi = _load("ward_safety_index.json")
     start_month, end_month = CRASH_START_DATE[:7], anchor[:7]
     ward_monthly = per_ward_monthly(tuples, start_month, end_month)
@@ -313,8 +317,12 @@ def main():
             tuples_by_ward.setdefault(t["ward"], []).append(t)
     for rec in wsi["wards"]:
         w = rec["ward"]
-        rec["windows"] = window_counts(tuples_by_ward.get(w, []), anchor)
+        ward_tuples = tuples_by_ward.get(w, [])
+        rec["crash_trend"] = crash_trend([t["date"] for t in ward_tuples],
+                                         anchor_date=anchor)
+        rec["windows"] = window_counts(ward_tuples, anchor)
         rec["monthly"] = ward_monthly.get(w) or monthly_counts([], start_month, end_month)
+        check_trend_window_consistency(rec["crash_trend"], rec["windows"], f"ward {w}")
     write_json(SITE_DATA_DIR / "ward_safety_index.json", wsi)
 
     # osm_trails: only rebuild when a real Overpass pull (pipeline/raw/osm_trails.json,
