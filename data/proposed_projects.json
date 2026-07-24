@@ -18,7 +18,9 @@
       "status_as_of": "2026-07-13",
       "status_note": "Funded in part: a federal earmark secured by Rep. Quigley (~$1.4M reported toward Phase II) against an estimated $30–40M total, with state/local sources still being assembled. Preliminary engineering wrapping up; construction expected to start around late 2026, completion late 2027 (timeline per Block Club, Jan 2025).",
       "description": "Extend the elevated 606/Bloomingdale Trail east from its current end at Ashland Avenue, under the Kennedy Expressway, to Elston Avenue, coordinated with the Lincoln Yards site.",
-      "wards": [],
+      "wards": [
+        "32"
+      ],
       "official_links": [
         {
           "text": "CDOT: Bloomingdale Trail Extension",
@@ -114,7 +116,14 @@
       "status_as_of": "2026-07-13",
       "status_note": "Joint CDOT/IDOT/CMAP reconstruction study; as of a May 2026 CMAP meeting the alternatives analysis was still being revised with no preferred alternative finalized. Proposed bike/ped pieces include a separated overpass at Addison and an expanded shared-use underpass at Hawthorne; advocates are pressing against a car-centric 8-lane option.",
       "description": "Reconstruction of the North DuSable Lake Shore Drive corridor, including its bike and pedestrian crossings and the Lakefront Trail interface.",
-      "wards": [],
+      "wards": [
+        "2",
+        "42",
+        "43",
+        "44",
+        "46",
+        "48"
+      ],
       "official_links": [
         {
           "text": "Redefine the Drive (official project site)",
@@ -150,7 +159,11 @@
       "status_as_of": "2026-07-13",
       "status_note": "$20M in grants secured against an $80M estimate. The site is in a clearing and viaduct-repair phase; construction has been pushed to 2027 with completion expected in 2029 (timeline per Chicago YIMBY/Hoodline, May 2026).",
       "description": "Rails-to-trails conversion of a former Norfolk Southern elevated line: 1.8 miles from Damen to Halsted in Englewood, led by Grow Greater Englewood with the city.",
-      "wards": [],
+      "wards": [
+        "15",
+        "16",
+        "17"
+      ],
       "official_links": [],
       "news_phrases": [
         "Englewood Nature Trail",
@@ -173,7 +186,10 @@
       "status_as_of": "2026-07-13",
       "status_note": "Secured $850,000 in federal funding (Rep. Quigley community project, Feb 2026) against a ~$70M estimate; land acquisition from Union Pacific remains unresolved after roughly two decades. Construction target is 2029.",
       "description": "1.7-mile trail on a former Union Pacific right-of-way through LaBagh Woods on the Northwest Side, connecting toward the North Branch Trail.",
-      "wards": [],
+      "wards": [
+        "39",
+        "45"
+      ],
       "official_links": [],
       "news_phrases": [
         "Weber Spur"
