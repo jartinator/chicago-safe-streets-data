@@ -11,14 +11,16 @@ tracker: #33
 
 # Partnership opener: Bike Lane Uprising
 
-*Context: OYL's obstruction layer is deliberately empty — we built the
-pipeline to accept BLU-shaped data (schema mirrors their public submission
-fields, documented in SCHEMA.md) and refused to ship anything synthetic on
-real map surfaces (DECISIONS.md #22: the demo is gated and watermarked).
-The interviews' strongest crowdsourced-data finding: riders trust BLU
-reports MORE than official data. This is the conversation the mock schema
-was built for. Tone per collaboration-principles: we're asking to carry
-their data with full credit, not to compete.*
+*Context: OYL removed its synthetic mock-obstruction layer and all
+"pending BLU partnership" framing from the site (see DECISIONS.md) — the
+site now publishes NO obstruction data and simply points people to Bike
+Lane Uprising to report a blocked lane. A normalized obstruction schema
+still lives in SCHEMA.md as a documented swap-in target for a future real
+feed, with no file currently published. The interviews' strongest
+crowdsourced-data finding: riders trust BLU reports MORE than official
+data. This outreach is optional — nothing on the live site depends on it.
+Tone per collaboration-principles: we're asking to carry their data with
+full credit, not to compete.*
 
 Hi Christina,
 
@@ -34,10 +36,10 @@ fully credited and linked back to you. Two things might make this easy on
 your side:
 
 1. We deliberately have no obstruction data today — our sources page says
-   "no real reports yet, pending a conversation with Bike Lane Uprising"
-   rather than showing anything fake — and our ingestion schema was
-   designed around your public submission fields, so whatever export
-   format is convenient for you would likely drop in.
+   plainly that we publish none and points readers to you to report a
+   blocked lane — and our ingestion schema was designed around your
+   public submission fields, so whatever export format is convenient for
+   you would likely drop in.
 2. Everything we publish carries provenance labels and your attribution
    would ride on every rendering and download — we're an evidence layer
    that would send reporters TO you (our "report it" links already do).

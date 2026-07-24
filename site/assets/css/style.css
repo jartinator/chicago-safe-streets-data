@@ -176,15 +176,56 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   padding-left: 2rem; box-sizing: border-box;
 }
 
-/* Quality-border grade legend (spec §3). */
-.quality-legend { margin: 0 0 0.5rem 1.6rem; }
-.quality-legend-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }
-.quality-swatch { width: 22px; flex: none; }
+/* "How to read a line" legend (schematic redesign v3 §9.1): the four
+ * structural inks in a neutral hue, heaviest to hollow. Quality is
+ * intrinsic and always on — this replaces the v2 quality-border toggle. */
+.read-legend { margin: 0.6rem 0 0.5rem; }
+.read-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; font-size: 0.85em; }
+.read-swatch { width: 26px; height: 9px; flex: none; border-radius: 2px; }
+.read-swatch.read-offstreet { background: #334155; }
+.read-swatch.read-protected { background: #64748b; }
+/* paint reads as a SOLID bar wearing a hairline stripe; nothing reads as
+ * an EMPTY outlined box — at 9px the two must not look like cousins
+ * (both were "gray with a light middle" before). */
+.read-swatch.read-paint {
+  background: #64748b;
+  background-image: linear-gradient(#fff 0 0);
+  background-size: 100% 1.5px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.read-swatch.read-nothing {
+  background: none;
+  border: 1.5px solid #94a3b8;
+  height: 9px; box-sizing: border-box; border-radius: 2px;
+}
 .quality-footnote { margin: 0.2rem 0 0; font-size: 0.78rem; }
 .capsule-glyph {
   display: inline-block; width: 20px; height: 11px; flex: none;
   background: #fff; border: 1.5px solid #1a2330; border-radius: 6px;
 }
+
+/* Couplet disambiguation note (v3 §6). */
+.couplet-note { font-size: 0.78rem; margin: 0.35rem 0 0; }
+.couplet-tip { font-size: 0.72rem; max-width: 220px; white-space: normal; }
+
+/* Schematic provenance chip on the map (v3 §9.6). */
+.schematic-chip {
+  position: absolute; left: 10px; bottom: 10px; z-index: 800;
+  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--line);
+  border-radius: 6px; padding: 0.25rem 0.55rem;
+  font-size: 0.7rem; color: var(--ink-soft); pointer-events: auto;
+}
+.schematic-chip a { color: inherit; }
+
+/* Terminus labels (v3 §8): line name at both spine ends, z >= 11. */
+.terminus-label {
+  background: transparent; border: none; box-shadow: none;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; opacity: 0.9;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+.terminus-label::before { display: none; }
 
 /* Comfort floor segmented control (spec §5). */
 .comfort-floor { margin: 0.6rem 0; }
@@ -211,7 +252,8 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
   background: var(--line); margin: 0.2rem 0 0.35rem;
 }
 .mix-bar .mix-seg { height: 100%; }
-.mix-bar .mix-seg.grade-paint {
+.mix-bar .mix-seg.grade-paint,
+.mix-bar .mix-seg.level-paint {
   background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(255,255,255,.45) 3px 6px);
 }
 .mix-legend { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; font-size: 0.76rem; color: var(--ink-soft); }
@@ -232,10 +274,23 @@ table.data tbody tr:nth-child(even) { background: #f8fafc; }
 .roster-row .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .roster-row-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .roster-row.no-data { opacity: 0.6; }
+/* Roster mini-bars (v3 §9.4): the four-ink swatch dialect doesn't survive
+ * 60×6 px, so rows carry a degraded dialect at 8 px tall — solid-dark /
+ * solid / diagonal hatch / hollow outline box — in the mix palette. */
 .mini-mix {
-  display: flex; width: 60px; height: 6px; flex: none; border-radius: 3px; overflow: hidden; background: var(--line);
+  display: flex; width: 60px; height: 8px; flex: none; border-radius: 3px; overflow: hidden; background: var(--line);
 }
 .mini-mix span { height: 100%; }
+.mini-mix .mm-offstreet { background: #0c4a6e; }
+.mini-mix .mm-protected { background: #0b6e4f; }
+.mini-mix .mm-paint {
+  background: #f59e0b;
+  background-image: repeating-linear-gradient(45deg, transparent 0 2px, rgba(255,255,255,.55) 2px 4px);
+}
+.mini-mix .mm-nothing {
+  background: none; box-sizing: border-box;
+  border: 1.5px solid #94a3b8; border-left: none; border-right: none;
+}
 
 /* Interlining capsule transfer marker (spec §6): white pill, dark outline,
  * rotated perpendicular to travel via inline transform on the inner span. */

@@ -91,17 +91,31 @@
     {
       id: "obstructions",
       name: "Bike Lane Obstructions",
-      short: "Obstructions (demo)",
-      origin: "MOCK demonstration data (schema mirrors Bike Lane Uprising's public submission fields)",
-      tier: "mock",
-      cadence: "regenerated each pipeline run",
-      description: "Reports of bike lanes blocked by cars, debris, or other obstructions. This is entirely synthetic MOCK data for schema demonstration — Bike Lane Uprising has no public API yet.",
-      limitations: "Entirely synthetic — no real reports, so it never renders on the main maps; it lives only on a gated, watermarked demo page. The category enum is a placeholder pending a data-sharing conversation with Bike Lane Uprising. This layer demonstrates the pipeline's readiness to accept obstruction reports once a public data source becomes available.",
+      short: "Not published",
+      origin: "Not published by On Your Left!",
+      tier: "stub",
+      cadence: "N/A",
+      description: "On Your Left! publishes NO bike-lane obstruction data — no synthetic layer, no live feed. If you see a blocked bike lane, report it directly to Bike Lane Uprising.",
+      limitations: "Nothing to caveat — this dataset does not exist on this site. Ask Bike Lane Uprising for obstruction reports.",
       links: [
-        { text: "Synthetic demo page (gated)", url: "obstructions-preview.html" },
         { text: "Bike Lane Uprising", url: "https://www.bikelaneuprising.com" }
       ],
-      metaId: "obstructions"
+      metaId: null
+    },
+    {
+      id: "smart_streets",
+      name: "Smart Streets Enforcement (pending FOIA)",
+      short: "Smart Streets",
+      origin: "City of Chicago Smart Streets pilot (CDOT + Dept. of Finance, Hayden AI cameras) — via FOIA request, not yet received",
+      tier: "stub",
+      cadence: "N/A — records request in progress",
+      description: "Camera-enforced bike lane, bus lane, and bus stop violations from the city's downtown Smart Streets pilot (warnings from Nov 2024, tickets from Dec 2024), including commercial-fleet registrant names — enforcement-grade obstruction data, unlike self-reported 311 signals. No public dataset exists (verified July 2026; the Chicago Tribune obtained its July 2026 delivery-company fine figures via a records request), so this layer is empty until the city answers our FOIA request to the Department of Finance for the violation-level records.",
+      limitations: "Not yet integrated — a FOIA request is prepared and awaiting response; nothing renders anywhere until real records arrive. When they do: downtown pilot zone only (Roosevelt–North Ave–Ashland–Lake Michigan), so coverage is geographically sparse by design; private individuals' registrant names are expected to be redacted (commercial fleets are not); locations will need geocoding before any map use.",
+      links: [
+        { text: "Our FOIA request (repo)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md" },
+        { text: "City Smart Streets page", url: "https://www.chicago.gov/city/en/depts/fin/provdrs/parking_and_redlightcitationadministration/svcs/smart-streets.html" }
+      ],
+      metaId: null
     },
     {
       id: "wards",
@@ -179,7 +193,7 @@
       origin: "Computed from CDOT Bike Routes + OSM trails roster",
       tier: "derived",
       cadence: "weekly pipeline run",
-      description: "21 marquee corridors (14 street lines + 7 trail lines, owner-signed roster) drawn heavy on both map screens. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland). The network map draws each line in one solid color with an opt-in quality border showing the facility grade along it (protected / paint / mellow / none — trails are off-street); the transportation map instead colors each member segment directly by its own grade, so quality reads segment-by-segment. The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
+      description: "20 marquee corridors (13 street lines + 7 trail lines, owner-signed roster) drawn heavy on both map screens. A \"line\" is a named corridor end-to-end (Halsted: 79th ⇄ Waveland). The network map is a deliberate schematic: it straightens each line into one continuous spine and draws quality as structural ink along it — off-street / protected / paint / nothing (a hollow stretch marks where no bikeway is built) — while the transportation map colors each member segment directly by its own grade in true geometry, so quality reads segment-by-segment. The line list is hand-picked in a checked-in roster (data/main_routes.json); each pipeline run auto-fills every line with the real CDOT/OSM segments that match it, so grades and mileage stay live.",
       limitations: "the roster is editorial: we chose which corridors count as main routes; segment grades and mileage are computed from source data each run. Gaps in a corridor stay holes in the line — geometry is never fabricated. Street lines are derived from CDOT data; trail lines are crowdsourced OSM data; the two never blend.",
       links: [
         { text: "Roster config (data/main_routes.json)", url: "https://github.com/jartinator/chicago-safe-streets-data/blob/main/data/main_routes.json" }

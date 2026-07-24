@@ -30,6 +30,7 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     PROPOSED_PROJECTS_PATH)
 from council_merge import load_all_council_records
 from bna_metrics import build_bna_scores, build_bna_finding
+from commitments_metrics import build_commitments_finding
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core, check_trend_window_consistency)
 from socrata import write_json
@@ -2014,6 +2015,18 @@ def main():
                                                 snapshot_dir, tuples=tuples,
                                                 road_miles_by_ward=road_miles_by_ward)
     bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir)
+
+    # Promise-vs-delivered: curated published bikeway commitments (data/commitments.json,
+    # editorial roster with citations) paired against the bikeway mileage series just
+    # built above. Skipped entirely if the roster is empty — never emit a fake finding.
+    commitments_path = MAIN_ROUTES_PATH.parent / "commitments.json"
+    commitments_doc = (json.loads(commitments_path.read_text())
+                       if commitments_path.exists() else None)
+    if commitments_doc and commitments_doc.get("commitments"):
+        commitments_finding = build_commitments_finding(commitments_doc, bikeway_mileage_series)
+        if commitments_finding:
+            findings.append(commitments_finding)
+
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
     aldermen_safety_record = build_aldermen_safety_record(council_records_list, name_to_ward)
@@ -2087,8 +2100,6 @@ def main():
              "records": len(sr311), "date_range": None},
             {"id": "cameras", "name": "Speed/Red-light Camera Violations", "tier": "proxy",
              "records": len(cameras), "date_range": None},
-            {"id": "obstructions", "name": "Bike-lane Obstructions", "tier": "mock",
-             "records": None, "date_range": None},
         ] + ([{"id": "mellow_routes", "name": "Mellow Bike Map (crowdsourced low-stress streets)",
                "tier": "crowdsourced", "records": len(mellow_gj["features"]), "date_range": None}]
              if mellow_gj["features"] else []) + (
