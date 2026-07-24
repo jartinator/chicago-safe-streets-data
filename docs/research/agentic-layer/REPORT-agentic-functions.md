@@ -1,6 +1,6 @@
 ---
 title: "Study #1b — the agentic layer as the primary experience: functions, gaps, and the build plan"
-status: research complete; maintainer answers to 5 questions pending (§8); build decisions are the maintainer's
+status: research complete incl. maintainer answers (2026-07-23); build decisions are the maintainer's
 date: 2026-07-23
 supersedes: REPORT-agentic-proposal.md §Sequencing (its findings stand; its ordering is replaced here)
 evidence:
@@ -145,18 +145,34 @@ unless noted).
 1. **History surfaced: `builds.json` + `changes.json` + snapshot URLs**
    (§3). Evidence: G1 hit by both automation probes; 3 personas + the
    maintainer's own workflow. Unlocks F-A outright.
-2. **Front-door placement fix** (G2). The `<noscript>` pointer exists —
-   verified — but 3 of 5 probes never saw it and reached the API via the
-   GitHub repo. Put the agent pointer where extractors actually look:
+2. **Front-door placement fix + the agent user path** (G2, now elevated by
+   the maintainer's own answer). Asked for the honest counterexample to the
+   superior-experience thesis, the maintainer named exactly this: *"no
+   clear user path for people visiting data through agent UI instead of
+   browser."* The `<noscript>` pointer exists — verified — but 3 of 5
+   probes never saw it and reached the API via the GitHub repo. Two parts:
+   (a) placement — the agent pointer where extractors actually look:
    visible HTML text on every page, an HTTP `Link` header if Pages allows,
-   sitemap entries for `llms.txt` and `api/v1/index.json`. Cheap, and it
-   compounds study #1's B4 (indexability).
-3. **The FOIA seed-bank** (probe F-B2 + advocate + filer + maintainer Q1,
-   answer pending). Publish, as data: the known-gaps list, why each gap
+   sitemap entries for `llms.txt` and `api/v1/index.json`; (b) the
+   *journey* — the layer needs an information architecture for
+   agent-mediated visitors the way the site has one for browser visitors:
+   `llms.txt` as the oriented front door (what can I do here → per-function
+   recipes → per-fact deep links), which is also where the home-page
+   spec's four job-shaped prompts point. Cheap, and it compounds study
+   #1's B4 (indexability).
+3. **The FOIA seed-bank** — **maintainer-approved 2026-07-23, conditional
+   on PII validation.** Publish, as data: the known-gaps list, why each gap
    matters, the records language that would fill it, the custodian agency
-   and intake route (compensating chicago.gov's 403s to fetchers). The
-   probe proves an agent can then do the rest. Scope honestly per the
-   filer: this seeds *requests*, it does not "handle FOIA."
+   and intake route (compensating chicago.gov's 403s to fetchers), and
+   request status so requesters don't unknowingly duplicate. The probe
+   proves an agent can then do the rest. Scope honestly per the filer: this
+   seeds *requests*, it does not "handle FOIA." **PII validation scope**
+   (per the maintainer, grounded in observed probe behavior): templates use
+   "[YOUR NAME]" placeholders — probe F-B2 demonstrably harvested the
+   maintainer's name/email from public attribution into a letter header;
+   entries warn that Chicago publishes requester name + request text in
+   public FOIA logs; no personal contact details of the maintainer or prior
+   requesters anywhere in the emitted data.
 
 **Tier 2 — the number-safety closers (probes + study #1 continuity):**
 
@@ -222,10 +238,17 @@ agents will shift results); simulated personas (now 7, still 0 real
 external humans — the advocate and filer findings especially warrant
 real-world validation before major investment); probe tasks were
 OYL-pointed (discovery was study #1's question, not re-tested here); the
-maintainer's five answers (§8 of `interviews/maintainer-real-user.md`)
-were pending at time of writing — Q1 (publish the FOIA seed-bank or keep
-the workflow internal?) gates build item 3's scope, and the report should
-be amended when answers land.
+maintainer's five answers (§4 of `interviews/maintainer-real-user.md`,
+received 2026-07-23) are folded into §4's build items — seed-bank approved
+with PII validation; the counterexample ("no clear user path for people
+visiting data through agent UI") elevated the front-door item; the
+automation audience is external (advocates, researchers/journalists, civic
+devs — not the maintainer), confirming the static `changes.json` shape
+over anything session-dependent. One tension recorded rather than
+resolved: the maintainer's #1 pain is FOIA state advancing only
+in-session, yet the FOIA clock was NOT selected for watching — read as
+"automate it away, don't alert me about it," and left to the maintainer to
+confirm at build time.
 
 ## 7. One-sentence version
 

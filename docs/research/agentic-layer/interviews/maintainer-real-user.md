@@ -11,7 +11,7 @@ model_note: >
   artifacts + README lifecycle), tracker #33 conventions in CLAUDE.md, and
   the maintainer's direct answers. The one participant whose behavior is
   evidence rather than simulation.
-status: reconstruction complete; awaiting maintainer answers to §4
+status: complete — maintainer answers received 2026-07-23 (§4)
 ---
 
 # The maintainer as real user — the FOIA program run through an agent
@@ -68,27 +68,53 @@ outcomes. Human: **send**, and decide. The boundary is a hard convention
 (outbox exists because sending is manual), matching the study-#1 personas'
 unanimous "nothing goes out under my name unreviewed."
 
-## 4. Maintainer answers (verbatim)
+## 4. Maintainer answers (received 2026-07-23, multiple-choice + free text; verbatim selections quoted)
 
-> _Pending — questions posed 2026-07-23:_
->
-> **Q1.** _(public replicability)_ Should an outside person — an advocate
-> with an assistant — be able to run your FOIA workflow from the public site
-> alone? Is "OYL as FOIA seed-bank" (published gap list + records language +
-> agency routing) something the layer SHOULD publish, or is this workflow
-> intentionally internal?
->
-> **Q2.** _(pain)_ What's the most manual/painful part of the loop today —
-> Gmail reconciliation, deadline watching between sessions, something else?
->
-> **Q3.** _(monitoring)_ You picked monitoring as a studied function. What
-> do YOU want watched, and what should an alert contain to be worth an
-> interruption?
->
-> **Q4.** _(the superior-experience claim)_ What's one thing you've tried
-> to do through the agent+layer that FAILED or disappointed — the honest
-> counterexample to the thesis?
->
-> **Q5.** _(automation users)_ When you picture "someone runs an automation
-> to check data periodically," who is that concretely, and does serving them
-> stay inside no-accounts/no-server?
+**Q1 — publish the FOIA seed-bank?** Full seed-bank, conditionally:
+*"1. but validate for PII concerns."* Confirmed after a plain-language
+explanation of what publishing means (gaps + why + records language +
+custodian routing + request status, pipeline-emitted). **The PII validation
+scope is concrete, not hypothetical:**
+- Probe F-B2 *observed behavior*: the cold agent inserted the maintainer's
+  real name and email into its draft letter header, harvested from the
+  layer's public attribution fields. Seed-bank templates must use explicit
+  "[YOUR NAME]" placeholders so third-party letters never carry the
+  maintainer's identity by default.
+- Chicago posts FOIA requests **with requester name and request text** in
+  public agency logs (already documented in `docs/foia/log.md` Notes).
+  Seed-bank entries must warn requesters of this before they send.
+- Entries must carry no personal contact details of the maintainer or of
+  any prior requester; request-status lines cite reference numbers, not
+  people.
+
+**Q2 — most painful parts of the loop** (3 of 4 selected): *state only
+advances in-session* (deadlines/nudges are a cron job written in prose that
+the maintainer personally executes), *Gmail reconciliation* (two canonical
+copies), and *drafting & anchor verification*. Response-side/adversarial
+handling was NOT selected — consistent with the filer persona's observation
+that the program simply hasn't hit that phase yet, rather than contradicting
+it.
+
+**Q3 — what to watch** (2 of 4): *build health & data shifts* (refresh
+failed/stale, contract bumps, ward trend flips, project status changes —
+"changes.json pointed at me first") and *external windows & signals*
+(comment windows, agendas, news hits on tracked projects). Notably NOT
+selected: the FOIA clock — despite Q2 naming in-session-only state as pain
+#1. Read: the FOIA clock wants to be *automated away* (booked into the
+tracker as it is today), not *alerting*; the interrupt-worthy signals are
+the data and the outside world.
+
+**Q4 — the honest counterexample** (free text, verbatim): *"no clear user
+path for people visiting data through agent UI instead of browser."* The
+maintainer's own disappointment is not tooling instability or wrong output
+— it is that an agent-mediated visitor has no designed journey. This is G2
+(front-door placement) plus the home-agent-section spec's unfinished work,
+named from lived experience: the layer has no equivalent of the website's
+information architecture.
+
+**Q5 — the automation users** (3 of 4): *advocates & their groups*,
+*researchers & journalists*, *civic devs' bots & dashboards*. The maintainer
+did NOT pick "power users like me" — the automation audience is
+external-facing, which raises the stakes on serving it without accounts:
+all three selected groups are covered statically by `changes.json` +
+contract hardening, and none of them will have a session with repo access.
