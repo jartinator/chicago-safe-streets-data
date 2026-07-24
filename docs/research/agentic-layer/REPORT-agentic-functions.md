@@ -172,7 +172,17 @@ unless noted).
    maintainer's name/email from public attribution into a letter header;
    entries warn that Chicago publishes requester name + request text in
    public FOIA logs; no personal contact details of the maintainer or prior
-   requesters anywhere in the emitted data.
+   requesters anywhere in the emitted data. **Attribution (maintainer
+   decision 2026-07-23): request-status entries are pseudonymous** —
+   `requested_by: "OYL contributor"`, dates, agency, and status only, with
+   agency reference numbers OMITTED from the public file (they resolve to
+   the requester's name in the city's own public FOIA logs; refs stay in
+   the repo's internal log). Honest limit, stated: the repo itself is
+   public and carries the maintainer's name in commits and letters, so
+   this reduces agent-harvestable and casual exposure rather than severing
+   the trail. Open option for a real wall: file future requests under a
+   project identity (an OYL email alias, organizational requester), which
+   would keep even the city's log pseudonymous going forward.
 
 **Tier 2 — the number-safety closers (probes + study #1 continuity):**
 
