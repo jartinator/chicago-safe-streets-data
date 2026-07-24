@@ -180,9 +180,17 @@ unless noted).
    the repo's internal log). Honest limit, stated: the repo itself is
    public and carries the maintainer's name in commits and letters, so
    this reduces agent-harvestable and casual exposure rather than severing
-   the trail. Open option for a real wall: file future requests under a
-   project identity (an OYL email alias, organizational requester), which
-   would keep even the city's log pseudonymous going forward.
+   the trail. **Hard rule (maintainer, 2026-07-23): the requester identity
+   defaults to "On Your Left!" — for the maintainer's future filings AND
+   for the seed-bank's templates.** Future OYL requests file as the
+   project (organizational requester, project email alias — alias creation
+   is a tracked human task); seed-bank templates default outsiders to
+   filing "on behalf of the On Your Left! open-data project" with their
+   own contact details for delivery, personal names de-emphasized. The
+   three staged outbox letters should be re-headed to the project identity
+   before sending. Known trade-off, accepted: requests OYL inspired but
+   did not review will carry its banner; the templates' precision is the
+   quality control.
 
 **Tier 2 — the number-safety closers (probes + study #1 continuity):**
 

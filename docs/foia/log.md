@@ -39,6 +39,23 @@ full rationale and request bodies live in this folder's per-request files
 3. A "no historical versions retained" response is itself a documented result — it confirms the
    forward-only snapshot approach is the only path, and belongs in `DECISIONS.md`.
 
+## Requester identity — standing rule (2026-07-23)
+
+**Default requester is "On Your Left!" (the project), not a personal name.**
+Chicago posts requester name + request text in public agency FOIA logs, so
+filing personally puts the maintainer's name in a public record every time.
+Going forward:
+
+- New requests file as the project (organizational requester), using the
+  project email alias once created (tracked in issue #33). Personal names
+  appear only where an agency demands a natural person for delivery.
+- The three staged letters in `docs/outbox/` predate this rule — re-head
+  them to the project identity before sending.
+- Any public template OYL publishes for third parties (the agentic-layer
+  "FOIA seed-bank," see `docs/research/agentic-layer/REPORT-agentic-functions.md`)
+  defaults to "on behalf of the On Your Left! open-data project" with the
+  sender's own delivery details, personal names de-emphasized.
+
 ## Notes
 
 - Chicago posts all FOIA requests (requester name + text) in public logs
