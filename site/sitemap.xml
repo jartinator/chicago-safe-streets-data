@@ -2,50 +2,46 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/index.html</loc>
-    <lastmod>2026-07-14</lastmod>
-  </url>
-  <url>
-    <loc>https://jartinator.github.io/chicago-safe-streets-data/map.html</loc>
-    <lastmod>2026-07-14</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/network.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/findings.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/table.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/sources.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/methodology.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/action.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/ward.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/contributing.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/llms.txt</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
   <url>
     <loc>https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-22</lastmod>
   </url>
 </urlset>

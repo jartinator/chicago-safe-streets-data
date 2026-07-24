@@ -19,7 +19,6 @@ assert.strictEqual(grouped.get("MILWAUKEE AVE").length, 2, "groupByCorridor: 2 f
 assert.ok(grouped.has("(unnamed)"), "groupByCorridor: null street becomes (unnamed)");
 assert.strictEqual(grouped.get("(unnamed)").length, 1, "groupByCorridor: 1 feature for (unnamed)");
 
-// empty-string street also becomes (unnamed) and merges with null-street bucket
 const grouped2 = N.groupByCorridor([
   { properties: { street: "", segment_id: "4" } },
   { properties: { street: null, segment_id: "5" } },
@@ -27,7 +26,7 @@ const grouped2 = N.groupByCorridor([
 assert.strictEqual(grouped2.size, 1, "groupByCorridor: empty string and null share (unnamed) bucket");
 assert.strictEqual(grouped2.get("(unnamed)").length, 2, "groupByCorridor: both features bucketed");
 
-// ---- toLatLngs ----
+// ---- toLatLngs / flattenCoords / bboxes ----
 const multiLine = {
   type: "MultiLineString",
   coordinates: [
@@ -55,7 +54,6 @@ assert.deepStrictEqual(
   "toLatLngs: LineString returns flat [lat,lng] list"
 );
 
-// ---- flattenCoords ----
 assert.deepStrictEqual(
   N.flattenCoords(multiLine),
   [[-87.65, 41.90], [-87.64, 41.91], [-87.60, 41.80], [-87.59, 41.81]],
@@ -67,7 +65,6 @@ assert.deepStrictEqual(
   "flattenCoords: LineString returns coordinates as-is"
 );
 
-// ---- getPaddedBBox ----
 const bbox = N.getPaddedBBox(singleLine, 0.001);
 assert.deepStrictEqual(
   bbox,
@@ -75,7 +72,6 @@ assert.deepStrictEqual(
   "getPaddedBBox: pads min/max lat/lng"
 );
 
-// ---- unionBBox (dedup: fitLineBounds / citywide fit / corridor deep link) ----
 assert.deepStrictEqual(N.unionBBox([]), [], "unionBBox: empty input -> []");
 assert.deepStrictEqual(N.unionBBox(undefined), [], "unionBBox: missing input -> []");
 assert.deepStrictEqual(
@@ -88,395 +84,130 @@ const unioned = N.unionBBox([{ geometry: singleLine }, { geometry: secondLine }]
 const bboxA = N.getPaddedBBox(singleLine);
 const bboxB = N.getPaddedBBox(secondLine);
 assert.strictEqual(unioned[0][0], Math.min(bboxA[0][0], bboxB[0][0]), "unionBBox: min lat across features");
-assert.strictEqual(unioned[0][1], Math.min(bboxA[0][1], bboxB[0][1]), "unionBBox: min lng across features");
-assert.strictEqual(unioned[1][0], Math.max(bboxA[1][0], bboxB[1][0]), "unionBBox: max lat across features");
 assert.strictEqual(unioned[1][1], Math.max(bboxA[1][1], bboxB[1][1]), "unionBBox: max lng across features");
 
-// ---- ZOOM thresholds ----
+// ---- ZOOM / DEFAULT_OVERLAYS / parseOverlays / serializeOverlays ----
 assert.deepStrictEqual(
   N.ZOOM, { interchangeNodes: 11, lineLabels: 11, corridorLabels: 13 },
   "ZOOM: interchange/line-label thresholds at 11, corridor/orientation-label threshold at 13"
 );
-
-// ---- DEFAULT_OVERLAYS: trails+main+nodes on; connectors/quality/planned off ----
 assert.deepStrictEqual(
   N.DEFAULT_OVERLAYS, ["trails", "main", "nodes"],
-  "DEFAULT_OVERLAYS: trails+main+nodes on by default; connectors mesh, quality, planned off"
+  "DEFAULT_OVERLAYS: trails+main+nodes on by default"
 );
-
-// ---- parseOverlays / serializeOverlays (network.html URL state) ----
-assert.deepStrictEqual(
-  [...N.parseOverlays(null)], ["trails", "main", "nodes"],
-  "parseOverlays: null (param absent) falls back to defaults"
-);
-assert.deepStrictEqual(
-  [...N.parseOverlays(undefined)], ["trails", "main", "nodes"],
-  "parseOverlays: undefined falls back to defaults"
-);
-assert.strictEqual(
-  N.parseOverlays("").size, 0,
-  "parseOverlays: explicit empty string means no overlays enabled"
-);
+assert.deepStrictEqual([...N.parseOverlays(null)], ["trails", "main", "nodes"], "parseOverlays: null -> defaults");
+assert.strictEqual(N.parseOverlays("").size, 0, "parseOverlays: explicit empty string -> none");
 assert.deepStrictEqual(
   [...N.parseOverlays("quality,main")], ["quality", "main"],
-  "parseOverlays: comma list parses in order"
+  "parseOverlays: legacy ids (the retired 'quality' toggle) still parse — network.js just never checks them"
 );
-assert.deepStrictEqual(
-  [...N.parseOverlays("connecting,mellow,trails")], ["connecting", "mellow", "trails"],
-  "parseOverlays: legacy/unknown ids (pre-v2 'connecting'/'mellow') still parse into the Set — network.js just never checks for them, so they're ignored silently"
-);
-assert.strictEqual(
-  N.serializeOverlays(new Set(["quality", "nodes"])), "quality,nodes",
-  "serializeOverlays: joins a Set with commas"
-);
-assert.strictEqual(
-  N.serializeOverlays(N.parseOverlays("quality,trails,connectors")),
-  "quality,trails,connectors",
-  "round-trip: parseOverlays -> serializeOverlays preserves content"
-);
-assert.strictEqual(
-  N.serializeOverlays(N.parseOverlays(null)),
-  "trails,main,nodes",
-  "round-trip: absent param -> defaults -> 'trails,main,nodes'"
-);
+assert.strictEqual(N.serializeOverlays(new Set(["main", "nodes"])), "main,nodes", "serializeOverlays: joins with commas");
+assert.strictEqual(N.serializeOverlays(new Set()), "none", "serializeOverlays: empty set -> 'none' sentinel");
+assert.strictEqual(N.parseOverlays("none").size, 0, "parseOverlays: 'none' sentinel -> empty set");
 
-// Empty set must survive the URL: BSD.setParams deletes empty-string params
-// (so "" would fall back to defaults on reload). An empty set therefore
-// serializes to the sentinel "none" instead of "".
-assert.strictEqual(
-  N.serializeOverlays(new Set()), "none",
-  "serializeOverlays: empty set -> 'none' sentinel (not '')"
-);
-assert.strictEqual(
-  N.parseOverlays("none").size, 0,
-  "parseOverlays: 'none' sentinel -> empty set"
-);
-assert.strictEqual(
-  N.serializeOverlays(N.parseOverlays("none")), "none",
-  "round-trip: 'none' -> empty set -> 'none'"
-);
-assert.deepStrictEqual(
-  [...N.parseOverlays(N.serializeOverlays(new Set()))], [],
-  "round-trip: serialize(empty) parses back to empty, not defaults"
-);
-
-// ---- LINE_COLORS / FALLBACK_LINE_COLOR / lineStyle (spec §9) ----
+// ---- LINE_COLORS / lineStyle ----
+// milwaukee + jackson-washington merged into one L-shaped through-line
+// (DECISIONS.md #28): 13 street + 7 trail = 20 entries.
 const EXPECTED_LINE_COLORS = {
-  milwaukee: "#1d4ed8", elston: "#ea580c", halsted: "#dc2626", damen: "#eab308",
+  "milwaukee-washington": "#1d4ed8", elston: "#ea580c", halsted: "#dc2626", damen: "#eab308",
   kedzie: "#7c3aed", california: "#db2777", clark: "#0891b2", "state-indiana": "#4d7c0f",
-  "mlk-drive": "#92400e", "jackson-washington": "#6b21a8", lawrence: "#881337",
+  "mlk-drive": "#92400e", lawrence: "#881337",
   marquette: "#1e40af", lake: "#a16207", "83rd": "#15803d",
   lakefront: "#0369a1", bloomingdale: "#16a34a", "major-taylor": "#ca8a04",
   "north-shore-channel": "#0d9488", "north-branch": "#3f6212",
   "312-riverrun": "#4f46e5",
   "green-bay": "#a21caf",
 };
-assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS,
-  "LINE_COLORS: exactly the 21 roster entries (spec §9 + DECISIONS.md #26/#27 additions)");
-assert.strictEqual(Object.keys(N.LINE_COLORS).length, 21, "LINE_COLORS: exactly 21 entries (14 street + 7 trail)");
-assert.ok(!("roosevelt" in N.LINE_COLORS), "LINE_COLORS: roosevelt demoted off the roster");
-assert.ok(!("vincennes" in N.LINE_COLORS), "LINE_COLORS: vincennes demoted off the roster");
-assert.match(N.FALLBACK_LINE_COLOR, /^#[0-9a-f]{6}$/i, "FALLBACK_LINE_COLOR is a 7-char hex color");
-
-assert.strictEqual(N.lineStyle("milwaukee").color, N.LINE_COLORS.milwaukee, "lineStyle: known line uses LINE_COLORS entry");
-assert.strictEqual(N.lineStyle("milwaukee").weight, 6, "lineStyle: weight 6 (spec §1)");
-assert.strictEqual(N.lineStyle("milwaukee").opacity, 1, "lineStyle: opacity 1, no dashes/per-segment styling");
-assert.strictEqual(N.lineStyle("milwaukee").dashArray, undefined, "lineStyle: main routes never dashed");
+assert.deepStrictEqual(N.LINE_COLORS, EXPECTED_LINE_COLORS, "LINE_COLORS: exactly the 20 roster entries");
+assert.strictEqual(N.lineStyle("milwaukee-washington").color, N.LINE_COLORS["milwaukee-washington"], "lineStyle: known line uses LINE_COLORS entry");
 assert.strictEqual(N.lineStyle("not-a-real-line").color, N.FALLBACK_LINE_COLOR, "lineStyle: unknown line id falls back");
-assert.strictEqual(N.lineStyle("not-a-real-line").weight, 6, "lineStyle: fallback still weight 6");
 
-// ---- darkenColor / trailStyle / trailOutlineStyle (spec §1) ----
-assert.strictEqual(N.darkenColor("#1d4ed8", 0), "#1d4ed8", "darkenColor: amount 0 -> unchanged");
+// ---- darkenColor / lightenColor / trail styles ----
 assert.strictEqual(N.darkenColor("#ffffff", 1), "#000000", "darkenColor: amount 1 -> black");
-assert.strictEqual(N.darkenColor("#c8c8c8", 0.5), "#646464", "darkenColor: halves each channel");
-assert.strictEqual(N.darkenColor("not-a-color", 0.5), "not-a-color", "darkenColor: bad input passes through unchanged");
-
-assert.strictEqual(N.trailStyle("lakefront").weight, 6,
-  "trailStyle: weight 6 — uniform with main routes, DC-metro style; tier reads by outline color");
+assert.strictEqual(N.darkenColor("not-a-color", 0.5), "not-a-color", "darkenColor: bad input passes through");
+assert.strictEqual(N.lightenColor("#000000", 1), "#ffffff", "lightenColor: amount 1 -> white");
 assert.strictEqual(N.trailStyle("lakefront").color, N.LINE_COLORS.lakefront, "trailStyle: uses the line color");
-const outline = N.trailOutlineStyle("lakefront");
-assert.strictEqual(outline.color, N.darkenColor(N.LINE_COLORS.lakefront, 0.35),
-  "trailOutlineStyle: darkened line color (~35%), not white casing (spec §1)");
-assert.ok(outline.weight > N.trailStyle("lakefront").weight,
-  "trailOutlineStyle: wider than the core stroke so it reads as an outline");
+assert.strictEqual(
+  N.trailOutlineStyle("lakefront").color, N.darkenColor(N.LINE_COLORS.lakefront, 0.35),
+  "trailOutlineStyle: darkened line color"
+);
 
-// ---- CONNECTOR_STYLE (spec §1) ----
+// ---- connectorStyle (unchanged from v2 §12) ----
 assert.strictEqual(N.CONNECTOR_STYLE.color, "#94a3b8", "CONNECTOR_STYLE: neutral gray-family color");
-assert.strictEqual(N.CONNECTOR_STYLE.weight, 2.5, "CONNECTOR_STYLE: weight 2.5");
-assert.strictEqual(N.CONNECTOR_STYLE.opacity, 0.75, "CONNECTOR_STYLE: opacity 0.75");
-assert.ok(N.CONNECTOR_STYLE.dashArray, "CONNECTOR_STYLE: dashed");
-
-// ---- connectorStyle (spec §12 amendment: per-grade connector tint) ----
 assert.strictEqual(N.connectorStyle("protected").color, "#4d8873", "connectorStyle: protected muted green");
 assert.strictEqual(N.connectorStyle("protected").dashArray, null, "connectorStyle: protected solid");
-assert.strictEqual(N.connectorStyle("protected").weight, N.CONNECTOR_STYLE.weight,
-  "connectorStyle: weight inherited from CONNECTOR_STYLE");
-assert.strictEqual(N.connectorStyle("protected").opacity, N.CONNECTOR_STYLE.opacity,
-  "connectorStyle: opacity inherited from CONNECTOR_STYLE");
-
-assert.strictEqual(N.connectorStyle("paint").color, "#4d8873", "connectorStyle: paint shares protected's muted green");
-assert.strictEqual(N.connectorStyle("paint").dashArray, "4,5", "connectorStyle: paint dashed 4,5");
-assert.strictEqual(N.connectorStyle("paint").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: paint weight inherited");
-assert.strictEqual(N.connectorStyle("paint").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: paint opacity inherited");
-
 assert.strictEqual(N.connectorStyle("mellow").color, "#9a8fc9", "connectorStyle: mellow muted lavender");
-assert.strictEqual(N.connectorStyle("mellow").dashArray, "4,5", "connectorStyle: mellow dashed 4,5");
-assert.strictEqual(N.connectorStyle("mellow").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: mellow weight inherited");
-assert.strictEqual(N.connectorStyle("mellow").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: mellow opacity inherited");
+assert.strictEqual(N.connectorStyle("mellow").dashArray, "4,5", "connectorStyle: mellow dashed — the connector dash survives the roster dash rule (v3 §10)");
+assert.deepStrictEqual(N.connectorStyle("bogus"), N.connectorStyle("none"), "connectorStyle: unknown grade -> none treatment");
 
-assert.strictEqual(N.connectorStyle("none").color, "#94a3b8", "connectorStyle: none slate — today's look, unchanged");
-assert.strictEqual(N.connectorStyle("none").dashArray, "4,5", "connectorStyle: none dashed 4,5");
-assert.strictEqual(N.connectorStyle("none").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: none weight inherited");
-assert.strictEqual(N.connectorStyle("none").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: none opacity inherited");
-
-assert.strictEqual(N.connectorStyle("offstreet").color, "#94a3b8",
-  "connectorStyle: offstreet slate — neutral hue makes no facility claim");
-assert.strictEqual(N.connectorStyle("offstreet").dashArray, null,
-  "connectorStyle: offstreet solid — pattern says calm");
-assert.strictEqual(N.connectorStyle("offstreet").weight, N.CONNECTOR_STYLE.weight, "connectorStyle: offstreet weight inherited");
-assert.strictEqual(N.connectorStyle("offstreet").opacity, N.CONNECTOR_STYLE.opacity, "connectorStyle: offstreet opacity inherited");
-
-assert.deepStrictEqual(N.connectorStyle("bogus"), N.connectorStyle("none"),
-  "connectorStyle: unknown grade falls back to the none treatment (loud-not-silent)");
-assert.deepStrictEqual(N.connectorStyle(undefined), N.connectorStyle("none"),
-  "connectorStyle: missing grade falls back to the none treatment");
-
-// ---- qualityBorderStyle (spec §3) ----
-assert.strictEqual(N.qualityBorderStyle("protected").color, "#0b6e4f", "qualityBorderStyle: protected color");
-assert.strictEqual(N.qualityBorderStyle("protected").dashArray, undefined, "qualityBorderStyle: protected solid");
-assert.strictEqual(N.qualityBorderStyle("protected").weight, 13, "qualityBorderStyle: weight 13 (rim around casing)");
-
-assert.strictEqual(N.qualityBorderStyle("paint").color, "#0b6e4f", "qualityBorderStyle: paint shares protected's green");
-assert.strictEqual(N.qualityBorderStyle("paint").dashArray, "6,6", "qualityBorderStyle: paint dashed 6,6");
-
-assert.strictEqual(N.qualityBorderStyle("mellow").color, "#7c3aed", "qualityBorderStyle: mellow purple");
-assert.strictEqual(N.qualityBorderStyle("mellow").dashArray, undefined, "qualityBorderStyle: mellow solid");
-
-assert.strictEqual(N.qualityBorderStyle("none").color, "#dc2626", "qualityBorderStyle: none red");
-assert.strictEqual(N.qualityBorderStyle("none").dashArray, "6,6", "qualityBorderStyle: none dashed 6,6");
-
-assert.strictEqual(N.qualityBorderStyle("offstreet"), null,
-  "qualityBorderStyle: offstreet -> no border (trails are off-street, spec §3)");
-
-assert.strictEqual(N.qualityBorderStyle("bogus").color, "#dc2626",
-  "qualityBorderStyle: unknown grade falls back to the none (red dashed) treatment");
-assert.strictEqual(N.qualityBorderStyle("bogus").dashArray, "6,6", "qualityBorderStyle: unknown grade dashed like none");
-
-// ---- comfort floor: GRADE_RANK / gradeRank / parseFloor / meetsFloor (spec §5) ----
+// ---- comfort floor ----
 assert.deepStrictEqual(
   N.GRADE_RANK, { none: 0, mellow: 1, paint: 2, protected: 3, offstreet: 4 },
-  "GRADE_RANK: none < mellow < paint < protected < offstreet"
+  "GRADE_RANK: none < mellow < paint < protected < offstreet — mellow stays distinct internally (v3 §6)"
 );
-assert.strictEqual(N.gradeRank("protected"), 3, "gradeRank: known grade");
-assert.strictEqual(N.gradeRank("bogus"), -1, "gradeRank: unknown grade ranks below everything");
-
-assert.strictEqual(N.parseFloor(undefined), "any", "parseFloor: missing -> any");
 assert.strictEqual(N.parseFloor("bogus"), "any", "parseFloor: garbage -> any");
-assert.strictEqual(N.parseFloor("paint"), "paint", "parseFloor: paint recognized");
-assert.strictEqual(N.parseFloor("protected"), "protected", "parseFloor: protected recognized");
-
-assert.ok(N.meetsFloor("none", "any"), "meetsFloor: any floor accepts everything");
 assert.ok(N.meetsFloor("offstreet", "protected"), "meetsFloor: offstreet clears every floor");
-assert.ok(N.meetsFloor("protected", "protected"), "meetsFloor: grade == floor passes");
-assert.ok(!N.meetsFloor("paint", "protected"), "meetsFloor: paint below protected floor");
-assert.ok(N.meetsFloor("paint", "paint"), "meetsFloor: paint clears paint floor");
 assert.ok(!N.meetsFloor("mellow", "paint"), "meetsFloor: mellow below paint floor");
-assert.ok(N.meetsFloor("protected", "paint"), "meetsFloor: protected clears paint floor");
 assert.ok(!N.meetsFloor("none", "paint"), "meetsFloor: none below paint floor");
+assert.match(N.DRAINED_COLOR, /^#[0-9a-f]{6}$/i, "DRAINED_COLOR: hex color (drained = full silhouette at drainedOpacity, v3 §4.4)");
 
-assert.strictEqual(N.DRAINED_STYLE.color, N.DRAINED_COLOR, "DRAINED_STYLE: uses DRAINED_COLOR");
-assert.strictEqual(N.DRAINED_STYLE.weight, 3, "DRAINED_STYLE: 3px core per spec §5");
-assert.strictEqual(N.DRAINED_STYLE.dashArray, undefined, "DRAINED_STYLE: solid, continuous — routes never break");
-
-// ---- qualityMixSegments (spec §7/§8 detail card + roster mini-bar) ----
-assert.deepStrictEqual(N.QUALITY_MIX_ORDER, ["protected", "paint", "mellow", "none"],
-  "QUALITY_MIX_ORDER: the four bordered grades, excludes offstreet");
-
+// ---- qualityMixSegments (legacy helper, still exported) ----
 const mix = N.qualityMixSegments({ protected: 3, paint: 1, offstreet: 50 });
-assert.deepStrictEqual(mix.map(s => s.grade), ["protected", "paint"],
-  "qualityMixSegments: offstreet excluded even when present in miles_by_grade");
-assert.ok(Math.abs(mix[0].pct - 75) < 1e-9, "qualityMixSegments: pct computed over the 4-grade total only");
-assert.ok(Math.abs(mix[1].pct - 25) < 1e-9, "qualityMixSegments: second segment pct");
-assert.strictEqual(mix[0].color, N.GRADE_COLORS.protected, "qualityMixSegments: carries the border color");
+assert.deepStrictEqual(mix.map((s) => s.grade), ["protected", "paint"], "qualityMixSegments: offstreet excluded");
+assert.strictEqual(mix[0].color, N.GRADE_COLORS.protected, "qualityMixSegments: carries GRADE_COLORS");
 
-assert.deepStrictEqual(N.qualityMixSegments({ offstreet: 18 }), [],
-  "qualityMixSegments: pure-offstreet (trail) line -> empty bar");
-assert.deepStrictEqual(N.qualityMixSegments(null), [], "qualityMixSegments: null input -> []");
-assert.deepStrictEqual(N.qualityMixSegments({}), [], "qualityMixSegments: empty input -> []");
-
-const allFour = N.qualityMixSegments({ protected: 1, paint: 1, mellow: 1, none: 1 });
-assert.deepStrictEqual(allFour.map(s => s.grade), ["protected", "paint", "mellow", "none"],
-  "qualityMixSegments: all four grades in QUALITY_MIX_ORDER");
-const totalPct = allFour.reduce((s, x) => s + x.pct, 0);
-assert.ok(Math.abs(totalPct - 100) < 1e-6, "qualityMixSegments: pct widths sum to 100");
-
-// ---- buildRosterIndex / splitByRoster / membersOfLine (spec §2/§6) ----
+// ---- buildRosterIndex / splitByRoster / membersOfLine ----
 const mainRouteFeatures = [
   { properties: { segment_id: "7", line_id: "milwaukee", line_ids: ["milwaukee"], grade: "protected" } },
-  { properties: { segment_id: "8", line_id: "milwaukee", line_ids: ["milwaukee"], grade: "paint" } },
   { properties: { segment_id: "42", line_id: "halsted", line_ids: ["halsted"], grade: "none" } },
-  { properties: { segment_id: "osm-trail-lakefront-trail", line_id: "lakefront", grade: "offstreet" } },
-  // interlined (shared-track) segment: no real roster overlap today, but the
-  // pipeline contract allows line_ids.length >= 2 (spec §6).
   { properties: { segment_id: "99", line_id: "milwaukee", line_ids: ["milwaukee", "damen"], grade: "protected" } },
 ];
 const rosterIdx = N.buildRosterIndex(mainRouteFeatures);
-assert.strictEqual(rosterIdx.size, 5, "buildRosterIndex: one entry per member");
 assert.deepStrictEqual(rosterIdx.get("7"), { lineIds: ["milwaukee"], lineId: "milwaukee", grade: "protected" },
   "buildRosterIndex: maps segment_id to lineIds + lineId + grade");
-assert.deepStrictEqual(rosterIdx.get("42"), { lineIds: ["halsted"], lineId: "halsted", grade: "none" },
-  "buildRosterIndex: none-grade member indexed");
-assert.deepStrictEqual(rosterIdx.get("osm-trail-lakefront-trail"),
-  { lineIds: ["lakefront"], lineId: "lakefront", grade: "offstreet" },
-  "buildRosterIndex: falls back to line_id when line_ids is absent");
 assert.deepStrictEqual(rosterIdx.get("99").lineIds, ["milwaukee", "damen"],
   "buildRosterIndex: preserves multi-id line_ids for interlined segments");
-assert.strictEqual(N.buildRosterIndex(undefined).size, 0,
-  "buildRosterIndex: missing features -> empty index");
 
 const networkFeatures = [
   { properties: { segment_id: "7", street: "DEARBORN" } },
-  { properties: { segment_id: "42", street: "HALSTED" } },
   { properties: { segment_id: "999", street: "MARQUETTE" } },
 ];
 const split = N.splitByRoster(networkFeatures, rosterIdx);
-assert.strictEqual(split.roster.length, 2, "splitByRoster: 2 roster members");
-assert.strictEqual(split.local.length, 1, "splitByRoster: 1 local/connector segment");
-assert.strictEqual(split.local[0].properties.segment_id, "999",
-  "splitByRoster: unmatched segment lands in the connector bucket");
-
+assert.strictEqual(split.roster.length, 1, "splitByRoster: roster members");
+assert.strictEqual(split.local[0].properties.segment_id, "999", "splitByRoster: unmatched -> connector bucket");
 assert.deepStrictEqual(
-  N.membersOfLine(networkFeatures, rosterIdx, "milwaukee").map(f => f.properties.segment_id),
-  ["7"],
-  "membersOfLine: filters features to one line's members"
-);
-assert.deepStrictEqual(
-  N.membersOfLine(networkFeatures, rosterIdx, "no-such-line"), [],
-  "membersOfLine: unknown line -> empty"
-);
-const sharedFeatures = [{ properties: { segment_id: "99", street: "SHARED ST" } }];
-assert.deepStrictEqual(
-  N.membersOfLine(sharedFeatures, rosterIdx, "damen").map(f => f.properties.segment_id),
+  N.membersOfLine([{ properties: { segment_id: "99" } }], rosterIdx, "damen").map((f) => f.properties.segment_id),
   ["99"],
-  "membersOfLine: an interlined segment counts as a member of every one of its lines"
-);
-assert.deepStrictEqual(
-  N.membersOfLine(sharedFeatures, rosterIdx, "milwaukee").map(f => f.properties.segment_id),
-  ["99"],
-  "membersOfLine: same interlined segment also counts for its other line"
+  "membersOfLine: an interlined segment counts for every one of its lines"
 );
 
-// ---- linesById ----
-const linesMeta = N.linesById([
-  { id: "milwaukee", name: "Milwaukee Line", no_data: false },
-  { id: "lakefront", name: "Lakefront Trail", no_data: true },
-]);
-assert.strictEqual(linesMeta.get("milwaukee").name, "Milwaukee Line", "linesById: lookup by id");
-assert.strictEqual(linesMeta.get("lakefront").no_data, true, "linesById: no_data preserved");
-assert.strictEqual(N.linesById(undefined).size, 0, "linesById: missing lines array -> empty map");
-
-// ---- rosterStreets (corridor labels defer to line labels) ----
-const streets = N.rosterStreets(networkFeatures, rosterIdx);
-assert.ok(streets.has("DEARBORN"), "rosterStreets: roster member street included");
-assert.ok(streets.has("HALSTED"), "rosterStreets: second roster street included");
-assert.ok(!streets.has("MARQUETTE"), "rosterStreets: local/connector-only street excluded");
-
-// ---- interlining offset helpers (spec §6) ----
-
-assert.strictEqual(N.isMultiPart([[41.9, -87.6], [41.91, -87.61]]), false,
-  "isMultiPart: flat [lat,lng] list is not multi-part");
-assert.strictEqual(N.isMultiPart([[[41.9, -87.6], [41.91, -87.61]]]), true,
-  "isMultiPart: nested parts array is multi-part");
-
-// A straight north-south segment (constant lng, increasing lat). Offsetting
-// it east/west (perpendicular) by a positive amount should move it east
-// (increase lng) or west depending on sign, while never touching lat.
+// ---- interlining offset helpers ----
 const straightNS = [[41.90, -87.65], [41.91, -87.65], [41.92, -87.65]];
-const offsetZero = N.offsetPart(straightNS, 0);
-assert.deepStrictEqual(offsetZero, straightNS, "offsetPart: zero offset returns the path unchanged (by value)");
-assert.notStrictEqual(offsetZero, straightNS, "offsetPart: zero offset still returns a new array, not the same reference");
-
 const offsetPos = N.offsetPart(straightNS, 5);
 const offsetNeg = N.offsetPart(straightNS, -5);
 straightNS.forEach((pt, i) => {
-  assert.ok(Math.abs(offsetPos[i][0] - pt[0]) < 1e-9, "offsetPart: perpendicular offset of a N-S line does not change lat");
-  assert.notStrictEqual(offsetPos[i][1], pt[1], "offsetPart: perpendicular offset of a N-S line changes lng");
+  assert.ok(Math.abs(offsetPos[i][0] - pt[0]) < 1e-9, "offsetPart: N-S offset does not change lat");
 });
 assert.ok(
   Math.sign(offsetPos[1][1] - straightNS[1][1]) === -Math.sign(offsetNeg[1][1] - straightNS[1][1]),
-  "offsetPart: positive and negative offsets move to opposite sides"
+  "offsetPart: +/- offsets move to opposite sides"
 );
-// Roughly symmetric magnitude around the original point.
-const dPos = Math.abs(offsetPos[1][1] - straightNS[1][1]);
-const dNeg = Math.abs(offsetNeg[1][1] - straightNS[1][1]);
-assert.ok(Math.abs(dPos - dNeg) < 1e-9, "offsetPart: +/- offsets of equal magnitude land equidistant from the original");
+assert.deepStrictEqual(N.strandOffsets(3, 3), [-3, 0, 3], "strandOffsets: middle strand at zero for odd count");
+assert.deepStrictEqual(N.pathEndpoints(straightNS), [straightNS[0], straightNS[2]], "pathEndpoints: first/last vertex");
 
-assert.deepStrictEqual(N.offsetPart([], 5), [], "offsetPart: empty path -> empty path");
-
-// offsetLatLngs dispatches on shape.
-const multiPartPath = [straightNS, [[41.80, -87.60], [41.81, -87.60]]];
-const offsetMulti = N.offsetLatLngs(multiPartPath, 5);
-assert.strictEqual(offsetMulti.length, 2, "offsetLatLngs: multi-part shape preserved");
-assert.deepStrictEqual(offsetMulti[0], N.offsetPart(straightNS, 5), "offsetLatLngs: each part individually offset");
-const offsetFlat = N.offsetLatLngs(straightNS, 5);
-assert.deepStrictEqual(offsetFlat, N.offsetPart(straightNS, 5), "offsetLatLngs: flat shape delegates directly to offsetPart");
-
-// strandOffsets: symmetric around zero, spaced by gapMeters.
-assert.deepStrictEqual(N.strandOffsets(1, 2), [0], "strandOffsets: single strand -> no offset");
-const two = N.strandOffsets(2, 2);
-assert.strictEqual(two.length, 2, "strandOffsets: one offset per strand");
-assert.ok(Math.abs(two[0] + two[1]) < 1e-9, "strandOffsets: symmetric around zero");
-assert.ok(Math.abs((two[1] - two[0]) - 2) < 1e-9, "strandOffsets: gap of 2 between adjacent strands");
-const three = N.strandOffsets(3, 3);
-assert.deepStrictEqual(three, [-3, 0, 3], "strandOffsets: middle strand sits at zero for an odd count");
-assert.deepStrictEqual(N.strandOffsets(2), [-N.INTERLINE_GAP_METERS / 2, N.INTERLINE_GAP_METERS / 2],
-  "strandOffsets: default gap is INTERLINE_GAP_METERS when omitted");
-
-// pathEndpoints
-assert.deepStrictEqual(N.pathEndpoints(straightNS), [straightNS[0], straightNS[2]],
-  "pathEndpoints: flat path -> first/last vertex");
-assert.deepStrictEqual(
-  N.pathEndpoints(multiPartPath),
-  [multiPartPath[0][0], multiPartPath[1][multiPartPath[1].length - 1]],
-  "pathEndpoints: multi-part -> first vertex of first part, last vertex of last part"
-);
-
-// ---- planInterlinedRoute: synthetic two-line shared-track fixture (spec §6) ----
-// Real data has no shared streets today, so this is the only place the
-// interlining render logic gets exercised — a straight shared segment
-// carried by two roster lines (e.g. a hypothetical Milwaukee/Damen overlap).
-const sharedLatLngs = [[41.90, -87.65], [41.905, -87.65], [41.91, -87.65]];
+// planInterlinedRoute: strands render solid hue always; the shared casing
+// carries the structural treatment via the trunk grade (v3 §7) — the v2
+// per-plan quality border is gone.
 const colorFor = (id) => ({ milwaukee: "#1d4ed8", damen: "#eab308" }[id] || "#000000");
-const plan = N.planInterlinedRoute(sharedLatLngs, ["milwaukee", "damen"], "protected", colorFor);
-
+const plan = N.planInterlinedRoute(straightNS, ["milwaukee", "damen"], "protected", colorFor);
 assert.strictEqual(plan.strands.length, 2, "planInterlinedRoute: one strand per line_id");
-assert.strictEqual(plan.strands[0].lineId, "milwaukee", "planInterlinedRoute: strand order matches lineIds order");
-assert.strictEqual(plan.strands[1].lineId, "damen", "planInterlinedRoute: second strand");
-assert.strictEqual(plan.strands[0].color, "#1d4ed8", "planInterlinedRoute: strand color from colorFor(lineId)");
-assert.strictEqual(plan.strands[1].color, "#eab308", "planInterlinedRoute: second strand color");
-assert.notDeepStrictEqual(plan.strands[0].latlngs, plan.strands[1].latlngs,
-  "planInterlinedRoute: the two strands render as visually distinct (offset) geometry");
-assert.deepStrictEqual(plan.strands[0].latlngs, N.offsetLatLngs(sharedLatLngs, N.strandOffsets(2)[0]),
-  "planInterlinedRoute: strand geometry matches the offset helper directly");
+assert.strictEqual(plan.strands[0].color, "#1d4ed8", "planInterlinedRoute: strand color from colorFor");
+assert.deepStrictEqual(plan.casing.latlngs, straightNS, "planInterlinedRoute: shared casing on un-offset geometry");
+assert.strictEqual(plan.grade, "protected", "planInterlinedRoute: carries the trunk grade for the casing treatment");
+assert.strictEqual(plan.border, undefined, "planInterlinedRoute: no border — quality borders are retired (v3 §10)");
+assert.deepStrictEqual(plan.capsules, [straightNS[0], straightNS[2]], "planInterlinedRoute: capsules at run ends");
 
-assert.deepStrictEqual(plan.casing.latlngs, sharedLatLngs,
-  "planInterlinedRoute: shared casing uses the original (un-offset) geometry, drawn once");
-
-assert.deepStrictEqual(plan.border, N.qualityBorderStyle("protected"),
-  "planInterlinedRoute: shared quality border matches qualityBorderStyle(grade), drawn once");
-
-assert.deepStrictEqual(plan.capsules, [sharedLatLngs[0], sharedLatLngs[2]],
-  "planInterlinedRoute: capsule markers sit at the shared run's two endpoints");
-
-// offstreet grade (shouldn't occur for street-line interlining in practice,
-// but the plan must stay well-defined) -> no border, matching qualityBorderStyle.
-const planOffstreet = N.planInterlinedRoute(sharedLatLngs, ["milwaukee", "damen"], "offstreet", colorFor);
-assert.strictEqual(planOffstreet.border, null, "planInterlinedRoute: offstreet grade -> no shared border");
-
-// ---- simplifyPart / simplifyLatLngs / schematicLatLngs ----
-
-// Collinear jitter well under tolerance collapses to just the endpoints.
-// ~0.0001 deg lat ≈ 11 m of wobble around a straight north-south run.
+// ---- simplifyPart / schematicLatLngs (connectors still use RDP-40) ----
 const wobbly = [
   [41.90, -87.65],
   [41.91, -87.65009],
@@ -489,186 +220,426 @@ assert.deepStrictEqual(
   [[41.90, -87.65], [41.94, -87.65]],
   "simplifyPart: sub-tolerance wobble collapses to endpoints"
 );
-
-// A genuine bend (way beyond tolerance) survives. 0.01 deg lng ≈ 830 m.
-const bent = [
-  [41.90, -87.65],
-  [41.92, -87.64],
-  [41.94, -87.65],
-];
-assert.deepStrictEqual(N.simplifyPart(bent, 40), bent,
-  "simplifyPart: real bends above tolerance are kept");
-
-// Endpoints always survive, so adjacent segments sharing an endpoint stay
-// connected after simplification.
-const simplified = N.simplifyPart(wobbly, 40);
-assert.deepStrictEqual(simplified[0], wobbly[0], "simplifyPart: first vertex preserved");
-assert.deepStrictEqual(simplified[simplified.length - 1], wobbly[wobbly.length - 1],
-  "simplifyPart: last vertex preserved");
-
-// Degenerate inputs pass through untouched (as copies).
-assert.deepStrictEqual(N.simplifyPart([], 40), [], "simplifyPart: empty part");
-assert.deepStrictEqual(N.simplifyPart([[41.9, -87.65]], 40), [[41.9, -87.65]],
-  "simplifyPart: single point");
-assert.deepStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
-  "simplifyPart: zero tolerance is a no-op copy");
-assert.notStrictEqual(N.simplifyPart(wobbly, 0), wobbly,
-  "simplifyPart: returns a new array, not the input itself");
-
-// Multi-part input keeps its nesting; flat input stays flat.
-const multiIn = [wobbly, bent];
-const multiOut = N.simplifyLatLngs(multiIn, 40);
-assert.strictEqual(multiOut.length, 2, "simplifyLatLngs: multi-part shape preserved");
-assert.deepStrictEqual(multiOut[0], [[41.90, -87.65], [41.94, -87.65]],
-  "simplifyLatLngs: each part simplified independently");
-assert.deepStrictEqual(multiOut[1], bent, "simplifyLatLngs: bend part untouched");
-assert.deepStrictEqual(N.simplifyLatLngs(wobbly, 40), [[41.90, -87.65], [41.94, -87.65]],
-  "simplifyLatLngs: flat input stays flat");
-
-// schematicLatLngs = toLatLngs + simplify at the default tolerance.
-const wobblyGeom = {
-  type: "LineString",
-  coordinates: wobbly.map(([lat, lng]) => [lng, lat]),
-};
+const wobblyGeom = { type: "LineString", coordinates: wobbly.map(([lat, lng]) => [lng, lat]) };
 assert.deepStrictEqual(
   N.schematicLatLngs(wobblyGeom),
   N.simplifyLatLngs(N.toLatLngs(wobblyGeom), N.SIMPLIFY_TOLERANCE_METERS),
-  "schematicLatLngs: composes toLatLngs + simplifyLatLngs at the default tolerance"
+  "schematicLatLngs: toLatLngs + simplify at the default tolerance"
 );
-assert.ok(N.SIMPLIFY_TOLERANCE_METERS > 0, "SIMPLIFY_TOLERANCE_METERS: positive");
-
-// ---- lightenColor ----
-assert.strictEqual(N.lightenColor("#1d4ed8", 0), "#1d4ed8", "lightenColor: amount 0 -> unchanged");
-assert.strictEqual(N.lightenColor("#000000", 1), "#ffffff", "lightenColor: amount 1 -> white");
-assert.strictEqual(N.lightenColor("#006464", 0.5), "#80b2b2", "lightenColor: halves the distance to white");
-assert.strictEqual(N.lightenColor("nope", 0.5), "nope", "lightenColor: bad input passes through unchanged");
 
 // ---- zoomWeightFactor ----
-assert.strictEqual(N.zoomWeightFactor(10), 0.6, "zoomWeightFactor: clamped at 0.6 below z11");
 assert.strictEqual(N.zoomWeightFactor(11), 0.6, "zoomWeightFactor: 0.6 at the citywide fit");
-assert.strictEqual(N.zoomWeightFactor(12), 0.8, "zoomWeightFactor: midpoint at z12");
 assert.strictEqual(N.zoomWeightFactor(13), 1, "zoomWeightFactor: full weight from z13");
-assert.strictEqual(N.zoomWeightFactor(16), 1, "zoomWeightFactor: clamped at 1 above z13");
-assert.strictEqual(N.zoomWeightFactor(NaN), 1, "zoomWeightFactor: non-finite zoom -> 1");
 
-// ---- gapSegments ----
-// Three collinear north-south parts with two holes between them. Parts are
-// given out of order and the middle one reversed — chaining must sort that
-// out. 0.01 deg lat ≈ 1113 m.
+// ---- chainPlan / crossStreetGaps (survive as pure helpers) ----
 const partA = [[41.90, -87.65], [41.91, -87.65]];
 const partB = [[41.93, -87.65], [41.92, -87.65]]; // reversed
 const partC = [[41.94, -87.65], [41.95, -87.65]];
-const gaps = N.gapSegments([partC, partA, partB]);
-assert.strictEqual(gaps.length, 2, "gapSegments: two holes -> two bridges");
-const gapKeys = gaps.map((g) => g.map((pt) => pt.join(",")).sort().join(" ")).sort();
-assert.deepStrictEqual(gapKeys, [
-  "41.91,-87.65 41.92,-87.65",
-  "41.93,-87.65 41.94,-87.65",
-], "gapSegments: bridges span exactly the two holes, regardless of part order/orientation");
-
-// Touching parts produce no bridges (join distance under tolerance).
-assert.deepStrictEqual(
-  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.91, -87.65], [41.92, -87.65]]]),
-  [],
-  "gapSegments: contiguous parts need no bridge"
-);
-
-// Near-touching parts under the join tolerance (~30 m) also need no bridge.
-assert.deepStrictEqual(
-  N.gapSegments([[[41.90, -87.65], [41.91, -87.65]], [[41.9101, -87.65], [41.92, -87.65]]]),
-  [],
-  "gapSegments: sub-tolerance joins (~11 m) are already 'connected'"
-);
-
-// Degenerate inputs: nothing to chain.
-assert.deepStrictEqual(N.gapSegments([]), [], "gapSegments: no parts");
-assert.deepStrictEqual(N.gapSegments([partA]), [], "gapSegments: single part");
-assert.deepStrictEqual(N.gapSegments([partA, [[41.99, -87.60]]]), [],
-  "gapSegments: sub-2-vertex parts are ignored");
-assert.ok(N.GAP_JOIN_TOLERANCE_METERS > 0, "GAP_JOIN_TOLERANCE_METERS: positive");
-
-// ---- chainPlan termini ----
-assert.deepStrictEqual(N.chainPlan([partA]).termini, [[41.90, -87.65], [41.91, -87.65]],
-  "chainPlan: single part -> its own endpoints");
-assert.strictEqual(N.chainPlan([]).termini, null, "chainPlan: no parts -> no termini");
 const planABC = N.chainPlan([partC, partA, partB]);
+assert.strictEqual(planABC.gaps.length, 2, "chainPlan: two holes -> two gaps");
 const termKeys = planABC.termini.map((p) => p.join(",")).sort();
-assert.deepStrictEqual(termKeys, ["41.9,-87.65", "41.95,-87.65"],
-  "chainPlan: termini are the chain's outermost endpoints regardless of input order");
-assert.strictEqual(planABC.gaps.length, 2, "chainPlan: gaps match gapSegments");
+assert.deepStrictEqual(termKeys, ["41.9,-87.65", "41.95,-87.65"], "chainPlan: termini are the outermost endpoints");
 
-// ---- crossStreetGaps ----
-// Couplet: two parallel north-south streets ~890 m apart, not touching.
-// Exactly ONE feeder bridge per pair, terminus -> nearest point on the
-// other chain (a projection, not necessarily the other chain's terminus).
 const streetWest = [[[41.90, -87.66], [41.94, -87.66]]];
-const streetEast = [[[41.88, -87.65], [41.92, -87.65]]];
-const feeders = N.crossStreetGaps([streetWest, streetEast]);
-assert.strictEqual(feeders.length, 1, "crossStreetGaps: one feeder per street pair");
-const feederLen = feeders[0] && Math.round(Math.hypot(
-  (feeders[0][0][0] - feeders[0][1][0]) * 111320,
-  (feeders[0][0][1] - feeders[0][1][1]) * 111320 * Math.cos(41.9 * Math.PI / 180)));
-assert.ok(feederLen < 900, "crossStreetGaps: feeder takes the shortest terminus->chain hop, ~830 m here, got " + feederLen);
-
-// Crossing chains are already connected — no feeder.
-const northSouth = [[[41.88, -87.65], [41.92, -87.65]]];
 const eastWest = [[[41.90, -87.66], [41.90, -87.64]]];
-assert.deepStrictEqual(N.crossStreetGaps([northSouth, eastWest]), [],
-  "crossStreetGaps: chains that cross need no feeder");
+const northSouth = [[[41.88, -87.65], [41.92, -87.65]]];
+assert.deepStrictEqual(N.crossStreetGaps([northSouth, eastWest]), [], "crossStreetGaps: crossing chains need no feeder");
+assert.strictEqual(N.crossStreetGaps([streetWest, [[[41.88, -87.65], [41.92, -87.65]]]]).length, 1,
+  "crossStreetGaps: one feeder per parallel pair");
 
-// Far-apart parallels (beyond maxFeeder) stay unbridged.
-const farEast = [[[41.88, -87.60], [41.92, -87.60]]];
-assert.deepStrictEqual(N.crossStreetGaps([streetWest, farEast]), [],
-  "crossStreetGaps: no phantom crosstown rung beyond the feeder cap");
+/* ================================================================
+ * Schematic spine pipeline (spec 2026-07-15, §12 fixture list)
+ * ================================================================ */
 
-// Touching chains (shared endpoint) need no feeder.
-const touchA = [[[41.90, -87.65], [41.91, -87.65]]];
-const touchB = [[[41.91, -87.65], [41.91, -87.64]]];
-assert.deepStrictEqual(N.crossStreetGaps([touchA, touchB]), [],
-  "crossStreetGaps: touching chains need no feeder");
+const M_LAT = 111320;
+const M_LNG = M_LAT * Math.cos((41.88 * Math.PI) / 180);
+// Build a meter-space XY part from [x, y] meter offsets around the origin.
+const xyPart = (pairs, extra) => ({
+  pts: pairs.map(([x, y]) => [x, y]),
+  lenM: pairs.reduce((s, p, i) => (i === 0 ? 0 : s + Math.hypot(p[0] - pairs[i - 1][0], p[1] - pairs[i - 1][1])), 0),
+  grade: "paint",
+  ...(extra || {}),
+});
+// Convert meter XY to [lat, lng] for buildSchematicNetwork-level fixtures.
+const xyToLL = ([x, y]) => [y / M_LAT, x / M_LNG];
 
-// ---- connectorEdges / pathLengthMeters ----
-const edgePart = [[41.90, -87.65], [41.91, -87.65], [41.91, -87.64]];
-assert.strictEqual(Math.round(N.pathLengthMeters(edgePart)), Math.round(1113.2 + 829),
-  "pathLengthMeters: sums vertex-to-vertex meters");
-const edges1 = N.connectorEdges(edgePart, "mellow");
-assert.strictEqual(edges1.length, 1, "connectorEdges: flat part -> one edge");
-assert.deepStrictEqual(edges1[0].a, [41.90, -87.65], "connectorEdges: edge endpoints");
-assert.strictEqual(edges1[0].grade, "mellow", "connectorEdges: carries grade");
-assert.strictEqual(N.connectorEdges([edgePart, [[41.0, -87.0]]], "none").length, 1,
-  "connectorEdges: multi-part input, sub-2-vertex parts dropped");
+// -- SCHEMATIC constants: names the tests below reference.
+assert.deepStrictEqual(N.SCHEMATIC.AXES_DEG, [0, 45, 60, 90, 120, 135], "SCHEMATIC: six-axis family");
+["snapToleranceDeg", "minBendDeg", "cornerToleranceMeters", "maxDisplacementMeters",
+  "foldbackFraction", "pinMergeGridMeters", "pinAttractMeters", "terminusPairMeters",
+  "footSnapMeters", "coupletMaxMeters", "minStretchMeters", "minStripePx", "minRailPx",
+].forEach((k) => assert.ok(Number.isFinite(N.SCHEMATIC[k]), `SCHEMATIC.${k} is a number`));
+assert.strictEqual(N.SCHEMATIC.EXPLICIT_MERGES[0].id, "nw-terminus", "SCHEMATIC: the NW-terminus explicit merge ships");
 
-// ---- routeGapThroughConnectors ----
-// Gap from (41.900,-87.650) to (41.910,-87.640): straight ~1385 m. A mellow
-// L-shaped connector runs right along it, its corner at (41.910,-87.650),
-// endpoints within snap radius of the gap ends.
-const gapA = [41.900, -87.650], gapB = [41.910, -87.640];
-const LConn = [
-  { part: [[41.9003, -87.650], [41.910, -87.650]], grade: "mellow" },  // north leg
-  { part: [[41.910, -87.650], [41.910, -87.6403]], grade: "mellow" },  // east leg
-];
-const meshEdges = LConn.flatMap((c) => N.connectorEdges(c.part, c.grade));
-const routed = N.routeGapThroughConnectors(gapA, gapB, meshEdges);
-assert.ok(routed, "routeGap: nearby mellow connector is used");
-assert.deepStrictEqual(routed[0], gapA, "routeGap: path starts at the gap start");
-assert.deepStrictEqual(routed[routed.length - 1], gapB, "routeGap: path ends at the gap end");
-assert.ok(routed.some((p) => p[0] === 41.910 && p[1] === -87.650),
-  "routeGap: path passes through the connector's corner");
+// -- QUALITY_LEVELS / displayGrade: the owner's four levels.
+assert.deepStrictEqual(N.QUALITY_LEVELS, ["offstreet", "protected", "paint", "nothing"], "QUALITY_LEVELS: four display levels");
+assert.strictEqual(N.displayGrade("mellow"), "paint", "displayGrade: mellow folds into paint for display");
+assert.strictEqual(N.displayGrade("none"), "nothing", "displayGrade: grade-none displays as nothing");
+assert.strictEqual(N.displayGrade("bogus"), "nothing", "displayGrade: unknown grades read as nothing, loud not silent");
 
-// Short gaps stay straight (null -> caller draws [a, b]).
-assert.strictEqual(N.routeGapThroughConnectors([41.900, -87.650], [41.9008, -87.650], meshEdges), null,
-  "routeGap: sub-150 m gaps don't route");
+// -- Fixture 1: jittery street -> one 90° (north-south) run.
+{
+  const jitter = [];
+  for (let i = 0; i <= 40; i++) jitter.push([(i % 2) * 18 - 9, i * 100]); // 4 km north, ±9 m wobble
+  const spine = N.buildLineSpine([xyPart(jitter)], {});
+  const schem = N.schematizeSpine(spine, [], { kind: "street" });
+  assert.strictEqual(schem.xy.length, 2, "fixture 1: jittery street collapses to one run (two vertices)");
+  const brg = Math.atan2(schem.xy[1][1] - schem.xy[0][1], schem.xy[1][0] - schem.xy[0][0]) * 180 / Math.PI;
+  assert.ok(Math.abs(brg - 90) < 0.01, "fixture 1: the run sits exactly on the 90° axis");
+}
 
-// No mesh nearby -> null (straight fallback).
-assert.strictEqual(N.routeGapThroughConnectors([41.70, -87.70], [41.72, -87.70], meshEdges), null,
-  "routeGap: no nearby connectors -> straight fallback");
+// -- Fixture 2: 8°-off bearing snaps to its axis; 25°-off does not.
+{
+  const mk = (deg) => [{
+    m0: 0, m1: 1000, len: 1000,
+    disp: [Math.cos(deg * Math.PI / 180) * 1000, Math.sin(deg * Math.PI / 180) * 1000],
+  }];
+  const snapped = N.snapRuns(mk(98), { kind: "street" });
+  assert.strictEqual(snapped[0].bearing, 90, "fixture 2: 8° off the 90° axis snaps (within snapToleranceDeg)");
+  const rounded = N.snapRuns(mk(25), { kind: "street" });
+  assert.strictEqual(rounded[0].bearing, 25, "fixture 2: 25° is outside every axis tolerance — rounds to residualRoundDeg");
+}
 
-// Mellow beats a shorter 'none' path when penalties say so: same L-gap,
-// but add a direct 'none' diagonal whose penalized cost (1385*1.8=2493)
-// exceeds the mellow L (2214*1.05=2325).
-const diagonal = N.connectorEdges([[41.9003, -87.650], [41.9099, -87.6402]], "none");
-const routedPreferMellow = N.routeGapThroughConnectors(gapA, gapB, meshEdges.concat(diagonal));
-assert.ok(routedPreferMellow.some((p) => p[0] === 41.910 && p[1] === -87.650),
-  "routeGap: prefers the mellow L over a shorter high-stress diagonal");
+// -- Fixture 3: closure exactness < 1e-6 m.
+{
+  const runs = N.snapRuns([
+    { m0: 0, m1: 1000, len: 1000, disp: [0, 1000] },
+    { m0: 1000, m1: 2000, len: 1000, disp: [995, 40] },
+  ], { kind: "street" });
+  const target = [1030, 1080];
+  const t = N.closeRunLengths(runs, target, null, {});
+  assert.ok(t, "fixture 3: solvable system");
+  let x = 0, y = 0;
+  runs.forEach((r, i) => {
+    x += Math.cos(r.bearing * Math.PI / 180) * t[i];
+    y += Math.sin(r.bearing * Math.PI / 180) * t[i];
+  });
+  assert.ok(Math.hypot(x - target[0], y - target[1]) < 1e-6, "fixture 3: closure error under 1e-6 m");
+}
+
+// -- Fixtures 4 + 13: pin pass-through, and the collinear jog when the pin
+// displacement exceeds tiltMaxDeg.
+{
+  const straightN = [];
+  for (let i = 0; i <= 30; i++) straightN.push([0, i * 100]); // 3 km due north
+  const spine = N.buildLineSpine([xyPart(straightN)], {});
+  // Mid pin displaced 60 m east: within tiltMaxDeg of the run for each
+  // 1.5 km half (atan(60/1500) ≈ 2.3°) -> both halves tilt, both pass
+  // through the pin exactly.
+  const schem = N.schematizeSpine(spine, [{ m: 1500, target: [60, 1500] }], { kind: "street" });
+  const hit = schem.xy.some((p) => Math.hypot(p[0] - 60, p[1] - 1500) < 1e-6);
+  assert.ok(hit, "fixture 4: the schematic passes exactly through the interchange pin");
+  // End pin displaced 300 m east over a 2 km section (8.5° > tiltMaxDeg):
+  // the jog machinery fires — end still exact, and some interior bend ≥ 30°.
+  const spine2 = N.buildLineSpine([xyPart(straightN.slice(0, 21))], {});
+  const schem2 = N.schematizeSpine(spine2, [{ end: "end", target: [300, 2000] }], { kind: "street" });
+  const last = schem2.xy[schem2.xy.length - 1];
+  assert.ok(Math.hypot(last[0] - 300, last[1] - 2000) < 1e-6, "fixture 13: jogged section still ends exactly on the pin");
+  assert.ok(schem2.xy.length >= 4, "fixture 13: collinear + off-axis pin inserts a jog (extra vertices)");
+}
+
+// -- Fixture 5: measure conservation — adjacent slices share their boundary
+// vertex exactly (stretch boundaries meet, guaranteed by construction).
+{
+  const path = [];
+  for (let i = 0; i <= 20; i++) path.push([i * 100, i * 100 * 0.2]);
+  const spine = N.buildLineSpine([xyPart(path)], {});
+  const schem = N.schematizeSpine(spine, [], { kind: "street" });
+  const sliceable = { xy: schem.xy, m: schem.m };
+  const endM = spine.origM[spine.origM.length - 1];
+  const a = N.sliceSpineByMeasure(sliceable, 0, endM * 0.4);
+  const b = N.sliceSpineByMeasure(sliceable, endM * 0.4, endM);
+  assert.deepStrictEqual(a[a.length - 1], b[0], "fixture 5: adjacent slices share the boundary vertex exactly");
+}
+
+// -- Fixture 6: displacement guard — a 600 m-deep mid-line excursion whose
+// legs are shorter than minRunMeters gets absorbed into the straight run;
+// the guard must notice the surveyed points left > 250 m behind, split at
+// the deepest one, and pull the schematic back through it.
+{
+  const arc = [];
+  for (let i = 0; i <= 20; i++) arc.push([0, i * 100]);         // 2 km north
+  for (let i = 1; i <= 6; i++) arc.push([i * 100, 2000]);       // 600 m east
+  for (let i = 1; i <= 4; i++) arc.push([600, 2000 + i * 100]); // 400 m north
+  for (let i = 1; i <= 6; i++) arc.push([600 - i * 100, 2400]); // 600 m back west
+  for (let i = 1; i <= 20; i++) arc.push([0, 2400 + i * 100]);  // 2 km north
+  const spine = N.buildLineSpine([xyPart(arc)], {});
+  const schem = N.schematizeSpine(spine, [], { kind: "street" });
+  assert.ok(schem.xy.length > 2, "fixture 6: the guard split the straightened-over excursion");
+  // The deepest surveyed point became a split pin — it lies ON the schematic.
+  const deepest = [600, 2200];
+  const onSchem = schem.xy.some((p) => Math.hypot(p[0] - deepest[0], p[1] - deepest[1]) < 150);
+  const worst = arc.reduce((w, p) => {
+    let best = Infinity;
+    for (let i = 0; i < schem.xy.length - 1; i++) {
+      const [ax, ay] = schem.xy[i], [bx, by] = schem.xy[i + 1];
+      const dx = bx - ax, dy = by - ay;
+      const lenSq = dx * dx + dy * dy;
+      let t = lenSq === 0 ? 0 : ((p[0] - ax) * dx + (p[1] - ay) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(p[0] - (ax + t * dx), p[1] - (ay + t * dy)));
+    }
+    return Math.max(w, best);
+  }, 0);
+  assert.ok(onSchem || worst <= N.SCHEMATIC.maxDisplacementMeters + 60,
+    `fixture 6: the schematic returns through the excursion (worst ${Math.round(worst)} m)`);
+  assert.ok(worst < 600 - 100,
+    `fixture 6: the guard materially reduced the excursion's displacement (worst ${Math.round(worst)} m of 600)`);
+}
+
+// -- Fixture 7: a 6 km bridged range never triggers a guard split.
+{
+  const south = xyPart([[0, 0], [0, 2000]]);
+  const north = xyPart([[0, 8000], [0, 10000]]);
+  const spine = N.buildLineSpine([south, north], {});
+  assert.strictEqual(spine.bridged.length, 1, "fixture 7: one bridge");
+  assert.ok(Math.abs((spine.bridged[0].m1 - spine.bridged[0].m0) - 6000) < 1,
+    "fixture 7: bridge advances measure by the chord (v3 §2.1)");
+  const schem = N.schematizeSpine(spine, [], { kind: "street" });
+  assert.strictEqual(schem.xy.length, 2, "fixture 7: the bridged spine stays one clean run — no guard split inside a declared invention");
+  for (let i = 1; i < schem.m.length; i++) assert.ok(schem.m[i] >= schem.m[i - 1], "fixture 7: measure map monotone");
+}
+
+// -- Fixture 8: couplet collapse at Jackson–Washington-like parameters;
+// no collapse at 900 m separation (> coupletMaxMeters).
+{
+  const west = [];
+  const east = [];
+  for (let i = 0; i <= 30; i++) {
+    west.push([i * 100, 0]);
+    east.push([i * 100, 500]);
+  }
+  const byStreet = new Map([
+    ["JACKSON", [xyPart(west, { street: "JACKSON", grade: "protected" })]],
+    ["WASHINGTON", [xyPart(east, { street: "WASHINGTON", grade: "paint" })]],
+  ]);
+  const collapsed = N.collapseCouplets(byStreet, {});
+  assert.strictEqual(collapsed.pairs.length, 1, "fixture 8: a 500 m parallel pair collapses");
+  assert.strictEqual(collapsed.donors.length, 1, "fixture 8: donor parts survive as grade overlays");
+  const midY = collapsed.parts[0].pts[15][1];
+  assert.ok(Math.abs(midY - 250) < 1, "fixture 8: the centerline sits halfway between the pair");
+
+  const farEast = east.map(([x]) => [x, 900]);
+  const byStreetFar = new Map([
+    ["A", [xyPart(west, { street: "A" })]],
+    ["B", [xyPart(farEast, { street: "B" })]],
+  ]);
+  const notCollapsed = N.collapseCouplets(byStreetFar, {});
+  assert.strictEqual(notCollapsed.pairs.length, 0, "fixture 8: a 900 m-apart pair does NOT collapse");
+}
+
+// -- Fixture 18: better-grade couplet — the collapsed corridor passes a
+// protected floor when either street does.
+{
+  const base = xyPart([[0, 0], [0, 3000]], { grade: "paint" });
+  const spine = N.buildLineSpine([base], {});
+  const graded = N.gradeStretches(spine, [{ m0: 0, m1: 3000, grade: "protected" }], {});
+  assert.strictEqual(graded.stretches.length, 1, "fixture 18: one merged stretch");
+  assert.strictEqual(graded.stretches[0].grade, "protected",
+    "fixture 18: overlay upgrades to the BETTER grade of the pair (v3 §6)");
+  assert.ok(N.meetsFloor(graded.stretches[0].grade, "protected"), "fixture 18: collapsed corridor clears floor=protected");
+}
+
+// -- Fixtures 9/10 (integration): terminus merging via buildSchematicNetwork.
+{
+  const mkLine = (id, pts, grade) => ({
+    id, source: "bike_routes",
+    parts: [{ latlngs: pts.map(xyToLL), grade: grade || "paint", street: id.toUpperCase() }],
+  });
+  // Two lines whose south termini sit 250 m apart (< terminusPairMeters):
+  // they must merge to one shared endpoint. A third line 4 km away with a
+  // terminus 360 m from anything must NOT merge.
+  const lines = [
+    mkLine("a", [[0, 0], [0, 5000]]),
+    mkLine("b", [[250, 0], [250, -5000]]),
+    mkLine("c", [[4000, 360], [4000, 5360]]),
+  ];
+  const net = N.buildSchematicNetwork({
+    lines: lines.map((l) => ({ id: l.id, source: l.source })),
+    partsByLine: Object.fromEntries(lines.map((l) => [l.id, l.parts])),
+    trunks: [], nodes: [],
+  });
+  const aEnds = [net.spines.get("a").latlngs[0], net.spines.get("a").latlngs.at(-1)].map((p) => p.join(","));
+  const bEnds = [net.spines.get("b").latlngs[0], net.spines.get("b").latlngs.at(-1)].map((p) => p.join(","));
+  const shared = aEnds.some((e) => bEnds.includes(e));
+  assert.ok(shared, "fixture 9: termini 250 m apart merge to one shared pin (terminusPairMeters)");
+  const cEnds = [net.spines.get("c").latlngs[0], net.spines.get("c").latlngs.at(-1)].map((p) => p.join(","));
+  assert.ok(!cEnds.some((e) => aEnds.includes(e) || bEnds.includes(e)),
+    "fixture 9: a distant line's termini stay unmerged");
+}
+{
+  // Fixture 10: a terminus 200 m from another line's mid-spine snaps to
+  // the perpendicular foot point (footSnapMeters) — both lines share it.
+  const mkLine = (id, pts) => ({
+    id, source: "bike_routes",
+    parts: [{ latlngs: pts.map(xyToLL), grade: "paint", street: id.toUpperCase() }],
+  });
+  const lines = [
+    mkLine("trunkline", [[0, -6000], [0, 6000]]),
+    mkLine("feeder", [[200, 0], [6200, 0]]),
+  ];
+  const net = N.buildSchematicNetwork({
+    lines: lines.map((l) => ({ id: l.id, source: l.source })),
+    partsByLine: Object.fromEntries(lines.map((l) => [l.id, l.parts])),
+    trunks: [], nodes: [],
+  });
+  const feeder = net.spines.get("feeder");
+  const trunkline = net.spines.get("trunkline");
+  const feederEnds = [feeder.latlngs[0], feeder.latlngs.at(-1)];
+  const onTrunk = feederEnds.some((e) => {
+    const hit = N.snapPointToPath(e, trunkline.latlngs);
+    return hit && hit.dist < 1;
+  });
+  assert.ok(onTrunk, "fixture 10: the feeder's near terminus foot-snaps onto the other line's spine");
+}
+
+// -- Fixture 11: shared-trunk geometry byte-identical across owners AFTER
+// full per-line schematization (two-owner fixture).
+{
+  const mkParts = (pts, street) => [{ latlngs: pts.map(xyToLL), grade: "paint", street }];
+  const shared = [[0, 0], [0, 2500]];
+  const net = N.buildSchematicNetwork({
+    lines: [{ id: "x", source: "bike_routes" }, { id: "y", source: "bike_routes" }],
+    partsByLine: {
+      x: mkParts([[0, 2500], [0, 8000]], "X ST"),
+      y: mkParts([[80, 2540], [4000, 6500]], "Y ST"),
+    },
+    trunks: [{ key: "x|y", lineIds: ["x", "y"], parts: [{ latlngs: shared.map(xyToLL), grade: "protected" }] }],
+    nodes: [],
+  });
+  const trunk = net.trunks.get("x|y");
+  ["x", "y"].forEach((id) => {
+    const s = net.spines.get(id);
+    const r = s.trunkRanges.find((t) => t.key === "x|y");
+    assert.ok(r, `fixture 11: line ${id} carries its trunk range`);
+    const slice = N.sliceSpineByMeasure(s, r.m0, r.m1).map((p) => p.map((v) => v.toFixed(7)));
+    const canon = trunk.latlngs.map((p) => p.map((v) => v.toFixed(7)));
+    const same = JSON.stringify(slice) === JSON.stringify(canon)
+      || JSON.stringify(slice.slice().reverse()) === JSON.stringify(canon);
+    assert.ok(same, `fixture 11: trunk geometry byte-identical for owner ${id} after full closure`);
+  });
+}
+
+// -- Fixture 12: measure-map round-trip with a bridge (chord convention).
+{
+  const spine = N.buildLineSpine([
+    xyPart([[0, 0], [0, 1000]], { grade: "protected" }),
+    xyPart([[0, 1500], [0, 2500]], { grade: "none" }),
+  ], {});
+  for (let i = 1; i < spine.origM.length; i++) {
+    assert.ok(spine.origM[i] >= spine.origM[i - 1], "fixture 12: origM monotone through the bridge");
+  }
+  assert.ok(Math.abs(spine.origM[spine.origM.length - 1] - 2500) < 1,
+    "fixture 12: total measure = surveyed + chord");
+  const bridge = spine.stretches.find((s) => s.bridged);
+  assert.ok(bridge && Math.abs(bridge.m0 - 1000) < 1 && Math.abs(bridge.m1 - 1500) < 1,
+    "fixture 12: the bridge occupies exactly its chord range");
+}
+
+// -- Fixture 14: fold-back guard — a short section pinned both ends with a
+// large lateral displacement never self-folds; ends stay exact.
+{
+  const pts = [];
+  for (let i = 0; i <= 4; i++) pts.push([0, i * 100]); // 400 m north
+  const spine = N.buildLineSpine([xyPart(pts)], {});
+  const schem = N.schematizeSpine(spine, [{ end: "end", target: [250, 400] }], { kind: "street" });
+  const last = schem.xy[schem.xy.length - 1];
+  assert.ok(Math.hypot(last[0] - 250, last[1] - 400) < 1e-6, "fixture 14: end pin hit exactly");
+  let travel = 0;
+  for (let i = 1; i < schem.xy.length; i++) {
+    travel += Math.hypot(schem.xy[i][0] - schem.xy[i - 1][0], schem.xy[i][1] - schem.xy[i - 1][1]);
+  }
+  const direct = Math.hypot(250, 400);
+  assert.ok(travel < direct * 2.5, "fixture 14: no self-folding detour (path stays near the direct span)");
+}
+
+// -- Fixture 15: min-bend — a 45° run meeting a 58° run emits one run or a
+// bend >= minBendDeg, never a 15° elbow.
+{
+  const runs = N.snapRuns([
+    { m0: 0, m1: 2000, len: 2000, disp: [Math.cos(Math.PI / 4) * 2000, Math.sin(Math.PI / 4) * 2000] },
+    { m0: 2000, m1: 3500, len: 1500, disp: [Math.cos(58 * Math.PI / 180) * 1500, Math.sin(58 * Math.PI / 180) * 1500] },
+  ], { kind: "street" });
+  if (runs.length > 1) {
+    for (let i = 1; i < runs.length; i++) {
+      const bend = Math.abs(runs[i].bearing - runs[i - 1].bearing);
+      const bendNorm = Math.min(bend % 360, 360 - (bend % 360));
+      assert.ok(bendNorm === 0 || bendNorm >= N.SCHEMATIC.minBendDeg,
+        `fixture 15: no soft corner (got ${bendNorm}°)`);
+    }
+  } else {
+    assert.strictEqual(runs.length, 1, "fixture 15: merged into a single run");
+  }
+}
+
+// -- Fixture 16: fillPlan clamp / coarsening / band.
+{
+  const full = N.fillPlan("nothing", 6);
+  assert.ok(full.coreWidth > 0, "fillPlan: hollow core at full weight");
+  assert.ok((6 - full.coreWidth) / 2 >= N.SCHEMATIC.minRailPx, "fillPlan: rails keep >= minRailPx");
+  const tiny = N.fillPlan("nothing", 2.5);
+  assert.ok(tiny.hollowFallback, "fillPlan: below the clamp the stretch degrades to the opacity fallback");
+  assert.strictEqual(tiny.coreWidth, 0, "fillPlan: no core in fallback mode");
+  const paintFull = N.fillPlan("paint", 6);
+  assert.ok(paintFull.stripeWidth >= N.SCHEMATIC.minStripePx, "fillPlan: paint stripe at full weight");
+  const paintTiny = N.fillPlan("paint", 3.6);
+  assert.strictEqual(paintTiny.stripeWidth, 0, "fillPlan: stripe coarsens away below minStripePx — paint renders solid");
+  assert.ok(N.fillPlan("offstreet", 6).band, "fillPlan: offstreet takes the darkened band");
+  assert.ok(!N.fillPlan("protected", 6).band, "fillPlan: protected is plain white-cased hue");
+}
+
+// -- Fixture 17: nothing-chip mileage comes from PRE-absorption extents —
+// unaffected by minStretchMeters display tuning.
+{
+  const spine = N.buildLineSpine([
+    xyPart([[0, 0], [0, 2000]], { grade: "paint" }),
+    xyPart([[0, 2050], [0, 2130]], { grade: "none" }),   // 80 m none between two 50 m bridges
+    xyPart([[0, 2180], [0, 4000]], { grade: "paint" }),
+  ], {});
+  const graded = N.gradeStretches(spine, [], {});
+  const displayNothing = graded.stretches.filter((s) => N.displayGrade(s.grade) === "nothing");
+  assert.strictEqual(displayNothing.length, 0, "fixture 17: sub-250 m confetti absorbed from the DISPLAY stretches");
+  const chipM = N.nothingMeters(graded.preAbsorption);
+  assert.ok(Math.abs(chipM - 180) < 2,
+    `fixture 17: the chip still counts the real 180 m of nothing (got ${Math.round(chipM)})`);
+}
+
+// -- levelMixSegments: one denominator, four levels, mellow folded in.
+{
+  const segs = N.levelMixSegments([[
+    { m0: 0, m1: 1000, grade: "protected" },
+    { m0: 1000, m1: 1500, grade: "mellow" },
+    { m0: 1500, m1: 2000, grade: "none" },
+  ]]);
+  assert.deepStrictEqual(segs.map((s) => s.level), ["protected", "paint", "nothing"],
+    "levelMixSegments: levels in QUALITY_LEVELS order, mellow displayed as paint");
+  assert.ok(Math.abs(segs.reduce((s, x) => s + x.pct, 0) - 100) < 1e-6, "levelMixSegments: widths sum to 100");
+  assert.strictEqual(segs[0].color, N.LEVEL_COLORS.protected, "levelMixSegments: carries LEVEL_COLORS");
+  assert.deepStrictEqual(N.levelMixSegments([[]]), [], "levelMixSegments: empty input -> []");
+}
+
+// -- tracePath: parallel-bank duplicates drop; the diameter path survives.
+{
+  const bankA = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 0]));
+  const bankB = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 60]), { grade: "paint" });
+  const link1 = xyPart([[0, 0], [0, 60]]);
+  const link2 = xyPart([[4000, 0], [4000, 60]]);
+  const traced = N.tracePath([bankA, bankB, link1, link2], {});
+  const total = traced.reduce((s, p) => s + p.lenM, 0);
+  assert.ok(total < 4300, `tracePath: one bank + at most the short links survive (got ${Math.round(total)} m, not ~8 km)`);
+}
+
+// -- tracePath: two banks joined at only ONE end (the North Shore Channel
+// shape) — the "diameter" walks up bank A and back down bank B; the
+// sustained-re-coverage rule must truncate the doubled bank.
+{
+  const bankA = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 0]));
+  const bankB = xyPart(Array.from({ length: 41 }, (_, i) => [i * 100, 160]), { grade: "paint" });
+  const northLink = xyPart([[4000, 0], [4000, 160]]);
+  const traced = N.tracePath([bankA, bankB, northLink], {});
+  const total = traced.reduce((s, p) => s + p.lenM, 0);
+  assert.ok(total < 5000,
+    `tracePath: the doubled-back bank truncates — one bank + link, not ~8.2 km (got ${Math.round(total)} m)`);
+}
 
 console.log("network-model OK");

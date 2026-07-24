@@ -57,7 +57,7 @@ def test_parse_feed_google_source_and_title_suffix():
     assert len(items) == 1
     assert items[0]["source"] == "Block Club Chicago"
     # Redirect links are NOT resolved here (that happens in build_feeds,
-    # after title dedup, so discarded items never cost a HEAD request):
+    # after title dedup, so discarded items never cost a resolution request):
     assert items[0]["url"] == "https://news.google.com/rss/articles/opaque123"
     # Google's " - <outlet>" title suffix is stripped (headline stays the
     # outlet's own; enables cross-feed title dedup):
@@ -77,6 +77,22 @@ def test_build_feeds_resolves_google_links_after_dedup():
     assert resolved == ["https://news.google.com/rss/articles/opaque123"]
     assert feeds[0]["items"][0]["url"] == \
         "https://blockclubchicago.org/2026/06/23/bike-lanes"
+
+
+def test_build_feeds_reports_resolution_count(capsys):
+    # The "N/M google links resolved" line makes a resolution regression
+    # (issue #42) visible in every run's log:
+    pull_news.build_feeds(
+        [{"url": "g", "source": None, "kind": "google_news"}],
+        fetch_fn=lambda url: GOOGLE_RSS,
+        resolve_fn=lambda url: "https://blockclubchicago.org/story")
+    assert "1/1 google links resolved" in capsys.readouterr().out
+
+    pull_news.build_feeds(
+        [{"url": "g", "source": None, "kind": "google_news"}],
+        fetch_fn=lambda url: GOOGLE_RSS,
+        resolve_fn=lambda url: url)  # stuck on the redirect URL
+    assert "0/1 google links resolved" in capsys.readouterr().out
 
 
 def test_parse_feed_malformed_xml_returns_none():

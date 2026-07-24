@@ -1,18 +1,35 @@
 {
-  "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-13-network-tiers-design.md §2; supersedes the 2026-07-12-main-routes-design.md roster note). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. 14 street lines + 7 trail lines = 21 lines. `roosevelt` and `vincennes` were demoted to connectors in the network-tiers-v2 re-cut (owner-signed count: 19); `312-riverrun` was added as a 6th trail line (DECISIONS.md #26, owner-signed count: 20) and `green-bay` as a 7th (DECISIONS.md #27, owner-signed count: 21) — their segments still flow into the network, just not as named roster lines. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`; an entry is a plain name or {name, clip_bbox} to claim only part of a street ([south, west, north, east], tested against the segment's geometry midpoint; overrides the line-level clip_bbox). A segment listed by more than one line's `streets` belongs to all of them (line_ids on the built feature), with the first roster-order match kept as `line_id` for back-compat — the downtown trunk (RANDOLPH to the Lakefront, plus MICHIGAN/WASHINGTON approaches) is shared by the milwaukee/clark/lake/jackson-washington lines this way (DECISIONS.md #28), so those four connect downtown and lead to the Lakefront Trail as interlined strands. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",  "lines": [
+  "note": "Curated 'main routes' roster (see docs/superpowers/specs/2026-07-13-network-tiers-design.md §2; supersedes the 2026-07-12-main-routes-design.md roster note). The line list is editorial: we chose which corridors count as main routes; each pipeline run assigns real segments to them so grades and mileage stay live. 14 street lines + 7 trail lines = 21 lines. `roosevelt` and `vincennes` were demoted to connectors in the network-tiers-v2 re-cut (owner-signed count: 19); `312-riverrun` was added as a 6th trail line (DECISIONS.md #26, owner-signed count: 20) and `green-bay` as a 7th (DECISIONS.md #27, owner-signed count: 21) — their segments still flow into the network, just not as named roster lines. Street lines match segments whose normalized street name (uppercased, trailing type suffix stripped) is in `streets`; an entry is a plain name or {name, clip_bbox} to claim only part of a street ([south, west, north, east], tested against the segment's geometry midpoint; overrides the line-level clip_bbox). A segment listed by more than one line's `streets` belongs to all of them (line_ids on the built feature), with the first roster-order match kept as `line_id` for back-compat — the downtown trunk (RANDOLPH to the Lakefront, plus MICHIGAN/WASHINGTON approaches) is shared by the milwaukee/clark/lake/jackson-washington lines this way (DECISIONS.md #28), so those four connect downtown and lead to the Lakefront Trail as interlined strands. Trail lines match osm_trails features whose lowercased name contains any of `name_tokens`. Termini labels are display copy, not computed.",
+  "lines": [
     {
-      "id": "milwaukee",
-      "name": "Milwaukee Line",
-      "termini": "Lakefront ⇄ Jefferson Park",
+      "id": "milwaukee-washington",
+      "name": "Milwaukee–Washington Line",
+      "termini": "Jefferson Park ⇄ Austin",
       "source": "bike_routes",
-      "streets": ["MILWAUKEE", "RANDOLPH"]
+      "streets": [
+        "MILWAUKEE",
+        "RANDOLPH",
+        "WASHINGTON",
+        "JACKSON",
+        {
+          "name": "MICHIGAN",
+          "clip_bbox": [
+            41.879,
+            -87.63,
+            41.889,
+            -87.62
+          ]
+        }
+      ]
     },
     {
       "id": "halsted",
       "name": "Halsted Line",
       "termini": "79th ⇄ Waveland",
       "source": "bike_routes",
-      "streets": ["HALSTED"]
+      "streets": [
+        "HALSTED"
+      ]
     },
     {
       "id": "clark",
@@ -21,8 +38,24 @@
       "source": "bike_routes",
       "streets": [
         "CLARK",
-        {"name": "DEARBORN", "clip_bbox": [41.882, -87.631, 41.8995, -87.628]},
-        {"name": "RANDOLPH", "clip_bbox": [41.884, -87.634, 41.885, -87.610]}
+        {
+          "name": "DEARBORN",
+          "clip_bbox": [
+            41.882,
+            -87.631,
+            41.8995,
+            -87.628
+          ]
+        },
+        {
+          "name": "RANDOLPH",
+          "clip_bbox": [
+            41.884,
+            -87.634,
+            41.885,
+            -87.61
+          ]
+        }
       ]
     },
     {
@@ -30,28 +63,37 @@
       "name": "Kedzie Line",
       "termini": "Brighton Park ⇄ Touhy",
       "source": "bike_routes",
-      "streets": ["KEDZIE"]
+      "streets": [
+        "KEDZIE"
+      ]
     },
     {
       "id": "damen",
       "name": "Damen Line",
       "termini": "81st ⇄ Bryn Mawr",
       "source": "bike_routes",
-      "streets": ["DAMEN"]
+      "streets": [
+        "DAMEN"
+      ]
     },
     {
       "id": "state-indiana",
       "name": "State–Indiana Line",
       "termini": "South Loop ⇄ Roseland",
       "source": "bike_routes",
-      "streets": ["STATE", "INDIANA"]
+      "streets": [
+        "STATE",
+        "INDIANA"
+      ]
     },
     {
       "id": "elston",
       "name": "Elston Line",
       "termini": "Goose Island ⇄ Forest Glen",
       "source": "bike_routes",
-      "streets": ["ELSTON"]
+      "streets": [
+        "ELSTON"
+      ]
     },
     {
       "id": "lake",
@@ -60,21 +102,33 @@
       "source": "bike_routes",
       "streets": [
         "LAKE",
-        {"name": "WASHINGTON", "clip_bbox": [41.882, -87.648, 41.884, -87.610]},
-        {"name": "MICHIGAN", "clip_bbox": [41.879, -87.630, 41.889, -87.620]},
-        {"name": "RANDOLPH", "clip_bbox": [41.884, -87.6245, 41.885, -87.610]}
-      ]
-    },
-    {
-      "id": "jackson-washington",
-      "name": "Jackson–Washington Line",
-      "termini": "Austin ⇄ Lakefront",
-      "source": "bike_routes",
-      "streets": [
-        "JACKSON",
-        "WASHINGTON",
-        {"name": "MICHIGAN", "clip_bbox": [41.879, -87.630, 41.889, -87.620]},
-        {"name": "RANDOLPH", "clip_bbox": [41.884, -87.6245, 41.885, -87.610]}
+        {
+          "name": "WASHINGTON",
+          "clip_bbox": [
+            41.882,
+            -87.648,
+            41.884,
+            -87.61
+          ]
+        },
+        {
+          "name": "MICHIGAN",
+          "clip_bbox": [
+            41.879,
+            -87.63,
+            41.889,
+            -87.62
+          ]
+        },
+        {
+          "name": "RANDOLPH",
+          "clip_bbox": [
+            41.884,
+            -87.6245,
+            41.885,
+            -87.61
+          ]
+        }
       ]
     },
     {
@@ -82,85 +136,114 @@
       "name": "California Line",
       "termini": "Little Village ⇄ West Ridge",
       "source": "bike_routes",
-      "streets": ["CALIFORNIA"]
+      "streets": [
+        "CALIFORNIA"
+      ]
     },
     {
       "id": "mlk-drive",
       "name": "King Drive Line",
       "termini": "Bronzeville ⇄ Chatham",
       "source": "bike_routes",
-      "streets": ["MARTIN LUTHER KING JR", "DR MARTIN LUTHER KING JR"]
+      "streets": [
+        "MARTIN LUTHER KING JR",
+        "DR MARTIN LUTHER KING JR"
+      ]
     },
     {
       "id": "lawrence",
       "name": "Lawrence Line",
       "termini": "Jefferson Park ⇄ Uptown",
       "source": "bike_routes",
-      "streets": ["LAWRENCE"]
+      "streets": [
+        "LAWRENCE"
+      ]
     },
     {
       "id": "marquette",
       "name": "Marquette Line",
       "termini": "West Lawn ⇄ Jackson Park",
       "source": "bike_routes",
-      "streets": ["MARQUETTE"]
+      "streets": [
+        "MARQUETTE"
+      ]
     },
     {
       "id": "83rd",
       "name": "83rd Street Line",
       "termini": "Scottsdale ⇄ South Chicago",
       "source": "bike_routes",
-      "streets": ["83RD"]
+      "streets": [
+        "83RD"
+      ]
     },
     {
       "id": "lakefront",
       "name": "Lakefront Trail",
       "termini": "Ardmore ⇄ 71st",
       "source": "osm_trails",
-      "name_tokens": ["lakefront"],
-      "exclude_tokens": ["evanston"]
+      "name_tokens": [
+        "lakefront"
+      ],
+      "exclude_tokens": [
+        "evanston"
+      ]
     },
     {
       "id": "bloomingdale",
       "name": "Bloomingdale Trail (606)",
       "termini": "Ridgeway ⇄ Ashland",
       "source": "osm_trails",
-      "name_tokens": ["bloomingdale", "606"]
+      "name_tokens": [
+        "bloomingdale",
+        "606"
+      ]
     },
     {
       "id": "major-taylor",
       "name": "Major Taylor Trail",
       "termini": "Dan Ryan Woods ⇄ Whistler Woods",
       "source": "osm_trails",
-      "name_tokens": ["major taylor"]
+      "name_tokens": [
+        "major taylor"
+      ]
     },
     {
       "id": "north-shore-channel",
       "name": "North Shore Channel Trail",
       "termini": "Green Bay Rd ⇄ Lawrence",
       "source": "osm_trails",
-      "name_tokens": ["north shore channel"]
+      "name_tokens": [
+        "north shore channel"
+      ]
     },
     {
       "id": "north-branch",
       "name": "North Branch Trail",
       "termini": "Gompers Park ⇄ Botanic Garden",
       "source": "osm_trails",
-      "name_tokens": ["north branch"]
+      "name_tokens": [
+        "north branch"
+      ]
     },
     {
       "id": "312-riverrun",
       "name": "312 RiverRun",
       "termini": "Belmont ⇄ Montrose",
       "source": "osm_trails",
-      "name_tokens": ["riverrun", "river run"]
+      "name_tokens": [
+        "riverrun",
+        "river run"
+      ]
     },
     {
       "id": "green-bay",
       "name": "Green Bay Trail",
       "termini": "Wilmette ⇄ Braeside",
       "source": "osm_trails",
-      "name_tokens": ["green bay"]
+      "name_tokens": [
+        "green bay"
+      ]
     }
   ]
 }

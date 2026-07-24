@@ -127,13 +127,15 @@
 
   // ---- Main routes ("rail vs bus") helpers — spec v2 §1/§2/§3/§9 ----
 
-  // One solid color per named line (spec §9) — the 14 street + 7 trail
+  // One solid color per named line (spec §9) — the 13 street + 7 trail
   // roster, exactly as listed. roosevelt/vincennes are demoted to
   // connectors (spec §2) and carry no line color; 312-riverrun and
-  // green-bay joined the trail roster after the spec (DECISIONS.md #26/#27).
+  // green-bay joined the trail roster after the spec (DECISIONS.md #26/#27);
+  // milwaukee + jackson-washington merged into one L-shaped
+  // milwaukee-washington through-line (DECISIONS.md #28).
   const LINE_COLORS = {
     // street lines
-    "milwaukee":            "#1d4ed8",
+    "milwaukee-washington": "#1d4ed8",
     "elston":               "#ea580c",
     "halsted":              "#dc2626",
     "damen":                "#eab308",
@@ -142,7 +144,6 @@
     "clark":                "#0891b2",
     "state-indiana":        "#4d7c0f",
     "mlk-drive":            "#92400e",
-    "jackson-washington":   "#6b21a8",
     "lawrence":             "#881337",
     "marquette":            "#1e40af",
     "lake":                 "#a16207",
@@ -255,34 +256,17 @@
     return { ...CONNECTOR_STYLE, color: tint.color, dashArray: tint.dashArray };
   }
 
-  // ---- Quality border (spec §3) ----
-
-  // Border colors per grade. `offstreet` (trail members) intentionally has
-  // no entry — trails never carry a quality border (they're off-street by
-  // definition; see qualityBorderStyle).
+  // ---- Quality colors (mix bars / legend swatches only — spec v3 §4/§9) ----
+  // The v2 quality-border layer is gone (quality is structural now, §4);
+  // these colors survive as the mix-bar and legend palette. `nothing`
+  // deliberately reuses the neutral slate — a missing bikeway is an
+  // absence, not a red alarm (v3 §4.5: no red, no dash).
   const GRADE_COLORS = {
     protected: "#0b6e4f",
     paint: "#0b6e4f",
     mellow: "#7c3aed",
-    none: "#dc2626",
+    none: "#94a3b8",
   };
-  const GRADE_DASHED = new Set(["paint", "none"]);
-
-  // Quality-border style for a main-route segment's grade, or null when no
-  // border should render (`offstreet` — trails are off-street, no border
-  // needed; borders only make sense on main/street routes). Unrecognized
-  // grades fall back to the `none` treatment (dashed red) rather than
-  // drawing nothing, so a data/taxonomy mismatch is loud, not silent.
-  // Weight 13 so it reads as a rim around the weight-6 line + weight-9
-  // white casing (same geometry as the v1 layer it replaces).
-  function qualityBorderStyle(grade) {
-    if (grade === "offstreet") return null;
-    const known = Object.prototype.hasOwnProperty.call(GRADE_COLORS, grade);
-    const effective = known ? grade : "none";
-    const style = { color: GRADE_COLORS[effective], weight: 13 };
-    if (GRADE_DASHED.has(effective)) style.dashArray = "6,6";
-    return style;
-  }
 
   // ---- Comfort floor (spec §5) ----
 
@@ -309,11 +293,11 @@
     return gradeRank(grade) >= GRADE_RANK[f];
   }
 
-  // Below-floor main-route stretches drain to this neutral core color
-  // (spec §5): 3px solid, no border, geometry continuous — the route never
-  // breaks, it just stops being colored.
+  // Below-floor stretches drain hue to this neutral color at FULL
+  // silhouette width and SCHEMATIC.drainedOpacity (v3 §4.4) — "routes never
+  // break" is literally true: the structural fill stays, only the color
+  // leaves. (The v2 thin-3px DRAINED_STYLE is gone with the border layer.)
   const DRAINED_COLOR = "#b6bec9";
-  const DRAINED_STYLE = { color: DRAINED_COLOR, weight: 3, opacity: 1 };
 
   // ---- Quality mix (spec §7/§8: detail card + roster row mini-bar) ----
 
@@ -566,9 +550,6 @@
     return { gaps: candidates[0].gaps, termini: candidates[0].termini };
   }
 
-  function gapSegments(parts, joinToleranceMeters) {
-    return chainPlan(parts, joinToleranceMeters).gaps;
-  }
 
   // ---- Cross-street continuity for multi-street lines ----
   // A line built from several streets (the Jackson–Washington couplet,
@@ -649,113 +630,20 @@
     return gaps;
   }
 
-  // ---- Gap routing over the connector mesh ----
-  // A gap bridge shouldn't cut across blocks when a real low-stress link
-  // exists nearby: route it over the connector tier (Dijkstra over part
-  // endpoints), preferring the mellowest grades, and fall back to the
-  // straight bridge when nothing rideable is close or the detour is too
-  // long. Cost = meters x grade penalty, so cost <= budget also bounds the
-  // geometric detour (penalties are all >= 1).
-
   // facility_category -> comfort grade for connector-tier bike_routes
-  // segments (same buckets the pipeline's MAIN_ROUTE_GRADE_MAP uses).
+  // segments (same buckets the pipeline's MAIN_ROUTE_GRADE_MAP uses). The
+  // v2 Dijkstra gap router that lived alongside this map is gone (v3 §10):
+  // a spine just continues through its holes as `nothing`, so there is no
+  // gap to route.
   const CONNECTOR_GRADE_MAP = {
     protected: "protected", buffered: "paint", painted: "paint",
     greenway: "mellow", trail: "offstreet",
   };
-  const ROUTE_GRADE_PENALTY = { offstreet: 1, mellow: 1.05, protected: 1.2, paint: 1.4, none: 1.8 };
-  const ROUTE_SNAP_PENALTY = 1.6; // off-mesh crawl to reach the mesh
 
   function pathLengthMeters(part) {
     let sum = 0;
     for (let i = 1; i < part.length; i++) sum += distMeters(part[i - 1], part[i]);
     return sum;
-  }
-
-  // Flatten connector-tier latlngs (flat or multi-part) into router edges.
-  function connectorEdges(latlngs, grade) {
-    const parts = isMultiPart(latlngs) ? latlngs : [latlngs];
-    return parts.filter((p) => p && p.length >= 2).map((p) => ({
-      a: p[0], b: p[p.length - 1], latlngs: p,
-      lengthM: pathLengthMeters(p), grade,
-    }));
-  }
-
-  function routeGapThroughConnectors(a, b, edges, opts) {
-    const o = opts || {};
-    const straight = distMeters(a, b);
-    const minRoute = o.minRouteMeters == null ? 150 : o.minRouteMeters;
-    if (straight < minRoute) return null; // short hop: straight is honest enough
-    const detourFactor = o.detourFactor == null ? 1.8 : o.detourFactor;
-    const snapRadius = o.snapRadiusMeters == null ? 100 : o.snapRadiusMeters;
-    const budget = straight * detourFactor + 100;
-
-    // Local subgraph: only edges with an endpoint near the gap.
-    const marginM = straight * 0.6 + 300;
-    const refLat = (a[0] + b[0]) / 2;
-    const mLng = metersPerDegLng(refLat);
-    const dLat = marginM / METERS_PER_DEG_LAT, dLng = marginM / mLng;
-    const loLat = Math.min(a[0], b[0]) - dLat, hiLat = Math.max(a[0], b[0]) + dLat;
-    const loLng = Math.min(a[1], b[1]) - dLng, hiLng = Math.max(a[1], b[1]) + dLng;
-    const near = (p) => p[0] >= loLat && p[0] <= hiLat && p[1] >= loLng && p[1] <= hiLng;
-    const local = (edges || []).filter((e) => near(e.a) || near(e.b));
-    if (local.length === 0) return null;
-
-    // Nodes: part endpoints quantized to ~30 m cells so touching parts join.
-    const CELL = 30;
-    const keyOf = (p) => Math.round((p[0] * METERS_PER_DEG_LAT) / CELL) + ":" + Math.round((p[1] * mLng) / CELL);
-    const nodePt = new Map(); // key -> representative [lat,lng]
-    const adj = new Map();    // key -> [{to, cost, latlngs}]
-    const addNode = (p) => {
-      const k = keyOf(p);
-      if (!nodePt.has(k)) { nodePt.set(k, p); adj.set(k, []); }
-      return k;
-    };
-    local.forEach((e) => {
-      const kA = addNode(e.a), kB = addNode(e.b);
-      if (kA === kB) return; // loop part — useless for routing
-      const cost = e.lengthM * (ROUTE_GRADE_PENALTY[e.grade] || ROUTE_GRADE_PENALTY.none);
-      adj.get(kA).push({ to: kB, cost, latlngs: e.latlngs });
-      adj.get(kB).push({ to: kA, cost, latlngs: e.latlngs.slice().reverse() });
-    });
-
-    // Snap the gap endpoints onto nearby mesh nodes.
-    const START = "@a", GOAL = "@b";
-    adj.set(START, []);
-    adj.set(GOAL, []);
-    nodePt.forEach((p, k) => {
-      const dA = distMeters(a, p);
-      if (dA <= snapRadius) adj.get(START).push({ to: k, cost: dA * ROUTE_SNAP_PENALTY, latlngs: [a, p] });
-      const dB = distMeters(b, p);
-      if (dB <= snapRadius) adj.get(k).push({ to: GOAL, cost: dB * ROUTE_SNAP_PENALTY, latlngs: [p, b] });
-    });
-    if (adj.get(START).length === 0) return null;
-
-    // Dijkstra (linear-min extraction — local graphs are small).
-    const dist = new Map([[START, 0]]);
-    const prev = new Map(); // key -> {from, latlngs}
-    const done = new Set();
-    for (;;) {
-      let cur = null, curD = Infinity;
-      dist.forEach((d, k) => { if (!done.has(k) && d < curD) { curD = d; cur = k; } });
-      if (cur == null || curD > budget) return null;
-      if (cur === GOAL) break;
-      done.add(cur);
-      (adj.get(cur) || []).forEach((e) => {
-        const nd = curD + e.cost;
-        if (nd < (dist.has(e.to) ? dist.get(e.to) : Infinity)) {
-          dist.set(e.to, nd);
-          prev.set(e.to, { from: cur, latlngs: e.latlngs });
-        }
-      });
-    }
-
-    // Reconstruct: concatenate edge geometries START -> GOAL.
-    const hops = [];
-    for (let k = GOAL; k !== START; k = prev.get(k).from) hops.unshift(prev.get(k).latlngs);
-    const path = [a];
-    hops.forEach((ll) => { ll.forEach((p, i) => { if (!(i === 0)) path.push(p); }); });
-    return path;
   }
 
   // ---- Interlining (spec §6): shared-track render-plan helpers ----
@@ -838,12 +726,12 @@
     return [first, last];
   }
 
-  // Pure render plan for an interlined (2+ line_ids) main-route feature: N
-  // parallel offset strands (one per line, in `lineIds` order), one shared
-  // white casing at zero offset (drawn by network.js), one shared quality
-  // border (from qualityBorderStyle(grade) — null when the shared grade is
-  // offstreet, though that never happens for street-line interlining), and
-  // capsule marker points at both ends of the shared run.
+  // Pure render plan for an interlined (2+ line_ids) shared run: N parallel
+  // offset strands (one per line, in `lineIds` order — strands render solid
+  // hue always, v3 §7), one shared casing at zero offset whose structural
+  // treatment comes from the trunk stretch's grade via fillPlan (drawn by
+  // network.js — the v2 quality border is gone), and capsule marker points
+  // at both ends of the shared run.
   // `colorFor(lineId)` looks up each strand's line color — injected so this
   // stays a pure function with no import-ordering dependency on LINE_COLORS.
   function planInterlinedRoute(latlngs, lineIds, grade, colorFor, gapMeters) {
@@ -856,9 +744,1556 @@
     return {
       strands,
       casing: { latlngs },
-      border: qualityBorderStyle(grade),
+      grade,
       capsules: pathEndpoints(latlngs),
     };
+  }
+
+  // ================================================================
+  // Schematic spine pipeline (spec 2026-07-15-network-schematic-redesign)
+  // ================================================================
+  // Every roster line becomes ONE continuous spine at render time:
+  // members chained end-to-end, holes spliced in as bridged "nothing"
+  // ranges, geometry straightened to long runs at a disciplined angle set,
+  // pinned exactly through interchange control points. All pure math —
+  // no Leaflet, Node-testable. Everything works in a single equirectangular
+  // meter frame around REF_LAT (Chicago spans ~0.3° of latitude; the
+  // cos(lat) error across that is ~0.4%, irrelevant at 250 m tolerances).
+
+  const SCHEMATIC = {
+    AXES_DEG: [0, 45, 60, 90, 120, 135],   // mod 180; flip-tested vs [0,45,90,135] at the QA gate
+    snapToleranceDeg: 10,
+    residualRoundDeg: 5,
+    tiltMaxDeg: 4,
+    trailRoundDeg: 15,
+    minBendDeg: 30,
+    mergeAngleDeg: 15,
+    cornerToleranceMeters: 130,
+    minRunMeters: { street: 600, trail: 400 },
+    maxDisplacementMeters: 250,
+    foldbackFraction: 0.25,
+    pinMergeGridMeters: 250,
+    pinAttractMeters: 350,
+    terminusPairMeters: 300,
+    footSnapMeters: 300,
+    EXPLICIT_MERGES: [{ id: "nw-terminus", lines: ["milwaukee-washington", "elston"], end: "north" }],
+    coupletMaxMeters: 800,
+    coupletAngleDeg: 15,
+    coupletOverlapMin: 0.6,
+    minStretchMeters: 250,
+    minStripePx: 1.5,
+    minRailPx: 1,
+    hollowFallbackOpacity: 0.45,
+    drainedOpacity: 0.5,
+    labelOffsetPx: 14,
+    labelClearPx: 24,
+    nodeDedupeMeters: 100,
+  };
+
+  const REF_LAT = 41.88;
+  const M_LNG_REF = METERS_PER_DEG_LAT * Math.cos((REF_LAT * Math.PI) / 180);
+  function llToXY([lat, lng]) { return [lng * M_LNG_REF, lat * METERS_PER_DEG_LAT]; }
+  function xyToLL([x, y]) { return [y / METERS_PER_DEG_LAT, x / M_LNG_REF]; }
+  function xyDist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
+
+  // ---- Owner taxonomy: four display levels, `mellow` folded into paint,
+  // grade-`none` members and bridged holes both display as `nothing`.
+  // GRADE_RANK keeps mellow distinct internally so the comfort floor and
+  // connector tints work unchanged (v3 §6).
+  const QUALITY_LEVELS = ["offstreet", "protected", "paint", "nothing"];
+  function displayGrade(grade) {
+    if (grade === "mellow") return "paint";
+    if (grade === "none" || grade == null) return "nothing";
+    return QUALITY_LEVELS.includes(grade) ? grade : "nothing";
+  }
+
+  // ---- Angle helpers (degrees) ----
+  function bearingDeg(dx, dy) {
+    return ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+  }
+  function angDist360(a, b) {
+    const d = Math.abs(((a - b) % 360 + 360) % 360);
+    return Math.min(d, 360 - d);
+  }
+  function angDist180(a, b) {
+    const d = Math.abs(((a - b) % 180 + 180) % 180);
+    return Math.min(d, 180 - d);
+  }
+  function unitOf(deg) {
+    const r = (deg * Math.PI) / 180;
+    return [Math.cos(r), Math.sin(r)];
+  }
+
+  // Snap a bearing to the axis family (mod 180, direction preserved) when
+  // within tolDeg; otherwise round to roundDeg. Trails pass axes = null and
+  // just round (the "Thames treatment", §2.3).
+  function snapBearing(deg, axes, tolDeg, roundDeg) {
+    if (axes && axes.length > 0) {
+      let best = null, bestD = Infinity;
+      axes.forEach((a) => {
+        [a, a + 180].forEach((cand) => {
+          const d = angDist360(deg, cand);
+          if (d < bestD) { bestD = d; best = cand % 360; }
+        });
+      });
+      if (bestD <= tolDeg) return best;
+    }
+    return (Math.round(deg / roundDeg) * roundDeg) % 360;
+  }
+
+  // ---- RDP over XY meter points, returning kept indices ----
+  function rdpXYIndices(pts, tol) {
+    if (pts.length <= 2) return pts.map((_, i) => i);
+    const keep = new Array(pts.length).fill(false);
+    keep[0] = keep[pts.length - 1] = true;
+    const stack = [[0, pts.length - 1]];
+    while (stack.length > 0) {
+      const [s, e] = stack.pop();
+      let maxDist = -1, maxIdx = -1;
+      for (let i = s + 1; i < e; i++) {
+        const d = pointSegDistance(pts[i], pts[s], pts[e]);
+        if (d > maxDist) { maxDist = d; maxIdx = i; }
+      }
+      if (maxDist > tol) {
+        keep[maxIdx] = true;
+        stack.push([s, maxIdx], [maxIdx, e]);
+      }
+    }
+    const out = [];
+    keep.forEach((k, i) => { if (k) out.push(i); });
+    return out;
+  }
+
+  // ---- Part ordering: one total order over a line's member parts ----
+  // Same greedy-vs-principal-axis hybrid as chainPlan, but returning the
+  // actual ordered, oriented parts (chainPlan only reported the joins).
+  // parts: [{ pts: XY[], ... }] with pts.length >= 2.
+  function orderGreedy(parts) {
+    const endpoints = [];
+    parts.forEach((p, i) => {
+      endpoints.push({ i, pt: p.pts[0], flip: false });
+      endpoints.push({ i, pt: p.pts[p.pts.length - 1], flip: true });
+    });
+    const cx = endpoints.reduce((s, e) => s + e.pt[0], 0) / endpoints.length;
+    const cy = endpoints.reduce((s, e) => s + e.pt[1], 0) / endpoints.length;
+    let start = endpoints[0], startDist = -1;
+    endpoints.forEach((e) => {
+      const d = xyDist(e.pt, [cx, cy]);
+      if (d > startDist) { startDist = d; start = e; }
+    });
+    const used = new Array(parts.length).fill(false);
+    used[start.i] = true;
+    const order = [{ i: start.i, flip: start.flip }];
+    let endPt = start.flip ? parts[start.i].pts[0] : parts[start.i].pts[parts[start.i].pts.length - 1];
+    for (let k = 1; k < parts.length; k++) {
+      let bestI = -1, bestDist = Infinity, bestFlip = false;
+      parts.forEach((p, i) => {
+        if (used[i]) return;
+        const dHead = xyDist(endPt, p.pts[0]);
+        const dTail = xyDist(endPt, p.pts[p.pts.length - 1]);
+        if (dHead < bestDist) { bestDist = dHead; bestI = i; bestFlip = false; }
+        if (dTail < bestDist) { bestDist = dTail; bestI = i; bestFlip = true; }
+      });
+      order.push({ i: bestI, flip: bestFlip });
+      used[bestI] = true;
+      const p = parts[bestI];
+      endPt = bestFlip ? p.pts[0] : p.pts[p.pts.length - 1];
+    }
+    return order;
+  }
+  function orderByAxis(parts) {
+    const pts = [];
+    parts.forEach((p) => { pts.push(p.pts[0], p.pts[p.pts.length - 1]); });
+    const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+    const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    let sxx = 0, sxy = 0, syy = 0;
+    pts.forEach((p) => {
+      const dx = p[0] - cx, dy = p[1] - cy;
+      sxx += dx * dx; sxy += dx * dy; syy += dy * dy;
+    });
+    const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    const ux = Math.cos(theta), uy = Math.sin(theta);
+    const proj = (p) => (p[0] - cx) * ux + (p[1] - cy) * uy;
+    return parts.map((p, i) => {
+      const a = proj(p.pts[0]), b = proj(p.pts[p.pts.length - 1]);
+      return { i, flip: a > b, lo: Math.min(a, b) };
+    }).sort((A, B) => A.lo - B.lo).map(({ i, flip }) => ({ i, flip }));
+  }
+  function orderScore(parts, order, tol) {
+    let total = 0, gaps = 0;
+    for (let k = 1; k < order.length; k++) {
+      const prev = parts[order[k - 1].i];
+      const cur = parts[order[k].i];
+      const a = order[k - 1].flip ? prev.pts[0] : prev.pts[prev.pts.length - 1];
+      const b = order[k].flip ? cur.pts[cur.pts.length - 1] : cur.pts[0];
+      const d = xyDist(a, b);
+      if (d > tol) { total += d; gaps++; }
+    }
+    return { total, gaps };
+  }
+  // Agglomerative chaining: every part starts as its own chain; repeatedly
+  // join the two chains whose ends are closest (flipping as needed) until
+  // one remains. Slower than the single-pass walks (O(n³)-ish, fine at
+  // this data's part counts) but immune to their failure modes: greedy
+  // ping-pongs across a trail's parallel banks, axis-projection interleaves
+  // branches into ladder rungs — both book phantom kilometers of "nothing"
+  // once bridges are spliced into the spine.
+  function orderAgglomerative(parts) {
+    let chains = parts.map((p, i) => ({
+      seq: [{ i, flip: false }],
+      head: p.pts[0],
+      tail: p.pts[p.pts.length - 1],
+    }));
+    while (chains.length > 1) {
+      let best = null;
+      for (let a = 0; a < chains.length; a++) {
+        for (let b = a + 1; b < chains.length; b++) {
+          const A = chains[a], B = chains[b];
+          [
+            [xyDist(A.tail, B.head), false, false], // A then B
+            [xyDist(A.tail, B.tail), false, true],  // A then reversed B
+            [xyDist(A.head, B.head), true, false],  // reversed A then B
+            [xyDist(A.head, B.tail), true, true],   // reversed A then reversed B
+          ].forEach(([d, flipA, flipB]) => {
+            if (best == null || d < best.d) best = { d, a, b, flipA, flipB };
+          });
+        }
+      }
+      const A = chains[best.a], B = chains[best.b];
+      const rev = (c) => ({
+        seq: c.seq.slice().reverse().map((s) => ({ i: s.i, flip: !s.flip })),
+        head: c.tail, tail: c.head,
+      });
+      const left = best.flipA ? rev(A) : A;
+      const right = best.flipB ? rev(B) : B;
+      const merged = { seq: left.seq.concat(right.seq), head: left.head, tail: right.tail };
+      chains = chains.filter((_, i) => i !== best.a && i !== best.b);
+      chains.push(merged);
+    }
+    return chains[0].seq;
+  }
+
+  function orderParts(parts, tol) {
+    if (parts.length <= 1) return parts.map((_, i) => ({ i, flip: false }));
+    const candidates = [orderGreedy(parts), orderByAxis(parts), orderAgglomerative(parts)]
+      .map((order) => ({ order, ...orderScore(parts, order, tol) }));
+    candidates.sort((a, b) => a.total - b.total || a.gaps - b.gaps);
+    return candidates[0].order;
+  }
+
+  // ---- Couplet collapse (v3 §6): one-way pairs become one centerline ----
+  // Detected per line among its street groups: parallel within
+  // coupletAngleDeg, closer than coupletMaxMeters, projection overlap over
+  // coupletOverlapMin of the shorter extent. The LONGER street keeps its
+  // geometry (shifted halfway toward the partner); the shorter street's
+  // parts drop out of the pool but survive as grade OVERLAYS — the
+  // centerline renders the BETTER grade of the pair (v3 §6: a
+  // floor=protected view must not hide a protected facility that exists).
+  function streetStats(groupParts) {
+    const pts = [];
+    groupParts.forEach((p) => p.pts.forEach((q) => pts.push(q)));
+    const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+    const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    let sxx = 0, sxy = 0, syy = 0;
+    pts.forEach((p) => {
+      const dx = p[0] - cx, dy = p[1] - cy;
+      sxx += dx * dx; sxy += dx * dy; syy += dy * dy;
+    });
+    const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    const ux = Math.cos(theta), uy = Math.sin(theta);
+    let lo = Infinity, hi = -Infinity;
+    pts.forEach((p) => {
+      const t = (p[0] - cx) * ux + (p[1] - cy) * uy;
+      if (t < lo) lo = t;
+      if (t > hi) hi = t;
+    });
+    const len = groupParts.reduce((s, p) => s + p.lenM, 0);
+    return { theta: bearingDeg(ux, uy), ux, uy, cx, cy, lo, hi, len };
+  }
+  function coupletMatch(A, B, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    if (angDist180(A.theta, B.theta) > o.coupletAngleDeg) return null;
+    // Perpendicular separation of B's centroid from A's axis line.
+    const nx = -A.uy, ny = A.ux;
+    const sep = Math.abs((B.cx - A.cx) * nx + (B.cy - A.cy) * ny);
+    if (sep > o.coupletMaxMeters || sep < 1) return null;
+    // Overlap of projections onto A's axis (B's extent carried over —
+    // the two axes agree to within coupletAngleDeg, so this is exact
+    // enough for a yes/no).
+    const bC = (B.cx - A.cx) * A.ux + (B.cy - A.cy) * A.uy;
+    const bSpan = (B.hi - B.lo) / 2;
+    const b0 = bC - bSpan, b1 = bC + bSpan;
+    const overlap = Math.min(A.hi, b1) - Math.max(A.lo, b0);
+    const minExtent = Math.min(A.hi - A.lo, b1 - b0);
+    if (minExtent <= 0 || overlap / minExtent < o.coupletOverlapMin) return null;
+    const signedSep = (B.cx - A.cx) * nx + (B.cy - A.cy) * ny;
+    return { sep, signedSep };
+  }
+  // partsByStreet: Map<street, part[]>. Returns { parts, donors, pairs }:
+  // donors are dropped parts kept for grade overlays; pairs name the
+  // collapsed couplets for the detail card's disambiguation copy (v3 §6).
+  function collapseCouplets(partsByStreet, opts) {
+    const groups = [...partsByStreet.entries()]
+      .map(([street, parts]) => ({ street, parts, stats: streetStats(parts) }))
+      .sort((a, b) => b.stats.len - a.stats.len);
+    const donors = [];
+    const pairs = [];
+    for (let i = 0; i < groups.length; i++) {
+      for (let j = groups.length - 1; j > i; j--) {
+        const m = coupletMatch(groups[i].stats, groups[j].stats, opts);
+        if (!m) continue;
+        // Shift the base street halfway toward the donor, then absorb.
+        const nx = -groups[i].stats.uy, ny = groups[i].stats.ux;
+        const shift = m.signedSep / 2;
+        groups[i].parts = groups[i].parts.map((p) => ({
+          ...p,
+          pts: p.pts.map(([x, y]) => [x + nx * shift, y + ny * shift]),
+        }));
+        donors.push(...groups[j].parts);
+        pairs.push({ base: groups[i].street, donor: groups[j].street });
+        groups[i].stats = streetStats(groups[i].parts);
+        groups.splice(j, 1);
+      }
+    }
+    const parts = [];
+    groups.forEach((g) => parts.push(...g.parts));
+    return { parts, donors, pairs };
+  }
+
+  // ---- Path tracing over the member-part graph ----
+  // A line's members form a GRAPH, not a path: an OSM trail sweeps in both
+  // riverbanks, loops, and access spurs; a street line collects downtown
+  // fragments that overlap its trunk splices. Chaining parts verbatim
+  // ping-pongs across that structure and books the doubling-back as
+  // phantom kilometers of "nothing" (North Branch rendered 38 mi of spine
+  // over 24 mi of geometry; Milwaukee oscillated across its Randolph
+  // tail). So: quantize part endpoints to graph nodes (with T-junction
+  // splitting), take each connected component's DIAMETER path
+  // (double-sweep Dijkstra — the through-line), drop side branches
+  // entirely (they are duplicates and spurs, not missing bikeway), and
+  // let buildLineSpine bridge only BETWEEN components — the real holes.
+  // Parts survive individually (not fused) so per-part grades flow into
+  // gradeStretches unchanged.
+  // Split parts wherever another part's endpoint touches them mid-way —
+  // OSM T-junctions connect an endpoint to the MIDDLE of a long way, which
+  // an endpoint-only graph can't see (the Lakefront read as 10 mi of
+  // phantom holes before this). Splitting at the nearest vertex is exact
+  // enough: raw vertices arrive every few meters.
+  function splitAtJunctions(parts) {
+    const eps = [];
+    parts.forEach((p, pi) => {
+      eps.push({ xy: p.pts[0], pi });
+      eps.push({ xy: p.pts[p.pts.length - 1], pi });
+    });
+    const out = [];
+    parts.forEach((p, pi) => {
+      // Locked trunk splices are canonical geometry — never split them
+      // (an interior cut would break byte-identity across owners, v3 §7).
+      if (p.locked) { out.push(p); return; }
+      const cuts = new Set();
+      eps.forEach((e) => {
+        if (e.pi === pi) return;
+        let best = -1, bd = Infinity;
+        p.pts.forEach((q, qi) => {
+          const d = xyDist(q, e.xy);
+          if (d < bd) { bd = d; best = qi; }
+        });
+        if (bd <= 40 && best > 0 && best < p.pts.length - 1) cuts.add(best);
+      });
+      if (cuts.size === 0) { out.push(p); return; }
+      const idxs = [0, ...[...cuts].sort((a, b) => a - b), p.pts.length - 1];
+      for (let k = 1; k < idxs.length; k++) {
+        const pts = p.pts.slice(idxs[k - 1], idxs[k] + 1);
+        if (pts.length < 2) continue;
+        out.push({ ...p, pts, lenM: pts.reduce((s, q, i) => i === 0 ? 0 : s + xyDist(pts[i - 1], q), 0) });
+      }
+    });
+    return out;
+  }
+
+  function tracePath(parts, opts) {
+    const usable = splitAtJunctions((parts || []).filter((p) => p.pts && p.pts.length >= 2));
+    if (usable.length <= 1) return usable;
+    const cell = 50;
+    const keyOf = (p) => Math.round(p[0] / cell) + ":" + Math.round(p[1] / cell);
+    const adj = new Map(); // nodeKey -> [{to, part, flip, w}]
+    const ensure = (k) => { if (!adj.has(k)) adj.set(k, []); return k; };
+    usable.forEach((p) => {
+      const a = ensure(keyOf(p.pts[0]));
+      const b = ensure(keyOf(p.pts[p.pts.length - 1]));
+      if (a === b) return; // pure loop: irrelevant to a through-line
+      adj.get(a).push({ to: b, part: p, flip: false, w: p.lenM });
+      adj.get(b).push({ to: a, part: p, flip: true, w: p.lenM });
+    });
+    if (adj.size === 0) return [usable.sort((x, y) => y.lenM - x.lenM)[0]];
+
+    // Connected components.
+    const comp = new Map();
+    let nComp = 0;
+    adj.forEach((_, k) => {
+      if (comp.has(k)) return;
+      const queue = [k];
+      comp.set(k, nComp);
+      while (queue.length) {
+        const cur = queue.pop();
+        adj.get(cur).forEach(({ to }) => {
+          if (!comp.has(to)) { comp.set(to, nComp); queue.push(to); }
+        });
+      }
+      nComp++;
+    });
+
+    function dijkstra(start) {
+      const dist = new Map([[start, 0]]);
+      const prev = new Map();
+      const done = new Set();
+      for (;;) {
+        let cur = null, curD = Infinity;
+        dist.forEach((d, k) => { if (!done.has(k) && d < curD) { curD = d; cur = k; } });
+        if (cur == null) break;
+        done.add(cur);
+        adj.get(cur).forEach((e) => {
+          const nd = curD + e.w;
+          if (nd < (dist.has(e.to) ? dist.get(e.to) : Infinity)) {
+            dist.set(e.to, nd);
+            prev.set(e.to, { from: cur, e });
+          }
+        });
+      }
+      return { dist, prev };
+    }
+
+    const compParts = [];
+    for (let c = 0; c < nComp; c++) {
+      const members = [...adj.keys()].filter((k) => comp.get(k) === c);
+      if (members.length === 0) continue;
+      // Double sweep: farthest node from an arbitrary start, then the
+      // farthest node from THAT — a good diameter approximation.
+      const far = (from) => {
+        const { dist, prev } = dijkstra(from);
+        let best = from, bestD = -1;
+        members.forEach((k) => {
+          const d = dist.has(k) ? dist.get(k) : -1;
+          if (d > bestD) { bestD = d; best = k; }
+        });
+        return { node: best, prev };
+      };
+      const sweep1 = far(members[0]);
+      const sweep2 = far(sweep1.node);
+      // Walk sweep2's tree from its farthest node back to sweep1.node.
+      const pathParts = [];
+      let cur = sweep2.node;
+      while (cur !== sweep1.node && sweep2.prev.has(cur)) {
+        const { from, e } = sweep2.prev.get(cur);
+        // The edge was traversed `from` -> `cur`; orient its points that
+        // way (flip means the stored part runs cur -> from) and unshift so
+        // the assembled list reads start -> end.
+        pathParts.unshift({ ...e.part, pts: e.flip ? e.part.pts.slice().reverse() : e.part.pts.slice() });
+        cur = from;
+      }
+      if (pathParts.length === 0) continue;
+      // Double-back rejection: when a corridor's two banks connect at only
+      // ONE end, the farthest node pair is bank-end-A ↔ bank-end-B and the
+      // "diameter" walks up one bank and back down the other — the North
+      // Shore Channel drew 15.8 km over an ~11 km corridor, corrupting the
+      // mix-bar denominator. Walk the path and truncate at the first
+      // substantial part that mostly re-covers corridor already walked.
+      // The tell for a doubled bank is SUSTAINED re-coverage: a long
+      // unbroken run of path within ~180 m of corridor already walked. A
+      // per-part fraction test either misses the Channel's banks (too
+      // tight) or truncates the Lakefront where it legitimately snakes
+      // near itself (too loose); sustained length separates the two.
+      const dbCell = 50;
+      const visited = new Set();
+      const dbKey = (p) => Math.round(p[0] / dbCell) + ":" + Math.round(p[1] / dbCell);
+      const dbNear = (q) => {
+        const cx = Math.round(q[0] / dbCell), cy = Math.round(q[1] / dbCell);
+        for (let dx = -3; dx <= 3; dx++) {
+          for (let dy = -3; dy <= 3; dy++) {
+            if (visited.has((cx + dx) + ":" + (cy + dy))) return true;
+          }
+        }
+        return false;
+      };
+      const walked = [];
+      let truncated = false;
+      for (const part of pathParts) {
+        if (!part.locked) {
+          let sustained = 0;
+          for (let q = 1; q < part.pts.length; q++) {
+            if (dbNear(part.pts[q])) sustained += xyDist(part.pts[q - 1], part.pts[q]);
+            else sustained = 0;
+            if (sustained > 800) { truncated = true; break; }
+          }
+          if (truncated) break;
+        }
+        walked.push(part);
+        part.pts.forEach((q) => visited.add(dbKey(q)));
+      }
+      if (walked.length === 0) continue;
+      compParts.push({
+        parts: walked,
+        head: walked[0].pts[0],
+        tail: walked[walked.length - 1].pts[walked[walked.length - 1].pts.length - 1],
+        lenM: walked.reduce((s, p) => s + p.lenM, 0),
+      });
+    }
+    if (compParts.length === 0) return usable;
+    // Drop scrap components: a 30 m orphan sliver in the middle of the
+    // line forces the chain to double back through it (the Lakefront
+    // booked an 8 km phantom bridge detouring through two 30 m scraps).
+    // The longest component always stays.
+    const minComp = 100;
+    const longest = compParts.reduce((a, b) => (b.lenM > (a?.lenM || 0) ? b : a), null);
+    const kept = compParts.filter((p) => p === longest || p.lenM >= minComp);
+    // Order components into one sequence (components are few — the
+    // greedy/axis/agglomerative vote is reliable at this scale), flipping
+    // a component's internal part order when it chains tail-first.
+    const pseudo = kept.map((c) => ({ pts: [c.head, c.tail] }));
+    const order = orderParts(pseudo, GAP_JOIN_TOLERANCE_METERS);
+    const out = [];
+    order.forEach(({ i, flip }) => {
+      const c = kept[i];
+      if (!flip) {
+        out.push(...c.parts);
+      } else {
+        c.parts.slice().reverse().forEach((p) => out.push({ ...p, pts: p.pts.slice().reverse() }));
+      }
+    });
+    return out;
+  }
+
+  // ---- buildLineSpine: members -> one continuous measured path ----
+  // memberParts: [{ pts: XY[], grade, street, locked?, key? }]. Returns
+  // { xy, origM, stretches, bridged } — origM is cumulative ORIGINAL
+  // meters; a bridge advances measure by its chord length (v3 §2.1), so
+  // the measure map stays monotone and nothing downstream special-cases
+  // bridges.
+  function buildLineSpine(memberParts, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const tol = GAP_JOIN_TOLERANCE_METERS;
+    const usable = (memberParts || []).filter((p) => p.pts && p.pts.length >= 2);
+    if (usable.length === 0) return null;
+    const order = o.preOrdered
+      ? usable.map((_, i) => ({ i, flip: false }))
+      : orderParts(usable, tol);
+
+    const xy = [], origM = [], stretches = [], bridged = [];
+    let m = 0;
+    order.forEach(({ i, flip }, k) => {
+      const part = usable[i];
+      const pts = flip ? part.pts.slice().reverse() : part.pts.slice();
+      if (k === 0) {
+        xy.push(pts[0]); origM.push(0);
+      } else {
+        const gap = xyDist(xy[xy.length - 1], pts[0]);
+        if (gap > tol) {
+          stretches.push({ m0: m, m1: m + gap, grade: "none", bridged: true });
+          bridged.push({ m0: m, m1: m + gap });
+          m += gap;
+          xy.push(pts[0]); origM.push(m);
+        } else if (gap > 0.01) {
+          // Tiny join: measure advances, the sliver belongs to the next
+          // stretch (no bridge, no seam).
+          m += gap;
+          xy.push(pts[0]); origM.push(m);
+        }
+      }
+      const stretchStart = m;
+      for (let q = 1; q < pts.length; q++) {
+        const d = xyDist(pts[q - 1], pts[q]);
+        if (d < 0.01) continue;
+        m += d;
+        xy.push(pts[q]); origM.push(m);
+      }
+      stretches.push({
+        m0: stretchStart, m1: m, grade: part.grade,
+        locked: !!part.locked, key: part.key,
+      });
+    });
+    return { xy, origM, stretches, bridged };
+  }
+
+  // ---- Run detection / snapping / closure (v3 §2.2–§2.4) ----
+
+  function runsFromIndices(pts, ms, kept) {
+    const runs = [];
+    for (let k = 1; k < kept.length; k++) {
+      const i0 = kept[k - 1], i1 = kept[k];
+      const disp = [pts[i1][0] - pts[i0][0], pts[i1][1] - pts[i0][1]];
+      runs.push({ m0: ms[i0], m1: ms[i1], disp, len: Math.hypot(disp[0], disp[1]) });
+    }
+    return runs;
+  }
+  function mergeRunPair(a, b) {
+    const disp = [a.disp[0] + b.disp[0], a.disp[1] + b.disp[1]];
+    return { m0: a.m0, m1: b.m1, disp, len: Math.hypot(disp[0], disp[1]) };
+  }
+
+  function detectRuns(pts, ms, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const kept = rdpXYIndices(pts, o.cornerToleranceMeters);
+    let runs = runsFromIndices(pts, ms, kept);
+    // Merge near-collinear neighbors.
+    let changed = true;
+    while (changed && runs.length > 1) {
+      changed = false;
+      for (let i = 0; i < runs.length - 1; i++) {
+        const bA = bearingDeg(runs[i].disp[0], runs[i].disp[1]);
+        const bB = bearingDeg(runs[i + 1].disp[0], runs[i + 1].disp[1]);
+        if (angDist360(bA, bB) < o.mergeAngleDeg) {
+          runs.splice(i, 2, mergeRunPair(runs[i], runs[i + 1]));
+          changed = true;
+          break;
+        }
+      }
+    }
+    // Absorb sub-minimum runs into their longer neighbor.
+    const minRun = o.minRunMeters[o.kind === "trail" ? "trail" : "street"];
+    while (runs.length > 1) {
+      let shortest = -1, shortestLen = Infinity;
+      runs.forEach((r, i) => { if (r.len < shortestLen) { shortestLen = r.len; shortest = i; } });
+      if (shortestLen >= minRun) break;
+      const left = runs[shortest - 1], right = runs[shortest + 1];
+      const mergeLeft = right == null || (left != null && left.len >= right.len);
+      if (mergeLeft) runs.splice(shortest - 1, 2, mergeRunPair(left, runs[shortest]));
+      else runs.splice(shortest, 2, mergeRunPair(runs[shortest], right));
+    }
+    return runs;
+  }
+
+  function snapRuns(runs, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const axes = o.kind === "trail" ? null : o.AXES_DEG;
+    const roundDeg = o.kind === "trail" ? o.trailRoundDeg : o.residualRoundDeg;
+    let out = runs.map((r) => ({
+      ...r,
+      bearing: snapBearing(bearingDeg(r.disp[0], r.disp[1]), axes, o.snapToleranceDeg, roundDeg),
+    }));
+    // Minimum-bend post-pass (v3 §2.3): the six-axis family allows 15°
+    // corners (45 vs 60), indistinguishable from the wibble this redesign
+    // kills. Merge or re-snap until no adjacent pair bends < minBendDeg.
+    let changed = true;
+    let guard = 0;
+    while (changed && out.length > 1 && guard++ < 40) {
+      changed = false;
+      for (let i = 0; i < out.length - 1; i++) {
+        const bend = angDist360(out[i].bearing, out[i + 1].bearing);
+        if (bend < 0.01 || bend >= o.minBendDeg) continue;
+        const combined = mergeRunPair(out[i], out[i + 1]);
+        const cBearing = bearingDeg(combined.disp[0], combined.disp[1]);
+        let newBearing;
+        if (axes) {
+          const snapped = snapBearing(cBearing, axes, o.snapToleranceDeg, o.residualRoundDeg);
+          newBearing = snapped;
+        } else {
+          newBearing = snapBearing(cBearing, null, 0, o.trailRoundDeg);
+        }
+        const canMerge = angDist360(cBearing, newBearing) <= o.snapToleranceDeg + 0.01 || !axes;
+        if (canMerge) {
+          out.splice(i, 2, { ...combined, bearing: newBearing });
+        } else {
+          // Re-snap the shorter run to the longer neighbor's axis, then
+          // merge (equal bearings).
+          const winner = out[i].len >= out[i + 1].len ? out[i] : out[i + 1];
+          out.splice(i, 2, { ...combined, bearing: winner.bearing });
+        }
+        changed = true;
+        break;
+      }
+    }
+    return out;
+  }
+
+  // closeRunLengths (v3 §2.4): with run directions fixed, minimize squared
+  // length adjustments subject to hitting targetVec exactly — a 2×2
+  // Lagrange solve. Length-only adjustment never rotates a snapped
+  // bearing, which is what keeps pins crisp. Runs flagged in lockedMask
+  // (interlined trunks) take ZERO adjustment. Returns null when the
+  // system is singular or any solved length folds back below
+  // foldbackFraction × original.
+  function closeRunLengths(runs, targetVec, lockedMask, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const locked = lockedMask || runs.map(() => false);
+    const u = runs.map((r) => unitOf(r.bearing));
+    const L = runs.map((r, i) => Math.max(1, r.disp[0] * u[i][0] + r.disp[1] * u[i][1]));
+    let bx = targetVec[0], by = targetVec[1];
+    let a00 = 0, a01 = 0, a11 = 0;
+    runs.forEach((r, i) => {
+      bx -= L[i] * u[i][0];
+      by -= L[i] * u[i][1];
+      if (locked[i]) return;
+      a00 += u[i][0] * u[i][0];
+      a01 += u[i][0] * u[i][1];
+      a11 += u[i][1] * u[i][1];
+    });
+    const det = a00 * a11 - a01 * a01;
+    if (Math.abs(det) < 1e-6) return null; // collinear (or all locked)
+    const lx = (a11 * bx - a01 * by) / det;
+    const ly = (-a01 * bx + a00 * by) / det;
+    const t = runs.map((r, i) => locked[i] ? L[i] : L[i] + u[i][0] * lx + u[i][1] * ly);
+    for (let i = 0; i < t.length; i++) {
+      if (!locked[i] && t[i] < Math.max(0, o.foldbackFraction * L[i])) return null; // fold-back
+    }
+    return t;
+  }
+
+  // Insert a 45° jog at the midpoint of the longest unlocked run — the
+  // single shared fallback for both closure degeneracies (collinear and
+  // fold-back, v3 §2.4). Returns { runs, lockedMask }.
+  function insertJog(runs, lockedMask, targetVec) {
+    const locked = lockedMask || runs.map(() => false);
+    let j = -1, jLen = -1;
+    runs.forEach((r, i) => { if (!locked[i] && r.len > jLen) { jLen = r.len; j = i; } });
+    if (j < 0) return null;
+    const r = runs[j];
+    const half = { ...r, disp: [r.disp[0] / 2, r.disp[1] / 2], len: r.len / 2 };
+    const mMid = (r.m0 + r.m1) / 2;
+    const h1 = { ...half, m0: r.m0, m1: mMid };
+    const h2 = { ...half, m0: mMid, m1: r.m1 };
+    // Jog side: point the 45° elbow toward the residual displacement.
+    const res = targetVec;
+    const cand1 = (r.bearing + 45) % 360, cand2 = (r.bearing + 315) % 360;
+    const u1 = unitOf(cand1), u2 = unitOf(cand2);
+    const jogBearing = (u1[0] * res[0] + u1[1] * res[1]) >= (u2[0] * res[0] + u2[1] * res[1]) ? cand1 : cand2;
+    const jog = {
+      m0: mMid, m1: mMid, bearing: jogBearing,
+      disp: [unitOf(jogBearing)[0] * 30, unitOf(jogBearing)[1] * 30], len: 30,
+    };
+    const runs2 = runs.slice(0, j).concat([h1, jog, h2], runs.slice(j + 1));
+    const locked2 = locked.slice(0, j).concat([false, false, false], locked.slice(j + 1));
+    return { runs: runs2, lockedMask: locked2 };
+  }
+
+  // Exact two-run dogleg from origin to targetVec using the two snap-family
+  // directions bracketing the target bearing — the last-resort closure when
+  // jog insertion still fails. Falls back to one exact straight run when
+  // the target sits on a family direction.
+  function doglegRuns(targetVec, m0, m1, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const phi = bearingDeg(targetVec[0], targetVec[1]);
+    const family = [];
+    (o.kind === "trail"
+      ? Array.from({ length: Math.round(360 / o.trailRoundDeg) }, (_, i) => i * o.trailRoundDeg)
+      : o.AXES_DEG.flatMap((a) => [a, a + 180])
+    ).forEach((a) => family.push(((a % 360) + 360) % 360));
+    family.sort((a, b) => angDist360(a, phi) - angDist360(b, phi));
+    const mMid = (m0 + m1) / 2;
+    for (let i = 0; i < family.length; i++) {
+      for (let j = i + 1; j < family.length; j++) {
+        const u1 = unitOf(family[i]), u2 = unitOf(family[j]);
+        const det = u1[0] * u2[1] - u1[1] * u2[0];
+        if (Math.abs(det) < 1e-9) continue;
+        const t1 = (targetVec[0] * u2[1] - targetVec[1] * u2[0]) / det;
+        const t2 = (u1[0] * targetVec[1] - u1[1] * targetVec[0]) / det;
+        if (t1 < 0 || t2 < 0) continue;
+        return [
+          { m0, m1: mMid, bearing: family[i], disp: [u1[0] * t1, u1[1] * t1], len: t1, _t: t1 },
+          { m0: mMid, m1, bearing: family[j], disp: [u2[0] * t2, u2[1] * t2], len: t2, _t: t2 },
+        ];
+      }
+    }
+    const len = Math.hypot(targetVec[0], targetVec[1]);
+    return [{ m0, m1, bearing: phi, disp: targetVec.slice(), len, _t: len }];
+  }
+
+  // ---- Section schematization with displacement guard (v3 §2.6) ----
+  // pts/ms: the section's original XY points and measures. startTarget/
+  // endTarget: pinned endpoint positions (XY). Returns { xy, m } —
+  // schematic vertices with their original measures, startTarget/endTarget
+  // hit exactly.
+  function schematizeSection(pts, ms, startTarget, endTarget, opts, depth) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const d = depth || 0;
+    const targetVec = [endTarget[0] - startTarget[0], endTarget[1] - startTarget[1]];
+    const straight = () => ({
+      xy: [startTarget.slice(), endTarget.slice()],
+      m: [ms[0], ms[ms.length - 1]],
+    });
+
+    let xy = null, m = null;
+    if (pts.length < 2 || Math.hypot(targetVec[0], targetVec[1]) < 5) {
+      ({ xy, m } = straight());
+    } else {
+      let runs = snapRuns(detectRuns(pts, ms, o), o);
+      if (runs.length === 0) {
+        ({ xy, m } = straight());
+      } else {
+        let lockedMask = runs.map(() => false);
+        let t = closeRunLengths(runs, targetVec, lockedMask, o);
+        if (t == null) {
+          // Tilt escape: an essentially-straight section whose pinned
+          // target sits a hair off-axis draws as ONE exact straight run,
+          // tilted by that hair — a 1° tilt is invisible, a 45° jog is
+          // not. Without this, every interchange pin on a straight
+          // corridor inserted a stair-step (Milwaukee rendered as a jog
+          // ladder). Only when the tilt would exceed tiltMaxDeg does the
+          // jog machinery take over.
+          const targetBearing = bearingDeg(targetVec[0], targetVec[1]);
+          const allNearTarget = runs.every((r) => angDist360(r.bearing, targetBearing) <= o.tiltMaxDeg);
+          if (allNearTarget) {
+            ({ xy, m } = straight());
+          } else if (runs.length === 1) {
+            // Collinear degeneracy with a real off-axis displacement: the
+            // 45° jog at the run's midpoint. Multi-run failures (fold-back)
+            // skip straight to the dogleg below — a mid-run jog solved to
+            // hundreds of meters reads as an arrowhead spike, not a bend
+            // (seen on Jackson–Washington before this gate).
+            const jogged = insertJog(runs, lockedMask, targetVec);
+            if (jogged) {
+              const t2 = closeRunLengths(jogged.runs, targetVec, jogged.lockedMask, o);
+              if (t2 != null) { runs = jogged.runs; lockedMask = jogged.lockedMask; t = t2; }
+            }
+          }
+        }
+        if (xy == null) {
+          if (t == null) {
+            runs = doglegRuns(targetVec, ms[0], ms[ms.length - 1], o);
+            t = runs.map((r) => r._t);
+          }
+          // Walk the solved runs into schematic vertices.
+          xy = [startTarget.slice()];
+          m = [ms[0]];
+          runs.forEach((r, i) => {
+            const u = unitOf(r.bearing);
+            const last = xy[xy.length - 1];
+            xy.push([last[0] + u[0] * t[i], last[1] + u[1] * t[i]]);
+            m.push(r.m1);
+          });
+          // Snap the numeric tail exactly onto the pin (closure <1e-6 anyway).
+          xy[xy.length - 1] = endTarget.slice();
+          m[m.length - 1] = ms[ms.length - 1];
+        }
+      }
+    }
+
+    // Displacement guard — applies to EVERY path out of the solver,
+    // including the straight/tilt escapes (a pin dragging a straight
+    // section sideways is exactly the case it exists for). Surveyed
+    // points only: bridged ranges are declared inventions and exempt by
+    // definition (v3 §2.6).
+    if (d < 3) {
+      const isBridged = (mm) => (o.bridged || []).some((b) => mm > b.m0 + 0.5 && mm < b.m1 - 0.5);
+      let worst = -1, worstIdx = -1;
+      for (let i = 1; i < pts.length - 1; i++) {
+        if (isBridged(ms[i])) continue;
+        // Locate the schematic segment containing this original measure.
+        let seg = 0;
+        while (seg < m.length - 2 && ms[i] > m[seg + 1]) seg++;
+        const dist = pointSegDistance(pts[i], xy[seg], xy[seg + 1]);
+        if (dist > worst) { worst = dist; worstIdx = i; }
+      }
+      if (worst > o.maxDisplacementMeters) {
+        const left = schematizeSection(
+          pts.slice(0, worstIdx + 1), ms.slice(0, worstIdx + 1),
+          startTarget, pts[worstIdx], o, d + 1);
+        const right = schematizeSection(
+          pts.slice(worstIdx), ms.slice(worstIdx),
+          pts[worstIdx], endTarget, o, d + 1);
+        return {
+          xy: left.xy.concat(right.xy.slice(1)),
+          m: left.m.concat(right.m.slice(1)),
+        };
+      }
+    }
+    return { xy, m };
+  }
+
+  // ---- Whole-spine schematization ----
+  // spine: buildLineSpine output. pins: [{ m, target: XY }] sorted-ish.
+  // Locked stretches (interlined trunks) pass through verbatim — their
+  // geometry was schematized once, canonically, and spliced into every
+  // owner (v3 §7). Returns { xy, m } (schematic vertices + original
+  // measures).
+  function schematizeSpine(spine, pins, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}), bridged: spine.bridged };
+    const endM = spine.origM[spine.origM.length - 1];
+
+    // Assemble pin list: endpoints always pinned (to themselves when no
+    // control point claimed them), locked-stretch boundaries mandatory.
+    const pinMap = new Map(); // m -> target
+    const addPin = (mm, target, force) => {
+      const clamped = Math.max(0, Math.min(endM, mm));
+      for (const [existing] of pinMap) {
+        if (Math.abs(existing - clamped) < 150 && !force) return; // too close to an existing pin
+      }
+      if (force) {
+        for (const [existing] of pinMap) {
+          if (Math.abs(existing - clamped) < 150) pinMap.delete(existing);
+        }
+      }
+      pinMap.set(clamped, target);
+    };
+    addPin(0, (pins || []).find((p) => p.end === "start")?.target || pointAtMeasure(spine, 0), true);
+    addPin(endM, (pins || []).find((p) => p.end === "end")?.target || pointAtMeasure(spine, endM), true);
+    spine.stretches.filter((s) => s.locked).forEach((s) => {
+      addPin(s.m0, pointAtMeasure(spine, s.m0), true);
+      addPin(s.m1, pointAtMeasure(spine, s.m1), true);
+    });
+    // A pin inside a locked trunk range would split the canonical splice
+    // and break byte-identity across owners (v3 §7) — the trunk's own
+    // endpoint pins already anchor it, so interior pins are dropped.
+    const insideLocked = (mm) => spine.stretches.some(
+      (s) => s.locked && mm > s.m0 + 0.5 && mm < s.m1 - 0.5);
+    (pins || []).filter((p) => p.end == null && !insideLocked(p.m))
+      .forEach((p) => addPin(p.m, p.target, false));
+
+    const pinMs = [...pinMap.keys()].sort((a, b) => a - b);
+    const lockedRanges = spine.stretches.filter((s) => s.locked);
+    const inLocked = (m0, m1) => lockedRanges.find((s) => m0 >= s.m0 - 0.5 && m1 <= s.m1 + 0.5);
+
+    let outXY = null, outM = null;
+    for (let k = 1; k < pinMs.length; k++) {
+      const m0 = pinMs[k - 1], m1 = pinMs[k];
+      if (m1 - m0 < 0.5) continue;
+      let secXY, secM;
+      const lockedStretch = inLocked(m0, m1);
+      if (lockedStretch) {
+        // Locked trunk geometry passes through untouched.
+        const sec = extractSection(spine, m0, m1);
+        secXY = sec.xy; secM = sec.m;
+      } else {
+        const sec = extractSection(spine, m0, m1);
+        const result = schematizeSection(sec.xy, sec.m, pinMap.get(m0), pinMap.get(m1), o, 0);
+        secXY = result.xy; secM = result.m;
+      }
+      if (outXY == null) { outXY = secXY; outM = secM; }
+      else { outXY = outXY.concat(secXY.slice(1)); outM = outM.concat(secM.slice(1)); }
+    }
+    if (outXY == null) return { xy: spine.xy.slice(), m: spine.origM.slice() };
+    return { xy: outXY, m: outM };
+  }
+
+  // Interpolated XY at an original measure.
+  function pointAtMeasure(spine, mm) {
+    const { xy, origM } = spine;
+    if (mm <= origM[0]) return xy[0].slice();
+    for (let i = 1; i < origM.length; i++) {
+      if (mm <= origM[i]) {
+        const span = origM[i] - origM[i - 1];
+        const f = span < 1e-9 ? 0 : (mm - origM[i - 1]) / span;
+        return [
+          xy[i - 1][0] + (xy[i][0] - xy[i - 1][0]) * f,
+          xy[i - 1][1] + (xy[i][1] - xy[i - 1][1]) * f,
+        ];
+      }
+    }
+    return xy[xy.length - 1].slice();
+  }
+
+  // Original vertices (with measures) between two measures, boundary
+  // points interpolated exactly.
+  function extractSection(spine, m0, m1) {
+    const xy = [pointAtMeasure(spine, m0)];
+    const m = [m0];
+    for (let i = 0; i < spine.origM.length; i++) {
+      if (spine.origM[i] > m0 + 1e-6 && spine.origM[i] < m1 - 1e-6) {
+        xy.push(spine.xy[i].slice());
+        m.push(spine.origM[i]);
+      }
+    }
+    xy.push(pointAtMeasure(spine, m1));
+    m.push(m1);
+    return { xy, m };
+  }
+
+  // Slice a schematized spine ({ xy | latlngs, m }) between two ORIGINAL
+  // measures. Original measure maps linearly to schematic distance within
+  // each schematic segment, so proportional interpolation is exact.
+  function sliceSpineByMeasure(schem, m0, m1) {
+    const pts = schem.latlngs || schem.xy;
+    const ms = schem.m;
+    const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    const at = (mm) => {
+      if (mm <= ms[0]) return pts[0].slice();
+      for (let i = 1; i < ms.length; i++) {
+        if (mm <= ms[i]) {
+          const span = ms[i] - ms[i - 1];
+          const f = span < 1e-9 ? 0 : (mm - ms[i - 1]) / span;
+          return lerp(pts[i - 1], pts[i], f);
+        }
+      }
+      return pts[pts.length - 1].slice();
+    };
+    const out = [at(m0)];
+    for (let i = 0; i < ms.length; i++) {
+      if (ms[i] > m0 + 1e-6 && ms[i] < m1 - 1e-6) out.push(pts[i].slice());
+    }
+    out.push(at(m1));
+    return out;
+  }
+
+  // Nearest point on a flat latlng path: { pt, dist (meters), segIdx }.
+  function snapPointToPath(pt, path) {
+    const segs = [];
+    for (let i = 0; i < path.length - 1; i++) segs.push([path[i], path[i + 1]]);
+    if (segs.length === 0) return null;
+    const hit = nearestOnChain(pt, segs);
+    return hit;
+  }
+
+  // ---- Quality stretches (v3 §4.3) ----
+  // Raw spine stretches + donor-street overlays -> render-ready stretches:
+  // overlays upgrade overlapping ranges to the better grade; adjacent
+  // same-grade ranges merge; sub-minStretchMeters confetti absorbs into
+  // its larger neighbor. Pre-absorption ranges are preserved for the
+  // panel's "nothing" mileage (data truth, stable under display tuning —
+  // v3 §9.3).
+  function gradeStretches(spine, overlays, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    // Boundary set: stretch edges + overlay edges.
+    const cuts = new Set();
+    spine.stretches.forEach((s) => { cuts.add(s.m0); cuts.add(s.m1); });
+    (overlays || []).forEach((s) => { cuts.add(s.m0); cuts.add(s.m1); });
+    const sorted = [...cuts].sort((a, b) => a - b);
+    const gradeAt = (mm) => {
+      const s = spine.stretches.find((st) => mm >= st.m0 - 1e-6 && mm < st.m1 - 1e-6);
+      return s || null;
+    };
+    const raw = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const m0 = sorted[i - 1], m1 = sorted[i];
+      if (m1 - m0 < 0.01) continue;
+      const mid = (m0 + m1) / 2;
+      const base = gradeAt(mid);
+      if (!base) continue;
+      let grade = base.grade;
+      let bridgedFlag = !!base.bridged;
+      let locked = !!base.locked;
+      let key = base.key;
+      (overlays || []).forEach((ov) => {
+        if (mid >= ov.m0 && mid <= ov.m1 && gradeRank(ov.grade) > gradeRank(grade)) {
+          grade = ov.grade;
+          bridgedFlag = false;
+        }
+      });
+      raw.push({ m0, m1, grade, bridged: bridgedFlag, locked, key });
+    }
+    // Merge adjacent same-grade ranges (keep locked boundaries intact).
+    const merged = [];
+    raw.forEach((s) => {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.grade === s.grade && prev.locked === s.locked && Math.abs(prev.m1 - s.m0) < 0.01) {
+        prev.m1 = s.m1;
+        prev.bridged = prev.bridged && s.bridged;
+      } else {
+        merged.push({ ...s });
+      }
+    });
+    const preAbsorption = merged.map((s) => ({ ...s }));
+    // Absorb display confetti (never absorb locked-boundary stretches).
+    let out = merged.map((s) => ({ ...s }));
+    let changed = true;
+    while (changed && out.length > 1) {
+      changed = false;
+      for (let i = 0; i < out.length; i++) {
+        const s = out[i];
+        if (s.locked || (s.m1 - s.m0) >= o.minStretchMeters) continue;
+        const left = out[i - 1], right = out[i + 1];
+        const eat = (right && !right.locked && (!left || left.locked || (right.m1 - right.m0) >= (left.m1 - left.m0)))
+          ? right : (left && !left.locked ? left : null);
+        if (!eat) continue;
+        if (eat === right) { right.m0 = s.m0; }
+        else { left.m1 = s.m1; }
+        out.splice(i, 1);
+        changed = true;
+        break;
+      }
+      // Re-merge equal neighbors created by absorption.
+      for (let i = 0; i < out.length - 1; i++) {
+        if (out[i].grade === out[i + 1].grade && out[i].locked === out[i + 1].locked) {
+          out[i].m1 = out[i + 1].m1;
+          out.splice(i + 1, 1);
+          changed = true;
+        }
+      }
+    }
+    return { stretches: out, preAbsorption };
+  }
+
+  // "Nothing" mileage for the panel chip (v3 §9.3): pre-absorption bridged
+  // + grade-none extents, in original meters — data truth, unaffected by
+  // minStretchMeters display tuning.
+  function nothingMeters(preAbsorption) {
+    return (preAbsorption || [])
+      .filter((s) => displayGrade(s.grade) === "nothing")
+      .reduce((sum, s) => sum + (s.m1 - s.m0), 0);
+  }
+
+  // ---- Level mix (v3 §9.2): ONE denominator for every mix-bar width ----
+  // Aggregates stretch measure ranges by display level — the bar is
+  // literally proportional to the drawn line. Callers print pipeline
+  // miles_by_grade for the built levels (the honest numbers) and the
+  // spine-derived figure for `nothing`; widths always come from here.
+  const LEVEL_COLORS = {
+    offstreet: "#0369a1",
+    protected: "#0b6e4f",
+    paint: "#f59e0b",
+    nothing: "#cbd5e1",
+  };
+  function levelMixSegments(stretchLists) {
+    const meters = { offstreet: 0, protected: 0, paint: 0, nothing: 0 };
+    (stretchLists || []).forEach((list) => (list || []).forEach((s) => {
+      meters[displayGrade(s.grade)] += (s.m1 - s.m0);
+    }));
+    const total = QUALITY_LEVELS.reduce((sum, l) => sum + meters[l], 0);
+    if (total <= 0) return [];
+    return QUALITY_LEVELS.filter((l) => meters[l] > 0).map((l) => ({
+      level: l, meters: meters[l], pct: (100 * meters[l]) / total, color: LEVEL_COLORS[l],
+    }));
+  }
+
+  // ---- fillPlan (v3 §4.1/§4.2): structural ink per display level ----
+  // Returns what network.js draws for one stretch at the current
+  // zoom-scaled stroke weight: { band, stripeWidth, coreWidth,
+  // hollowFallback }. Pure and unit-tested; all breakpoints are SCHEMATIC
+  // constants so QA can tune them.
+  function fillPlan(level, scaledWeight, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const plan = { band: false, stripeWidth: 0, coreWidth: 0, hollowFallback: false };
+    if (level === "offstreet") {
+      plan.band = true;
+    } else if (level === "paint") {
+      const stripe = scaledWeight / 3;
+      if (stripe >= o.minStripePx) plan.stripeWidth = stripe;
+      // else: stripe coarsens away — paint renders solid (built vs nothing
+      // is the honest citywide read, §4.2).
+    } else if (level === "nothing") {
+      const core = Math.min(0.6 * scaledWeight, scaledWeight - 2);
+      const rail = (scaledWeight - core) / 2;
+      // Both the rails AND the core must stay visible (>= 1 px) for the
+      // hollow read to survive; below that the stretch degrades to solid
+      // hue at hollowFallbackOpacity.
+      if (core >= 1 && rail >= o.minRailPx) plan.coreWidth = core;
+      else plan.hollowFallback = true;
+    }
+    return plan;
+  }
+
+  // ---- Whole-network orchestration (consumed by network.js) ----
+  // input: {
+  //   lines: [{ id, source }],                       // roster metadata
+  //   partsByLine: { lineId: [{ latlngs, grade, street }] },  // OWN members only
+  //   trunks: [{ key, lineIds, parts: [{ latlngs, grade }] }],// interlined groups
+  //   nodes: [{ lat, lng, kind, label, lines }],
+  // }
+  // Returns { spines: Map, trunks: Map, interchanges: [...] } where each
+  // spine is { latlngs, m, stretches, preAbsorption, nothingM, bridged,
+  // trunkRanges }.
+  function buildSchematicNetwork(input, opts) {
+    const o = { ...SCHEMATIC, ...(opts || {}) };
+    const toParts = (arr) => (arr || []).map((p) => ({
+      ...p,
+      pts: (isMultiPart(p.latlngs) ? p.latlngs : [p.latlngs]).map((part) => part.map(llToXY)),
+    })).flatMap((p) => p.pts.map((pts) => ({ ...p, pts })))
+      .filter((p) => p.pts.length >= 2)
+      .map((p) => ({ ...p, lenM: p.pts.reduce((s, q, i) => i === 0 ? 0 : s + xyDist(p.pts[i - 1], q), 0) }));
+
+    // -- 1. Canonical trunks: schematized once, spliced into every owner
+    // (v3 §7 — byte-identity by construction).
+    const trunkOut = new Map();
+    (input.trunks || []).forEach((trunk) => {
+      const parts = toParts(trunk.parts);
+      const spine = buildLineSpine(parts, o);
+      if (!spine) return;
+      const schem = schematizeSpine(spine, [], { ...o, kind: "street" });
+      const graded = gradeStretches(spine, [], o);
+      trunkOut.set(trunk.key, {
+        key: trunk.key, lineIds: trunk.lineIds,
+        spine, schem, stretches: graded.stretches, preAbsorption: graded.preAbsorption,
+      });
+    });
+
+    // -- 2. Per-line raw spines (own parts + locked trunk splices).
+    const rawSpines = new Map();   // lineId -> { spine, overlays, kind }
+    (input.lines || []).forEach((line) => {
+      const own = toParts(input.partsByLine[line.id]);
+      const kind = line.source === "osm_trails" ? "trail" : "street";
+      let parts = own;
+      let overlays = [];
+      let coupletPairs = [];
+      if (kind === "street") {
+        const byStreet = new Map();
+        own.forEach((p) => {
+          const street = p.street || "";
+          if (!byStreet.has(street)) byStreet.set(street, []);
+          byStreet.get(street).push(p);
+        });
+        if (byStreet.size > 1) {
+          const collapsed = collapseCouplets(byStreet, o);
+          parts = collapsed.parts;
+          overlays = collapsed.donors; // projected into measures after the spine exists
+          coupletPairs = collapsed.pairs;
+        }
+      }
+      // Locked trunk splices, canonical geometry — added BEFORE the path
+      // trace so the trace treats the trunk as ordinary graph structure
+      // (owner fragments junction-split against its endpoints). Own parts
+      // that run parallel INSIDE a trunk's corridor are the same
+      // one-way-pair situation the couplet collapse handles: keeping them
+      // as geometry forces the spine to overshoot and double back
+      // (Jackson's east tip rendered as an arrowhead), so they demote to
+      // grade overlays exactly like couplet donors.
+      trunkOut.forEach((t) => {
+        if (!t.lineIds.includes(line.id)) return;
+        const pts = t.schem.xy.map((p) => p.slice());
+        const trunkSegs = [];
+        for (let i = 0; i < pts.length - 1; i++) trunkSegs.push([pts[i], pts[i + 1]]);
+        const nearTrunk = (q) => trunkSegs.some(([a, b]) => pointSegDistance(q, a, b) <= o.coupletMaxMeters);
+        const keep = [];
+        parts.forEach((p) => {
+          if (p.locked) { keep.push(p); return; }
+          const hits = p.pts.reduce((s, q) => s + (nearTrunk(q) ? 1 : 0), 0);
+          if (hits / p.pts.length > o.coupletOverlapMin) overlays.push(p);
+          else keep.push(p);
+        });
+        parts = keep.concat([{
+          pts, grade: "protected", locked: true, key: t.key,
+          lenM: pts.reduce((s, q, i) => i === 0 ? 0 : s + xyDist(pts[i - 1], q), 0),
+        }]);
+      });
+      parts = tracePath(parts, o);
+      // Thames rescale (QA gate item 6): trail simplification scales with
+      // length — a 22-mile North Branch at 15° rounding and 400 m runs
+      // reads as noise, not shoreline character; the 2.7-mile 606 keeps
+      // the finer treatment.
+      let kindOpts = o;
+      if (kind === "trail") {
+        const totalLen = parts.reduce((s, p) => s + (p.lenM || 0), 0);
+        kindOpts = {
+          ...o,
+          minRunMeters: { ...o.minRunMeters, trail: Math.max(o.minRunMeters.trail, totalLen / 15) },
+          trailRoundDeg: totalLen > 10000 ? 30 : o.trailRoundDeg,
+        };
+      }
+      const spine = buildLineSpine(parts, { ...kindOpts, preOrdered: true });
+      if (!spine) return;
+      // Donor-street grade overlays: project each donor part's endpoints
+      // onto the spine -> a measure range carrying the donor grade.
+      const projectM = (pt) => {
+        let best = null;
+        for (let i = 0; i < spine.xy.length - 1; i++) {
+          const d = pointSegDistance(pt, spine.xy[i], spine.xy[i + 1]);
+          if (best == null || d < best.d) best = { d, i, pt };
+        }
+        if (!best) return null;
+        // Parametric position within the winning segment.
+        const a = spine.xy[best.i], b = spine.xy[best.i + 1];
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const lenSq = dx * dx + dy * dy;
+        let f = lenSq === 0 ? 0 : ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / lenSq;
+        f = Math.max(0, Math.min(1, f));
+        return spine.origM[best.i] + (spine.origM[best.i + 1] - spine.origM[best.i]) * f;
+      };
+      const overlayRanges = overlays.map((p) => {
+        const mA = projectM(p.pts[0]);
+        const mB = projectM(p.pts[p.pts.length - 1]);
+        if (mA == null || mB == null) return null;
+        return { m0: Math.min(mA, mB), m1: Math.max(mA, mB), grade: p.grade };
+      }).filter(Boolean);
+      rawSpines.set(line.id, { spine, overlays: overlayRanges, kind, coupletPairs, kindOpts });
+    });
+
+    // -- 3. Control points (v3 §2.5).
+    const cps = [];
+    const grid = o.pinMergeGridMeters;
+    const cells = new Map();
+    (input.nodes || []).filter((n) => n.kind === "interchange").forEach((n) => {
+      const xy = llToXY([n.lat, n.lng]);
+      const cell = Math.round(xy[0] / grid) + ":" + Math.round(xy[1] / grid);
+      if (!cells.has(cell)) cells.set(cell, { xs: 0, ys: 0, count: 0, lines: new Set(), labels: [] });
+      const c = cells.get(cell);
+      c.xs += xy[0]; c.ys += xy[1]; c.count++;
+      (n.lines || []).forEach((id) => c.lines.add(id));
+      c.labels.push(n.label);
+    });
+    cells.forEach((c) => {
+      cps.push({ xy: [c.xs / c.count, c.ys / c.count], lines: c.lines, labels: c.labels, fixed: false });
+    });
+    // Reposition node control points onto the DRAWN network: the node
+    // catalog carries true street positions, but a collapsed couplet's
+    // centerline (and any traced spine) can sit a couple hundred meters
+    // from them — pinning to the raw node would dent the line at every
+    // crossing (Jackson–Washington grew an arrowhead per interchange).
+    // The natural interchange position is where the drawn lines actually
+    // cross: use the intersection of the first crossing pair near the
+    // node, else the mean of each member line's nearest point.
+    const segIntersect = (a1, a2, b1, b2) => {
+      const d1x = a2[0] - a1[0], d1y = a2[1] - a1[1];
+      const d2x = b2[0] - b1[0], d2y = b2[1] - b1[1];
+      const den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 1e-9) return null;
+      const s = ((b1[0] - a1[0]) * d2y - (b1[1] - a1[1]) * d2x) / den;
+      const u = ((b1[0] - a1[0]) * d1y - (b1[1] - a1[1]) * d1x) / den;
+      if (s < 0 || s > 1 || u < 0 || u > 1) return null;
+      return [a1[0] + s * d1x, a1[1] + s * d1y];
+    };
+    const nearSegs = (spine, xy, radius) => {
+      const segs = [];
+      for (let i = 0; i < spine.xy.length - 1; i++) {
+        if (pointSegDistance(xy, spine.xy[i], spine.xy[i + 1]) <= radius) {
+          segs.push([spine.xy[i], spine.xy[i + 1]]);
+        }
+      }
+      return segs;
+    };
+    cps.forEach((cp) => {
+      const memberSpines = [...cp.lines]
+        .map((id) => rawSpines.get(id))
+        .filter(Boolean)
+        .map((r) => r.spine);
+      if (memberSpines.length === 0) return;
+      const radius = o.pinAttractMeters;
+      // Crossing point of the first intersecting pair near the node.
+      for (let i = 0; i < memberSpines.length; i++) {
+        for (let j = i + 1; j < memberSpines.length; j++) {
+          const segsA = nearSegs(memberSpines[i], cp.xy, radius);
+          const segsB = nearSegs(memberSpines[j], cp.xy, radius);
+          for (const [a1, a2] of segsA) {
+            for (const [b1, b2] of segsB) {
+              const hit = segIntersect(a1, a2, b1, b2);
+              if (hit) { cp.xy = hit; return; }
+            }
+          }
+        }
+      }
+      // No crossing (T-meets, single-line nodes): mean of nearest points.
+      const feet = [];
+      memberSpines.forEach((spine) => {
+        let best = null;
+        for (let i = 0; i < spine.xy.length - 1; i++) {
+          const a = spine.xy[i], b = spine.xy[i + 1];
+          const d = pointSegDistance(cp.xy, a, b);
+          if (d > radius || (best && d >= best.d)) continue;
+          const dx = b[0] - a[0], dy = b[1] - a[1];
+          const lenSq = dx * dx + dy * dy;
+          let f = lenSq === 0 ? 0 : ((cp.xy[0] - a[0]) * dx + (cp.xy[1] - a[1]) * dy) / lenSq;
+          f = Math.max(0, Math.min(1, f));
+          best = { d, pt: [a[0] + dx * f, a[1] + dy * f] };
+        }
+        if (best) feet.push(best.pt);
+      });
+      if (feet.length > 0) {
+        cp.xy = [
+          feet.reduce((s, p) => s + p[0], 0) / feet.length,
+          feet.reduce((s, p) => s + p[1], 0) / feet.length,
+        ];
+      }
+    });
+    // Trunk endpoints are mandatory control points for every owner.
+    trunkOut.forEach((t) => {
+      [t.schem.xy[0], t.schem.xy[t.schem.xy.length - 1]].forEach((xy) => {
+        cps.push({ xy: xy.slice(), lines: new Set(t.lineIds), labels: [], fixed: true, trunkKey: t.key });
+      });
+    });
+
+    // Corridor pin straightening (QA gate item 5): each control point was
+    // repositioned onto a drawn-line crossing, but the crossings scatter a
+    // few dozen meters around the corridor's true axis line — sections
+    // between pins then tilt by slightly DIFFERENT amounts (Lake wore four
+    // near-horizontal bearings against a perfectly horizontal trunk) or
+    // dump the drift as jog shelves (Milwaukee). Fit each corridor's pin
+    // cluster to one axis line and slide the pins onto it (perpendicular
+    // moves only, capped, fixed trunk endpoints untouched). Two passes so
+    // crossing corridors settle against each other's moves.
+    // Per corridor: length-weighted dominant-axis vote over the raw
+    // geometry, then slide the corridor's pins onto ONE fitted axis line
+    // (perpendicular moves only, capped at 130 m, fixed trunk endpoints
+    // and pins far off the fit untouched). Crossing corridors mostly move
+    // pins along each other's axes, so two passes settle them.
+    const dominantAxis = (spine) => {
+      const votes = new Map();
+      const kept = rdpXYIndices(spine.xy, o.cornerToleranceMeters);
+      for (let k = 1; k < kept.length; k++) {
+        const a = spine.xy[kept[k - 1]], b = spine.xy[kept[k]];
+        const len = xyDist(a, b);
+        if (len < 200) continue;
+        const brg = bearingDeg(b[0] - a[0], b[1] - a[1]);
+        let bestAxis = null, bestD = Infinity;
+        o.AXES_DEG.forEach((ax) => {
+          const d = angDist180(brg, ax);
+          if (d < bestD) { bestD = d; bestAxis = ax; }
+        });
+        if (bestD > 20) continue; // off-family run: no vote
+        votes.set(bestAxis, (votes.get(bestAxis) || 0) + len);
+      }
+      let axis = null, w = 0, total = 0;
+      votes.forEach((len, ax) => { total += len; if (len > w) { w = len; axis = ax; } });
+      return axis != null && w / (total || 1) >= 0.7 ? axis : null;
+    };
+    for (let pass = 0; pass < 2; pass++) {
+      [...rawSpines.entries()]
+        .filter(([, r]) => r.kind === "street")
+        .forEach(([lineId, { spine }]) => {
+          const axis = dominantAxis(spine);
+          if (axis == null) return; // genuinely multi-axis corridor — leave it be
+          const u = unitOf(axis);
+          const n = [-u[1], u[0]];
+          const hits = [];
+          cps.forEach((cp) => {
+            if (cp.fixed || !cp.lines.has(lineId)) return;
+            let best = Infinity;
+            for (let i = 0; i < spine.xy.length - 1; i++) {
+              best = Math.min(best, pointSegDistance(cp.xy, spine.xy[i], spine.xy[i + 1]));
+            }
+            if (best <= o.pinAttractMeters) hits.push(cp);
+          });
+          if (hits.length < 2) return;
+          const cx = hits.reduce((s, cp) => s + cp.xy[0], 0) / hits.length;
+          const cy = hits.reduce((s, cp) => s + cp.xy[1], 0) / hits.length;
+          hits.forEach((cp) => {
+            const off = (cp.xy[0] - cx) * n[0] + (cp.xy[1] - cy) * n[1];
+            if (Math.abs(off) <= 130) {
+              cp.xy = [cp.xy[0] - off * n[0], cp.xy[1] - off * n[1]];
+            }
+          });
+        });
+    }
+
+    // Termini bookkeeping.
+    const termini = [];
+    rawSpines.forEach(({ spine }, lineId) => {
+      termini.push(
+        { lineId, end: "start", xy: spine.xy[0], attached: false },
+        { lineId, end: "end", xy: spine.xy[spine.xy.length - 1], attached: false },
+      );
+    });
+    // (a) terminus -> control point attraction.
+    termini.forEach((t) => {
+      let best = null;
+      cps.forEach((cp) => {
+        const d = xyDist(t.xy, cp.xy);
+        if (d <= o.pinAttractMeters && (best == null || d < best.d)) best = { d, cp };
+      });
+      if (best) { t.attached = true; t.target = best.cp.xy; best.cp.lines.add(t.lineId); }
+    });
+    // (b) explicit merges (owner directive #4 beyond generic thresholds).
+    (o.EXPLICIT_MERGES || []).forEach((em) => {
+      const ends = em.lines.map((lineId) => {
+        const cand = termini.filter((t) => t.lineId === lineId && !t.attached);
+        if (cand.length === 0) return null;
+        cand.sort((a, b) => em.end === "north" ? b.xy[1] - a.xy[1]
+          : em.end === "south" ? a.xy[1] - b.xy[1]
+          : em.end === "east" ? b.xy[0] - a.xy[0] : a.xy[0] - b.xy[0]);
+        return cand[0];
+      }).filter(Boolean);
+      if (ends.length < 2) return;
+      const cx = ends.reduce((s, t) => s + t.xy[0], 0) / ends.length;
+      const cy = ends.reduce((s, t) => s + t.xy[1], 0) / ends.length;
+      const cp = { xy: [cx, cy], lines: new Set(ends.map((t) => t.lineId)), labels: [], fixed: false };
+      cps.push(cp);
+      ends.forEach((t) => { t.attached = true; t.target = cp.xy; });
+    });
+    // (c) terminus <-> terminus pairing.
+    const loose = () => termini.filter((t) => !t.attached);
+    loose().forEach((t) => {
+      if (t.attached) return;
+      const partner = loose().find((u) => u !== t && u.lineId !== t.lineId && xyDist(t.xy, u.xy) <= o.terminusPairMeters);
+      if (!partner) return;
+      const cp = {
+        xy: [(t.xy[0] + partner.xy[0]) / 2, (t.xy[1] + partner.xy[1]) / 2],
+        lines: new Set([t.lineId, partner.lineId]), labels: [], fixed: false,
+      };
+      cps.push(cp);
+      t.attached = partner.attached = true;
+      t.target = partner.target = cp.xy;
+    });
+    // (d) terminus -> another line's spine, perpendicular foot point.
+    const extraPins = new Map(); // lineId -> [{m, target}]
+    loose().forEach((t) => {
+      let best = null;
+      rawSpines.forEach(({ spine }, otherId) => {
+        if (otherId === t.lineId) return;
+        for (let i = 0; i < spine.xy.length - 1; i++) {
+          const d = pointSegDistance(t.xy, spine.xy[i], spine.xy[i + 1]);
+          if (d <= o.footSnapMeters && (best == null || d < best.d)) best = { d, otherId, i };
+        }
+      });
+      if (!best) return;
+      const spine = rawSpines.get(best.otherId).spine;
+      const a = spine.xy[best.i], b = spine.xy[best.i + 1];
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const lenSq = dx * dx + dy * dy;
+      let f = lenSq === 0 ? 0 : ((t.xy[0] - a[0]) * dx + (t.xy[1] - a[1]) * dy) / lenSq;
+      f = Math.max(0, Math.min(1, f));
+      const foot = [a[0] + dx * f, a[1] + dy * f];
+      const footM = spine.origM[best.i] + (spine.origM[best.i + 1] - spine.origM[best.i]) * f;
+      t.attached = true;
+      t.target = foot;
+      if (!extraPins.has(best.otherId)) extraPins.set(best.otherId, []);
+      extraPins.get(best.otherId).push({ m: footM, target: foot });
+      cps.push({ xy: foot, lines: new Set([t.lineId, best.otherId]), labels: [], fixed: false });
+    });
+
+    // -- 4. Per-line pins + schematization.
+    const spines = new Map();
+    rawSpines.forEach(({ spine, overlays, kind, coupletPairs, kindOpts }, lineId) => {
+      const pins = [];
+      const t0 = termini.find((t) => t.lineId === lineId && t.end === "start");
+      const t1 = termini.find((t) => t.lineId === lineId && t.end === "end");
+      if (t0 && t0.attached) pins.push({ end: "start", target: t0.target });
+      if (t1 && t1.attached) pins.push({ end: "end", target: t1.target });
+      // Interchange/control-point pass-through pins.
+      cps.forEach((cp) => {
+        if (!cp.lines.has(lineId)) return;
+        let best = null;
+        for (let i = 0; i < spine.xy.length - 1; i++) {
+          const d = pointSegDistance(cp.xy, spine.xy[i], spine.xy[i + 1]);
+          if (d <= o.pinAttractMeters && (best == null || d < best.d)) best = { d, i };
+        }
+        if (!best) return;
+        const a = spine.xy[best.i], b = spine.xy[best.i + 1];
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const lenSq = dx * dx + dy * dy;
+        let f = lenSq === 0 ? 0 : ((cp.xy[0] - a[0]) * dx + (cp.xy[1] - a[1]) * dy) / lenSq;
+        f = Math.max(0, Math.min(1, f));
+        const mm = spine.origM[best.i] + (spine.origM[best.i + 1] - spine.origM[best.i]) * f;
+        const endM = spine.origM[spine.origM.length - 1];
+        if (mm < 200 || mm > endM - 200) return; // endpoint pins own the ends
+        pins.push({ m: mm, target: cp.xy });
+      });
+      (extraPins.get(lineId) || []).forEach((p) => pins.push(p));
+
+      const schem = schematizeSpine(spine, pins, { ...kindOpts, kind });
+      const graded = gradeStretches(spine, overlays, o);
+      const trunkRanges = spine.stretches.filter((s) => s.locked)
+        .map((s) => ({ key: s.key, m0: s.m0, m1: s.m1 }));
+      spines.set(lineId, {
+        latlngs: schem.xy.map(xyToLL),
+        m: schem.m,
+        stretches: graded.stretches,
+        preAbsorption: graded.preAbsorption,
+        nothingM: nothingMeters(graded.preAbsorption),
+        bridged: spine.bridged,
+        trunkRanges,
+        kind,
+        coupletPairs: coupletPairs || [],
+      });
+    });
+
+    // Trunk output in latlng space, with schematic-sliceable measures.
+    const trunksLL = new Map();
+    trunkOut.forEach((t, key) => {
+      trunksLL.set(key, {
+        key, lineIds: t.lineIds,
+        latlngs: t.schem.xy.map(xyToLL),
+        m: t.schem.m,
+        stretches: t.stretches,
+        preAbsorption: t.preAbsorption,
+      });
+    });
+
+    // Interchange markers: one per control point that carries node labels,
+    // deduped by construction (grid merge) and snapped onto the schematic
+    // by pinning. Orientation nodes are network.js's business
+    // (snapPointToPath onto the nearest spine).
+    const interchanges = cps.filter((cp) => cp.labels.length > 0).map((cp) => ({
+      latlng: xyToLL(cp.xy),
+      label: cp.labels[0],
+      lines: [...cp.lines],
+    }));
+
+    return { spines, trunks: trunksLL, interchanges };
   }
 
   const api = {
@@ -868,18 +2303,26 @@
     DEFAULT_OVERLAYS, parseOverlays, serializeOverlays,
     LINE_COLORS, FALLBACK_LINE_COLOR, lineStyle,
     darkenColor, lightenColor, trailStyle, trailOutlineStyle,
-    zoomWeightFactor, gapSegments, GAP_JOIN_TOLERANCE_METERS,
+    zoomWeightFactor, GAP_JOIN_TOLERANCE_METERS,
     CONNECTOR_STYLE, CONNECTOR_GRADE_TINTS, connectorStyle,
-    GRADE_COLORS, qualityBorderStyle,
+    GRADE_COLORS,
     GRADE_RANK, gradeRank, FLOOR_IDS, parseFloor, meetsFloor,
-    DRAINED_COLOR, DRAINED_STYLE,
+    DRAINED_COLOR,
     QUALITY_MIX_ORDER, qualityMixSegments,
     buildRosterIndex, linesById, splitByRoster, membersOfLine, rosterStreets,
     simplifyPart, simplifyLatLngs, schematicLatLngs, SIMPLIFY_TOLERANCE_METERS,
     chainPlan, crossStreetGaps, CROSS_STREET_MAX_FEEDER_METERS,
-    CONNECTOR_GRADE_MAP, connectorEdges, pathLengthMeters, routeGapThroughConnectors,
+    CONNECTOR_GRADE_MAP, pathLengthMeters,
     isMultiPart, offsetPart, offsetLatLngs, strandOffsets, pathEndpoints,
     planInterlinedRoute, INTERLINE_GAP_METERS, INTERLINE_GAP_PX, metersPerPixel,
+    // ---- schematic spine pipeline (spec 2026-07-15) ----
+    SCHEMATIC, QUALITY_LEVELS, displayGrade,
+    buildLineSpine, detectRuns, snapRuns, closeRunLengths,
+    schematizeSection, schematizeSpine, sliceSpineByMeasure,
+    collapseCouplets, tracePath, snapPointToPath,
+    gradeStretches, nothingMeters, fillPlan,
+    LEVEL_COLORS, levelMixSegments,
+    buildSchematicNetwork,
   };
 
   root.BSDNet = api;

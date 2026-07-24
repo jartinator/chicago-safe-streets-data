@@ -47,7 +47,7 @@ keys elsewhere).
 |---|---|---|
 | `foia` | Open-records program (counts, mileage history, council records) | `docs/foia/` |
 | `exposure-data` | Ridership/exposure sources — REPORT P1 (Divvy, Strava Metro, counters) | `docs/research/user-needs/REPORT-ux-proposal.md` |
-| `blu-partnership` | Bike Lane Uprising data-sharing (replaces the mock layer — P2 endgame) | `SCHEMA.md` obstruction schema |
+| `blu-partnership` | Bike Lane Uprising data-sharing outreach (optional) — the mock obstruction layer was removed; the site now carries only a plain BLU referral, no partnership framing | `SCHEMA.md` normalized obstruction schema |
 | `gov-agent-layer` | AI safe-use guide for public-sector staff | `docs/projects/gov-agent-layer-*.md` |
 | `agent-api` | Static agent API under `site/api/v1/` | `docs/superpowers/plans/2026-07-13-agent-api-layer.md` |
 | `ux-tranche2` | Second UX tranche (P7–P11) | `docs/research/user-needs/REPORT-ux-proposal.md` |

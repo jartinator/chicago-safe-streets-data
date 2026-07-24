@@ -1,227 +1,719 @@
-# Interview: us-bna-analyst
+# Interview: US BNA / think-tank analyst (Dana Okafor, composite/fictional)
 
-## Round 1 transcript
+**Run date:** 2026-07-21
+**Stimulus:** `02-data-inventory.md`, data contract **v1.14** (post-#51 home page
+split, methodology page, static agent API, news-coverage layer, proposed-projects
+roster, PeopleForBikes BNA citywide score, obstructions moved to gated preview)
+**Interviewer:** Lead Researcher (per `01-lead-researcher.md` / `03-interview-guide.md`)
+**Participant:** Dana Okafor persona (`personas/us-bna-analyst.md`, evidence base
+`evidence/us-thinktank.md`)
 
-**Interviewer:** Let's start with who you are when you touch this kind of data. Can you describe your role, and the last decision you tried to influence about street safety?
+This is a re-run of the study against the July 2026 inventory. This transcript
+does not assume any prior session happened — the persona reacts fresh.
 
-**us-bna-analyst:** Sure. I'm a senior researcher — I do network scoring and Vision Zero advisory work, mostly BNA-adjacent stuff, some HIN methodology consulting when a city's DPH and DOT finally agree to sit in the same room. Last real decision: about six weeks ago I was in a target-setting workshop for a mid-size Midwest city — I won't name them, but think Peoria-scale, population under 120,000, one FTE doing active transportation planning. Their council was about to adopt a five-year bike network plan, and the draft had a target of "50 miles of new bike lanes by 2031." No LTS classification, no connectivity language, just miles. I spent forty minutes with their planner walking through why "50 miles" is a lane-miles target dressed up as a safety target — you can build 50 miles of paint on arterials nobody low-stress-rides and hit your number while your actual low-stress network barely moves. I pulled up our BNA methodology deck, showed them the tipping-point language — score 50 is where the low-stress network starts actually connecting people to destinations, not just existing — and reframed their target around percent of population within a low-stress connection to a grocery store and a school. Their planning director, a guy named Marcus, pushed back hard: "the council doesn't understand LTS, they understand miles." Which, fair. We compromised — miles target stays in the ordinance language for the politicians, but the actual capital prioritization list behind it gets built off LTS gap segments. That's the real fight in this work: translating a defensible methodology into something a five-person council will vote on without gutting it.
+---
 
-**Interviewer:** Who do you need to convince in that kind of work, and what does "convinced" actually look like for them?
+## Transcript
 
-**us-bna-analyst:** Two audiences, basically. City staff — planners, sometimes a DPH epidemiologist if I'm lucky — need to be convinced methodologically. For them, convinced looks like: show your denominator, show your window, show what's excluded. If I hand a planner a ward-level or district-level score and I can't answer "what's in the denominator," I've lost them, and honestly I should lose them. The second audience is elected officials and their staff, and for them convinced looks completely different — it's a single chart, maybe two sentences, that survives a hostile question from a colleague. That's the SF DPH trick with the High Injury Network — you don't walk an alderman through a regression, you show them a map with a handful of corridors colored dark red because that's where the severity-weighted injuries cluster across a three-year window, hospital and police combined, and you say "6% of your street network, over half your severe and fatal crashes." That sentence has never once needed defending in a hearing, in my experience. A ward safety index that spits out "73" needs defending immediately — 73 out of what, relative to what, and someone's chief of staff will ask why their ward is a 73 and the ward next door is a 61, and if you can't answer in one sentence you've handed them a weapon against you instead of for you.
+**LR:** Thanks for making time. Start wherever's easiest — what's your role day
+to day, and what's the last decision about street safety you actually tried to
+move?
 
-**Interviewer:** What information sources do you actually touch in a normal week for this kind of work?
+**Dana:** Last one was three weeks ago. A mid-size city — I won't say which,
+doesn't matter — asked us to sanity-check their capital plan against their BNA
+score before they submitted it for a federal Safe Streets for All grant. Their
+score had ticked up four points year over year and their DOT wanted to lead
+the narrative with that. My job was to open the network layer, find out *why*
+it moved — was it a new protected corridor, or did they just repaint some
+sharrows into "buffered" and reclassify — and write two paragraphs the grant
+writer could use without me getting a call in six months asking why the
+number didn't hold up under review. Took me a day and a half, mostly because
+their GIS shop hands off shapefiles with no changelog, so I had to diff two
+exports of the same layer myself in QGIS to find what actually changed on the
+ground.
 
-**us-bna-analyst:** BNA's own scoring outputs and the underlying OSM-derived LTS segment data, obviously — that's home base. NACTO's design guide, third edition, for facility taxonomy fights, which happen constantly because everyone's engineering department has their own internal definition of "buffered" that doesn't match anyone else's. Chicago Data Portal directly when I need raw crash records for a comparison city, because I don't trust a summarized number I can't rebuild myself. I'll pull Divvy trip data or metro-level Strava Metro exports when I need any kind of volume proxy, fully aware of the income and recreational skew, and I say so every single time I use it — footnote, every slide. And then a lot of PDFs. Menu-money PDFs, city budget ordinances, hospital trauma registry summary tables when a health department will actually share them, which is maybe one city in four. That last one is the bottleneck of my entire professional life.
+**LR:** Who's the audience for those two paragraphs, and what does "convinced"
+look like to them?
 
-**Interviewer:** Tell me about the last time you needed a number, map, or chart about bike safety and where you went to get it.
+**Dana:** The federal reviewer, one step removed — the DOT staffer is really
+convincing *me*, and I'm the one who has to be willing to put our name near
+their claim. Convinced means: the delta in the score maps to a specific,
+named, geometrically real intervention, not a reclassification. If I can't
+trace it to a segment I can point at on a map, I won't sign off, and I've said
+no to exactly that kind of thing before — a city wanted credit for "low-stress
+connectivity gains" that turned out to be a data vendor updating the OSM speed
+tags under a re-striping project that hadn't been built yet.
 
-**us-bna-analyst:** Two months ago, prepping for that same Peoria-scale engagement. I needed a defensible severe-injury corridor list, HIN-style, and their PD's crash data alone. No fused hospital layer — their DPH hadn't done the MOU work SF did back in 2015. So what I actually did: I pulled three years of their police-reported bike and pedestrian crash records off the state DOT crash portal, geocoded them myself in QGIS, and then did the thing I always do when I don't have hospital data — I ran a severity-weighting scheme using KABCO codes and cross-referenced it against the state's own known underreporting literature to build a confidence band, not a point estimate. I told the client flat out: "this is a police-only corridor list, treat the ranking with a plus-or-minus, and it is very likely undercounting your dooring-adjacent and lower-speed injuries, and — statistically, per the literature — undercounting your non-white victims specifically." That sentence takes about four minutes to say and it's non-negotiable in my deliverables. Whole exercise took me about a week and a half, mostly the geocoding.
+**LR:** What information sources do you touch in a normal week for this kind
+of work?
 
-**Interviewer:** What have you built yourself because nothing gave you the number directly?
+**Dana:** Our own BNA pipeline output, obviously. City-published crash open
+data portals when I need a sanity check on where the risk actually is versus
+where the connectivity gain is — those are two different questions people
+collapse into one. NACTO's design guide when someone's facility taxonomy
+looks nonstandard. And a lot of PDFs. Council committee reports, capital
+plan memos, sometimes a FOIA'd spreadsheet if a city won't publish something
+that should be public.
 
-**us-bna-analyst:** A spreadsheet I've been dragging between engagements for six years now, half-joking name is "denominators.xlsx." It's just population, street-centerline-miles, and whatever ridership proxy I can scrounge, per geography, for every city I've worked with, so I never again have to start from zero when someone hands me a raw crash count and expects a ranking. I've also built — and this is more embarrassing — a manual tracker of aldermanic or council district capital spending against crash severity, because Active Transportation Alliance's model for Chicago, cross-referencing menu money against objective risk, is the single most persuasive chart type I know, and most cities don't have anyone doing that math for their own council. I built it once for a client by hand-transcribing line items out of a budget PDF into a spreadsheet over a weekend. It was miserable and I'd pay real money for someone else to have already done it.
+**LR:** Tell me about a time data — or the lack of it — sank an argument you
+were making.
 
-**Interviewer:** Tell me about a time data — or the lack of it — sank an argument you were making.
+**Dana:** The Utah intersection work I cited to a partner city once — safety-
+in-numbers, using Strava as an exposure proxy — got laughed out of a room
+by a city engineer who pointed out, correctly, that Strava skews toward
+recreational, higher-income riders and doesn't capture a kid on a BMX bike
+going to school, which was exactly the population we were trying to talk
+about. I didn't have a rebuttal. That's the actual state of exposure data in
+this field — every proxy has a name-brand flaw, and if you don't say it out
+loud first, someone else will, worse, in front of your audience.
 
-**us-bna-analyst:** Same Peoria engagement, actually, earlier round. I put up a raw crash-density heat map — before I'd caught myself — showing crashes clustered on their two busiest commercial corridors. A councilwoman, sharp, immediately said "well, that's just where everyone rides, isn't it? You're telling me your most popular streets have the most crashes." And she wasn't wrong to say it, and I didn't have a rate on hand to answer her with because their city has zero ridership counters, no bikeshare, nothing. I had to say "you're right, I can't give you a rate right now, give me two weeks," and two weeks of scrambling for a Strava Metro export later I came back with something defensible. But that meeting, I lost the room for the day. That's the whole reason I say "you've built a ridership map, not a risk map" now within about the first ten minutes of looking at anyone's crash layer — I got burned skipping that sentence once and I don't skip it anymore.
+**LR:** What data do you distrust, and what earned that?
 
-**Interviewer:** What data do you distrust, and what earned that distrust?
+**Dana:** Raw crash counts by geography, full stop, unless someone shows me
+the denominator next to it. And any "danger index" that doesn't have a
+methodology page linked from the same screen — I've had three different
+consultants build me three different "risk scores" that were secretly just
+z-scored crash counts with a good font.
 
-**us-bna-analyst:** Police-only crash counts presented without any hospital cross-check — earned, from the COST TU1101 numbers, roughly 10% average police-reporting rate internationally, US estimates all over the map but nobody's claiming better than "most severe injuries are missing." Any "danger index" or "safety score" that doesn't show its blend — I've seen three different vendor products at conferences claim a single 0-100 danger number and none of them would tell me on the spot what the window was or whether it was severity-weighted, and I stopped taking two of those vendors seriously afterward. And camera/enforcement data presented as an objective safety proxy without the equity caveat — Vision Zero Network's own people have written about this, enforcement data reproduces whatever bias was already in who gets stopped, and I've watched a city try to use red-light camera violations as a stand-in for "aggressive driving hotspots" in a way that mapped suspiciously well onto over-policed neighborhoods and nobody in the room wanted to say that part out loud.
+---
 
-**Interviewer:** Let's walk through what a site called On Your Left offers — it's a Chicago-focused, read-only bike safety dashboard. I'll go area by area. First: two maps. One's a geographic map with crash density, bikeway network colored by facility grade, ward boundaries, camera locations, and a mock obstruction layer. The second is a schematic, transit-map-style rendering of 21 named main routes, each a solid color end to end, with interchange nodes, an opt-in quality border, and toggles for crowdsourced "mellow routes." What's your first reaction to each?
+### Stimulus walkthrough
 
-**us-bna-analyst:** Okay, the geographic map — first thing I'm doing is looking for a legend that tells me the crash layer's denominator, and if it's raw counts, which it sounds like it is, I'm already saying it out loud: you've built a ridership map, not a risk map. I'd use that layer maybe to spot-check a corridor I already suspect is bad from other sources, cross-reference against the facility grade underneath it, not as a standalone ranking tool.
+**LR:** Let me walk you through what a site called On Your Left! does today —
+independent, open-source, Chicago-only, read-only bike safety dashboard.
+Ward-to-corridor-to-intersection drilldown, everything carries a real/proxy/
+mock/crowdsourced/derived badge. Start with the home page — it's an
+orientation landing page now, headline stats, who it's for, and a section
+about asking an AI assistant questions through something they call the agent
+layer.
 
-The schematic one — genuinely, my first read, hand on heart, is that the "quality border, grade-colored rim" is some kind of stress classification. That's the vocabulary my brain defaults to — a colored border on a route diagram reads to me as an LTS overlay, low-stress versus high-stress, the way we'd shade a BNA connectivity map. So I'd go looking for the legend expecting green-to-red stress gradient, and if it turns out — which it sounds like it does — that the border is just facility category, protected versus painted versus sharrow, that's a real letdown, not a stress or connectivity read at all. That's an honest misread on my part, but it's also a little bit on the design — "quality" is doing a lot of work in that label and it's not the quality I'd assume. And then finding out there's no safety data at all on that page — okay, so it's a wayfinding diagram, not an analysis tool. Fine, that's a legitimate thing to build, transit systems have these, but it's not something I'd ever put in a methodology deck. It's marketing material, not evidence.
+**Dana:** Fine, that's a front door, I don't have strong feelings about a
+front door. The "ask an AI assistant" bit is the interesting part and I want
+to come back to it once you tell me what's actually behind it — if it's just
+a chatbot skin over the same site I don't care, if it's a real structured
+feed I might.
 
-**Interviewer:** Next, the Findings page — curated cards, each with a stat, a caveat, and a deep link into the map. Things like KSI trend, protected share, street coverage, top corridors, hit-and-run rate, ward concentration, and a dooring undercount card.
+**LR:** We'll get there — it's a static `/api/v1/` JSON API plus an
+`llms.txt`. Hold that thought. Next: the transportation map. Crash density,
+bikeway network colored by facility grade, wards, cameras, main-route
+overlays.
 
-**us-bna-analyst:** The caveat-on-every-card structure is the one thing on this whole tour I'd say is genuinely well-built without qualification. Most dashboards bury the caveat in a footnote or a methodology PDF nobody clicks. Putting the caveat directly on the stat card is the right instinct — that's basically what I try to force clients to do in their own council decks. The dooring undercount card specifically — I'd actually want to sit down with whoever wrote that copy, because "dooring is structurally undercounted" is exactly the sentence I want, but I'd push it further than they probably have. It's not just "official records only include reportable crashes" — it's that dooring specifically skews toward exactly the crash type least likely to get a squad car and a report number, so whatever's showing up is a floor, not an estimate, and I'd want that stated as bluntly as the COST literature states it. I'd pull individual finding cards for a slide deck, sure, as a "here's a documented number, here's a link to the source" citation — that's useful. I would not build an argument on the card alone without clicking through to see what's behind the stat.
+**Dana:** Crash density on a map is the thing I warned you about thirty
+seconds ago on a call — you've built a ridership map, not a risk map. I say
+that reflexively, it's not really an insult, it's just true of every
+heat-dot map I've seen without a denominator, this one included until you
+tell me otherwise. Facility grade colored by category — protected, buffered,
+painted, sharrow, trail — that part I'd actually use, that's basically our
+taxonomy, and if it's traceable to NACTO's categories I don't have to
+re-explain it to a client. Cameras on the same map worry me a little, I'll
+get to that.
 
-**Interviewer:** The Table page — sortable ward rankings with CSV export, and two new columns: percent of on-street bikeway miles that are protected, and percent of surface-street miles with any bike infrastructure at all.
+**LR:** What would you check before trusting the crash layer in front of your
+audience?
 
-**us-bna-analyst:** Now we're talking. That second column — percent of surface-street miles with any bike infrastructure — that's an actual denominator, streets not built on, and that's the single closest thing on this whole tour to how I'd actually build a coverage number. That's usable. I'd export that CSV today, drop it into my own spreadsheet, and use it exactly the way I use "denominators.xlsx" — as a base layer I cross-reference against something else, probably against a menu-money spend number if I can get one, to see whether coverage tracks investment or tracks something else. The one thing I'd check before trusting it in front of an audience: is 3,945 centerline miles their real total or an approximation, and does it include alleys, because that number moves your percentage a lot depending on what's in it. I'd want that footnoted before I put it on a slide.
+**Dana:** Whether it's severity-weighted or just a count. Whether it says
+anywhere that police data undercounts non-fatal cyclist injuries — COST
+TU1101 puts average police-reporting rate around 10%, US estimates run
+7 to 46%, and it skews against exactly the victims a city most needs to see:
+lower-severity, non-motor-vehicle, and disproportionately Black and Hispanic
+riders. If that caveat isn't sitting right next to the map, I read the map as
+naive, even if the underlying data is fine.
 
-**Interviewer:** The Sources page — full provenance catalog with the tier badges we've been describing: real, proxy, mock, crowdsourced, derived, no-data-yet.
+**LR:** Next, there's a second map — a schematic "transit-style" network map.
+Named main routes, three toggleable tiers, a comfort-floor filter from "any"
+to "protected only," but explicitly no safety data on that page.
 
-**us-bna-analyst:** Honestly, this is the page that makes me take the whole project more seriously than I would otherwise. Most dashboards I review don't have this page at all, or it's three sentences at the bottom that nobody wrote carefully. Having an explicit "mock" tier, labeled as mock, sitting right next to "real" — that's rarer than it should be, and I mean that as a real compliment, not a backhanded one. It doesn't make the mock layer usable, it just means I trust the people who built this to tell me the truth about the rest of it. That matters a lot to me, because the failure mode I see constantly at conferences is a vendor who's quietly blended synthetic or extrapolated numbers into something presented as clean data, and you only find out in a footnote six months later, if ever.
+**Dana:** That's closer to what I actually build for a living — that's a
+connectivity artifact, not a crash artifact, and I respect that they didn't
+try to cram crash dots onto it. The comfort-floor filter is basically a poor
+man's LTS threshold — "show me only what a nervous rider would use" — which is
+the right instinct even if it's not computed the way our BNA does it, off
+lane widths, speeds, signal presence. I'd ask what "protected / paint / mellow
+/ none" is actually keyed off of before I called it LTS-equivalent in a
+client deck. If it's eyeballed by a volunteer, say so; don't let it look like
+a stress classification if it isn't one.
 
-**Interviewer:** The Action page, links to 311, Bike Lane Uprising, and alderman contacts. And the Contributing page, documentation on how to swap data sources or fork the site for another city.
+**LR:** Findings cards next — curated stat-plus-caveat cards: KSI trend,
+protected share, street coverage, top corridors, hit-and-run, ward
+concentration, the dooring undercount, and — new since you'd have seen this
+last — a card for the PeopleForBikes BNA citywide network score, with
+national ranking context and a line noting it's "not a reason not to ride."
 
-**us-bna-analyst:** Action page isn't for me — that's resident-facing, not analyst-facing, I'd never open it in a work context. Contributing page I'd skim once, out of professional curiosity, mostly to see whether their data-swap architecture forces a tier badge on any new source you plug in, because if it does, that's a nice piece of methodological discipline baked into the tooling itself. If it doesn't enforce that, it's just a README.
+**Dana:** Say that last part again.
 
-**Interviewer:** Now the two pieces I haven't described yet. First, the ward safety index — a derived 0 to 100 score, described as a percentile blend of crashes per 10,000 population and crashes per bikeway mile, plus a 12-month crash trend and an infrastructure growth trend.
+**LR:** The BNA card presents Chicago's citywide 0–100 network score plus
+subscores, low/high-stress mileage, score history over time, where Chicago
+ranks nationally, and it flags that OSM data currency travels with the score
+— plus a line framing the score as encouragement, not a safety verdict.
 
-**us-bna-analyst:** This is the one I'd cross-examine on sight, and I mean actually stop the meeting and ask questions before letting anyone screenshot it. Percentile blend of two rates — okay, first question, what's the window on "crashes"? Is that the same multi-year window as the underlying crash data, or a rolling twelve months, because a percentile rank is only as stable as its window is long, and if it's noisy year to year you'll get wards whipsawing between a 40 and a 70 with no real change on the ground, and that's going to erode trust the first time an alderman's staffer notices it. Second — severity weighting. Is a hit-and-run KSI counted the same as a fender-bump-with-a-bruise in that "crashes per 10k" numerator? Because if it isn't severity-weighted, that's exactly the raw-count-in-disguise problem, just dressed in a percentile rank instead of a color. Third, and this is the Chicago-specific question I'd ask every time — does this control for menu-money discretion at all, or could a ward score badly purely because the alderman never asked CDOT for protected infrastructure, in which case the 73 isn't a danger score, it's partly a political-will score wearing a danger score's clothes. And fourth, practically — what does a ward staffer do with a 73? If there's no threshold, no "above this number you qualify for X," it's a number without an action attached, and those get ignored by exactly the people who most need to act on them.
+**Dana:** Okay, first — good, they used the real thing, not a knockoff. I was
+fully braced for someone's homebrew "bikeability index" wearing our
+initialism. If it's actually sourced to PeopleForBikes' methodology, citing
+the population-size peer group, I'll take it seriously immediately, more
+than anything else on this list. Second — I need to see the vintage. Our
+2026 update tightened what counts as low-stress; if this card is running on
+a stale pull from before that update, the score isn't comparable to what a
+grant reviewer sees today, and someone should say which methodology vintage
+it is, not just "PeopleForBikes BNA."
 
-**Interviewer:** And the mock bike-lane obstruction layer — entirely synthetic, mirrors Bike Lane Uprising's schema, pending an actual data-sharing conversation with them.
+Third, and this is the part that'll actually make me put my pen down: a
+network-quality score sitting on a page titled "Findings" next to a crash
+trend card is going to get *misread* by literally everyone who isn't me. A
+council staffer sees "score: 62" next to "KSI trend: down" on the same page
+and hears one sentence: bikes here are getting safer. That's not what a BNA
+score says. It says the low-stress network is getting more connected. Those
+can move in completely opposite directions in the same city — I've watched a
+city's BNA score climb while its severe-injury corridors stayed exactly where
+they were, because connectivity and crash severity are answering different
+questions. If the card doesn't put a wall between "network quality" and
+"safety outcome" — different heading, different color, something — I will
+actively distrust the page, not just the card, because it tells me nobody who
+built this page understood the distinction I just made. The "not a reason
+not to ride" line is doing some work, I'll give them that, but a caveat
+sentence doesn't fix a layout problem.
 
-**us-bna-analyst:** This is my flat no. I know Bike Lane Uprising by name, I've cited their reporting in client work, Christina Whitehouse's outfit is the real thing here, refreshing every few hours off actual crowdsourced reports, used in actual litigation. A synthetic layer that mirrors their schema, sitting on a map that also has real crash points and real bikeway segments right next to it — even with a mock badge — I would never put that in front of a client or in a slide deck, full stop, because the failure mode isn't me misreading it, I read badges carefully, it's whoever's in the room with me glancing at the map, seeing a plausible-looking obstruction dot pattern, and remembering it as real six months later when they're citing "that dashboard that showed blocked lanes on Milwaukee Avenue." Mock data that looks real at a glance is one of the two or three things I actively can't stand in this field, and I'd say so to whoever built it, not unkindly — get the real data-sharing agreement done, or pull the layer, there's no good in-between state for something schema-matched to a real named source.
+**LR:** If it were laid out more carefully — separated visually, vintage
+disclosed — would you use the card?
 
-**Interviewer:** Last stimulus pieces — council legislation records with an automated topic tag, per-alderman sponsorship counts and recorded no-votes, alderman contact info, upcoming committee hearings, and menu-money spending per ward from a Ward Wise extract, noted as not verified against source PDFs.
+**Dana:** Then yes, honestly, more than I expected to. A 0–100 connectivity
+score for Chicago specifically, broken into subscores, with national rank —
+that's most of a paragraph of my grant memo already written for me, if
+Chicago ever comes across my desk, which it hasn't yet but could. I'd still
+independently verify the vintage against the methodology page before I
+quoted it anywhere with my name on it. That's not distrust of OYL
+specifically, that's just what I do with every number I didn't compute.
 
-**us-bna-analyst:** The menu-money layer is the one I most want to interrogate and most want to use, in that order. If it's genuinely per-ward bike-safety spend, that's the Active Transportation Alliance move — cross-reference discretionary capital against objective risk — and that's the chart that actually explains Chicago's inequity to someone who doesn't believe it yet. But "not verified against source PDFs" is a real caveat, not a throwaway one, because menu-money accounting is famously messy and line-item categorization is exactly where a well-meaning extract goes wrong — something gets tagged "bike safety" that's actually a resurfacing project with a bike lane repainted incidentally. I'd want to spot-check maybe five wards against the actual ordinance PDFs before I'd cite a citywide pattern from it.
+**LR:** Table next — ward rankings, sortable, CSV export, percent-protected
+and percent-streets-with-bikeways columns.
 
-The alderman sponsorship counts, I'd use with a hard caveat spoken out loud every time: sponsorship is a proxy for engagement, not a vote tally, and I know that distinction matters because the real Vasquez ordinance and the Smart Streets Pilot camera ordinance both got reported by co-sponsor list, not just yes-votes, precisely because so much passes on voice vote with no recorded roll call at all — you said it yourself, something like one and a half percent of votes are contested. A sponsorship count with no roll call behind it can make an alderman look like a champion or a laggard based on staff enthusiasm for adding their name to something, which isn't nothing, but it's thinner evidence than it looks.
+**Dana:** The CSV export is the only feature on this whole list I'd call a
+must-have without an asterisk. Everything else I want to interrogate first;
+give me the CSV and I'll do my own math in five minutes and trust my own
+math. Percent protected by ward is a real metric, that's basically a
+DIY facility-taxonomy rollup, fine.
 
-**Interviewer:** Let's do the scenario. You're advising a city — say, a mid-size Midwest client — on setting network targets, and Chicago's data is your closest large-scale comparison case. You open On Your Left. What do you look for first, and where does it fail you?
+**LR:** There's now a ward one-pager — printable HTML per ward, safety index,
+trends, infra stats, alderman contact and sponsorship record, menu-money
+proxy, recent ward-matched news.
 
-**us-bna-analyst:** First thing I go to is the table page and the coverage columns, because I want a real denominator — percent of surface-street miles with any infra, percent of that protected — I can hold up next to whatever I'm calculating for my own client city, apples to apples on street-mile coverage. That part works. Where it fails me almost immediately is the next question my client always asks: "okay, so of the streets that DO have infrastructure, are people actually able to get to school and groceries on them, low-stress, end to end?" That's a connectivity question, a BNA-style reach question, and there is nothing on this site that answers it. The network map looks like it should — transit-diagram, named routes — but I already told you, it turns out to have no safety or stress data on it at all, it's routes as geometry, not routes as stress classification. So I'd end up doing what I always end up doing: exporting their bikeway segment file, if it's downloadable with geometry, and running my own LTS classification against it in QGIS myself, on my own time, because nobody's done that work for Chicago in this dashboard.
+**Dana:** That's not built for me, and I want to be honest about that instead
+of pretending it is. That's an advocate's leave-behind, a thing you hand an
+alderman's staffer at a ward night. I've built the input data for things like
+that but I'm never the one standing in the room handing over the page. The
+one piece I'd actually pull from it is the menu-money-versus-safety-index
+juxtaposition — if it's really sitting the ward's danger score next to its
+menu spend on the same page, that is precisely the mismatch Active Trans has
+been naming for years as the mechanism behind inequitable lane distribution
+on the South and West Sides. If that pairing is really there and not just
+two unrelated numbers on the same page, that's more useful to my work than
+almost anything else you've shown me, because I currently do that
+cross-reference by hand, ward by ward, from two separate PDFs.
 
-**Interviewer:** Of everything OYL doesn't have, what single absence costs you the most?
+**LR:** Two separate PDFs — say more.
 
-**us-bna-analyst:** No ridership or exposure data, no contest. Every other gap I can work around with FOIAs, hand-transcription, a weekend with a spreadsheet. I cannot manufacture ridership counts out of nothing — that requires actual counters, actual bikeshare trip logs, actual Strava Metro licensing, infrastructure the city itself has to have built or paid for. Without it, every crash number on this whole site, no matter how well-labeled the tier badges are, stays a numerator with no denominator, and I have to keep saying my one sentence — ridership map, not risk map — every single time I show it to anyone.
+**Dana:** The Daily Line's menu-money writeups and whatever capital-plan PDF
+the city published that quarter. I keep a shared doc, embarrassingly, that's
+just me copy-pasting ward numbers from one PDF next to numbers from another
+PDF so I can eyeball whether the wards with the worst crash severity are
+also the wards getting painted lanes instead of protected ones. It's slow
+and it's manual and I redo it maybe twice a year because nobody's paying me
+to keep it current.
 
-**Interviewer:** If OYL handed you one export or artifact every week, what would it contain, and who would you send it to?
+**LR:** Does the one-pager's danger index change anything, given what you
+said earlier about denominators?
 
-**us-bna-analyst:** The ward table CSV with the coverage and protected-share columns, plus whatever's driving the ward safety index broken out into its raw components instead of the blended percentile — give me the actual crashes-per-10k and crashes-per-bikeway-mile numbers separately, not just the fused score. I'd forward that weekly to whoever's doing the Active Transportation Alliance-style capital-versus-risk analysis on the advocacy side, because that's the group that would actually pair it against the menu-money data properly.
+**Dana:** Only if I can see the math. "Safety index" as a phrase makes me
+brace the same way "danger score" does — tell me it's a percentile blend of
+crashes-per-10k-population and crashes-per-bikeway-mile, tell me the window,
+tell me the severity weighting, or I file it as a marketing number, not an
+analytical one, and I won't put it in front of a client no matter how good
+the ward-page layout is.
 
-**Interviewer:** The site refuses to normalize by ridership because it has no volume data, and says so. Does that caveat change how you'd use it?
+**LR:** There's a Sources page — full provenance catalog and known
+limitations — and a separate Methodology page, new since the last time this
+kind of site would've come across your desk, explaining how every number is
+computed.
 
-**us-bna-analyst:** It doesn't change how I use it, because I was never going to trust an unstated normalization anyway — I'd have assumed raw counts and treated it that way regardless of whether they'd said so. What the caveat does is move them from "vendor I distrust" to "vendor I merely have to work around," which is a real category difference, it's most of what earned my respect on the sources page too. What I'd accept as good-enough exposure data, in order of how much I trust it: an actual counter program, even a handful of permanent Eco-Counter stations, would be worth more than almost anything else on this list. Divvy trip data, despite known skew toward downtown and toward more confident recreational-leaning riders, is a real second choice — it's public, it's been used in academic work, I'd cite it with the skew stated. Strava Metro I'd take third, same caveat, worse skew, income and enthusiast bias baked deep in. I would not accept 311 obstruction-complaint counts as an exposure proxy — that measures who has a working relationship with 311, which correlates with income and which wards get their potholes fixed, not with who's riding a bike.
+**Dana:** That's the one I actually go looking for first on any dashboard now,
+before I look at a single map. If it exists and it's specific — not "we use
+industry-standard methods," actual formulas, actual windows — that buys the
+whole rest of the site a lot of benefit of the doubt from me. If the safety
+index math I just asked about lives there in plain language, I'll take back
+some of what I said about filing it as marketing.
 
-**Interviewer:** Magic wand — one dataset that doesn't publicly exist appears, clean and current. What is it?
+**LR:** Action page — 311, Bike Lane Uprising links, alderman contacts,
+upcoming hearings, recent news.
 
-**us-bna-analyst:** Fused hospital trauma data joined to the police crash records, HIN-style, for Chicago, refreshed regularly, with the same severity coding SF DPH uses. That's the one that fixes the deepest problem, not the coverage problem — every crash layer on this site inherits the police-only undercount, and it's the same undercount every city I work with inherits, and it's the one nobody's DPH wants to sign the MOU for. Real second choice, and I'd take it in a heartbeat if it showed up instead: an actual city-run bike counter network. Either one would let me finally stop saying my two disclaimer sentences before every single chart.
+**Dana:** Not my page. That's downstream of my work, not part of it. I don't
+call 311, I write memos that other people use to decide what to call 311
+about.
 
-**Interviewer:** One chart or map you could put in front of your hardest audience that ends an argument?
+**LR:** There's a Contributing page — downloads, docs, how to fork this for
+another city.
 
-**us-bna-analyst:** A severity-weighted High Injury Network corridor map — hospital-and-police fused, three-year window, top corridors highlighted, with one line underneath: this many miles, this share of severe and fatal crashes. That's the SF chart. It's ended more council-room arguments than any dashboard feature I've ever seen, because it's simple enough to survive a hostile question and rigorous enough that the rigor is the whole point of showing it.
+**Dana:** Now that's interesting to me in a completely different way than
+you'd expect — not because I'd contribute code, but because "fork this for
+another city" is exactly the sentence that makes me want to check whether
+the facility taxonomy and the BNA integration are portable or Chicago-
+hardcoded. If a city I advise wanted to stand up something like this, I'd
+want to know the answer's "yes, cleanly" before I recommended it, not after.
 
-**Interviewer:** Last one — what would make you stop using a site like this after trying it once?
+**LR:** Now the two areas I want to spend real time on. First: bike-lane
+obstructions. There used to be a mock obstruction layer on the main map; it's
+now been pulled off the main maps entirely and moved to a separate gated,
+watermarked preview page, explicitly synthetic, excluded from the API,
+pending an actual data-sharing conversation with Bike Lane Uprising.
 
-**us-bna-analyst:** Two things. If I ever caught a mock layer quietly promoted to a "real" badge without a visible changelog note — even once — I'd stop trusting every badge on the whole site retroactively, because the entire value proposition of a tier system is that it's honest every time, not honest until it's inconvenient. And if the ward safety index started getting cited by an actual alderman's office in a hearing as if it were an absolute risk score — "we're a 73, we need the money" — without anyone correcting the record that it's relative and unweighted for severity, I'd stop recommending the site to clients, not because the tool did anything wrong, but because I've watched exactly that kind of number get weaponized in a menu-money fight before, and once a bad number enters the political bloodstream in this city, it's brutally hard to get it back out.
+**Dana:** Good. That's the single best change you've described to me today,
+and I want to say clearly why, because I was ready to be much angrier about
+this than I'm about to be. Mock data sitting on a live map, next to real
+crash points, is a trust bomb — someone screenshots it, it ends up in a
+council deck with no asterisk, and six months later a reporter calls the
+city asking why bike lane blockages are "down 40%" when nothing changed, and
+the answer is "oh, that was never real." I have watched exactly that kind of
+thing happen with a placeholder layer somebody forgot to caveat loudly
+enough. Pulling it off the main map, watermarking it, gating it behind a
+page that announces itself as a preview, and excluding it from the machine-
+readable API so nobody's script can accidentally treat it as ground truth —
+that's the correct move, full stop. I still don't love that it exists at
+all rendered as anything, even gated — Bike Lane Uprising's actual value is
+its 3-hour refresh cadence and its use in real litigation, and a synthetic
+stand-in can't do either of those jobs, so I'd tell them: don't let anyone
+mistake the preview for a roadmap toward "we'll always have synthetic
+obstructions," make sure the page reads as "we want the real feed and here's
+what it'll look like the day we get it," not as a permanent feature.
 
-## Follow-up round
+**LR:** And the second: OYL is explicit that it does not normalize any crash
+count by ridership — no counters, no bikeshare trips, no Strava — and says so
+directly. The BNA card is network quality, separately, not crash-rate
+normalization.
 
-**Interviewer:** You called "denominators.xlsx" "the spreadsheet I've been dragging between engagements for six years," half-joking name and all — walk me through its actual structure: what columns beyond population, centerline-miles, and ridership proxy, how do you source and refresh the ridership-proxy column city to city, and would an OYL-native version of that table be trustworthy enough that you'd stop maintaining your own copy?
+**Dana:** This is the caveat I respect most on the entire site, and also the
+one I'll push hardest on, because respecting it and accepting it aren't the
+same thing. Saying "we have no exposure data and we're not going to pretend
+otherwise" is more intellectually honest than 90% of the crash dashboards
+I've reviewed for a living — most of them just don't mention it, which is
+worse than what OYL is doing. But it doesn't change my behavior much, because
+it can't — I still can't hand a raw crash-density map to a room and say
+"this is where it's dangerous," because a corridor with 40 crashes and heavy
+ridership might be objectively safer per rider than a corridor with 8 crashes
+and almost nobody riding it, and the map alone will make the second one look
+fine. What I'd accept as good-enough: even a rough proxy is better than none
+— 311 bike-related request volume as a crude ridership signal (imperfect,
+but I saw it's already in your data as a proxy layer for something else), or
+CDOT's own bike counter program if Chicago runs one, or frankly just
+publishing bikeway-mile density as an explicit *second* denominator next to
+the crash count, the way the coverage metrics already do it for
+infrastructure. The site clearly has the instinct — the ward table already
+reports percent-protected against street-miles as a denominator. Do the same
+thing for crashes: crashes per bikeway-mile alongside crashes per capita, and
+say plainly "this is a proxy for exposure, not exposure itself." That's not
+the full HIN-style fusion I'd want in an ideal world, but it's honest and
+it's better than raw dots.
 
-**Dana:** Okay, the real columns, not the ones I said off the cuff — city, state, population from the most recent ACS 5-year, total centerline miles, on-street bikeway miles split protected versus painted versus sharrow because NACTO taxonomy fights happen inside my own spreadsheet too, ridership proxy with a source flag column right next to it — that's the important part, the flag column, because "Divvy" and "Strava Metro" and "one counter station someone forwarded me a PDF of" cannot live in the same column pretending to be the same kind of number. Then a notes column that's mostly me writing things like "do not compare to Peoria, this is downtown-skewed Divvy only." Refreshing the ridership column city to city is the actual misery — there's no refresh cadence, it's ad hoc, I email whoever I worked with eighteen months ago and ask if their bikeshare vendor changed, half the time they don't know either. Would an OYL-native version replace it? Only for Chicago, and only the coverage and centerline columns, not the ridership one, because OYL told me itself it has no volume data — that's the whole point of my earlier answer. If OYL shipped a clean, refreshed coverage table for Chicago I'd stop hand-updating the Chicago row in my spreadsheet, sure, that's one row out of maybe forty cities. It doesn't touch the other thirty-nine, and it doesn't solve the ridership-proxy problem for any of them, including Chicago.
+**LR:** New areas I haven't covered yet: a news-coverage layer — recent
+bike-safety headlines from allowlisted RSS feeds, matched to wards, aldermen,
+routes, and projects with an auditable "via" showing why each match was made;
+and a proposed-and-in-progress-projects roster — hand-curated,
+volunteer-reviewed status, no geometry, just cards.
 
-**Interviewer:** You said you built the aldermanic capital-spend-vs-crash-severity tracker once "by hand-transcribing line items out of a budget PDF into a spreadsheet over a weekend" and called it "miserable." If OYL's menu-money extract got verified against source PDFs, what exactly would the output need to contain — per-ward, per-project-type, per-year breakdowns? — for you to retire that hand process, and what would still make you spot-check five wards against ordinances anyway?
+**Dana:** The news layer I'd mostly scroll past — journalism-adjacent context
+isn't my input, I work from primary data, and a headline match is one more
+layer of indirection I'd have to verify before citing. The "via" audit trail
+is the only reason I'd even glance at it — if I ever did use a matched
+headline I'd want to see exactly why the matcher thought it belonged to that
+ward before I repeated the claim, and it sounds like that's there, which is
+the right call given how easy it is for keyword matching to misattribute a
+story to the wrong ward.
 
-**Dana:** It'd need ward, fiscal year, project type as a controlled category — not free text, an actual taxonomy, "protected bike lane," "traffic calming," "resurfacing with incidental restriping," "signal work," because that resurfacing-with-incidental-restriping category is exactly where I got burned by hand — I transcribed a line item as "bike infrastructure" once because it had the word "bike" in the description and it turned out to be a repaving job that happened to repaint an existing lane, and a client almost cited that as new investment. So: dollar amount per line item, the project category, and — this is the part vendors always skip — a link back to the actual ordinance page number, not just "verified," show me where. If it had all of that, per-ward, per-year, categorized and sourced, I'd retire the hand process for Chicago tomorrow, genuinely, that weekend was miserable and I'd never do it again voluntarily. I'd still spot-check five wards, though, every time, because "verified against source PDFs" is a claim I've heard from exactly zero vendors who meant "we checked every line," it usually means someone sampled and I want to know their sample size before I trust mine doesn't need to be bigger.
+The proposed-projects roster is more interesting to me, actually, more than I
+expected. "No geometry, cards only, because no machine-readable planned-
+bikeway data exists" — that's a real, documented gap, that's not OYL being
+lazy, I've hit that exact wall myself trying to get a future-network layer
+out of a city's own planning department. A hand-curated status roster with
+citations is a legitimate stopgap for that, and it's honest about being a
+stopgap. What I'd want to know before I used it: who's doing the volunteer
+review, how often, and what happens when a project status goes stale — a
+"proposed" project that quietly died two years ago and nobody updated the
+card is worse than not having the roster at all, because now I'm citing a
+zombie project as evidence of momentum.
 
-**Interviewer:** You dismissed the schematic network map as "marketing material, not evidence" once you realized the quality border wasn't a stress classification. If OYL added the actual LTS/stress overlay you expected on first glance to that same transit-diagram format, would it graduate to something you'd put in a methodology deck, or is the transit-diagram format itself disqualifying for analyst-grade evidence no matter what data sits underneath it?
+**LR:** And the agent layer you flagged earlier — the static `/api/v1/` JSON
+API plus `llms.txt`, versioned, additive, every file opening with a `_meta`
+envelope: tier, provenance, license, link to the human page, JSON schema.
+The obstruction layer is excluded from it entirely.
 
-**Dana:** Format's not disqualifying, the missing data was. If that border actually became a stress gradient — green low-stress, red high-stress, computed off actual facility type and traffic volume and speed the way BNA does it — I'd absolutely put a screenshot of it in a deck, because honestly a schematic diagram with real LTS coloring is a better teaching tool for a council audience than my own connectivity maps, which tend to look like a heat blob nobody outside the field can parse. The caveat is it'd need a legend that says what the stress classification is actually built from — is it LTS 1 through 4 the Mekuria/Furth/Nixon way, or somebody's own three-bucket scheme — because I got burned once assuming a colored border meant stress and I'm not doing that twice, I'd read the methodology note before I trusted the color. But the schematic format itself, no, that's not the problem. Transit systems have run wayfinding diagrams for a century, there's nothing wrong with the form. The problem was there was no safety information anywhere on the page, and a route that looks solid, confident, one color end to end, actually erases the exact information — where does this route get high-stress for two blocks — that a rider needs and that I need for a connectivity argument.
+**Dana:** Okay, now I care. A static, versioned, schema'd API where every
+file declares its own tier and provenance in the payload — that's actually
+better hygiene than most paid data products I've paid for. The tier badge
+traveling *with the data itself*, not just displayed on a webpage a human
+happens to be looking at, means if someone downstream builds an AI summary
+off this feed, the "proxy" or "mock" label can't get silently stripped out
+in translation the way it does today when someone screenshots a webpage into
+a slide deck. That's the actual fix for the trust-bomb problem I described
+with the obstruction layer, generalized — and excluding the synthetic layer
+from the API entirely means no chatbot can accidentally cite mock obstruction
+data as fact to someone who asked it a real question. That's the single most
+methodologically serious thing on this whole tour, more than the BNA card,
+more than the CSV export. I'd want the crash layer's `_meta` to explicitly
+carry the no-ridership-normalization caveat and the dooring-undercount flag
+in the payload, not just on the webpage — if it's only on the webpage, the
+same caveat-stripping problem I just described happens to an AI reading the
+API instead of a human reading the site.
 
-**Interviewer:** You asked for "the actual crashes-per-10k and crashes-per-bikeway-mile numbers separately, not just the fused score" behind the ward safety index. Once you have those two raw components, what do you actually do with them — recompute your own blend with your own severity weights, hand them as-is to the advocacy-side analyst, or something else? What weighting scheme would you apply that you don't trust the site's percentile blend to have used?
+---
 
-**Dana:** I recompute, I don't hand them over raw and I don't trust the blend as delivered. First move, before any weighting at all, is severity-weight the numerator — a KABCO-style scheme, fatal and A-injury crashes weighted heavily above property-damage-only and minor injury, roughly the way HIN corridor work does it, because a raw crash count treats a fender-bump and a fatality as the same event and that's the exact raw-count-in-disguise problem I flagged on sight. Then I'd hold the two components separate rather than blend them into one percentile at all — I'd rather show a client a small two-axis plot, severity-weighted crashes per 10k on one axis, crashes per bikeway mile on the other, and let them see which wards are bad on exposure-adjusted danger versus which are bad because they simply have no bikeway miles to divide by, because those are two different policy problems with two different fixes and collapsing them into one number at percentile rank of 73 erases that distinction entirely. Only after a client's seen that would I ever hand the advocacy-side analyst anything, and I'd hand them the two raw components plus my severity weighting methodology written down, not a fused score, because the whole reason that group exists is to pair it against menu-money themselves, and I don't want to pre-bake a judgment call into their input data that they didn't sign off on.
+### Gap probing
 
-**Interviewer:** You cited that "something like one and a half percent of votes are contested" in Chicago council and named the "Vasquez ordinance" and the "Smart Streets Pilot camera ordinance" as both reported by co-sponsor list rather than roll call. Where does that specific figure and those two examples come from in your actual practice — is that something you'd verify before it went in a client deliverable, or a number you're recalling loosely and should be flagged as soft?
+**LR:** Picture yourself prepping to advise a city on network investment
+targets — your persona-appropriate scenario. You open OYL. What do you look
+for first, and where does it fail you?
 
-**Dana:** Flag it soft, honestly. The one-and-a-half-percent figure is something I picked up secondhand, probably from a Chicago-focused governance write-up somebody forwarded me a couple years back, or possibly from a conversation at a conference — I genuinely could not tell you the primary source right now if you put me on the spot, and that bothers me saying out loud, because it's exactly the kind of unsourced number I'd tear into a vendor for. The two ordinance names, same thing — those feel like real examples I've encountered in this work, but I could not swear to you today that I'm remembering the Vasquez ordinance correctly versus conflating it with a different alderman's bill, or that the Smart Streets Pilot camera ordinance is the exact right name versus something adjacent. In actual practice, no, I would never let a figure like that into a client deliverable without going back to the council's own legislative tracking system and pulling the roll call record myself first — that's a five-minute check against a primary source and I have no excuse not to do it, I just haven't needed to for this conversation. If you're writing this down anywhere that matters, mark it soft, recalled loosely, needs verification.
+**Dana:** First thing I do on any city's dashboard is find the methodology
+page, which exists here, so that's already ahead of most. Then I go looking
+for a severity-weighted, multi-source injury network — something built like
+SF's HIN, hospital data plus police data — because that's the actual
+capital-prioritization artifact I'd bring into that meeting. It fails me
+there completely: everything here is single-source, police-report crash
+data, full stop, same undercounting problem as everywhere else. The dooring
+flag is a start, but it's one narrow slice of a much bigger undercounting
+problem that touches severity and race, not just crash type.
 
-**Interviewer:** You said mock data that "looks real at a glance" is one of the two or three things you can't stand in this field, and that for the obstruction layer there's "no good in-between state" short of a real data-sharing agreement or pulling it entirely. Is that truly binary — would a visually distinct treatment for mock data, like a hatch pattern or a desaturated color instead of a matching dot style, change your flat no, or does any synthetic layer sitting on the same map as real crash points fail for you regardless of how it's rendered?
+**LR:** Of everything OYL does not have, which single absence costs you
+most?
 
-**Dana:** It's less binary than I made it sound, fair push. A genuinely distinct render — hatch pattern, desaturated gray dots that don't share a color family with anything real on the map, maybe forced-on labeling that can't be toggled off independent of the layer itself — that would move it from "I won't put this in front of anyone" to "I'd consider it in a working session with staff who I trust to read carefully," which is a real category, that's most of my own internal methodology reviews, rooms full of people whose job is to catch exactly this kind of thing. What doesn't change is the "in front of a client or a council staffer" answer, because my actual fear was never really about me misreading the badge — I said that myself, I read badges carefully — it's about the alderman's chief of staff glancing at a screen share for four seconds, seeing dots that pattern-match Bike Lane Uprising's real reporting style, and internalizing "blocked lanes on Milwaukee" as observed fact instead of placeholder. A hatch pattern helps against a careful reader. It does very little against a glance. So: yes, rendering changes my answer for professional use among people trained to parse it, no, it doesn't change my answer for the rooms I actually spend my week in, which are rooms full of people glancing, not parsing.
+**Dana:** Exposure data, no contest, and I said why already — without it,
+every crash-count comparison between corridors risks conflating danger with
+popularity. Second place, not close, is the lack of a real HIN-style fusion
+with hospital records. Those are actually the same complaint at two
+different altitudes: OYL has one denominator missing and one numerator
+uncorrected.
+
+**LR:** If OYL handed you one export a week, what's in it, who gets it?
+
+**Dana:** The ward CSV, with percent-protected and crashes-per-bikeway-mile
+added as an exposure proxy column, plus whatever the BNA subscore delta was
+that week if it moved. I'd forward that to whichever partner city or funder
+is asking me for a Chicago comparison point that week — right now that's
+nobody specific, but the ask comes up two or three times a year and I
+currently build that comparison from scratch each time.
+
+**LR:** Does the no-ridership-normalization caveat change how you'd use the
+site, concretely?
+
+**Dana:** It changes my caption, not my map. I'd still show the crash-density
+map in a room if I had to, but I'd never let it stand alone — I'd put the
+sentence "no exposure data; treat corridor comparisons as suggestive, not
+risk-ranked" directly under it every single time, in my own words, because I
+don't trust an audience to remember a caveat that lived on a different page
+than the picture they're looking at.
+
+---
+
+### Magic-wand close
+
+**LR:** Magic wand — one dataset that doesn't publicly exist appears, clean
+and current. What is it?
+
+**Dana:** Chicago bike counter data, city-run, permanent counters, published
+like a transit ridership feed. Not Strava, not a proxy — actual counts at a
+representative sample of corridors, the way Portland and a couple of others
+already do it. That's the one thing that would let me stop hedging every
+sentence I say about this city with "but we don't know how many people are
+actually riding here."
+
+**LR:** One chart or map you could put in front of your hardest audience
+that ends an argument?
+
+**Dana:** A corridor map where color is severity-weighted injury rate per
+estimated rider-exposure — hospital-fused if I'm dreaming, police-only with
+an honest undercounting disclosure if I'm not — with facility grade as a
+second encoding, protected versus painted versus nothing, laid right over
+it. That single image says "here's where it's actually dangerous, here's
+what kind of infrastructure is or isn't there, and here's how much that risk
+is or isn't explained by just having more riders." Nobody's built that for
+Chicago specifically that I've seen. If OYL's crash layer, coverage metrics,
+and a real exposure proxy ever got fused into one map like that, I would
+actually stop being the person in the room who says "you've built a
+ridership map, not a risk map."
+
+**LR:** What would make you stop using a site like this after trying it
+once?
+
+**Dana:** Finding one number I could disprove. If I pull the CSV, do my own
+math, and the safety index or the BNA score doesn't reproduce what the
+methodology page says it should, I don't come back — not because the error
+is big, but because I no longer trust anything else on the site, and I don't
+have the bandwidth to re-verify a source that's already burned me once. The
+honesty about tiers earns a lot of goodwill up front; one broken number
+spends all of it at once.
+
+---
 
 ## Analysis memo
 
+```
 participant: us-bna-analyst
-confidence_notes: The persona was fluent and internally consistent across both rounds, with domain vocabulary (BNA scoring, LTS, HIN, KABCO, COST TU1101, NACTO) used correctly and identically in both. The strongest evidence of realism is in the follow-up round, where the participant spontaneously downgraded confidence in two of his own claims (the "1.5% contested votes" figure and the two named ordinances) rather than defending them under direct questioning — that is documented professional behavior (calibrated uncertainty, "flag it soft") rather than assistant-style hedging, and it strengthens rather than weakens the read. One soft spot worth flagging: several factual citations (COST TU1101's ~10% reporting-rate estimate, SF DPH's 2015 hospital-data MOU, Mekuria/Furth/Nixon as the LTS 1-4 attribution) are produced with more textbook precision than a working analyst would typically volunteer unprompted in casual conversation — plausible for someone this specialized, but likely borrowing more citation-perfect recall than six years of field practice would leave un-fuzzed. No answer felt out-of-world or off-persona; the participant consistently reasoned from professional stakes (what survives a hostile question in a hearing) rather than from feature novelty.
+confidence_notes: >
+  Reasonably in-world throughout — the persona's fixations (denominators,
+  methodology transparency, HIN fusion, menu-money equity) map cleanly onto
+  the stimulus's new BNA card and ward one-pager, so those exchanges felt
+  earned rather than forced. Two places felt thinner: (1) her reaction to
+  the news-coverage layer is mostly indifference by design (out of her
+  evidentiary world), which is correct per the rules but means that section
+  is low-information — a real informant in her role might have more to say
+  about journalism-as-corroboration than this transcript captures. (2) her
+  enthusiasm for the agent-layer/API section leans on inferring intent
+  (tier-in-payload prevents caveat-stripping) that is plausible for her
+  world but not explicitly evidenced in the us-thinktank.md brief — flagged
+  as an inference, not given as fact, and reflected as a latent need below
+  rather than a stated one.
 
 stated_needs:
-  - need: Raw, unblended components behind any composite score (severity-weighted crashes/10k and crashes/bikeway-mile shown separately, not just a fused percentile)
-    evidence_quote: "give me the actual crashes-per-10k and crashes-per-bikeway-mile numbers separately, not just the fused score"
-    underlying_job: Must be able to independently severity-weight the inputs and show a client two distinct policy problems (exposure-adjusted danger vs. simple lack of bikeway miles) without inheriting an undisclosed weighting choice he can't defend in a hearing.
+  - need: A machine-verifiable, downloadable ward-level dataset she can
+      independently recompute and cross-check against published summary
+      numbers.
+    evidence_quote: "The CSV export is the only feature on this whole list
+      I'd call a must-have without an asterisk... give me the CSV and I'll
+      do my own math in five minutes and trust my own math."
+    underlying_job: She must be willing to attach her professional
+      credibility to any number before it goes in a client memo; the export
+      lets her verify rather than trust.
 
-  - need: Menu-money extract with a controlled project-type taxonomy and a citation back to the specific ordinance page, not just a "verified" label
-    evidence_quote: "It'd need ward, fiscal year, project type as a controlled category... a link back to the actual ordinance page number, not just 'verified,' show me where."
-    underlying_job: Needs a trustworthy capital-spend-vs-risk chart (the "Active Transportation Alliance move") to replace a miserable weekend of hand-transcribing budget PDFs, repeatable for every new client engagement.
+  - need: A per-number methodology page with actual formulas (windows,
+      weighting, denominators) rather than a general description.
+    evidence_quote: "If it exists and it's specific — not 'we use
+      industry-standard methods,' actual formulas, actual windows — that
+      buys the whole rest of the site a lot of benefit of the doubt from me."
+    underlying_job: She has been burned by consultants presenting z-scored
+      counts as risk scores, and needs a defensible paper trail before she
+      will repeat a number to a funder or reviewer.
 
-  - need: Fused hospital-plus-police, severity-coded crash data for Chicago (HIN-style, SF DPH-style severity coding)
-    evidence_quote: "Fused hospital trauma data joined to the police crash records, HIN-style, for Chicago, refreshed regularly, with the same severity coding SF DPH uses."
-    underlying_job: Needs one severity-weighted, defensible crash denominator so he stops having to build his own undercount confidence bands city by city and can drop his mandatory disclaimer sentences.
+  - need: Explicit disclosure of which methodology "vintage" a cited score
+      (specifically the BNA card) reflects, given that the underlying
+      methodology itself changes over time.
+    evidence_quote: "Our 2026 update tightened what counts as low-stress; if
+      this card is running on a stale pull from before that update, the
+      score isn't comparable to what a grant reviewer sees today."
+    underlying_job: She must certify that a comparison (year-over-year, or
+      city-to-city) is apples-to-apples before she'll let a client use it in
+      a funding submission.
 
-  - need: A real LTS/stress classification overlay (with a stated methodology) on the schematic network map
-    evidence_quote: "If that border actually became a stress gradient... I'd absolutely put a screenshot of it in a deck"
-    underlying_job: Needs a connectivity/reach visualization that is teachable to a lay council audience, since his own BNA-style connectivity maps "look like a heat blob nobody outside the field can parse."
+  - need: A visual/structural separation between "network quality/
+      connectivity" metrics (BNA) and "safety outcome" metrics (crash
+      trend) so they cannot be read as the same claim.
+    evidence_quote: "A council staffer sees 'score: 62' next to 'KSI trend:
+      down' on the same page and hears one sentence: bikes here are getting
+      safer. That's not what a BNA score says."
+    underlying_job: She needs the artifact itself to prevent the single
+      misreading she is most professionally afraid of being blamed for
+      downstream.
 
-  - need: Confirmation of the exact methodology behind the coverage denominator (does 3,945 centerline miles include alleys, is it a real total or an approximation)
-    evidence_quote: "is 3,945 centerline miles their real total or an approximation, and does it include alleys, because that number moves your percentage a lot"
-    underlying_job: Needs an audit trail on any number before it can go on a slide in front of an audience that includes a hostile questioner.
-
-  - need: Real ridership/exposure data, or at minimum a ranked list of acceptable proxies with stated skew
-    evidence_quote: "No ridership or exposure data, no contest... every crash number on this whole site... stays a numerator with no denominator."
-    underlying_job: Needs an exposure denominator so a crash layer can be presented as a risk map instead of a ridership map — the single caveat sentence he now says before every chart he shows.
-
-  - need: The mock obstruction layer either removed, gated behind a real data-sharing agreement, or rendered in a way visually incompatible with the real-crash-point styling
-    evidence_quote: "A genuinely distinct render... would move it from 'I won't put this in front of anyone' to 'I'd consider it in a working session with staff who I trust to read carefully'"
-    underlying_job: Needs assurance that no plausible-looking synthetic layer can be misremembered as real by someone glancing at a screen share for four seconds, months after the fact.
+  - need: Some form of exposure/ridership proxy joined to the crash layer,
+      even an admittedly imperfect one (bikeway-mile density, 311 volume),
+      rather than raw counts alone.
+    evidence_quote: "Do the same thing for crashes: crashes per bikeway-mile
+      alongside crashes per capita, and say plainly 'this is a proxy for
+      exposure, not exposure itself.'"
+    underlying_job: She cannot present a raw-count comparison across
+      corridors without inviting the exact "ridership map, not a risk map"
+      critique she herself levels at others.
 
 latent_needs:
-  - need: A stated stability/volatility disclosure for any percentile-ranked or windowed score (rolling vs. multi-year window, how much a rank can swing year over year)
-    inference_basis: Unprompted, before being asked to critique the index specifically, he interrogated it with "what's the window on 'crashes'?... if it's noisy year to year you'll get wards whipsawing between a 40 and a 70 with no real change on the ground, and that's going to erode trust the first time an alderman's staffer notices it." This is a spontaneous methodological reflex, not something he was asked to check — it shows he treats window stability as a precondition for citing any rank-based number, not an optional nicety.
-    risk_if_wrong: If OYL doesn't surface window/stability information, an expert user will assume the worst, avoid citing the index at all, and the site loses the chance to earn trust with what would be a one-line methodology footnote.
+  - need: A severity-weighted, multi-source ("HIN-style") injury layer that
+      corrects for police-data undercounting, distinct from a simple dooring
+      flag.
+    inference_basis: She named this unprompted as the very first thing she
+      looks for on any city dashboard ("First thing I do... then I go
+      looking for a severity-weighted, multi-source injury network") and
+      explicitly said the existing dooring flag addresses only "one narrow
+      slice of a much bigger undercounting problem." This is a documented
+      requirement of her world (HIN methodology, SF DPH fusion), not a
+      guess.
+    risk_if_wrong: If overbuilt as a literal hospital-data integration, this
+      is a multi-year, cross-agency data-sharing project OYL cannot pull off
+      alone; if underbuilt as cosmetic ("severity" color-coding without a
+      real undercounting correction), it will not satisfy her and may read
+      as performative to exactly the audience most likely to check.
 
-  - need: Structural separation, in any composite ward score, between "objective danger" and "discretionary investment / political will"
-    inference_basis: Unprompted third question about the ward index: "does this control for menu-money discretion at all... in which case the 73 isn't a danger score, it's partly a political-will score wearing a danger score's clothes." He volunteered this without being asked about menu money in that turn — it is pattern-matched from his own scar tissue (menu-money fights), evidence of a structural requirement he checks reflexively in any composite index.
-    risk_if_wrong: This is also his named deal-breaker scenario (a score "weaponized in a menu-money fight" by an alderman's office). Getting this wrong doesn't just lose a feature — by his own account it would end his willingness to recommend the site to clients at all.
+  - need: A ward-level cross-reference view that puts menu-money spend
+      directly beside the ward safety/danger index on the same screen (not
+      just adjacent sections of the one-pager).
+    inference_basis: She described, unprompted, a specific personal
+      workaround — a manual shared doc where she copy-pastes ward numbers
+      from two separate PDFs (Daily Line menu-money writeups, city capital
+      PDFs) "twice a year" specifically to eyeball this mismatch — and
+      called the one-pager's juxtaposition of the two "more useful to my
+      work than almost anything else you've shown me" if genuinely paired.
+      The workaround, not the stated praise, is the evidence.
+    risk_if_wrong: If the one-pager's menu-money and safety-index numbers
+      are laid out far apart or not visually paired, this need goes
+      unsatisfied even though the raw data exists — the risk is a layout
+      failure being mistaken for a data-coverage success.
 
-  - need: Any color-coded overlay must state its classification methodology (not just a legend key) before an expert user will trust the color
-    inference_basis: He misread the schematic map's "quality border" as an LTS overlay purely from the word "quality," then in the follow-up said, unprompted, "I'd read the methodology note before I trusted the color" and specifically wanted to know if it was "LTS 1 through 4 the Mekuria/Furth/Nixon way, or somebody's own three-bucket scheme." The self-correction between rounds — from assuming based on vocabulary to demanding sourcing before trusting a gradient — shows the requirement isn't a legend, it's a stated methodology provenance.
-    risk_if_wrong: A bare color legend with no stated classification basis will be assumed unrigorous by an analyst-class user and get routed around; worse, one bad assumption (as already happened once here) can generalize into distrust of the rest of the site's visual language.
+  - need: Machine-readable caveats (tier, undercounting/no-ridership-
+      normalization flags) carried inside the API payload itself, not only
+      rendered as page copy on the human site.
+    inference_basis: She drew a direct, unprompted analogy between the
+      obstruction-layer trust failure mode she described ("someone
+      screenshots it... six months later... 'oh, that was never real'")
+      and what she called "the same caveat-stripping problem" applied to an
+      AI reading the API instead of a human reading a page — explicitly
+      requesting the no-ridership-normalization and dooring caveats live in
+      the crash endpoint's `_meta`, not just the webpage.
+    risk_if_wrong: This assumes AI/agent consumers of the API are a real,
+      near-term audience for OYL; if that channel sees negligible use, this
+      is low-value engineering effort relative to her higher-priority asks
+      (exposure proxy, HIN-style severity fusion).
 
-  - need: A bivariate (two-axis / small-multiple) presentation mode for any two-variable risk index, not only a single blended score
-    inference_basis: In the follow-up, entirely unprompted as a product ask, he described his own standing practice: "I'd rather show a client a small two-axis plot, severity-weighted crashes per 10k on one axis, crashes per bikeway mile on the other, and let them see which wards are bad on exposure-adjusted danger versus which are bad because they simply have no bikeway miles." He already builds this by hand every time he's handed component data — a demonstrated behavior, not a stated request.
-    risk_if_wrong: If OYL ships only a single fused percentile, expert users will keep exporting components and building this view externally on their own time, meaning the ward index becomes a citation link-out rather than an analysis surface — a much smaller value contribution than the feature could otherwise provide.
-
-  - need: A provenance-confidence marking convention that extends past OYL's own data (site-wide sourcing discipline) to secondary/contextual claims users might repeat from it, mirroring the tier-badge culture he already praised
-    inference_basis: When pressed on his own "1.5% contested votes" figure and the two ordinance names, he immediately self-flagged without defending them: "Flag it soft, honestly... mark it soft, recalled loosely, needs verification." This shows that even an expert user carries unverified folklore-numbers into client work, and that OYL's tier-badge culture (which he praised as the site's biggest trust asset) is the kind of practice he wants applied even to secondary, non-core-dataset claims like sponsorship-count caveats.
-    risk_if_wrong: Low severity — if OYL doesn't extend its sourcing discipline to secondary/contextual claims (e.g. legislative caveats), a soft number could leak into a client deliverable the same way the vote-count folklore nearly did in this conversation; a minor consistency gap rather than a deal-breaker on its own.
+  - need: A visible revalidation/staleness signal on the proposed-projects
+      roster (last-reviewed date, explicit "still active" confirmation),
+      not just a status label.
+    inference_basis: She raised this without being asked a follow-up on it —
+      "a 'proposed' project that quietly died two years ago and nobody
+      updated the card is worse than not having the roster at all, because
+      now I'm citing a zombie project as evidence of momentum" — generalizing
+      from her own professional fear of citing something that turns out to
+      be stale, the same fear that drove her BNA-vintage question.
+    risk_if_wrong: If the roster's existing "status + status date + note"
+      fields already satisfy this (per the inventory, they do carry a status
+      date), the gap may be smaller than she perceives — worth checking
+      whether her objection is about a missing field or about that field's
+      visibility/prominence on the card.
 
 reactions_to_existing:
-  - feature: Geographic map — crash density layer
-    verdict: distrusts
-    why: Raw counts with no stated denominator; his reflexive caveat "you've built a ridership map, not a risk map" fires before he'll use it for anything beyond spot-checking a corridor he already suspects from other sources.
+  - feature: Transportation map (crash density + facility grade + cameras)
+    verdict: distrusts (crash layer) / would-use (facility-grade layer)
+    why: Reflexively invokes "ridership map, not risk map" for raw crash
+      density absent a denominator; treats facility-grade coloring as
+      directly usable if traceable to NACTO taxonomy.
 
-  - feature: Schematic transit-style network map (quality border)
-    verdict: misreads, then would-use conditionally
-    why: Misread the "quality border" as an LTS/stress overlay from vocabulary alone; on discovering it's only facility category with no safety data, called it "marketing material, not evidence" for methodology-deck purposes — but explicitly said the format itself isn't disqualifying, and a real stress gradient with stated methodology would graduate it into deck-worthy material.
+  - feature: Network map (schematic, comfort-floor filter, no safety data)
+    verdict: would-use, with a correction
+    why: Reads the comfort-floor filter as a lay analog to an LTS threshold
+      and approves of the instinct, but wants to know what it's actually
+      keyed off before calling it stress-equivalent in a client deck —
+      misreading risk flagged by her own hedge, not a misreading she fully
+      commits to.
 
-  - feature: Findings page (stat cards with caveats)
+  - feature: Findings card — PeopleForBikes BNA citywide score
+    verdict: would-use, conditionally / distrusts current presentation
+    why: Genuinely enthusiastic that OYL used the real named methodology
+      rather than a knockoff index, and would want to use it as a ready-
+      made grant-memo paragraph — but currently distrusts the page layout
+      because it sits beside a crash-trend card without a visual wall,
+      inviting the "score = safety" misreading she considers the single
+      most damaging failure mode a reader could walk away with.
+
+  - feature: Ward table + CSV export
     verdict: uses
-    why: Called it the one thing on the tour "genuinely well-built without qualification" — caveat-on-card matches what he tries to force into client decks; would cite individual cards as sourced citations but not build an argument on a card alone.
+    why: The one feature endorsed without qualification — lets her
+      recompute and independently verify rather than trust a published
+      number.
 
-  - feature: Table page (ward CSV, coverage/protected-share columns)
+  - feature: Ward one-pager (safety index + menu-money + alderman record)
+    verdict: would-use (menu-money/index pairing) / ignores (rest, not her
+      audience)
+    why: Explicitly says most of the one-pager isn't built for her role
+      ("not the one standing in the room handing it over"), but singles out
+      the menu-money-vs-safety-index juxtaposition as replacing a manual
+      cross-PDF workaround she currently does by hand.
+
+  - feature: Sources / Methodology pages
     verdict: uses
-    why: "Now we're talking" — closest thing on the site to how he'd build a coverage number himself; would export today into his own spreadsheet, contingent on getting the centerline-mile methodology footnoted.
+    why: First page she says she'd look for on any dashboard; explicit
+      formulas would retroactively raise her trust in the safety index she
+      otherwise flags as a marketing number.
 
-  - feature: Sources page (tier badges incl. explicit "mock")
-    verdict: uses (as a trust signal about the rest of the site, not as data)
-    why: "Makes me take the whole project more seriously than I would otherwise"; an explicit mock tier next to real is rare and reduces (without eliminating) his baseline vendor distrust.
-
-  - feature: Action page (311, Bike Lane Uprising, alderman contacts)
+  - feature: Action page (311, hearings, contacts)
     verdict: ignores
-    why: "That's resident-facing, not analyst-facing, I'd never open it in a work context."
+    why: "Not my page... I write memos that other people use to decide what
+      to call 311 about." Clean out-of-role indifference, consistent with
+      shared-rules requirement for genuine disinterest.
 
-  - feature: Contributing page
-    verdict: ignores
-    why: Would skim once out of curiosity only to check whether the data-swap architecture enforces tier badges on new sources; not a working tool for him either way.
+  - feature: Contributing / fork-for-another-city page
+    verdict: would-use (for a different purpose than intended)
+    why: Not interested in contributing code, but interested in whether the
+      BNA integration and facility taxonomy are portable, as due diligence
+      before recommending the OYL model to a different client city.
 
-  - feature: Ward safety index (0-100 blended score)
-    verdict: distrusts
-    why: Interrogates window length, severity weighting, menu-money confound, and actionability before ever using it unblended: "the one I'd cross-examine on sight."
+  - feature: Mock obstruction layer (moved to gated preview, excluded from
+      API)
+    verdict: would-use (the change itself), residual distrust of the
+      artifact
+    why: Calls the demotion off the main map "the single best change" in
+      the stimulus and explicitly approves of API exclusion as preventing
+      downstream misuse; still uneasy about the preview page existing at
+      all as a rendered artifact rather than purely a stated intent to seek
+      real data.
 
-  - feature: Mock bike-lane obstruction layer
-    verdict: distrusts / named deal-breaker for client contexts
-    why: Schema-matches a real, trusted, litigation-used source (Bike Lane Uprising) closely enough that a glancing viewer (not himself) would misremember it as real months later; softens only for expert-only working sessions with visually distinct rendering, never for client or council-staffer contexts.
+  - feature: No-ridership-normalization caveat
+    verdict: distrusts-but-respects the disclosure; behavior largely
+      unchanged
+    why: Calls it the most intellectually honest caveat on the site, better
+      than most dashboards she reviews professionally, but says it changes
+      her caption, not her map — she still won't present raw crash density
+      as risk without appending her own spoken caveat every time.
 
-  - feature: Menu-money extract (Ward Wise, unverified against PDFs)
-    verdict: would-use, heavily caveated
-    why: "The one I most want to interrogate and most want to use, in that order" — high potential value (the ATA-style capital-vs-risk chart) but the unverified-line-items caveat is real given known miscategorization risk; would spot-check five wards against ordinances before citing a citywide pattern.
+  - feature: News-coverage layer (ward-matched, "via" audit trail)
+    verdict: ignores, mostly
+    why: Out of her evidentiary world by design (works from primary data,
+      not journalism); the audit trail is the only element she'd check if
+      she ever did use a match, consistent with her general demand for
+      traceable provenance.
 
-  - feature: Alderman sponsorship counts / recorded no-votes
-    verdict: would-use with a spoken caveat every time
-    why: Treats sponsorship as an engagement proxy, not a vote tally, given how much Chicago council business passes on uncontested voice vote with no roll call behind it.
+  - feature: Proposed-projects roster (status cards, no geometry)
+    verdict: would-use, cautiously
+    why: Recognizes the underlying gap (no machine-readable planned-
+      bikeway geometry exists anywhere) as real and documented from her own
+      professional experience, not an OYL shortcoming; wants staleness
+      controls before treating any card as current evidence of momentum.
 
-data_they_bring: "denominators.xlsx" — a six-year, ~40-city spreadsheet of population (ACS 5-year), total and split (protected/painted/sharrow) bikeway centerline miles, a ridership proxy column paired with a mandatory source-flag column, and a free-text caveat/notes column; a hand-transcribed aldermanic capital-spend-vs-crash-severity tracker built once from raw budget PDFs; self-run LTS classification in QGIS against exported bikeway geometry whenever a site lacks stress data; self-geocoded, KABCO severity-weighted police-crash corridor lists with confidence bands built against known state underreporting literature; working fluency in COST TU1101 underreporting research, SF DPH's HIN methodology, BNA's tipping-point (score 50) connectivity threshold, and NACTO's 3rd-edition design-guide taxonomy.
+  - feature: Agent layer (/api/v1/, llms.txt, _meta envelope, tier/
+      provenance in-payload)
+    verdict: would-use / uses (highest-praise reaction in the interview)
+    why: Calls the tier-and-provenance-in-payload design "better hygiene
+      than most paid data products I've paid for" and the strongest
+      structural answer to the obstruction-layer trust problem, generalized
+      to every layer; wants the crash layer's caveats specifically pulled
+      into machine-readable metadata, not left as page copy.
 
-deal_breakers: (1) Any mock/synthetic layer silently promoted to a "real" badge without a visible changelog note — would retroactively distrust every badge on the site, since the entire value of a tier system is that it is honest every time, not honest until inconvenient. (2) The ward safety index (or any single fused score) being cited by an alderman's office in a hearing as an absolute, unweighted risk number without correction — would stop recommending the site to clients even while conceding "the tool did nothing wrong," because he has already watched a comparable number get weaponized in a menu-money fight and knows how hard a bad number is to retract once it enters "the political bloodstream." (3) Showing the mock obstruction layer, in its current schema-matched styling, in any client-facing or council-staffer-facing context — a flat no regardless of the mock badge's presence.
+data_they_bring: >
+  A working cross-PDF manual practice of pairing ward-level menu-money
+  writeups (The Daily Line) against capital-plan PDFs to eyeball equity
+  mismatches, redone roughly twice a year. A standing habit of diffing two
+  GIS exports of the same bikeway layer to distinguish real infrastructure
+  change from reclassification/relabeling when a city's score moves. A
+  default skepticism toward any Strava-based exposure proxy, grounded in a
+  specific remembered rebuttal (a city engineer's "BMX kid going to school"
+  objection) rather than abstract methodology critique. A working definition
+  of "convinced" that requires geometric traceability — a score delta must
+  map to a segment she can point to on a map, not just a reclassified label.
 
-vocabulary: "ridership map, not risk map" (his own coined caveat); LTS / Level of Traffic Stress, low-stress vs. high-stress, "tipping point" / score-50 connectivity threshold (BNA usage); HIN (High Injury Network), severity-weighted, KABCO codes; "denominator" used generically for any credible normalizing rate; "menu money" (Chicago aldermanic discretionary capital); "coverage" (percent of street miles with any infrastructure) distinguished from "protected share"; "a political-will score wearing a danger score's clothes"; "a floor, not an estimate" (re: structurally undercounted crash types like dooring); readily adopts OYL's own tier vocabulary (real / proxy / mock / crowdsourced / derived / no-data-yet) as soon as it's introduced.
+deal_breakers: >
+  Finding one number on the site that fails to reproduce when she does the
+  underlying math herself from the CSV/methodology page — she frames this as
+  an unrecoverable trust event ("I don't come back... I no longer trust
+  anything else on the site"), not a proportional one. Separately: a "danger
+  index" or "safety index" presented without an accessible formula reads to
+  her as marketing, not analysis, and she will not cite it regardless of how
+  good the surrounding site is.
+
+vocabulary: >
+  LTS / low-stress network, connectivity (vs. lane-miles), HIN /
+  severity-weighted, exposure / denominator, underreporting /
+  undercounting, KSI, facility taxonomy ("consistent with NACTO"),
+  "who's not in this data," "ridership map, not a risk map" (her
+  signature phrase), "vintage" (of a methodology/score), tier/provenance,
+  peer-group / population-size grouping (BNA-specific).
+
+confidence_notes: >
+  See the top-level confidence_notes field above; duplicated here per the
+  template's field name in 01-lead-researcher.md — the analyst's degree of
+  enthusiasm for the agent-layer/API design is the most extrapolated
+  reaction in this transcript (plausible for her professional world's
+  concerns about provenance, but not drawn from a specific documented
+  precedent in evidence/us-thinktank.md the way, e.g., her HIN or
+  menu-money reactions are). Treat that section's strength as a
+  medium-confidence read, not a high-confidence one.
+```

@@ -26,7 +26,7 @@
 - Consumes: `SITE_ORIGIN` (const at line 111), `B.esc(text)` (BSD escape helper, browser-only), the `copyBlock(id, text)` local helper (defined at lines ~191-193), `wireCopyButtons(root)` (wires `.agent-copy-btn` clicks, unchanged).
 - Produces: the same `<section class="section-gap home-agent">…</section>` string contract consumed by the render path and `wireCopyButtons()`. Exactly one `.agent-copy` / `#agent-oneliner` copy block remains.
 
-- [ ] **Step 1: Update the file header comment (line 3)**
+- [x] **Step 1: Update the file header comment (line 3)**
 
 Current line 3 reads:
 ```
@@ -39,7 +39,7 @@ Replace the phrase "how to use the machine-readable agent layer" with "how to as
  * assistant about the data. Same structure as action.js — a pure,
 ```
 
-- [ ] **Step 2: Replace the `agentHTML()` body**
+- [x] **Step 2: Replace the `agentHTML()` body**
 
 Replace the entire function (current lines ~183-212, from the `// The agent-layer promotion:` comment through the closing `}` of `agentHTML`) with:
 
@@ -85,7 +85,7 @@ Replace the entire function (current lines ~183-212, from the `// The agent-laye
 
 Note what is removed vs. the original: the `apiIndex` and `curl` constants, the `<h3>Point an AI assistant at it</h3>` / `<h3>Start here</h3>` / `<h3>Or from the shell</h3>` sub-headings, and the `agent-llms` / `agent-api` / `agent-curl` copy blocks. Only `agent-oneliner` survives.
 
-- [ ] **Step 3: Confirm no dangling references**
+- [x] **Step 3: Confirm no dangling references**
 
 Run:
 ```bash
@@ -93,7 +93,7 @@ grep -n "agent-api\|agent-curl\|agent-llms\|apiIndex\|Or from the shell\|Start h
 ```
 Expected: no matches (all removed).
 
-- [ ] **Step 4: Node smoke-check the module still loads**
+- [x] **Step 4: Node smoke-check the module still loads**
 
 The model export must be unaffected. Run:
 ```bash
@@ -101,7 +101,7 @@ node tests/ui/home-model.test.js
 ```
 Expected: `home-model.test.js: all assertions passed`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add site/assets/js/home.js
@@ -119,11 +119,11 @@ git commit -m "feat(home): reframe agent section as plain-language data access"
 - Consumes: the rendered `.home-agent` section from Task 1.
 - Produces: a visually correct section in light + dark, desktop + mobile.
 
-- [ ] **Step 1: Serve and load the home page**
+- [x] **Step 1: Serve and load the home page**
 
 Start the `site` preview (port 8741) and load `http://localhost:8741` in the browser pane.
 
-- [ ] **Step 2: Confirm content and behavior**
+- [x] **Step 2: Confirm content and behavior**
 
 Verify via read_page / screenshot:
 - Title reads "Ask an AI assistant about this data".
@@ -133,15 +133,15 @@ Verify via read_page / screenshot:
 - Footer line links to `contributing.html` and the link resolves.
 - No `curl`, no duplicate URL, no "Start here"/"Or from the shell".
 
-- [ ] **Step 3: Check console for errors**
+- [x] **Step 3: Check console for errors**
 
 Run read_console_messages. Expected: no errors from `home.js`.
 
-- [ ] **Step 4: Check dark theme and mobile width**
+- [x] **Step 4: Check dark theme and mobile width**
 
 Use resize_window (mobile preset) and dark colorScheme. Confirm the list and footer spacing look intentional. If `.home-agent-ways` bullets are cramped or unstyled inconsistently with the rest of the page, add minimal rules to `site/assets/css/style.css` (match existing list spacing conventions); otherwise change nothing.
 
-- [ ] **Step 5: Commit (only if CSS changed)**
+- [x] **Step 5: Commit (only if CSS changed)**
 
 ```bash
 git add site/assets/css/style.css

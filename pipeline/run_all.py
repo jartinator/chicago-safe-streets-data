@@ -17,11 +17,14 @@ Stages:
      headlines — matching happens in aggregate)
      (ward-accountability layer — see DECISIONS.md; each is non-fatal on failure)
   5. snapshot_bike_routes (dated copy — builds install-date history over time)
-  6. make_mock_obstructions
-  7. spatial_join
-  8. classify_safety_topic (LLM tagging stage — explicit exception, see CONTRIBUTING.md)
-  9. aggregate            (writes site/data/*)
-  10. emit_api           (writes site/api/v1/ — the agent-first static API)
+  6. spatial_join
+  7. classify_safety_topic (LLM tagging stage — explicit exception, see CONTRIBUTING.md)
+  8. aggregate            (writes site/data/*)
+  9. emit_api            (writes site/api/v1/ — the agent-first static API)
+
+Note: OYL publishes no obstruction data. See "see a blocked bike lane? report it
+at Bike Lane Uprising" on the action page — there is no obstruction pull/generation
+stage in this pipeline.
 
 Weekly refresh = run this, review the printed sanity output, commit site/data.
 Prints a per-stage timing table at the end so the slowest stages are visible.
@@ -55,7 +58,6 @@ LIVE_STAGES = [
 ]
 COMMON_STAGES = [
     ["snapshot_bike_routes.py"],
-    ["make_mock_obstructions.py"],
     ["spatial_join.py"],
     ["classify_safety_topic.py"],
     ["aggregate.py"],

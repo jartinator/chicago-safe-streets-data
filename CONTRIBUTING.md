@@ -18,7 +18,6 @@ honors those schemas.
 - `pipeline/spatial_join.py` — crash → containing ward + nearest bikeway
   segment (30 m cap, distances computed in EPSG:26916 / UTM 16N).
 - `pipeline/aggregate.py` — owns every published schema; writes `site/data/`.
-- `pipeline/make_mock_obstructions.py` — generates the mock obstruction layer.
 - `pipeline/make_fixtures.py` — synthetic raw inputs for offline runs and CI.
 - `pipeline/run_all.py` — one-command entry point (`--fixtures` for offline).
 - `site/` — static vanilla JS + vendored Leaflet. One `<name>.html` +
@@ -33,18 +32,22 @@ honors those schemas.
   in the same PR — CI (`pipeline/check_api.py`) and reviewers will catch
   drift, but it's on you to know where that source of truth lives.
 
-## Swap the obstruction data source
+## Add an obstruction data source
 
-The mock layer exists to be replaced. Produce `site/data/obstructions_mock.geojson`'s
-exact schema (see SCHEMA.md → "obstructions_mock.geojson") from any source:
+On Your Left! publishes no bike-lane-obstruction data today — see a blocked
+bike lane? report it at Bike Lane Uprising (https://www.bikelaneuprising.com).
+SCHEMA.md documents a normalized obstruction schema as the swap-in target for
+whichever source arrives first (no file currently published). Produce that
+exact schema (see SCHEMA.md → "Normalized obstruction schema") from any
+source:
 
 - a Bike Lane Uprising export, once a data-sharing agreement exists;
+- a Smart Streets FOIA delivery (see docs/foia/smart-streets-enforcement.md);
 - a 311-derived extract (set `data_tier: "proxy"`);
 - another city's crowdsourced feed.
 
-Keep every field, set `data_tier` honestly, and nothing downstream
-re-architects. The `obstruction_type` enum is a placeholder pending
-consultation with Bike Lane Uprising — treat it as swappable.
+Keep every field and set `data_tier` honestly, and nothing downstream
+re-architects.
 
 ## Fill the stub layers
 
