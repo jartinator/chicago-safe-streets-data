@@ -267,6 +267,25 @@ FACILITY_CATEGORY_MAP = {
 
 FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow", "trail", "other"]
 
+# The on-street subset. This is the only basis on which our own snapshots and CDOT's
+# released dashboard are directly comparable: the public Bike Routes layer structurally
+# omits off-street trails and access paths, so a snapshot's trail/other miles are 0 while
+# CDOT's dashboard counts ~55. Splicing the two into one 2010->present series therefore
+# runs on the on-street basis, with CDOT's off-street figures carried alongside for the
+# years they exist. The two agree to 0.03 mi where they overlap (OYL 2026-07 on-street
+# 445.91 vs CDOT's 2025 column 445.88), which is what makes the splice defensible.
+ON_STREET_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow"]
+OFF_STREET_CATEGORIES = ["trail", "other"]
+
+# CDOT's own low-stress definition, taken from the Complete Streets dashboard's
+# "Low-Stress Bikeways" row: protected lanes + neighborhood greenways + off-street.
+# It deliberately EXCLUDES buffered lanes — verified against the dashboard's own
+# arithmetic (2010 low-stress = 47.2 = trails alone; 2011 = 49.2 = 2 PBL + 47.2 trail).
+# This differs from commitments_metrics.LOW_STRESS_CATEGORIES, which is OYL's own
+# network-level definition and does count buffered. Use THIS one when scoring CDOT's
+# 80%-low-stress pledge, because the pledge is CDOT's and must be judged on its terms.
+CDOT_LOW_STRESS_CATEGORIES = ["protected", "greenway", "trail"]
+
 # Coverage denominator: which street-centerline segments count as the city's
 # bikeable surface-street grid. CLASS: 1=expressway (cycling prohibited),
 # 2=arterial, 3=collector, 4=local, 5/7=alley-type stubs, 9=ramp,
@@ -373,7 +392,7 @@ DIVVY_MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024
 
 DATA_TIERS = ("real", "proxy", "mock", "crowdsourced", "derived")
 
-CONTRACT_VERSION = "1.16"
+CONTRACT_VERSION = "1.17"
 
 # Agent-first static API (site/api/v1/) — a separate, smaller namespace of JSON
 # files generated from the already-committed site/data/* contract for LLM

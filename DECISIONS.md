@@ -659,3 +659,51 @@ environment forced a deviation. Newest last.
     that delivery-since-commitment is unmeasurable (SCHEMA.md, contract v1.16) are all
     now outdated but are **deliberately left untouched here** — rewiring the published
     series is a contract change and gets its own PR, so this one stays reviewable.
+
+36. **The published mileage series is spliced onto CDOT's released history, on the
+    on-street basis, and the promise-vs-delivered card starts naming the gap.**
+    Follow-on to #35, which landed the FOIA data but deliberately left the published
+    contract alone. `bikeway_mileage_series.json` now runs from **2010** rather than
+    2026-07-11: years 2010-2025 are CDOT's own year-end figures from the released
+    Complete Streets dashboard, later points are OYL snapshots of the public layer,
+    and every point carries a `source` saying which it is.
+
+    The splice runs on the **on-street subset** because that is the only basis on
+    which the two sources are comparable — the public Bike Routes layer structurally
+    omits off-street trails, so a snapshot reports 0 trail miles where CDOT reports
+    ~55. Folding those into one `total` would have put a 55-mile cliff at the seam
+    that looked like the trails being demolished. Off-street miles now live in their
+    own `off_street` field, `null` (unknown) rather than `0` on snapshot points. The
+    evidence that the splice is sound: where the two overlap they land **0.03 miles
+    apart** (OYL's independently computed 2026-07 on-street total 445.91 vs CDOT's
+    2025 column 445.88). That agreement is asserted as a test, not just observed once.
+
+    The `commitments-vs-delivered` finding changes from a placeholder into the
+    finding. Its old caveat said delivery since the 2023 commitment was unmeasurable
+    pending this FOIA; it is now measurable, and the answer is pointed. Against the
+    2023 Chicago Cycling Strategy's 150-new-miles pledge, CDOT counts 125.89 miles
+    installed 2023-2025 (84%), but **22.04 of those miles are concrete upgrades to
+    protected lanes that already existed**. Genuinely new mileage is 103.85 (69%).
+    The card leads with the new-only figure because the pledge says "new bikeways,"
+    and publishes CDOT's larger number directly beside it rather than suppressing it
+    — the gap is a counting difference within CDOT's own spreadsheet, not a dispute
+    about the miles, and saying so is what makes the finding defensible rather than
+    merely adversarial.
+
+    Same discipline on the 80%-low-stress pledge, where a subtler trap sits: **CDOT
+    does not count buffered lanes as low-stress.** Its dashboard's low-stress row is
+    protected + greenway + off-street, verified against the sheet's own arithmetic
+    (2010 low-stress = 47.2 = trails alone). OYL's network-level definition does count
+    buffered. Scoring CDOT's pledge on OYL's broader definition would have flattered
+    it. So `config.CDOT_LOW_STRESS_CATEGORIES` is introduced and used for pledge
+    scoring, OYL's definition stays for describing the network, and every published
+    number states which it used. On CDOT's basis the pledge is met (80.3%); counting
+    only new miles, it is missed (76.2%).
+
+    Contract v1.17, breaking — see SCHEMA.md. Two safeguards came along: a `--fixtures`
+    run never splices the real history onto synthetic snapshots (the output would be
+    part real, part invented, and provenance stamping cannot express that), and
+    `refresh_reporting.py` was found to be silently **dropping** the
+    `commitments-vs-delivered` card on every offline run, since it rebuilds
+    `findings.json` wholesale but `build_findings_core` never produced that card. Both
+    the drop and the stale-series read are fixed here.

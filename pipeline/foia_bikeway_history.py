@@ -2,11 +2,13 @@
 
 The public CDOT Bike Routes layer (`hvv9-38ut`) is current-state only, and the
 quarterly Bike Lane Mileage Tracker on the Complete Streets page is overwritten
-in place. That is why `aggregate.build_bikeway_mileage_series` builds its series
-*forward* from `data/snapshots/` — with only two weeks of snapshots so far.
+in place — so OYL could only ever build mileage history *forward*, from the
+snapshots under `data/snapshots/`, which start 2026-07-11.
 
 CDOT's response to FOIA S145367-071326 (released 2026-07-24) supplies the history
-directly. Two records in it matter:
+directly. The output of this module is spliced onto the front of the published
+series by `aggregate.build_bikeway_mileage_series`, and drives the delivered-miles
+ledger in `commitments_metrics` (DECISIONS.md #35-#36). Two records in it matter:
 
 1. **`CompleteStreets_Dashboard.xlsx`, sheet `R_Dashboard`.** CDOT's own program
    dashboard, keyed by stable `R_*` row labels, holding annual centerline miles by

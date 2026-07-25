@@ -227,19 +227,39 @@ can still hide a painted→protected upgrade, which the per-category split surfa
 Contract v1.9 below (all nullable).
 
 ## bikeway_mileage_series.json — tier derived
-Citywide bikeway miles by facility type per snapshot date — a machine-readable equivalent
-of CDOT's quarterly Bike Lane Mileage Tracker, built from accumulated snapshots so it can
-be correlated against crash trends over time:
+Citywide **on-street** bikeway miles by facility type over time, 2010 → present — a
+machine-readable equivalent of CDOT's Bike Lane Mileage Tracker, spliced from two
+sources and tagged per point:
 ```
 { data_tier: "derived", note,
   series: [{ date: "YYYY-MM-DD",
-             by_category: { protected, buffered, painted, greenway, sharrow, trail, other },
-             total }] }
+             source: "cdot_foia_dashboard" | "oyl_snapshot",
+             by_category: { protected, buffered, painted, greenway, sharrow },
+             total,
+             off_street: { trail, other } | null,
+             off_street_total: number | null }] }
 ```
-One entry per `bike_routes_*.geojson` snapshot, sorted by date ascending. Miles use the
-CDOT-provided centerline mileage (`mi_ctrline`) where present, else projected geometry
-length. The Bike Routes layer has no install-date field, so the series is built **forward**
-from snapshots — it is not backfillable from the current portal data (see DECISIONS.md).
+Sorted by date ascending.
+
+- `cdot_foia_dashboard` — CDOT's own year-end figures for **2010–2025**, from the Complete
+  Streets program dashboard released under FOIA S145367-071326 (see
+  `data/foia/S145367-071326/`). Dated `YYYY-12-31`. This is history we could not compute.
+- `oyl_snapshot` — one entry per committed `bike_routes_*.geojson`, computed from the
+  public CDOT layer, continuing the series forward. Miles use the CDOT-provided centerline
+  mileage (`mi_ctrline`) where present, else projected geometry length.
+
+**The series is on-street only.** That is the only basis on which the two sources are
+comparable: the public Bike Routes layer structurally omits off-street trails, so a
+snapshot's trail mileage is 0 while CDOT reports ~55. Where the two overlap they agree to
+0.03 mi (OYL 2026-07 on-street 445.91 vs CDOT's 2025 column 445.88), which is what makes
+the splice defensible. CDOT's off-street figures ride in `off_street` for the years it
+reported them; on snapshot points `off_street` is **`null`, meaning unknown, not zero** —
+publishing 0 there would read as the trails having disappeared.
+
+Facility-mix changes between years can reflect **upgrades** as well as new construction: a
+buffered lane rebuilt as protected moves miles from `buffered` to `protected` with no
+change in total. CDOT's buffered mileage falling after 2022 (115.6 → 106.5) is exactly
+this. See DECISIONS.md #35–#36.
 
 ## council_records.json — tier real (topic_relevant tag: tier derived)
 Street/bike-safety-related City Council legislation, unioned from the Legistar
@@ -1140,3 +1160,54 @@ crash counts (a future ward-page integration, not this PR).
   `divvy_ward_exposure.json` PLANNED section above. `pipeline/pull_divvy.py`
   and the `config.py` Divvy stanza ship as scaffolding only; nothing is
   published and no contract shape is added this round.
+
+## Contract v1.17 changes (bikeway mileage history; promise-vs-delivered becomes measurable)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.17"`. This round is
+**not** purely additive — `bikeway_mileage_series.json` changes shape (below).
+
+- **BREAKING — `bikeway_mileage_series.json` moves to an on-street basis and gains
+  history.** `by_category` no longer carries `trail` or `other`; those move to a new
+  `off_street` object, which is `null` on snapshot points because the public Bike
+  Routes layer cannot see off-street mileage at all. `total` is now the on-street
+  total. Each point gains a `source` of `"cdot_foia_dashboard"` or `"oyl_snapshot"`.
+  A consumer that summed `by_category` for a "total network" figure will now get the
+  on-street figure and must add `off_street_total` where it is non-null. In exchange
+  the series runs from **2010** instead of 2026-07-11 — 16 years of CDOT's own annual
+  figures, recovered via FOIA S145367-071326. Full field documentation in the
+  `bikeway_mileage_series.json` section above; rationale in DECISIONS.md #36.
+
+- **`findings.json`'s `commitments-vs-delivered` card now measures delivery.** Its
+  previous caveat said flatly that miles delivered since the 2023 commitment were not
+  measurable from OYL data pending the install-date FOIA. That FOIA was answered, so
+  the card now reports miles built since 2023 against the 150-mile pledge, on two
+  explicit bases: genuinely new mileage (the headline, because the pledge says "new")
+  and CDOT's own larger count, which folds in concrete upgrades to protected lanes
+  that already existed. Both numbers, and the gap between them, are published. The
+  card's `stat` changes from `"150 new miles"` to `"<delivered> of 150 new miles"`,
+  and its `title` from "Promised bikeway miles vs. the network on the ground" to
+  "Promised bikeway miles vs. what got built". When the released history is absent
+  (a `--fixtures` run, or a fork that has not pulled it) the card falls back to the
+  old snapshot-only framing and says so — it never implies a measurement it did not make.
+
+- **Two low-stress definitions now coexist, and each number says which it uses.**
+  `config.CDOT_LOW_STRESS_CATEGORIES` (protected + greenway + trail) is CDOT's own,
+  verified against its dashboard's arithmetic, and **excludes buffered lanes**.
+  `commitments_metrics.LOW_STRESS_CATEGORIES` (protected + buffered + greenway +
+  trail) is OYL's network-level definition and includes them. CDOT's 80%-low-stress
+  pledge is scored on CDOT's definition, because the pledge is CDOT's; network
+  descriptions elsewhere continue to use OYL's.
+
+- **`data/cdot_bikeway_history.json`** (added in the previous round, contract-neutral
+  then) is now a pipeline input rather than a standalone artifact: `aggregate.py` and
+  `refresh_reporting.py` both read it. It is not published under `/api/v1/`; the
+  history reaches API consumers through `bikeway_mileage_series.json`.
+
+- **Fix: `refresh_reporting.py` no longer drops the `commitments-vs-delivered` card.**
+  The script fully rebuilds `findings.json`, but `build_findings_core` never produced
+  that card (it needs the curated roster and CDOT's install history, not crash data),
+  so an offline refresh silently deleted a published finding. It is now rebuilt and
+  re-appended alongside the BNA card. The script also rebuilds
+  `bikeway_mileage_series.json` itself now — both of its inputs (`data/snapshots/`
+  and `data/cdot_bikeway_history.json`) are committed, so it is fully derivable
+  offline and no longer read back as a possibly-stale file.
