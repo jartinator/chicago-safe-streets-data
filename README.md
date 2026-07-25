@@ -103,6 +103,7 @@ data/snapshots/   Dated copies of the CDOT Bike Routes layer
 SCHEMA.md    Published data contracts (the site's data/ files ARE the dataset)
 DECISIONS.md Reasoned calls where the project docs were silent
 CONTRIBUTING.md   Swap data sources, fill stub layers, fork for another city
+AGENTS.md    Guardrails for an AI agent changing this repo (never/ask/always)
 ```
 
 ## Run it locally
