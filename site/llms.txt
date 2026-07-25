@@ -4,7 +4,7 @@ Police-reported cyclist crash data, bikeway network quality, and City Council ac
 
 generated_at: 2026-07-22T01:57:35+00:00
 provenance: socrata
-contract_version: 1.17
+contract_version: 1.18
 
 ## Start here
 https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json

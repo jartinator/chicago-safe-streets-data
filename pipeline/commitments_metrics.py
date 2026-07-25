@@ -24,7 +24,7 @@ so the pledge and the network are scored on one consistent basis rather than two
 Pure functions over already-parsed dicts — no I/O, no network — so this stays
 testable and safe to call from aggregate.py once the inputs are loaded.
 """
-from config import LOW_STRESS_CATEGORIES
+from config import LOW_STRESS_CATEGORIES, ON_STREET_CATEGORIES
 
 HEADLINE_COMMITMENT_ID = "150-new-miles"
 LOW_STRESS_COMMITMENT_ID = "80-percent-low-stress"
@@ -164,4 +164,164 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
         "caveat": caveat,
         "map_state": {"screen": "table", "layers": [], "filters": {}},
         "data_tier": "derived",
+    }
+
+
+# --- the ledger: score every roster entry against CDOT's own figures -----------------
+#
+# Added once FOIA S145367-071326 made delivery measurable. The roster spans
+# administrations on purpose: the lens is the bikeway network, not who was in office,
+# and a pledge is scored the same way regardless of who made it.
+
+def _network(history):
+    return {p["year"]: p["by_category"] for p in
+            ((history or {}).get("annual") or {}).get("network") or []}
+
+
+def _installed(history):
+    return {p["year"]: p for p in
+            ((history or {}).get("annual") or {}).get("installed") or []}
+
+
+def _reported_installed(history):
+    return (((history or {}).get("annual") or {}).get("cdot_reported_totals")
+            or {}).get("installed_on_street") or {}
+
+
+def _sum_cats(by_cat, categories):
+    """Sum the named categories, or every on-street category when none are named."""
+    if categories:
+        return round(sum(by_cat.get(c, 0.0) for c in categories), 2)
+    return round(sum(v for k, v in by_cat.items() if k in ON_STREET_CATEGORIES), 2)
+
+
+def _measure(commitment, history, categories):
+    """(actual_miles, window_label) for one reading of a commitment, or (None, reason)."""
+    basis = commitment.get("basis")
+    net, inst, rep = _network(history), _installed(history), _reported_installed(history)
+    years = sorted(net)
+    if not years:
+        return None, "no history available"
+    target = commitment.get("target_year") or years[-1]
+    baseline = commitment.get("baseline_year")
+
+    if basis == "network_state":
+        if target not in net:
+            return None, "no figures for %s" % target
+        return _sum_cats(net[target], categories), "as of %s" % target
+
+    if basis == "network_delta":
+        if target not in net or baseline not in net:
+            return None, "no figures for %s/%s" % (baseline, target)
+        delta = _sum_cats(net[target], categories) - _sum_cats(net[baseline], categories)
+        return round(delta, 2), "%s to %s" % (baseline, target)
+
+    if basis == "miles_added":
+        total = 0.0
+        for year in years:
+            if baseline is not None and year <= baseline:
+                continue
+            if year > target:
+                continue
+            point = inst.get(year)
+            if not point:
+                continue
+            if categories:
+                total += _sum_cats(point.get("by_category") or {}, categories)
+            else:
+                # CDOT's own on-street installed total, minus the concrete upgrades it
+                # folds in (they add no new mileage - see DECISIONS.md #36).
+                total += rep.get(str(year), 0.0) - point.get("protected_concrete_upgrade", 0.0)
+        lo = (baseline + 1) if baseline is not None else years[0]
+        return round(total, 2), "%s to %s" % (lo, target)
+
+    return None, "not scored on this basis"
+
+
+def score_commitment(commitment, history):
+    """One roster entry -> a scored ledger row. Never invents a number it cannot compute."""
+    row = {
+        "id": commitment.get("id"),
+        "text": commitment.get("text"),
+        "claim_quote": commitment.get("claim_quote"),
+        "target": commitment.get("number"),
+        "unit": commitment.get("unit"),
+        "year_committed": commitment.get("year_committed"),
+        "deadline": commitment.get("deadline"),
+        "basis": commitment.get("basis"),
+        "categories": commitment.get("categories"),
+        "source_name": commitment.get("source_name"),
+        "source_record": commitment.get("source_record"),
+        "citations": commitment.get("citations"),
+        "data_tier": "derived",
+    }
+    basis = commitment.get("basis")
+
+    if basis in (None, "not_measurable"):
+        row.update({"measurable": False,
+                    "reason": commitment.get("not_measurable_reason",
+                                             "No basis defined for scoring this commitment.")})
+        return row
+
+    if basis == "low_stress_share":
+        ledger = delivered_since(history, (commitment.get("baseline_year") or 0) + 1)
+        if not ledger:
+            row.update({"measurable": False, "reason": "CDOT install history unavailable."})
+            return row
+        target = commitment.get("number")
+        row.update({"measurable": True,
+                    "actual": ledger["low_stress_share_new_basis"],
+                    "actual_as_claimed": ledger["low_stress_share_cdot_basis"],
+                    "window": "%s to %s" % (ledger["since_year"], ledger["through_year"]),
+                    "pct_of_target": round(100 * ledger["low_stress_share_new_basis"] / target)
+                                     if target else None,
+                    "met": bool(target) and ledger["low_stress_share_new_basis"] >= target,
+                    "as_claimed_met": bool(target) and ledger["low_stress_share_cdot_basis"] >= target})
+        return row
+
+    actual, window = _measure(commitment, history, commitment.get("categories"))
+    if actual is None:
+        row.update({"measurable": False, "reason": window})
+        return row
+
+    target = commitment.get("number")
+    row.update({"measurable": True, "actual": actual, "window": window,
+                "pct_of_target": round(100 * actual / target) if target else None,
+                "met": bool(target) and actual >= target})
+
+    alt = commitment.get("alt_categories")
+    if alt:
+        alt_actual, _ = _measure(commitment, history, alt)
+        if alt_actual is not None:
+            row["actual_as_claimed"] = alt_actual
+            row["as_claimed_categories"] = alt
+            row["as_claimed_met"] = bool(target) and alt_actual >= target
+            row["alt_note"] = commitment.get("alt_note")
+    return row
+
+
+def build_commitments_ledger(commitments_doc, history_doc):
+    """Every roster commitment scored against CDOT's own figures, oldest first."""
+    commitments = (commitments_doc or {}).get("commitments") or []
+    if not commitments:
+        return None
+    rows = [score_commitment(c, history_doc) for c in commitments]
+    rows.sort(key=lambda r: (r.get("year_committed") or 0, r.get("id") or ""))
+    scored = [r for r in rows if r.get("measurable")]
+    return {
+        "data_tier": "derived",
+        "note": (
+            "Chicago's published bikeway commitments scored against CDOT's own year-by-year "
+            "figures (FOIA S145367-071326). Both sides of every comparison are the City's own "
+            "data. The roster spans administrations deliberately - the lens is the bikeway "
+            "network, not who was in office, and every pledge is scored the same way. `basis` "
+            "says how each was measured; `actual_as_claimed` appears where a claim is only "
+            "reachable under a more generous reading of which facilities count, and both "
+            "numbers are published rather than one being chosen. Commitments with "
+            "measurable=false are listed with a reason and never given a number."
+        ),
+        "source": "CDOT FOIA S145367-071326, released 2026-07-24",
+        "commitments": rows,
+        "scored": len(scored),
+        "met": sum(1 for r in scored if r.get("met")),
     }

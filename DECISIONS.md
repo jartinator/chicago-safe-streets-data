@@ -745,3 +745,48 @@ environment forced a deviation. Newest last.
     no-history fallback path and the card's caveat, which now states one definition
     instead of reconciling two. Contract-neutral: no schema field changes, so no
     version bump.
+
+38. **The promise-vs-delivered ledger covers every administration, not just the
+    current one.** Extending the roster past the 2023 Cycling Strategy was raised
+    as an editorial question, since the pre-2023 pledges belong to former mayors.
+    The owner's call, and it is the right one: **the lens is the topic, not the
+    political image of rotating administrations.** A bikeway pledge is scored the
+    same way regardless of who made it, and a roster that began in 2023 would have
+    been a claim about whose record gets examined rather than about the network.
+
+    Three commitments join the roster, all sourced from City Council budget
+    filings surfaced by the eLMS attachment sweep (`docs/foia/elms-attachment-
+    sweep.md`) — records the City Clerk's FOIA denial had implied did not exist in
+    Council's system, and which turned out to be filed under "City Council" rather
+    than any committee:
+
+    - **"The first 100 miles of protected bike lanes" by end of 2015**
+      (`O2015-6370`, Budget Overview 2016) — CDOT's own figures put protected at
+      **21.35 mi**. It reaches 108.35 only if buffered lanes count as protected.
+    - **"An additional 50 miles of protected bike lanes by 2019"** (same document) —
+      delivered **+2.95 mi**, 6% of the pledge; +23.45 even on the generous reading.
+    - **"100 new miles in her first term"** (`O2022-3024`, Budget Overview 2023) —
+      **met**, at 117.03 genuinely new miles over 2019-2022.
+
+    One of the three is a success. Publishing it matters as much as publishing the
+    two failures: a ledger that only ever reports shortfalls is an argument, not a
+    measurement.
+
+    Two design decisions carry the weight. First, commitments are **not all the
+    same kind of claim** — "50 miles of protected lanes" is a change in the standing
+    network, "150 miles of new bikeways" is a sum of annual installations, and
+    "80% low-stress" is a ratio. Each roster entry therefore declares a `basis`
+    (`network_state` / `network_delta` / `miles_added` / `low_stress_share` /
+    `not_measurable`) and the scorer dispatches on it, rather than one formula being
+    stretched across incompatible claims. Second, where a claim is only reachable
+    under a more generous reading of which facilities count, the ledger publishes
+    **both** numbers via `actual_as_claimed` instead of picking one. The 2015 pledge
+    is the case that forced this: calling it simply "missed" would be as much a
+    framing choice as calling it "met", and the honest answer is that it depends
+    entirely on whether buffered paint counts as protection — which #37 already
+    decided it does not, for reasons that predate this ledger.
+
+    An entry with no `basis`, or one whose target year has no figures, is reported
+    `measurable: false` with a reason and **never given a number** — the 70%-half-mile-
+    access pledge sits there today, since OYL publishes no population-weighted access
+    measure. Contract v1.18, purely additive.
