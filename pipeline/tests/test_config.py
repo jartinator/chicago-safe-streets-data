@@ -19,3 +19,34 @@ def test_osm_trails_query_config_present_and_filtered():
     assert '"highway"="cycleway"' in q
     # bbox coordinates are interpolated into the query
     assert "41.6" in q and "-87.95" in q
+
+
+def test_low_stress_categories_are_derived_from_the_grade_map():
+    """The two definitions drifted once; they must not be able to drift again.
+
+    MAIN_ROUTE_GRADE_MAP has graded buffered lanes as "paint" since the network-tiers
+    work, but a separate hand-written low-stress list in commitments_metrics counted
+    buffered as low-stress — so the network map and the findings copy disagreed about
+    106 miles. LOW_STRESS_CATEGORIES is now derived from the grade map. This test
+    fails if anyone reintroduces a hand-maintained list that diverges.
+    """
+    from config import (LOW_STRESS_CATEGORIES, LOW_STRESS_GRADES,
+                        MAIN_ROUTE_GRADE_MAP, FACILITY_CATEGORIES)
+
+    expected = {c for c, g in MAIN_ROUTE_GRADE_MAP.items() if g in LOW_STRESS_GRADES}
+    assert set(LOW_STRESS_CATEGORIES) == expected
+    assert set(LOW_STRESS_CATEGORIES) <= set(FACILITY_CATEGORIES)
+
+    # The substantive commitments this encodes, spelled out so a silent grade-map
+    # edit has to confront them.
+    assert "buffered" not in LOW_STRESS_CATEGORIES, "buffered is paint, not protection"
+    assert "painted" not in LOW_STRESS_CATEGORIES
+    assert "sharrow" not in LOW_STRESS_CATEGORIES
+    assert {"protected", "greenway", "trail"} == set(LOW_STRESS_CATEGORIES)
+
+
+def test_commitments_metrics_uses_the_shared_definition():
+    # Guards against a module-local copy creeping back in.
+    import commitments_metrics
+    from config import LOW_STRESS_CATEGORIES
+    assert commitments_metrics.LOW_STRESS_CATEGORIES is LOW_STRESS_CATEGORIES
