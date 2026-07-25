@@ -80,12 +80,23 @@ concrete redirect; no PAC review is warranted.
 
 The letter is committed at `data/foia/F145909-071726/`.
 
-**One lead worth keeping.** The Clerk volunteered that eLMS search has a
-**"search within attachments"** filter (open the filter panel, enable it) that returns a
-more complete result than the default. We already pull eLMS via `pull_agenda_items.py`, but
-from matter records and agenda PDFs — full-text search *inside* meeting attachments is a
-different surface, and it is exactly where CDOT's committee presentations would surface if
-they are public anywhere. Not pursued yet; see `data/foia/F145909-071726/README.md`.
+**The lead was followed — 2026-07-25. See `elms-attachment-sweep.md`.** The Clerk's
+"search within attachments" tip maps to `includeAttachments=true` on the undocumented eLMS
+`/search` API, and it is decisive: `bikeway mileage` returns 0 results without it and 95
+with it. Two findings, no FOIA required:
+
+1. **The denial is independently corroborated.** Across 394 committee meetings and 1,378
+   files (2010–2026), there is not one presentation, handout, or exhibit — only notices,
+   agendas, summaries, and their superseded versions. Every mileage phrase returns 0 when
+   filtered to either committee. Request #2 could not have succeeded against any office;
+   the records are not in Council's system at all.
+2. **Mileage reaches Council through the annual Budget Overview**, filed under "City
+   Council" rather than any committee — which is why committee-filtered searches came back
+   empty. `O2015-6370` (Budget 2016) claims "the first 100 miles of protected bike lanes"
+   by end of 2015; CDOT's own FOIA'd figures put protected at **21.35 mi**, reaching 108.35
+   only if buffered lanes are counted as protected. Its "additional 50 miles of protected
+   by 2019" delivered **+2.95 mi**. A third claim — 100 new miles in Lightfoot's first term
+   — does hold up (117.03 genuinely new miles, 2019–2022).
 
 ## On receipt
 
