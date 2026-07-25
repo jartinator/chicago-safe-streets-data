@@ -46,11 +46,15 @@ Chicago posts requester name + request text in public agency FOIA logs, so
 filing personally puts the maintainer's name in a public record every time.
 Going forward:
 
-- New requests file as the project (organizational requester), using the
-  project email alias once created (tracked in issue #33). Personal names
-  appear only where an agency demands a natural person for delivery.
-- The three staged letters in `docs/outbox/` predate this rule — re-head
-  them to the project identity before sending.
+- **The project address exists: `onyourleftopensource@gmail.com`**
+  (created 2026-07-23; forwards to the maintainer's personal inbox, and the
+  personal Gmail has send-as configured for it). All FOIA correspondence
+  uses this address. When sending from Gmail, select the
+  onyourleftopensource "From" identity before firing.
+- New requests file as the project (organizational requester). Personal
+  names appear only where an agency demands a natural person for delivery.
+- The three staged letters in `docs/outbox/` were re-headed to the project
+  identity on 2026-07-23 — signature "On Your Left!" + the project address.
 - Any public template OYL publishes for third parties (the agentic-layer
   "FOIA seed-bank," see `docs/research/agentic-layer/REPORT-agentic-functions.md`)
   defaults to "on behalf of the On Your Left! open-data project" with the
