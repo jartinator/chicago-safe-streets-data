@@ -71,8 +71,11 @@ def test_envelope_schema_requires_the_documented_field_set():
     required = set(envelope_schema["required"])
     assert required == {"api_version", "contract_version", "generated_at", "provenance",
                         "data_tier", "license", "attribution", "human_page",
-                        "methodology", "schema"}
+                        "methodology", "schema", "caveat_contract", "agent_instruction"}
     assert "tier_note" not in required  # optional, mixed-tier only
+    # caveat_contract/agent_instruction are required, not optional: the contract
+    # declaration and the imperative go in every file or the promise is empty.
+    assert "caveats" not in required  # optional, only when one applies
 
 
 # --- citywide.json: with and without protected_share --------------------------

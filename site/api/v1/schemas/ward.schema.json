@@ -10,14 +10,30 @@
     "ward_padded": { "type": "string", "pattern": "^[0-9]{2}$" },
     "safety": {
       "type": "object",
-      "description": "ward_safety_index record verbatim (incl. monthly) plus score_note. additionalProperties true — passthrough.",
+      "description": "ward_safety_index record verbatim (incl. monthly) plus score_note and the caveat co-location blocks. additionalProperties true — passthrough. Every quotable number here carries its qualifier in its own object (windows.*, crash_trend) or as a `<field>_caveat` sibling (monthly, comparable_danger_score). See pipeline/caveats.py and claim.schema.json.",
       "properties": {
         "ward": { "type": "string" },
         "comparable_danger_score": { "type": ["number", "null"] },
+        "comparable_danger_score_caveat": { "$ref": "claim.schema.json#/$defs/caveat_text" },
+        "comparable_danger_score_caveat_tags": { "$ref": "claim.schema.json#/$defs/caveat_tags" },
         "score_note": { "type": "string" },
-        "monthly": { "type": "array" }
+        "monthly": { "type": "array" },
+        "monthly_caveat": { "$ref": "claim.schema.json#/$defs/caveat_text" },
+        "monthly_caveat_tags": { "$ref": "claim.schema.json#/$defs/caveat_tags" },
+        "windows": {
+          "type": "object",
+          "description": "The two 12-month crash windows. They are separate objects carrying separate blocks on purpose (CC-2): the recent window is provisional and the prior one has closed, so a single caveat over both would be false about one of them. Do not merge them.",
+          "properties": {
+            "window_end": { "type": "string" },
+            "recent_12mo": { "$ref": "claim.schema.json#/$defs/qualifier_block" },
+            "prior_12mo": { "$ref": "claim.schema.json#/$defs/qualifier_block" }
+          },
+          "required": ["recent_12mo", "prior_12mo"],
+          "additionalProperties": true
+        },
+        "crash_trend": { "$ref": "claim.schema.json#/$defs/qualifier_block" }
       },
-      "required": ["ward", "score_note", "monthly"],
+      "required": ["ward", "score_note", "monthly", "monthly_caveat", "monthly_caveat_tags"],
       "additionalProperties": true
     },
     "alderman": {
@@ -74,9 +90,10 @@
       "type": "object",
       "properties": {
         "corridors": { "type": "string" },
-        "wards_index": { "type": "string" }
+        "wards_index": { "type": "string" },
+        "council": { "type": "string" }
       },
-      "required": ["corridors", "wards_index"],
+      "required": ["corridors", "wards_index", "council"],
       "additionalProperties": false
     }
   },

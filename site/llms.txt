@@ -11,40 +11,40 @@ https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json
 The discovery entry point: the full endpoint list with byte sizes, endpoint *families* (e.g. one file per ward), and fetch recipes for common questions.
 
 ## Endpoints
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (22,523 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (22,847 bytes)
   Citywide monthly cyclist crash trend, headline findings, and bikeway mileage / protected-share stats.
   e.g. "How many cyclists were killed or seriously injured in Chicago recently?"
   e.g. "Is cyclist crash frequency in Chicago trending up or down?"
   e.g. "What share of Chicago's on-street bikeway network is protected?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/corridors.json (44,420 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/corridors.json (44,744 bytes)
   Per-street corridor crash rates and bikeway facility mix, plus labeled crash hotspot intersections.
   e.g. "Which Chicago streets have the highest cyclist crash rate per km?"
   e.g. "Where are Chicago's worst cyclist crash hotspot intersections?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/wards/index.json (58,409 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/wards/index.json (58,733 bytes)
   All 50 Chicago wards' comparable danger scores, crash counts, and bikeway stats in one file, ranked, with links to each ward's full detail file.
   e.g. "Which Chicago ward is most dangerous for cyclists?"
   e.g. "How does my ward's bikeway mileage compare to other wards?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/news.json (23,678 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/news.json (24,002 bytes)
   Recent news coverage of Chicago bike/street safety, matched to wards, alderpersons, main routes, and proposed projects.
   e.g. "Is there recent news coverage about bike safety in a specific Chicago ward?"
   e.g. "What's the latest news about a Chicago bikeway project or corridor?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/proposed.json (10,491 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/proposed.json (10,815 bytes)
   Curated roster of proposed and in-progress Chicago bikeway/trail projects with volunteer-reviewed status, official links, and recent news coverage.
   e.g. "What bike or trail projects are proposed or under construction in Chicago?"
   e.g. "What is the current status of the 606 / Bloomingdale Trail extension?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/routes/index.json (16,716 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/routes/index.json (17,040 bytes)
   All 21 Chicago main bike routes' mileage-by-grade breakdown, crash totals, and protected-lane share, plus network interchange points, with links to each route's full segment-level detail file.
   e.g. "Which Chicago main bike routes are the most protected?"
   e.g. "How many miles of the 606 / Bloomingdale Trail are off-street?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/index.json (3,097 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/index.json (3,421 bytes)
   City Council committee hearings relevant to bike/street safety and a derived summary of tagged legislative activity, with links to the full records and aldermen files.
   e.g. "Has Chicago City Council held any recent hearings on bike safety?"
   e.g. "How much bike-safety legislation has City Council introduced?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/records.json (84,117 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/records.json (84,441 bytes)
   Chicago City Council matters (ordinances, resolutions) matched to bike/street-safety topics, with sponsors, wards, status, and a link to the official record.
   e.g. "What bike-safety ordinances has City Council introduced recently?"
   e.g. "Which alderman sponsored the most bike-safety legislation?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/aldermen.json (26,453 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/aldermen.json (26,777 bytes)
   Current 50-ward alderman roster with contact info, each one's council bike-safety sponsorship record (where an exact match exists) and ward menu-spending proxy.
   e.g. "Who is my alderman and what's their bike-safety record?"
   e.g. "Has my alderman sponsored any bike-safety legislation?"

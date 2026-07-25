@@ -1271,3 +1271,74 @@ both and says which is which. See DECISIONS.md #38.
   filings found via the eLMS attachment sweep (`docs/foia/elms-attachment-sweep.md`).
 - Not exposed under `/api/v1/` this round; the ledger reaches API consumers only through
   `findings.json`'s `commitments-vs-delivered` card for now.
+
+## Agent-API caveat co-location (contract v1.18, additive — no version bump)
+
+The `site/api/v1/` namespace now obeys a **caveat co-location contract**,
+declared per file as `_meta.caveat_contract: "v1"` and implemented in
+`pipeline/caveats.py`. Additive throughout: no existing key changes shape or
+meaning, so per this repo's own rule (README, "For agents") the change ships
+under the current `CONTRACT_VERSION` of `1.18` rather than bumping it.
+
+**Why no bump, stated plainly:** `contract_version` is emitted from
+`config.CONTRACT_VERSION` and `check_provenance.py` requires it to equal
+`site/data/meta.json`'s. That file is written by the aggregate step, which this
+change does not run — `site/data/` is untouched here. A bump therefore belongs
+to the next real refresh, and this is flagged for the maintainer rather than
+silently skipped: if you prefer the stamp to move with the contract, bump
+`CONTRACT_VERSION` during the next Monday refresh, when `meta.json` is rewritten
+anyway.
+
+- **`_meta.caveat_contract` (new, required)** — `"v1"`. Declares that every
+  quotable number in the file carries its qualifier in its own object (Form A),
+  as a `<field>_caveat` sibling (Form B), or via `caveat_ref` into a map in the
+  **same** file (Form C). Cross-file references are forbidden by the contract.
+- **`_meta.agent_instruction` (new, required)** — the positive imperative, one
+  verbatim string in every file. An instruction that varies per file reads as
+  decoration; `test_agent_instruction_identical_in_every_file` pins it.
+- Both are declared in `envelope.schema.json`'s `properties` **and** `required`
+  — the envelope is `additionalProperties: false`, so they had to be.
+
+**`wards/ward-NN.json`** is the first payload migrated, because it is the file a
+ward-scoped agent fetches alone and its counts previously carried no qualifier
+at all — the "recent months are provisional" caveat lived only in `llms.txt` and
+`index.json`, one fetch away:
+
+- `safety.windows.recent_12mo` — Form A, `data_tier: "real"`, tags
+  `provisional` + `not_ridership_normalized`.
+- `safety.windows.prior_12mo` — Form A, tagged `not_ridership_normalized`
+  **only**. This window has closed. The two blocks are deliberately separate and
+  must not be merged: one caveat over `windows` would be false about the prior
+  window (rule CC-2), and a blanket disclaimer that is wrong about one of the
+  numbers it covers teaches a reader to discount a figure that is settled.
+- `safety.crash_trend` — Form A, `data_tier: "derived"`, plus `small_n` when
+  either 12-month count is under `SMALL_N_THRESHOLD` (20). Data-derived, not
+  editorial: 11 of 50 wards carry it today.
+- `safety.monthly` — Form B (`monthly_caveat` / `monthly_caveat_tags`) on
+  `safety`, plus per-item `caveat_tags: ["provisional"]` on the trailing
+  `PROVISIONAL_MONTHS` (2) entries, so the provisional boundary is machine-
+  visible instead of prose.
+- `safety.comparable_danger_score` — Form B, beside the existing `score_note`,
+  which keeps its current value. Retire `score_note` at the next `api_version`;
+  removing it now would not be additive.
+- `see_also.council` — new link, closing a parity gap: a ward file pointed at
+  crashes and corridors but never at the council record for the same ward.
+
+**New schema `claim.schema.json`** carries the shared `$defs` (`qualifier_block`,
+`caveat_tags` closed enum, `caveat_text`, `item_override`, `caveat_ref_block`,
+`caveats_map`), referenced by `ward.schema.json`.
+
+**`PROVISIONAL_MONTHS = 2` and `SMALL_N_THRESHOLD = 20` ship as flagged
+proposals, not findings** — `caveats.ASSUMPTIONS` is the machine-readable form of
+that label. `PROVISIONAL_MONTHS` is being observed forward (one row per build in
+`_system/marge/oyl-provisional-observations.csv`); a backward `git diff` over
+this repo's history would measure pipeline churn and mislabel it as agency
+amendment behaviour. `SMALL_N_THRESHOLD` is a judgement about adequate evidence
+and nothing can settle it.
+
+**Not migrated yet, by design.** `citywide.json` findings still carry prose
+caveats without the structured `caveat_tags` twin, and 6 of its 9 caveat strings
+name no referent ("A floor, not a full count."), so the CC-3 lint is scoped to
+the ward files rather than run globally. `wards/index.json` needs Form C, since
+50 inline blocks would take it past the size budget. Those are separate phases
+and each is independently stop-safe.
