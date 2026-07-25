@@ -47,7 +47,15 @@ per-category sum reconciles to the total CDOT published in the same sheet.
 ## Contents
 
 `records/` holds the release as received. Directory layout and filenames are CDOT's,
-not ours.
+not ours. **CDOT released 67 files; 60 are committed here** (the 7 excluded scans are
+listed below and hashed in `manifest.json`).
+
+Two of the released files are themselves zips — `GIS/2010_Bike-Network_Final.zip` and
+`GIS/2025_Bike Network_internal.shp.zip`. They are committed **sealed, exactly as sent,
+and are not unpacked here**, so every path under `records/` is a file CDOT actually
+transmitted. Unpack them into a scratch directory if you need to read them; do not
+commit the extraction. `manifest.json` is generated from the release zip itself rather
+than from a working copy, for the same reason.
 
 ### GIS layers (`records/GIS/`)
 

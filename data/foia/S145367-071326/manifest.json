@@ -10,10 +10,10 @@
     "release_package": "OneDrive_2026-07-24.zip",
     "release_folder": "2026-07-20 - Bike Lane Mileage Tracker"
   },
-  "note": "Complete hash list of every file CDOT released. Files with in_repo=false are part of the release but excluded from git for size (scanned PDF year-end reports, ~69 MB); their hashes are recorded here so the omitted originals stay verifiable.",
-  "file_count": 82,
-  "bytes_total": 105198219,
-  "bytes_in_repo": 32759463,
+  "note": "Hash list of every file CDOT released, taken from the release zip itself. Files with in_repo=false are part of the release but excluded from git for size (scanned PDF year-end reports); their hashes are recorded here so the omitted originals stay verifiable. Two entries are themselves zips (2010_Bike-Network_Final.zip, '2025_Bike Network_internal.shp.zip'); they are committed as received and NOT unpacked, so every path below is a file CDOT sent.",
+  "file_count": 67,
+  "bytes_total": 101338095,
+  "bytes_in_repo": 28899339,
   "files": [
     {
       "path": "2011-Bikeways-Year-End-Report.pdf",
@@ -397,96 +397,6 @@
       "path": "GIS/WORKING_2020_BIKE_FACILITIES_09.22.shx",
       "bytes": 6724,
       "sha256": "a212a00be28eb2d9da4f796a21af8926639e4635d6f1a89aad11daae9ad1b509",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.cpg",
-      "bytes": 5,
-      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.dbf",
-      "bytes": 126012,
-      "sha256": "cfe03897e2fd17d8b85918128af779c510f9a6cc7ca63e3b0e9daa6f0858f0ab",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.prj",
-      "bytes": 497,
-      "sha256": "1e0787b78265c46f0b95f3ddd30c1f09316bb96a00d751d9826d0e41c424f319",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.sbn",
-      "bytes": 3780,
-      "sha256": "750b2f68b1e3dee2bef128e1fc7f83ae7426027949c01e11e8d1ff747e52687f",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.sbx",
-      "bytes": 444,
-      "sha256": "45c6e78850fbf54a722969f41103e3d2d0c33af2fac3a94ee6b954ff94fc26ab",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.shp",
-      "bytes": 196324,
-      "sha256": "858d1ef8d1e46a04dc261d645aa6918e46fc537b628ea2e566cef3a72ed38847",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.shp.xml",
-      "bytes": 16545,
-      "sha256": "19c703582eb9777941af0b6b6939984d591ff21dd91d57cfd88fbe6dbd4e2e85",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2010_Bike-Network_Final/2010_Bike-Network_Final.shx",
-      "bytes": 2964,
-      "sha256": "95a479ccc6607db958f2ae9540641dda18cffc71caecb67382fe846eca200283",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.cpg",
-      "bytes": 5,
-      "sha256": "3ad3031f5503a4404af825262ee8232cc04d4ea6683d42c5dd0a2f2a27ac9824",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.dbf",
-      "bytes": 3286674,
-      "sha256": "aeb86128f486741bdd63404fcd3eb44d3f7f8dcb6005180baf909fbf71306c7d",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.prj",
-      "bytes": 506,
-      "sha256": "f3c627d05fe84353fc093b8e0257e9599909538938b922f4d954482896a6015a",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.sbn",
-      "bytes": 9660,
-      "sha256": "25f864ba00d7e7e72ac2a98fc0b845802902f70dc39269ff9899511646cd951a",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.sbx",
-      "bytes": 692,
-      "sha256": "09974fc0e15ddc9298d7d3504f99134390d46fe0d071e1f6a3d1bf22470d883d",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.shp.xml",
-      "bytes": 207852,
-      "sha256": "7e9024771c92587ecddc767ffc9f1b8445ba353d8df41e4db13f9a7af16ec0db",
-      "in_repo": true
-    },
-    {
-      "path": "GIS/_unz_2025_Bike_Network_internal.shp/2025_Bike Network_internal.shx",
-      "bytes": 8164,
-      "sha256": "35928d3fe783bb8b9834ba8e956ee0b96f7538a7f3e665fb996665921e0f902d",
       "in_repo": true
     },
     {
