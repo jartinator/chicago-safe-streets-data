@@ -15,6 +15,9 @@ tracked) — this folder links to them.
 
 - **`log.md`** — one row per request: date sent, tracking #, statutory due
   date, status. Update it the day anything is sent or answered.
+- **`elms-attachment-sweep.md`** — the 2026-07-25 eLMS sweep that followed the
+  City Clerk's "search within attachments" tip: where bikeway mileage reaches
+  Council, and two Budget Overview claims checked against CDOT's own figures.
 - **`cdot-counter-crawl.md`** — the six-agent reference crawl behind the
   counter request (52 ranked citations, dead-end list, named contacts).
 

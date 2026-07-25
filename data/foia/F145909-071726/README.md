@@ -45,7 +45,14 @@ matter records and agenda PDFs. A full-text search *inside* meeting attachments 
 different surface, and it is where CDOT's committee presentations — the exact documents
 this request asked for — would surface if they exist anywhere public.
 
-Not pursued in this change. Logged here so the lead is not lost.
+**Followed 2026-07-25 — see [`docs/foia/elms-attachment-sweep.md`](../../../docs/foia/elms-attachment-sweep.md).**
+The tip maps to `includeAttachments=true` on the eLMS `/search` API and is decisive
+(`bikeway mileage`: 0 results without it, 95 with it). The sweep **corroborates this
+denial independently**: across 394 committee meetings and 1,378 files there is not one
+presentation or exhibit, and every mileage phrase returns 0 when filtered to either
+committee. The records were never filed with Council. It also found where the figures
+*do* surface — the annual Budget Overview, filed under "City Council" — and two claims
+there that CDOT's own FOIA'd numbers do not support.
 
 ## Note on the denial
 
