@@ -707,3 +707,41 @@ environment forced a deviation. Newest last.
     `commitments-vs-delivered` card on every offline run, since it rebuilds
     `findings.json` wholesale but `build_findings_core` never produced that card. Both
     the drop and the stale-series read are fixed here.
+
+37. **Low-stress stops being a hand-written list and becomes derived from the grade
+    map — buffered lanes are paint, not protection.** The repo held two definitions
+    of low-stress and they disagreed. `MAIN_ROUTE_GRADE_MAP` has graded buffered
+    lanes as `"paint"` since the network-tiers work of #24/#33, with the comment
+    "still just paint & signs" — so the network map, the site's most-used surface,
+    already refused to treat them as protective. But `commitments_metrics` carried a
+    separate literal `LOW_STRESS_CATEGORIES` that counted buffered as low-stress.
+    The two had contradicted each other about 106 miles of paint, unnoticed, since
+    the tiers work landed. CDOT's own dashboard excluding buffered (#36) is what
+    surfaced it, but the contradiction was internal and would have been worth fixing
+    regardless.
+
+    The fix is structural rather than a corrected list: `config.LOW_STRESS_CATEGORIES`
+    is now **derived** from `MAIN_ROUTE_GRADE_MAP` via `LOW_STRESS_GRADES`
+    (protected, mellow, offstreet), which makes this class of drift unrepresentable —
+    a future edit to the grade map moves both surfaces together or fails a test. It
+    resolves to protected + greenway + trail. `CDOT_LOW_STRESS_CATEGORIES`, added one
+    round earlier to score CDOT's pledge on CDOT's terms, is deleted: the derived
+    definition is identical to CDOT's, so one constant now serves both, and the
+    published copy no longer has to explain which of two definitions each number used.
+
+    The substance is a judgment about riders, not about matching CDOT. A buffered
+    lane is paint with more paint; nothing physical stands between a rider and
+    traffic, which is the same conclusion the level-of-traffic-stress literature and
+    PeopleForBikes' BNA (already integrated here, #35's neighbor) reach for
+    unprotected paint on busy streets. Chicago's low-stress share of the on-street
+    network moves 58.4% -> 34.5% as a result. The less flattering number is the
+    defensible one, and it is now the same number the network map has implied all
+    along.
+
+    Published effect is small today: the shared constant feeds the
+    `commitments-vs-delivered` card, whose pledge percentages were already computed
+    on CDOT's (identical) definition and so do not move — 80.3% on CDOT's counting,
+    76.2% counting only new miles. What changes is the network-level sentence in the
+    no-history fallback path and the card's caveat, which now states one definition
+    instead of reconciling two. Contract-neutral: no schema field changes, so no
+    version bump.

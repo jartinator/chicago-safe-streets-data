@@ -11,7 +11,7 @@ https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json
 The discovery entry point: the full endpoint list with byte sizes, endpoint *families* (e.g. one file per ward), and fetch recipes for common questions.
 
 ## Endpoints
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (22,552 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (22,523 bytes)
   Citywide monthly cyclist crash trend, headline findings, and bikeway mileage / protected-share stats.
   e.g. "How many cyclists were killed or seriously injured in Chicago recently?"
   e.g. "Is cyclist crash frequency in Chicago trending up or down?"

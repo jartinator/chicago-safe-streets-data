@@ -15,20 +15,16 @@ installed."** Over 2023-2025 that is 22.04 of 125.89 miles. The pledge says *new
 bikeways, so the headline figure excludes upgrades; CDOT's own larger number is
 published beside it rather than suppressed.
 
-**2. CDOT does not count buffered lanes as low-stress.** Its dashboard's low-stress
-row is protected + greenway + off-street only (config.CDOT_LOW_STRESS_CATEGORIES).
-OYL's own network-level definition below is broader and does count buffered. The 80%
-pledge is CDOT's, so it is scored on CDOT's definition; the network-level description
-uses OYL's. Mixing them would be the easy mistake, so each number says which it uses.
+**2. Buffered lanes are not low-stress here.** `config.LOW_STRESS_CATEGORIES` is derived
+from the main-route grade map, which has called buffered lanes "paint" since the
+network-tiers work — paint and signs put nothing between a rider and traffic. That
+resolves to protected + greenway + trail, which is also exactly CDOT's own definition,
+so the pledge and the network are scored on one consistent basis rather than two.
 
 Pure functions over already-parsed dicts — no I/O, no network — so this stays
 testable and safe to call from aggregate.py once the inputs are loaded.
 """
-from config import CDOT_LOW_STRESS_CATEGORIES
-
-# OYL's network-level low-stress definition. Broader than CDOT's: it counts buffered
-# lanes. Used to describe the network as it stands, never to score CDOT's pledge.
-LOW_STRESS_CATEGORIES = ("protected", "buffered", "greenway", "trail")
+from config import LOW_STRESS_CATEGORIES
 
 HEADLINE_COMMITMENT_ID = "150-new-miles"
 LOW_STRESS_COMMITMENT_ID = "80-percent-low-stress"
@@ -71,7 +67,7 @@ def delivered_since(history_doc, start_year):
         cdot_counted += reported[year]
         upgrades += upgrade
         new_only += reported[year] - upgrade
-        low_stress_new += sum(cats.get(c, 0.0) for c in CDOT_LOW_STRESS_CATEGORIES)
+        low_stress_new += sum(cats.get(c, 0.0) for c in LOW_STRESS_CATEGORIES)
 
     if not cdot_counted:
         return None
@@ -119,8 +115,9 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             f"CDOT's {year} Chicago Cycling Strategy commits to {number} {unit} of "
             f"new bikeways, 80% of them low-stress. As of {as_of}, Chicago's on-street "
             f"bikeway network totals {total:,.0f} miles, of which {low_stress:,.0f} "
-            f"miles ({low_stress_share}%) are low-stress by OYL's count (protected, "
-            f"buffered, greenways, trails; painted lanes and sharrows are not). "
+            f"miles ({low_stress_share}%) are low-stress: protected lanes and "
+            f"neighborhood greenways. Buffered and painted lanes and sharrows are not — "
+            f"they put paint and signs between a rider and traffic, nothing more. "
             f"Source: {source}."
         )
         caveat = ("This pairs the published commitment against the current network snapshot, "
@@ -141,7 +138,7 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             f"but {ledger['concrete_upgrade_miles']:,.1f} of those miles are concrete upgrades "
             f"to protected lanes that already existed, not new bikeway. On the low-stress "
             f"pledge, {ledger['low_stress_share_cdot_basis']}% of the miles CDOT counts are "
-            f"low-stress by CDOT's definition; counting only genuinely new miles, "
+            f"low-stress; counting only genuinely new miles, "
             f"{ledger['low_stress_share_new_basis']}%. Source: {source}; installation figures "
             f"from {FOIA_REFERENCE}."
         )
@@ -150,12 +147,12 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             "counting difference, not a dispute about the underlying miles. The pledge says "
             "\"new bikeways,\" which is why the headline excludes the "
             f"{ledger['concrete_upgrade_miles']:,.1f} miles of concrete upgrades; CDOT's larger "
-            "number is shown alongside so both countings are visible. The low-stress shares use "
-            "CDOT's definition (protected lanes, neighborhood greenways, off-street) because the "
-            "pledge is CDOT's — note that CDOT does not count buffered lanes as low-stress, "
-            "while OYL's network-level figures elsewhere on this site do. The pledge carries no "
-            "published deadline, so this is progress-to-date, not a verdict on whether CDOT will "
-            "meet it."
+            "number is shown alongside so both countings are visible. Low-stress here means "
+            "protected lanes, neighborhood greenways, and off-street trails — buffered and "
+            "painted lanes and sharrows are excluded, the same way this site's network map "
+            "grades them, and the same way CDOT's own dashboard counts them. The pledge carries "
+            "no published deadline, so this is progress-to-date, not a verdict on whether CDOT "
+            "will meet it."
         )
         stat = f"{ledger['new_miles']:,.1f} of {number} new {unit}"
 

@@ -277,14 +277,10 @@ FACILITY_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow"
 ON_STREET_CATEGORIES = ["protected", "buffered", "painted", "greenway", "sharrow"]
 OFF_STREET_CATEGORIES = ["trail", "other"]
 
-# CDOT's own low-stress definition, taken from the Complete Streets dashboard's
-# "Low-Stress Bikeways" row: protected lanes + neighborhood greenways + off-street.
-# It deliberately EXCLUDES buffered lanes — verified against the dashboard's own
-# arithmetic (2010 low-stress = 47.2 = trails alone; 2011 = 49.2 = 2 PBL + 47.2 trail).
-# This differs from commitments_metrics.LOW_STRESS_CATEGORIES, which is OYL's own
-# network-level definition and does count buffered. Use THIS one when scoring CDOT's
-# 80%-low-stress pledge, because the pledge is CDOT's and must be judged on its terms.
-CDOT_LOW_STRESS_CATEGORIES = ["protected", "greenway", "trail"]
+# Which main-route grades count as low-stress. Everything the grade map calls "paint"
+# (buffered and painted lanes alike) or "none" (sharrows) does not: paint and signs put
+# nothing between a rider and traffic. See DECISIONS.md #37.
+LOW_STRESS_GRADES = {"protected", "mellow", "offstreet"}
 
 # Coverage denominator: which street-centerline segments count as the city's
 # bikeable surface-street grid. CLASS: 1=expressway (cycling prohibited),
@@ -343,6 +339,18 @@ MAIN_ROUTE_GRADE_MAP = {
     "sharrow": "none",
     "other": "none",
 }
+
+# Low-stress facility categories, DERIVED from the grade map above rather than
+# listed by hand. Hand-maintained, the two drifted: the grade map has called
+# buffered lanes "paint" since the network-tiers work, while a separate literal
+# list in commitments_metrics counted them as low-stress — so the network map and
+# the findings copy disagreed about 106 miles of paint. Deriving makes that class
+# of contradiction unrepresentable. Currently resolves to protected + greenway +
+# trail, which is also exactly CDOT's own "Low-Stress Bikeways" definition
+# (verified against its dashboard arithmetic: 2010 low-stress = 47.2 = trails
+# alone) — corroboration, not the reason. See DECISIONS.md #37.
+LOW_STRESS_CATEGORIES = tuple(sorted(
+    c for c, grade in MAIN_ROUTE_GRADE_MAP.items() if grade in LOW_STRESS_GRADES))
 
 # Buffer distance (meters) for matching mellow_routes geometry against
 # bike_routes when building mellow_connectors.geojson (network tiers v2 design
