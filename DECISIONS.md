@@ -971,3 +971,29 @@ environment forced a deviation. Newest last.
     readable via `--audit-colocation` — deduplicated, so 50 ward files sharing
     one gap are a single line and 107 `monthly` items are a single line. An
     unreadable backlog is an ignored backlog.
+
+42. **`AGENTS.md` — the guardrails an agent needs before it edits, including
+    the one the caveat contract cannot enforce.** A root-level never / ask
+    first / always file for AI agents changing this repo, plus a landmines
+    section. Adapted from the `oyl-agent-layer` handoff draft; every file path,
+    command, constant and `DECISIONS.md` citation in it was executed or read
+    against the tree before landing, and the draft's `python3` invocations were
+    normalized to `python`.
+
+    **The bullet that made this gate the next phase.** CC-8 checks a restated
+    value only in canonical parenthetical form — `(65 crashes)`. A number
+    written into running prose is checked by nothing, at emit time or in CI, and
+    that narrowness is deliberate: a rule scraping every number in every caveat
+    would fire on `(DECISIONS.md #8)` across all 50 ward files, and a
+    build-blocking check that cries wolf gets switched off. The consequence is
+    that hand-written caveat prose is the one place in this contract with no
+    automated guard, which is exactly what the remaining `citywide.json`
+    `findings[]` rewrites are. That work was therefore sequenced behind both the
+    CI checker (#41) and this file, rather than being done first because it
+    looked like the smallest change.
+
+    Also recorded here because nothing else states it in one line: **a check
+    that cries wolf gets switched off.** `check_colocation.py` stays quiet on
+    four legitimate conditions by design, and tightening any of them into a hard
+    failure would block the Monday auto-refresh. A guardrail that blocks routine
+    work does not survive contact with a volunteer schedule.
