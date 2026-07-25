@@ -1,11 +1,11 @@
 ---
-status: ready
+status: sent
 initiative: foia
 to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → Transportation)
 subject: FOIA follow-up to S145367-071326 — one incomplete GIS file and three narrower items
 drafted: 2026-07-25
-sent: —
-tracking: —
+sent: 2026-07-25
+tracking: — (pending GovQA acknowledgment)
 tracker: #33
 ---
 
@@ -17,6 +17,13 @@ written so it can be answered on its own in a couple of minutes. Items 2–4 are
 explicitly optional and each carries its own drop-it-if-burdensome line, per
 `docs/projects/collaboration-principles.md` (no goose chases; make it cheap to say
 yes). Send from the **onyourleftopensource@gmail.com** identity.*
+
+*Sending note: keep bare domains out of the body. A scheme-less domain like
+`data.cityofchicago.org` gets auto-linkified by Gmail into a
+`google.com/url?q=...` redirect, which reads as a tracking link and is
+routinely stripped or blocked by government mail filters. Name the portal and
+cite the dataset ID instead — it is the more precise identifier anyway. Any URL
+that genuinely must appear should carry an explicit `https://` scheme.*
 
 *Detail behind every claim below: `data/foia/S145367-071326/README.md`.*
 
@@ -104,8 +111,8 @@ part, please cite the specific exemption per 5 ILCS 140/9.
 ## One optional note, offered as a resource
 
 Items like these stop being necessary if the install-date attribute travels with the
-published data. The public Bike Routes layer on the data portal
-(`data.cityofchicago.org`, dataset `hvv9-38ut`) carries facility type and geometry but no
+published data. The public Bike Routes layer on the Chicago Data Portal
+(dataset `hvv9-38ut`) carries facility type and geometry but no
 install or upgrade date — yet CDOT's internal layers clearly maintain `BW_INST_YR` and
 `BW_INST_MO` already. Publishing those two existing columns on the public layer would let
 anyone reconstruct the network's history without asking CDOT for anything, and would likely
@@ -120,3 +127,23 @@ Sincerely,
 On Your Left! — an open-source Chicago bike-safety data project
 onyourleftopensource@gmail.com
 https://jartinator.github.io/chicago-safe-streets-data/
+
+---
+
+## Sent
+
+**Sent 2026-07-25, 05:23 UTC**, by email to `cdotfoia@cityofchicago.org`.
+
+**First request filed under the project identity** — sent from
+`onyourleftopensource@gmail.com`, per the 2026-07-23 standing rule. Requests #1
+and #2 predate the rule and went out under the maintainer's personal name, which
+is what appears in Chicago's public FOIA logs for those two.
+
+No tracking number yet. Precedent (Smart Streets, 2026-07-21) is that email to a
+department FOIA inbox is routed into GovQA and issued a reference the same day.
+
+**Clock.** Sent on a Saturday, so CDOT will log receipt Monday **2026-07-27**.
+Illinois allows 5 business days from receipt, extendable by 5 — so a response is
+due around **2026-08-03**, and the +5 extension would move it to about
+**2026-08-10**. Nudge if there is no acknowledgment at all by **2026-08-05**.
+Update this file and `docs/foia/log.md` row 5 the moment a reference number lands.
