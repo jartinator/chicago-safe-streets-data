@@ -73,3 +73,13 @@ forward-only snapshot approach is the only path" — is now moot. They were reta
 
 Detail, layer inventory, and the four known gaps in the release:
 [`data/foia/S145367-071326/README.md`](../../data/foia/S145367-071326/README.md).
+
+### The City Clerk fallback — denied 2026-07-20 (ref F145909-071726), and moot
+
+The corroboration request above was denied: the Clerk holds no responsive records because
+it is not the office that maintains them (each department is its own "public body" under
+5 ILCS 140/2(a)). Since CDOT granted the primary request in full four days later, the
+fallback costs nothing and needs no appeal. The Clerk did point at eLMS's **"search within
+attachments"** filter as a fuller search surface than the default — a lead this project has
+not used yet. Letter and detail:
+[`data/foia/F145909-071726/README.md`](../../data/foia/F145909-071726/README.md).

@@ -7,7 +7,8 @@ tracked) — this folder links to them.
 
 | Request | File | Status |
 |---|---|---|
-| CDOT historical Bike Lane Mileage Tracker (+ City Clerk fallback) | `cdot-bikeway-mileage-history.md` → records in [`data/foia/S145367-071326/`](../../data/foia/S145367-071326/README.md) | **Answered 2026-07-24 — granted** (S145367-071326). 2010–2025 annual series + per-segment install dates recovered. City Clerk fallback F145909-071726 answered 2026-07-20, letter not yet retrieved |
+| CDOT historical Bike Lane Mileage Tracker | `cdot-bikeway-mileage-history.md` → records in [`data/foia/S145367-071326/`](../../data/foia/S145367-071326/README.md) | **Answered 2026-07-24 — granted** (S145367-071326). 2010–2025 annual series + per-segment install dates recovered |
+| City Clerk fallback — Council records reporting bikeway mileage | `cdot-bikeway-mileage-history.md` → letter in [`data/foia/F145909-071726/`](../../data/foia/F145909-071726/README.md) | **Answered 2026-07-20 — denied**, no responsive records (Clerk is not the keeper). Moot: the CDOT request above was granted in full |
 | CDOT bicycle count data (2009 study, counters, Replica, 2023 ridership claims) | [`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`](../outbox/2026-07-13--foia--cdot--bicycle-count-data.md) | Ready to send — anchors verified 2026-07-13 |
 | DOF/CDOT Smart Streets enforcement data (bike/bus lane camera violations, commercial fleet attribution) | `smart-streets-enforcement.md` → [`docs/outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md`](../outbox/2026-07-21--foia--dof--smart-streets-enforcement-data.md) | **Sent + acknowledged 2026-07-21** (DOF F146238-072126, +5 extension) — response due 2026-08-04 |
 
