@@ -18,6 +18,13 @@ explicitly optional and each carries its own drop-it-if-burdensome line, per
 `docs/projects/collaboration-principles.md` (no goose chases; make it cheap to say
 yes). Send from the **onyourleftopensource@gmail.com** identity.*
 
+*Sending note: keep bare domains out of the body. A scheme-less domain like
+`data.cityofchicago.org` gets auto-linkified by Gmail into a
+`google.com/url?q=...` redirect, which reads as a tracking link and is
+routinely stripped or blocked by government mail filters. Name the portal and
+cite the dataset ID instead — it is the more precise identifier anyway. Any URL
+that genuinely must appear should carry an explicit `https://` scheme.*
+
 *Detail behind every claim below: `data/foia/S145367-071326/README.md`.*
 
 ---
@@ -104,8 +111,8 @@ part, please cite the specific exemption per 5 ILCS 140/9.
 ## One optional note, offered as a resource
 
 Items like these stop being necessary if the install-date attribute travels with the
-published data. The public Bike Routes layer on the data portal
-(`data.cityofchicago.org`, dataset `hvv9-38ut`) carries facility type and geometry but no
+published data. The public Bike Routes layer on the Chicago Data Portal
+(dataset `hvv9-38ut`) carries facility type and geometry but no
 install or upgrade date — yet CDOT's internal layers clearly maintain `BW_INST_YR` and
 `BW_INST_MO` already. Publishing those two existing columns on the public layer would let
 anyone reconstruct the network's history without asking CDOT for anything, and would likely
