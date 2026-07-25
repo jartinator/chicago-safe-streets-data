@@ -790,3 +790,62 @@ environment forced a deviation. Newest last.
     `measurable: false` with a reason and **never given a number** — the 70%-half-mile-
     access pledge sits there today, since OYL publishes no population-weighted access
     measure. Contract v1.18, purely additive.
+
+39. **The repo ships an agent-facing skill, ahead of the data contract it
+    describes.** `.claude/skills/chicago-bike-safety-data/` now carries a
+    distributable capability — `SKILL.md` plus `reference/endpoints.md` and
+    `reference/reading-caveats.md` — so a general-purpose assistant can answer
+    plain-language questions about this data with a caveat and a citation
+    attached. Landed verbatim from the `oyl-agent-layer` engagement's handoff
+    (`design-studio/product/oyl-agent-layer/handoff/skill/`); byte-identical, no
+    local edits.
+
+    **What decided the order.** A 205-call evaluation on 2026-07-25 measured
+    qualifier survival across three conditions: **0.188** against the API as
+    shipped, **0.435** with caveats co-located in the JSON, and **0.753** with
+    co-location plus this skill. But the result that put the skill first was not
+    survival — it was citation. Conditions A and B produced **zero** citations:
+    100% of answers pointed the reader nowhere. Condition C cited
+    `_meta.human_page` in **91%**. Changing the data alone improves what an agent
+    *sees* without changing what a person *gets*. Only the skill routes anyone
+    back to the site.
+
+    **Two conditions travel with those numbers and may not be dropped when they
+    are quoted:** judge–human agreement is **NOT AVAILABLE** — the scorer is
+    heuristic and no hand-adjudicated calibration set exists — and **n=5 per
+    cell**. The survival claim is measured, not calibrated.
+
+    **The gap, recorded rather than reconciled.** The skill documents a
+    co-location contract that this repo has not built yet. Verified against the
+    live API, the committed JSON on `main`, and `pipeline/` source — all three
+    agree: `caveat_contract` appears in no file; Form A (a `caveat` /
+    `caveat_tags` block on the number's own object), Form B (a
+    `<field>_caveat` sibling) and Form C (`caveat_ref` into a file-level
+    `caveats` map) have **zero occurrences anywhere**; `caveat_tags` and its
+    ten-tag vocabulary do not exist. `wards/ward-NN.json` — the skill's own
+    "single best fetch for a ward question" — exposes `windows.recent_12mo` as
+    bare integers. The only co-location that exists today is
+    `citywide.json findings[]`, where 9 of 9 findings carry a `caveat` string
+    and none carry tags. The generators that would emit the rest
+    (`caveats.py`, `check_colocation.py`) are still in the studio's
+    `handoff/api/` and land in a later, independent phase.
+
+    The qualifying information is not missing — it is one hop up and under other
+    names: `_meta.caveats` (a `code`/`text` array carrying the provisional and
+    ridership caveats), `_meta.tier_note`, and `safety.score_note`, which holds
+    Form B's content for `comparable_danger_score`. The skill names none of
+    them, and gives no instruction for the case where the caveat it expects is
+    absent.
+
+    **Why it ships anyway.** The citation gain — the finding that reordered the
+    phases — depends on `_meta.human_page`, which is live and resolves today. So
+    does most of the skill's Never list: counts-not-rates, no per-rider rates, no
+    obstruction data, never cite `mock` tier, flag stale builds. Those hold
+    against the API as it stands. What is *not* yet earned is the 0.753: that
+    number belongs to a configuration where co-location has already shipped, and
+    "today's API plus this skill" is a fourth cell the evaluation never ran. It
+    should not be cited as this repo's measured survival rate until the
+    co-location phase lands.
+
+    Additive only. Nothing under `site/` or `pipeline/` changed; `CONTRACT_VERSION`
+    stays at 1.18.
