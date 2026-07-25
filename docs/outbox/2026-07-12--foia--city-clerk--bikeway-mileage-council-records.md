@@ -46,5 +46,6 @@ this request is unduly burdensome under 5 ILCS 140/3(g), please contact me
 so I can narrow it. Electronic delivery is preferred.
 
 Sincerely,
-[NAME]
-[EMAIL]
+On Your Left! — an open-source Chicago bike-safety data project
+onyourleftopensource@gmail.com
+https://jartinator.github.io/chicago-safe-streets-data/
