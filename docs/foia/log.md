@@ -6,8 +6,8 @@ full rationale and request bodies live in this folder's per-request files
 
 | # | Date sent | Agency | Contact | Subject | Status | Ref # | Statutory reply due | Follow-up |
 |---|-----------|--------|---------|---------|--------|-------|---------------------|-----------|
-| 1 | _(draft prepared 2026-07-12 — not yet sent)_ | CDOT | CDOTfoia@cityofchicago.org | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | Ready in outbox (reconcile w/ Gmail) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
-| 2 | _(draft prepared 2026-07-12 — not yet sent)_ | Office of the City Clerk | clerkfoia@cityofchicago.org | City Council committee records reporting CDOT bikeway/bike-lane mileage | Ready in outbox (reconcile w/ Gmail) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
+| 1 | 2026-07-13 | CDOT | GovQA portal | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | **Answered 2026-07-24 — granted, records released** | S145367-071326 | 2026-07-20 (+5-day extension taken 2026-07-13) | 4 gaps identified; follow-up request not yet drafted |
+| 2 | 2026-07-17 | Office of the City Clerk | GovQA portal | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Response received 2026-07-20** — disposition is in an attached letter (`Base_Template_7202026.pdf`) not yet retrieved from the portal | F145909-071726 | 2026-07-24 | Download the letter and record the disposition (tracker #33) |
 | 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 | 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Acknowledged same day**; DOF invoked +5 extension (consultation, 5 ILCS 140/3(e)); CDOT cc closed (not keeper → DOF). Outcome log in the outbox file | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | **2026-08-04** (extension invoked) | Nudge 2026-08-06 if no response |
 
@@ -29,13 +29,40 @@ full rationale and request bodies live in this folder's per-request files
   `smart-streets-enforcement.md`; integration plan:
   `docs/superpowers/plans/2026-07-21-smart-streets-enforcement-integration.md`.
 
+## #1 — outcome (answered 2026-07-24)
+
+**Granted as to items 1, 2, 4, and 5.** No exemptions cited, no fees charged. Released
+records are committed under `data/foia/S145367-071326/`; that folder's `README.md` is the
+detailed account of what arrived against what was asked, plus the full layer inventory.
+
+The headline: **item 4 was answered.** CDOT's internal bikeway layers carry a per-segment
+install year (`INST_YR`, later `BW_INST_YR`) that the public Bike Routes layer omits. And
+the Complete Streets program dashboard carries CDOT's own **annual bikeway mileage by
+facility type for 2010–2025** — standing network and miles installed per year.
+
+`pipeline/foia_bikeway_history.py` extracts both into `data/cdot_bikeway_history.json`.
+Every year's per-category sum reconciles to the total CDOT published in the same sheet.
+See `DECISIONS.md` #35 for what this changes about the mileage series.
+
+**Not provided:** item 3 (document version history). Item 6 was optional and moot.
+
+### Gaps worth a follow-up request
+
+1. `2025_Bike Network_internal.shp.zip` ships **without its `.shp`** — 1,008 attribute rows,
+   no geometry. Reads like a packaging slip; worth simply asking again.
+2. **No GIS layers for 2011–2017.** The series jumps 2010 → 2018.
+3. **Annual granularity only** — the individual quarterly tracker snapshots were not produced.
+4. **No document version history**, so a figure revised after publication is not detectable.
+
 ## On receipt
 
-1. Save returned files under `data/snapshots/` (if dated network layers) or a new
-   `data/foia/` directory, preserving original formats and filenames.
-2. If a GIS layer with install dates arrives, it can seed a **retroactive** per-quarter series —
-   feed it into `build_bikeway_mileage_series()` / `infra_growth_trend()` (see the plan in
-   `docs/superpowers/plans/`).
+1. Save returned files under `data/foia/<reference>/records/`, preserving original formats
+   and filenames, with a `manifest.json` hashing every released file — including any too
+   large to commit. `data/foia/S145367-071326/` is the worked example.
+2. If a GIS layer with install dates arrives, it can seed a **retroactive** series — but read
+   the survivorship caveat in `foia_bikeway_history.segment_install_years` first: one year's
+   layer grouped by install year describes the network that *survived*, not the network as it
+   stood in the past.
 3. A "no historical versions retained" response is itself a documented result — it confirms the
    forward-only snapshot approach is the only path, and belongs in `DECISIONS.md`.
 
@@ -64,5 +91,9 @@ Going forward:
 
 - Chicago posts all FOIA requests (requester name + text) in public logs
   (CDOT: chicago.gov/city/en/depts/cdot/dataset/foialog.html; City Clerk: comparable log).
-- Both drafts were prepared in Gmail; sending is done manually by the requester.
+- Sending is done manually by the requester; drafts live in `docs/outbox/`.
 - Update the "Date sent," "Status," and "Ref #" columns once each is sent.
+- **This table drifts.** Rows 1 and 2 were both recorded as "not yet sent" long after they
+  had in fact been filed and answered — caught 2026-07-24 by reconciling against the GovQA
+  acknowledgment emails. Reconcile with the mailbox whenever a response lands, not only
+  when something is sent.

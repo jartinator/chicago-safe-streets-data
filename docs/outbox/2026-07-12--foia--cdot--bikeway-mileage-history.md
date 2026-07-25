@@ -1,11 +1,11 @@
 ---
-status: ready
+status: answered
 initiative: foia
 to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → Transportation)
 subject: FOIA request — historical Bike Lane Mileage Tracker and bikeway install dates
 drafted: 2026-07-12
-sent: —
-tracking: —
+sent: 2026-07-13
+tracking: S145367-071326
 tracker: #33
 ---
 
@@ -85,3 +85,25 @@ Sincerely,
 On Your Left! — an open-source Chicago bike-safety data project
 onyourleftopensource@gmail.com
 https://jartinator.github.io/chicago-safe-streets-data/
+
+---
+
+## Outcome
+
+**Granted 2026-07-24** by G. Rubenstein, CDOT FOIA Officer. Responsive records
+released, no exemptions cited, no fees charged. CDOT took its 5-day extension on
+2026-07-13.
+
+Items 1, 2, 4, and 5 were answered — including item 4, the per-segment install
+date, which was the highest-value ask. Item 3 (document version history) was not
+provided; item 6 was optional and moot.
+
+Released records, what arrived against what was asked, and the four known gaps:
+[`data/foia/S145367-071326/README.md`](../../data/foia/S145367-071326/README.md).
+Extracted 2010–2025 series: [`data/cdot_bikeway_history.json`](../../data/cdot_bikeway_history.json).
+
+**Identity note.** This request was actually filed on 2026-07-13, ten days before
+the 2026-07-23 project-identity rule — so it went to CDOT under the maintainer's
+personal name and appears that way in Chicago's public FOIA log. The signature
+block above carries the current standing identity and governs future sends; it
+does not describe how this particular request was filed.
