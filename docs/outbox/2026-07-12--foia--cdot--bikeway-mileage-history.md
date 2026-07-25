@@ -82,5 +82,6 @@ please cite the specific statutory exemption for each redaction as required by 5
 Thank you for your assistance. Please contact me if you have any questions.
 
 Sincerely,
-Jared Meyer
-jaredthomasmeyer@gmail.com
+On Your Left! — an open-source Chicago bike-safety data project
+onyourleftopensource@gmail.com
+https://jartinator.github.io/chicago-safe-streets-data/
