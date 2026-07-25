@@ -849,3 +849,68 @@ environment forced a deviation. Newest last.
 
     Additive only. Nothing under `site/` or `pipeline/` changed; `CONTRACT_VERSION`
     stays at 1.18.
+
+40. **The agent API co-locates each number's caveat with the number — closing
+    the gap #39 recorded.** `pipeline/caveats.py` implements the caveat
+    co-location contract (`caveat_contract: "v1"`), and `wards/ward-NN.json` is
+    the first payload migrated. Every file now declares the contract and carries
+    the imperative in `_meta`; the ward files carry Form A blocks on
+    `windows.recent_12mo`, `windows.prior_12mo` and `crash_trend`, Form B pairs
+    on `monthly` and `comparable_danger_score`, and per-item provisional marks on
+    the month tail. Full field list in SCHEMA.md.
+
+    **What this fixes.** #39 shipped a skill describing a contract the data did
+    not implement: Forms A/B/C and `caveat_tags` had zero occurrences anywhere,
+    and `wards/ward-NN.json` — the file a ward staffer's agent fetches alone —
+    exposed `windows.recent_12mo` as bare integers. Its qualifier lived only in
+    `llms.txt` and `index.json`, one fetch away from the number. The highest-
+    sensitivity user was the one who never saw the caveat. That is now closed
+    for ward files: the eight contract claims the skill makes about them all
+    verify against the build.
+
+    **The rule that did the most work is the one that looks like a mistake.**
+    `windows.recent_12mo` and `windows.prior_12mo` sit side by side and carry
+    *different* caveats, because the recent window is provisional and the prior
+    one has closed. A single block over `windows` would be shorter, would look
+    more careful, and would be false about one of the two — and a blanket
+    disclaimer that is wrong about one of the numbers it covers is worse than
+    none, because it teaches a reader to discount a figure that is settled.
+    `test_ward_prior_window_is_not_tagged_provisional` exists to stop a future
+    reader "simplifying" them into one.
+
+    **`small_n` is derived, not editorial.** A ward is tagged when either
+    12-month count falls under 20, and its caveat then says the percent change
+    is mostly noise. Eleven of fifty wards carry it — including ward 10, at 12
+    against 6 crashes and a `+100.0` `pct_change`. No hand-written prose would
+    have produced that per ward, and the +100.0 is exactly the figure most
+    likely to be quoted without one.
+
+    **CC-8, and why a co-located caveat needs a truth check.** `qualify()` raises
+    if a caveat restates a value the object it is being attached to does not
+    carry. This is not hypothetical: two caveats in an earlier draft said
+    "(116 crashes)... (123 crashes)" while the sibling keys four characters away
+    said 117 and 122, because a builder read from the wrong block. Co-location
+    makes a wrong caveat *maximally* credible — it arrives welded to the number,
+    in the same fetch, with a schema behind it — so the contract has to check
+    that a restatement is true, not merely present. `crash_trend`'s caveat is
+    therefore built from `crash_trend`'s own counts, never from `windows`.
+
+    **Not bumping `CONTRACT_VERSION`, and saying so rather than skipping it.**
+    The change is additive, which by this repo's own rule needs no bump. It also
+    could not have one here: `contract_version` is emitted from `config.py` and
+    `check_provenance.py` requires it to equal `site/data/meta.json`'s, and that
+    file is only rewritten by a real aggregate run. `site/data/` is untouched by
+    this work — the human site and the agent API read from different sources, so
+    nothing here reaches the human pages. If the stamp should move with the
+    contract, bump it at the next Monday refresh.
+
+    **What is deliberately still missing.** `citywide.json` findings carry prose
+    caveats but not the structured `caveat_tags` twin, and 6 of its 9 caveat
+    strings name no referent ("A floor, not a full count.", "counts, not rates")
+    — so the CC-3 lint runs over ward files only, and the rewrites are a later
+    phase that must land behind the CI checker and the contributor guidance,
+    since a hand-typed caveat welded to a number is the one thing nothing else
+    can check. `wards/index.json` needs Form C, because 50 inline blocks would
+    take it past its size budget. Each is independently stop-safe.
+
+    130 API files revalidate; 420 tests pass, 7 of them new.

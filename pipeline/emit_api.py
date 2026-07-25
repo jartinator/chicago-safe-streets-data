@@ -37,6 +37,9 @@ import argparse
 import json
 from collections import Counter, defaultdict
 
+from caveats import (AGENT_INSTRUCTION, CAVEAT_CONTRACT_VERSION, mark_provisional_tail,
+                     monthly_caveat, pair, qualify, rank_caveat, small_n_tags,
+                     trend_caveat, window_caveat)
 from config import (API_CRASH_SLICE_BUDGET_BYTES, API_SIZE_BUDGET_BYTES, API_VERSION,
                     CONTRACT_VERSION, CRASH_ID_PREFIX_LEN, CRASH_START_DATE, SITE_API_DIR,
                     SITE_BASE_URL, SITE_DATA_DIR, SITE_DIR)
@@ -249,6 +252,11 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=
     caveats (P1a): an optional list of CAVEAT_TEXT codes applicable to this
     file's numbers. Only added to the envelope when non-empty — files with no
     applicable caveat stay clean rather than emitting an empty array.
+
+    caveat_contract/agent_instruction declare the co-location contract (see
+    pipeline/caveats.py). They go in every file, verbatim and unconditionally:
+    the instruction to keep a number's caveat attached to it is worth nothing
+    if it only reaches the agents that happened to fetch the right file.
     """
     envelope = {
         "api_version": API_VERSION,
@@ -266,6 +274,8 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=
     envelope["human_page"] = human_page
     envelope["methodology"] = f"{SITE_BASE_URL}/methodology.html"
     envelope["schema"] = f"{API_BASE_URL}/schemas/{schema_name}"
+    envelope["caveat_contract"] = CAVEAT_CONTRACT_VERSION
+    envelope["agent_instruction"] = AGENT_INSTRUCTION
     return envelope
 
 
@@ -358,6 +368,70 @@ def build_wards_index(meta, ward_safety_index):
     }
 
 
+def _qualify_safety(ward_record):
+    """Attach each safety number's qualifier to the object holding it.
+
+    The caveat co-location contract (pipeline/caveats.py, 02-architecture.md
+    §1.4): a number and the qualifier that makes it honest live in the same
+    object, so an agent that loaded the number also loaded the caveat and has
+    to actively delete a field to drop it. Before this, a ward file's counts
+    carried no qualifier at all and the "recent months are provisional" caveat
+    lived only in llms.txt and index.json — one fetch away from the file a
+    ward-scoped agent fetches alone.
+
+    Five claims, in the order a ward staffer's agent actually quotes them:
+
+    1. `windows.recent_12mo` — Form A, provisional.
+    2. `windows.prior_12mo`  — Form A, NOT provisional. Separate blocks are the
+       point: this window has closed, so one block over `windows` would be
+       false about one of the two. Do not "simplify" them into one.
+    3. `crash_trend`         — Form A, plus `small_n` when either count is thin.
+    4. `monthly`             — Form B on `safety`, plus per-item tail marks so
+       the provisional boundary is machine-visible instead of prose.
+    5. `comparable_danger_score` — Form B, beside the existing `score_note`,
+       which keeps its current value (removing it would not be additive).
+
+    Returns a new dict; `ward_record` is a verbatim site/data/ record and is
+    never written through.
+    """
+    windows = ward_record.get("windows") or {}
+    window_end = windows.get("window_end")
+    trend = ward_record.get("crash_trend") or {}
+    recent, prior = trend.get("recent_12mo"), trend.get("prior_12mo")
+
+    safety = {**ward_record}
+    if windows.get("recent_12mo") and windows.get("prior_12mo"):
+        safety["windows"] = {
+            **windows,
+            "recent_12mo": qualify(
+                windows["recent_12mo"], "real",
+                ["provisional", "not_ridership_normalized"],
+                window_caveat(window_end, provisional=True)),
+            "prior_12mo": qualify(
+                windows["prior_12mo"], "real",
+                ["not_ridership_normalized"],
+                window_caveat(window_end, provisional=False)),
+        }
+    if trend:
+        # CC-8: restate crash_trend's OWN counts, never windows' — the two
+        # blocks do not always agree, and qualify() raises if they disagree
+        # with the object the caveat is being attached to.
+        safety["crash_trend"] = qualify(
+            trend, "derived",
+            ["provisional", "not_ridership_normalized", *small_n_tags(recent, prior)],
+            trend_caveat(trend.get("window_end"), recent, prior))
+    if safety.get("monthly"):
+        safety["monthly"] = mark_provisional_tail(safety["monthly"])
+        safety = pair(safety, "monthly",
+                     ["provisional", "not_ridership_normalized"],
+                     monthly_caveat(window_end))
+    if safety.get("comparable_danger_score") is not None:
+        safety = pair(safety, "comparable_danger_score", ["relative_rank"],
+                     rank_caveat(COMPARABLE_DANGER_SCORE_DESC))
+    safety["score_note"] = f"comparable_danger_score is a {COMPARABLE_DANGER_SCORE_DESC}."
+    return safety
+
+
 def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, sr311):
     """wards/ward-NN.json: one ward's full safety record (including
     `monthly`), alderman contact info, council safety-sponsorship record, and
@@ -404,12 +478,12 @@ def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, s
         sr311_out = {"available": False, "data_tier": sr311["data_tier"], "note": sr311["note"]}
 
     one_pager_url = f"{SITE_BASE_URL}/ward.html?ward={ward}"
+    safety = _qualify_safety(ward_record)
 
     payload = {
         "ward": ward,
         "ward_padded": padded,
-        "safety": {**ward_record,
-                  "score_note": f"comparable_danger_score is a {COMPARABLE_DANGER_SCORE_DESC}."},
+        "safety": safety,
         "alderman": alderman,
         "safety_record": {"data_tier": safety_record["data_tier"], "note": safety_record["note"],
                           "entries": safety_record_entries},
@@ -417,8 +491,11 @@ def build_ward_file(meta, ward_record, aldermen, safety_record, menu_spending, s
         "sr311": sr311_out,
         "crashes_url": f"{API_BASE_URL}/crashes/ward-{padded}.json",
         "one_pager_url": one_pager_url,
+        # council closes a parity gap: a ward file pointed at crashes and
+        # corridors but never at the council record for the same ward.
         "see_also": {"corridors": f"{API_BASE_URL}/corridors.json",
-                    "wards_index": f"{API_BASE_URL}/wards/index.json"},
+                    "wards_index": f"{API_BASE_URL}/wards/index.json",
+                    "council": f"{API_BASE_URL}/council/index.json"},
     }
     if alderman_note is not None:
         payload["alderman_note"] = alderman_note

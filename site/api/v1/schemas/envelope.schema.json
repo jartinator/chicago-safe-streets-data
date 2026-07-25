@@ -61,6 +61,15 @@
     "schema": {
       "type": "string",
       "description": "URL of this file's own JSON Schema under site/api/v1/schemas/ (added Phase 4)."
+    },
+    "caveat_contract": {
+      "type": "string",
+      "enum": ["v1"],
+      "description": "Declares which version of the caveat co-location contract this file obeys. v1: every quotable number carries its qualifier in its own object (Form A), as a `<field>_caveat` sibling (Form B), or via `caveat_ref` into a map in the SAME file (Form C). See pipeline/caveats.py."
+    },
+    "agent_instruction": {
+      "type": "string",
+      "description": "The positive imperative, verbatim and identical in every file: keep a number's caveat attached to the number when quoting it. Byte-identical everywhere by design — an instruction that varies per file reads as decoration."
     }
   },
   "required": [
@@ -73,7 +82,9 @@
     "attribution",
     "human_page",
     "methodology",
-    "schema"
+    "schema",
+    "caveat_contract",
+    "agent_instruction"
   ],
   "additionalProperties": false
 }

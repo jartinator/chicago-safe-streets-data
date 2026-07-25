@@ -3,6 +3,7 @@ import json
 
 import pytest
 
+import caveats
 import emit_api
 from config import CRASH_ID_PREFIX_LEN, SITE_BASE_URL, CONTRACT_VERSION
 from emit_api import (API_BASE_URL, COMPARABLE_DANGER_SCORE_DESC, build_aldermen_api,
@@ -761,7 +762,12 @@ def test_build_ward_file_full_safety_record_includes_monthly():
     ward_rec = _ward_record("1")
     out = build_ward_file(_meta(), ward_rec, _aldermen(), _aldermen_safety_record(),
                           _menu_spending(), _ward_311())
-    assert out["safety"]["monthly"] == ward_rec["monthly"]
+    # monthly passes through with its counts intact; the only addition is the
+    # provisional tail mark (CC-4), which is why this is not a bare equality.
+    emitted = out["safety"]["monthly"]
+    assert len(emitted) == len(ward_rec["monthly"])
+    for got, src in zip(emitted, ward_rec["monthly"]):
+        assert {k: v for k, v in got.items() if k != "caveat_tags"} == src
     assert out["safety"]["comparable_danger_score"] == ward_rec["comparable_danger_score"]
     assert COMPARABLE_DANGER_SCORE_DESC in out["safety"]["score_note"]
 
@@ -1652,3 +1658,189 @@ def test_emit_all_index_lists_routes_and_council_endpoints(tmp_path, monkeypatch
 
     assert not any("routes/" in entry for entry in index["planned"])
     assert not any("council/" in entry for entry in index["planned"])
+
+
+# --- caveat co-location contract (pipeline/caveats.py) ------------------------
+#
+# These guard the promise the API makes to an agent: if you loaded the number,
+# you loaded the caveat. A number that loses its qualifier on the way into an
+# answer is the failure this whole contract exists to prevent.
+
+def _emit_to_tmp(tmp_path, monkeypatch, n_wards=50):
+    """Run the real emit_all() into a tmp tree and return {relpath: parsed}."""
+    site_data, api_dir = tmp_path / "site_data", tmp_path / "api"
+    _write_site_data(site_data, n_wards=n_wards)
+    monkeypatch.setattr(emit_api, "SITE_DATA_DIR", site_data)
+    monkeypatch.setattr(emit_api, "SITE_API_DIR", api_dir)
+    emit_api.emit_all()
+    return {str(p.relative_to(api_dir)).replace("\\", "/"): json.loads(p.read_text())
+            for p in api_dir.rglob("*.json")}
+
+
+def test_ward_windows_carry_provisional_block():
+    out = build_ward_file(_meta(), _ward_record("1"), _aldermen(),
+                          _aldermen_safety_record(), _menu_spending(), _ward_311())
+    recent = out["safety"]["windows"]["recent_12mo"]
+    assert recent["crashes"] == 40                      # untouched
+    assert recent["data_tier"] == "real"
+    assert set(recent["caveat_tags"]) == {"provisional", "not_ridership_normalized"}
+    # CC-3: the string names its own referent, so it survives being quoted alone.
+    assert "2026-06-30" in recent["caveat"]
+    assert "provisional" in recent["caveat"]
+
+
+def test_ward_prior_window_is_not_tagged_provisional():
+    """CC-2 guard. The two windows sit side by side and one has closed.
+
+    This is the test that stops someone "simplifying" the two blocks into one
+    caveat over `windows` — which would be false about the prior window, and
+    would teach a reader to discount a figure that is actually settled.
+    """
+    out = build_ward_file(_meta(), _ward_record("1"), _aldermen(),
+                          _aldermen_safety_record(), _menu_spending(), _ward_311())
+    windows = out["safety"]["windows"]
+    prior, recent = windows["prior_12mo"], windows["recent_12mo"]
+
+    assert "provisional" not in prior["caveat_tags"]
+    assert prior["caveat_tags"] == ["not_ridership_normalized"]
+    assert "provisional" in recent["caveat_tags"]
+    # Different tags must mean different prose — one shared string would be a
+    # blanket disclaimer, which is the exact failure mode CC-2 names.
+    assert prior["caveat"] != recent["caveat"]
+    assert "settled" in prior["caveat"]
+
+
+def test_ward_monthly_tail_marked_provisional():
+    months = [{"month": f"2026-{m:02d}", "crashes": 3, "injury_crashes": 1,
+              "ksi": 0, "fatal": 0} for m in range(1, 8)]
+    out = build_ward_file(_meta(), _ward_record("1", monthly=months), _aldermen(),
+                          _aldermen_safety_record(), _menu_spending(), _ward_311())
+    safety = out["safety"]
+    emitted = safety["monthly"]
+
+    tail = emitted[-caveats.PROVISIONAL_MONTHS:]
+    head = emitted[:-caveats.PROVISIONAL_MONTHS]
+    assert all(m["caveat_tags"] == ["provisional"] for m in tail)
+    assert all("caveat_tags" not in m for m in head)
+    # Form B on the container, since a bare array has nowhere to hang a block.
+    assert set(safety["monthly_caveat_tags"]) == {"provisional", "not_ridership_normalized"}
+    assert "provisional" in safety["monthly_caveat"]
+
+
+def test_small_n_tag_applied_below_threshold():
+    """Data-derived, not editorial: a thin ward gets told its percent is noise."""
+    thin = _ward_record(
+        "1",
+        crash_trend={"direction": "worsening", "window_end": "2026-06-30",
+                    "recent_12mo": 8, "prior_12mo": 4, "pct_change": 100.0},
+        windows={"recent_12mo": {"crashes": 8, "injury_crashes": 3, "ksi": 0, "fatal": 0},
+                "prior_12mo": {"crashes": 4, "injury_crashes": 1, "ksi": 0, "fatal": 0},
+                "window_end": "2026-06-30"})
+    out = build_ward_file(_meta(), thin, _aldermen(), _aldermen_safety_record(),
+                          _menu_spending(), _ward_311())
+    trend = out["safety"]["crash_trend"]
+    assert "small_n" in trend["caveat_tags"]
+    assert str(caveats.SMALL_N_THRESHOLD) in trend["caveat"]
+    assert "noise" in trend["caveat"]
+
+    # The default fixture is 40 vs 35 — comfortably above the threshold.
+    fat = build_ward_file(_meta(), _ward_record("2"), _aldermen(),
+                          _aldermen_safety_record(), _menu_spending(), _ward_311())
+    assert "small_n" not in fat["safety"]["crash_trend"]["caveat_tags"]
+
+
+def _walk_claims(node, path="", found=None):
+    """Collect (path, object) for every object carrying a Form A/B qualifier."""
+    found = [] if found is None else found
+    if isinstance(node, dict):
+        if "caveat" in node or any(k.endswith("_caveat") for k in node):
+            found.append((path, node))
+        for k, v in node.items():
+            _walk_claims(v, f"{path}/{k}", found)
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            _walk_claims(v, f"{path}/{i}", found)
+    return found
+
+
+def _caveat_strings(obj):
+    """Yield (key, text, scope) for each caveat on obj, with CC-8's scope."""
+    for key, text in obj.items():
+        if not isinstance(text, str):
+            continue
+        if key != "caveat" and not key.endswith("_caveat"):
+            continue
+        scope = obj
+        if key != "caveat":
+            field = key[: -len("_caveat")]
+            if isinstance(obj.get(field), (dict, list)):
+                scope = obj[field]
+        yield key, text, scope
+
+
+def test_every_caveat_string_names_a_referent(tmp_path, monkeypatch):
+    """CC-3, over every builder — a caveat must read correctly quoted alone.
+
+    "Recent months are provisional" names nothing. "The 12 months ending
+    2026-06-30" does. The lint is deliberately loose: a date, a year, or a
+    field name from the caveat's own object all count.
+
+    Scoped to the ward files, which are the surface this contract has migrated.
+    It is NOT yet global, and that is a statement about the repo rather than
+    about the rule: 6 of the 9 hand-written citywide findings[] caveats name no
+    referent today ("A floor, not a full count.", "counts, not rates"). Those
+    rewrites are a separate, later phase which must land behind the CI checker
+    and the contributor guidance, because a hand-typed caveat welded to a number
+    is the one thing nothing else here can check. Widen the glob when they land.
+    """
+    emitted = _emit_to_tmp(tmp_path, monkeypatch, n_wards=3)
+    checked = 0
+    for relpath, doc in emitted.items():
+        if not relpath.startswith("wards/ward-"):
+            continue
+        for path, obj in _walk_claims(doc):
+            for key, text, _scope in _caveat_strings(obj):
+                checked += 1
+                names_referent = (
+                    caveats._ISO_DATE.search(text) or "20" in text
+                    or any(k in text for k in obj if isinstance(k, str) and len(k) > 4))
+                assert names_referent, (
+                    f"{relpath}{path}.{key} names no referent, so it cannot be "
+                    f"quoted on its own: {text!r}")
+    assert checked > 0, "lint walked nothing — the walker is broken, not the data"
+
+
+def test_every_restated_value_matches_its_sibling(tmp_path, monkeypatch):
+    """CC-8, over every builder, plus the regression that motivated it.
+
+    Two shipped ward caveats once said "(116 crashes)... (123 crashes)" while
+    the sibling keys four characters away said 117 and 122. Co-location makes a
+    wrong caveat maximally credible — it arrives welded to the number — so the
+    contract has to check that a restatement is true, not merely present.
+    """
+    emitted = _emit_to_tmp(tmp_path, monkeypatch, n_wards=3)
+    for relpath, doc in emitted.items():
+        for path, obj in _walk_claims(doc):
+            for key, text, scope in _caveat_strings(obj):
+                unmatched = caveats.unmatched_restatements(text, scope)
+                assert not unmatched, (
+                    f"{relpath}{path}.{key} restates {unmatched}, which no "
+                    f"co-located value matches: {text!r}")
+
+    # Regression: building crash_trend's caveat from the WRONG object must raise
+    # rather than ship a plausible, welded, false qualifier.
+    trend = {"direction": "worsening", "window_end": "2026-06-30",
+            "recent_12mo": 117, "prior_12mo": 122}
+    with pytest.raises(ValueError, match="CC-8"):
+        caveats.qualify(trend, "derived", ["provisional"],
+                        caveats.trend_caveat("2026-06-30", 116, 123))
+
+
+def test_agent_instruction_identical_in_every_file(tmp_path, monkeypatch):
+    """The imperative is one verbatim string everywhere, or it reads as filler."""
+    emitted = _emit_to_tmp(tmp_path, monkeypatch, n_wards=3)
+    seen = {doc["_meta"]["agent_instruction"] for doc in emitted.values() if "_meta" in doc}
+    contracts = {doc["_meta"]["caveat_contract"] for doc in emitted.values() if "_meta" in doc}
+    assert len(emitted) > 5
+    assert seen == {caveats.AGENT_INSTRUCTION}
+    assert contracts == {caveats.CAVEAT_CONTRACT_VERSION}

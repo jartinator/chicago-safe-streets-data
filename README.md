@@ -77,9 +77,18 @@ assistants using the skill cited the matching human page in **91%**.
 
 Two limits belong with that evaluation wherever it is quoted: judge–human
 agreement is **not available** (heuristic scorer, no calibration set), and
-**n=5 per cell**. The skill also describes a per-number caveat contract that
-this repo has not built yet — see [DECISIONS.md](DECISIONS.md) #39 for what is
-live today and what is not.
+**n=5 per cell**.
+
+### The caveat co-location contract
+
+Every file declares `_meta.caveat_contract: "v1"`. A number and the qualifier
+that makes it honest live in the **same object** — never a fetch away, never an
+object away — so an agent that loaded the number also loaded the caveat and has
+to actively delete a field to drop it. `wards/ward-NN.json` is migrated: its two
+12-month windows carry *different* caveats on purpose, because one is
+provisional and the other has closed. See [SCHEMA.md](SCHEMA.md) for the field
+list, `pipeline/caveats.py` for the rules, and [DECISIONS.md](DECISIONS.md) #40
+for what is migrated and what is not yet.
 
 ## Repo layout
 

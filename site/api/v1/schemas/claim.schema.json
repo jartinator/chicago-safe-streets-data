@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jartinator.github.io/chicago-safe-streets-data/api/v1/schemas/claim.schema.json",
+  "title": "Caveat co-location contract (caveat_contract v1)",
+  "description": "Shared $defs for the qualifier that must sit beside every quotable number in this API. See pipeline/caveats.py for the generators and pipeline/check_api.py Check 5 for enforcement. A number and the qualifier that makes it honest are the same object, or adjacent keys in one object — never one fetch apart, never one object apart. $ref'd by ward.schema.json, citywide.schema.json and wards-index.schema.json; fields are not duplicated inline elsewhere.",
+
+  "$defs": {
+
+    "caveat_tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Structured twin of the prose caveat (CC-5). Closed vocabulary: prose is what an agent puts in its answer, tags are what CI and the caveat-survival eval score against. Every token below already exists as prose somewhere in this API — this is an inventory, not a new epistemics. Adding a token means editing CAVEAT_TAG_VOCAB in pipeline/caveats.py in the same PR.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "provisional",
+          "not_ridership_normalized",
+          "small_n",
+          "relative_rank",
+          "self_reported",
+          "third_party_method",
+          "coverage_gap",
+          "snapshot_derived",
+          "exact_match_only",
+          "unavailable"
+        ]
+      }
+    },
+
+    "caveat_text": {
+      "type": "string",
+      "minLength": 40,
+      "description": "One or more plain-language sentences stating how this number can be wrong or be misread. Distinct from `note`, which describes what the data IS. CC-3 (self-containment): the string names its own REFERENT — a date, a window, or a field name from its own object — and reads correctly when quoted with nothing else beside it. 'Recent months are provisional.' fails; 'Counts for the 12 months ending 2026-07-11. The most recent two months are provisional...' passes. Restating values that are already sibling keys in the same object is permitted but NOT required: doing so makes the string unique per record, which blocks the sharing that CC-7's byte budget depends on. See 02-architecture.md section 1.6. minLength 40 is a floor against one-word placeholders, not a quality bar. CC-8 (restatement fidelity): a restated value is written in ONE canonical form, a parenthetical that begins with the value — '(65 crashes)' — and it MUST equal a value in the claim the caveat qualifies. A parenthetical beginning with a digit is treated as a restatement and checked; a parenthetical that is ENTIRELY a date expression — '(2021)', '(May 2026)', '(2026-07-11 to 2026-07-13)' — is a referent and is exempt; a parenthetical that merely begins with a year is checked like any other, so '(2032 crashes)' is a restatement; a number in running prose is not checked and must therefore not be a restatement. Enforced twice: pipeline/caveats.py raises at emit time, and pipeline/check_api.py Check 5 re-checks the shipped file. This is the only rule in the contract about whether a caveat is TRUE rather than where it sits, and it exists because co-location makes a wrong caveat maximally credible."
+    },
+
+    "qualifier_block": {
+      "type": "object",
+      "description": "Form A (CC-1). Attached directly to an object that holds numbers. CC-2 (scope equality): this block applies to every number in its own object, excluding nested objects that carry their own. If a caveat is true of some numbers in the object but not others, the object is wrong — split it, or use paired_caveat instead. windows.recent_12mo and windows.prior_12mo are separate objects for exactly this reason: one is provisional and the other is final.",
+      "properties": {
+        "data_tier": {
+          "type": "string",
+          "enum": ["real", "proxy", "mock", "crowdsourced", "derived"],
+          "description": "This object's tier. 'mixed' is deliberately absent — a mixed claim object violates scope equality by definition."
+        },
+        "caveat_tags": { "$ref": "#/$defs/caveat_tags" },
+        "caveat": { "$ref": "#/$defs/caveat_text" }
+      },
+      "required": ["data_tier", "caveat_tags", "caveat"]
+    },
+
+    "item_override": {
+      "type": "object",
+      "description": "Form A, partial (CC-4). Describes the QUALIFIER an item inside a series may carry when its qualifiers differ from its container's — e.g. the trailing provisional months of a monthly crash series. The container's qualifier — a Form A block on the object holding the array, or a `<array>_caveat` / `<array>_caveat_tags` pair on it — covers every item, so an item needs an override only when it differs. `caveat_tags` is the ONLY qualifier key an item may carry: an item may not carry its own `caveat`, `caveat_ref` or `data_tier`, because a series item is not a separate claim. The item's own data keys are untouched and unconstrained here — a `monthly` item legitimately carries `month`, `crashes` and the rest, and this $def does not and must not reject them. pipeline/check_api.py Check 5 enforces exactly that: it validates an item's `caveat_tags` against the vocabulary and ignores every other key. Reference this $def with `allOf` from the per-file schema that owns the item's data shape; do not use it as the item's whole schema.",
+      "properties": {
+        "caveat_tags": { "$ref": "#/$defs/caveat_tags" }
+      },
+      "required": ["caveat_tags"],
+      "not": {
+        "anyOf": [
+          { "required": ["caveat"] },
+          { "required": ["caveat_ref"] },
+          { "required": ["data_tier"] }
+        ]
+      }
+    },
+
+    "caveat_ref_block": {
+      "type": "object",
+      "description": "CC-7, the budget exception, permitted ONLY where zero-hop placement would push a file past API_SIZE_BUDGET_BYTES, and ONLY resolving against a `caveats` map in the SAME file. Cross-file references remain forbidden (CC-6). Currently used by wards/index.json alone: that file is 58,156 bytes against a 100,000-byte budget and 50 entries x 3 full blocks land it at 113,173 bytes. Any file using this form says so in its own _meta.agent_instruction. This form is weaker than Form A and is expected to score worse on qualifier survival — that is a measured tradeoff, not an oversight. CC-7 only saves bytes when `caveats` entries are keyed by CONTENT and therefore shared across records; keying them per record makes this form LARGER than the Form A it replaces. Measured: per-record keys land wards/index.json at 118,232 bytes, over budget and 5,059 bytes worse than inline. See 02-architecture.md section 1.6.",
+      "properties": {
+        "data_tier": {
+          "type": "string",
+          "enum": ["real", "proxy", "mock", "crowdsourced", "derived"],
+          "description": "Optional in this form only. When absent, the tier is the one declared by the nearest enclosing object in the SAME file — for wards/index.json that is the ward entry, and the file root declares one as a backstop. Requiring it on every ref block costs about 3 KB in the one file that exists to save bytes. pipeline/check_api.py Check 5 fails the build if no ancestor declares a tier."
+        },
+        "caveat_tags": { "$ref": "#/$defs/caveat_tags" },
+        "caveat_ref": {
+          "type": "string",
+          "description": "A key in this file's top-level `caveats` object. Resolve it before quoting the number. Keys are content-derived, so two records with identical caveat text share one entry."
+        }
+      },
+      "required": ["caveat_tags", "caveat_ref"]
+    },
+
+    "caveats_map": {
+      "type": "object",
+      "description": "Top-level map of caveat id -> caveat text, for files using Form C (permitted by CC-7). Keys are CONTENT-derived, not record-derived: two records whose caveat text is byte-identical share one entry. This is what makes CC-7 cheaper than inline Form A, and it is the whole of CC-7's justification — see 02-architecture.md section 1.6. A shared entry MUST NOT restate a value (CC-8): a restatement true of the first referencing record is false for every other one. Check 5 resolves each `caveat_ref` and runs CC-8 against the REFERENCING object, so a restating shared entry fails on the first record whose numbers differ. This is why build_wards_index() calls trend_caveat with restate_counts=False.",
+      "additionalProperties": { "$ref": "#/$defs/caveat_text" }
+    },
+
+    "paired_caveat_note": {
+      "description": "Form B (CC-1) has no $ref because the key names are derived from the field they qualify. For a number `X` on an object whose block does not cover it, emit two siblings: `X_caveat_tags` (matching #/$defs/caveat_tags) and `X_caveat` (matching #/$defs/caveat_text). The binding lives in the key name, so the pairing survives an agent reading the object as a flat key-value list. Enforced by pipeline/check_api.py Check 5, not by this schema; per-file schemas name the concrete keys in their own `required` lists. score_note is already this pattern and stays untouched — comparable_danger_score_caveat is added beside it, and score_note retires at the next api_version, not before."
+    }
+  }
+}
