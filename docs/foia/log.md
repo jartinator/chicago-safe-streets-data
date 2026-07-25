@@ -10,7 +10,7 @@ full rationale and request bodies live in this folder's per-request files
 | 2 | 2026-07-12 (received by agency 07-13) | Office of the City Clerk | clerkfoia@cityofchicago.org → GovQA | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Answered 2026-07-20 — denied, no responsive records** (Clerk is not the keeper; redirected to the department and to eLMS / Journals of Proceedings) | F145909-071726 | 2026-07-20 (met) | None. #1 was granted in full, so the fallback is moot |
 | 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 | 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Acknowledged same day**; DOF invoked +5 extension (consultation, 5 ILCS 140/3(e)); CDOT cc closed (not keeper → DOF). Outcome log in the outbox file | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | **2026-08-04** (extension invoked) | Nudge 2026-08-06 if no response |
-| 5 | _(ready to send 2026-07-25 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Follow-up to S145367-071326: the 2025 layer's missing `.shp`, plus 2011–2017 layers, quarterly snapshots, and dashboard file metadata (items 2–4 optional) | Ready (`docs/outbox/2026-07-25--foia--cdot--bikeway-history-gaps.md`) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
+| 5 | **2026-07-25** (Sat — agency receipt expected Mon 07-27) | CDOT | cdotfoia@cityofchicago.org → GovQA | Follow-up to S145367-071326: the 2025 layer's missing `.shp`, plus 2011–2017 layers, quarterly snapshots, and dashboard file metadata (items 2–4 optional) | **Sent** — awaiting acknowledgment. First request filed as the project (`onyourleftopensource@gmail.com`) | — (pending) | ~**2026-08-03** (5 business days from expected 07-27 receipt; +5 extension → ~08-10) | Nudge **2026-08-05** if no acknowledgment |
 
 ## What each request seeks
 
@@ -113,6 +113,10 @@ Going forward:
   onyourleftopensource "From" identity before firing.
 - New requests file as the project (organizational requester). Personal
   names appear only where an agency demands a natural person for delivery.
+- **In force as of 2026-07-25.** Row 5 is the first request actually sent
+  under the project identity. Rows 1–4 predate the rule, so the
+  maintainer's personal name is what appears in Chicago's public FOIA logs
+  for those; nothing can be done about that retroactively.
 - The three staged letters in `docs/outbox/` were re-headed to the project
   identity on 2026-07-23 — signature "On Your Left!" + the project address.
 - Any public template OYL publishes for third parties (the agentic-layer

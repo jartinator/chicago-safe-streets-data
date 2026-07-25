@@ -1,11 +1,11 @@
 ---
-status: ready
+status: sent
 initiative: foia
 to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → Transportation)
 subject: FOIA follow-up to S145367-071326 — one incomplete GIS file and three narrower items
 drafted: 2026-07-25
-sent: —
-tracking: —
+sent: 2026-07-25
+tracking: — (pending GovQA acknowledgment)
 tracker: #33
 ---
 
@@ -127,3 +127,23 @@ Sincerely,
 On Your Left! — an open-source Chicago bike-safety data project
 onyourleftopensource@gmail.com
 https://jartinator.github.io/chicago-safe-streets-data/
+
+---
+
+## Sent
+
+**Sent 2026-07-25, 05:23 UTC**, by email to `cdotfoia@cityofchicago.org`.
+
+**First request filed under the project identity** — sent from
+`onyourleftopensource@gmail.com`, per the 2026-07-23 standing rule. Requests #1
+and #2 predate the rule and went out under the maintainer's personal name, which
+is what appears in Chicago's public FOIA logs for those two.
+
+No tracking number yet. Precedent (Smart Streets, 2026-07-21) is that email to a
+department FOIA inbox is routed into GovQA and issued a reference the same day.
+
+**Clock.** Sent on a Saturday, so CDOT will log receipt Monday **2026-07-27**.
+Illinois allows 5 business days from receipt, extendable by 5 — so a response is
+due around **2026-08-03**, and the +5 extension would move it to about
+**2026-08-10**. Nudge if there is no acknowledgment at all by **2026-08-05**.
+Update this file and `docs/foia/log.md` row 5 the moment a reference number lands.
