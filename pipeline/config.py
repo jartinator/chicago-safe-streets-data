@@ -291,6 +291,22 @@ CURATED_TRAILS_PATH = REPO_ROOT / "data" / "curated_trails.geojson"
 # see docs/superpowers/specs/2026-07-12-network-map-distinction.md §7.
 ORIENTATION_POINTS_PATH = REPO_ROOT / "data" / "orientation_points.json"
 
+# Released FOIA record sets, one directory per request reference. Committed as
+# received (minus oversized scans, which manifest.json still hashes) so every
+# number we publish off them stays traceable to the file the agency sent.
+FOIA_DIR = REPO_ROOT / "data" / "foia"
+
+# CDOT FOIA S145367-071326 (released 2026-07-24) — the historical Bike Lane
+# Mileage Tracker request. Its Complete Streets dashboard carries CDOT's own
+# 2010–2025 annual bikeway mileage by facility type, and the 2024 bikeway layer
+# carries the per-segment install year the public Bike Routes layer omits.
+# See data/foia/S145367-071326/README.md and docs/foia/log.md row 1.
+CDOT_MILEAGE_FOIA_DIR = FOIA_DIR / "S145367-071326" / "records"
+CDOT_COMPLETE_STREETS_DASHBOARD = CDOT_MILEAGE_FOIA_DIR / "CompleteStreets_Dashboard.xlsx"
+CDOT_BIKEWAY_2024_LAYER = CDOT_MILEAGE_FOIA_DIR / "GIS" / "Bikeway_Network_2024_Final.shp"
+# Derived, committed output of pipeline/foia_bikeway_history.py.
+CDOT_BIKEWAY_HISTORY_PATH = REPO_ROOT / "data" / "cdot_bikeway_history.json"
+
 # facility_category -> main-route grade (network tiers v2 design, spec §3,
 # docs/superpowers/specs/2026-07-13-network-tiers-design.md). Four independent
 # grade levels: protected <- protected; paint <- buffered/painted (still just

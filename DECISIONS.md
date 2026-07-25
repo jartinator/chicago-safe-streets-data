@@ -621,3 +621,41 @@ environment forced a deviation. Newest last.
     site products the network map reads (`main_routes.geojson`,
     `network_nodes.json`) are rebuilt here via `build_main_routes` /
     `build_network_nodes`, the same code path `refresh_reporting.py` uses.
+
+35. **The bikeway mileage series is backfillable after all — CDOT retained the
+    history and released it under FOIA.** Decisions #18 and the
+    `build_bikeway_mileage_series` docstring both rested on a premise that is now
+    false: that because the public Bike Routes layer (`hvv9-38ut`) has no
+    install-date field and the quarterly tracker is overwritten in place, bikeway
+    history could only be accumulated *forward* from `data/snapshots/`. CDOT's
+    response to FOIA S145367-071326 (requested 2026-07-13, granted 2026-07-24, no
+    exemptions, no fees) supplies the history directly, from two records:
+    `CompleteStreets_Dashboard.xlsx` sheet `R_Dashboard`, holding CDOT's own annual
+    bikeway centerline mileage by facility type for **2010-2025** (standing network
+    and miles installed per year); and the internal GIS layers for 2020-2025, which
+    carry the per-segment install year (`INST_YR`, later `BW_INST_YR`) the public
+    layer omits. `pipeline/foia_bikeway_history.py` extracts both to the committed
+    `data/cdot_bikeway_history.json`; every year's per-category sum reconciles to
+    the total CDOT published in the same sheet, which is the regression guard the
+    tests assert. Released records live under `data/foia/S145367-071326/`, with a
+    `manifest.json` hashing the entire release including the seven scanned year-end
+    PDFs held out of git for size (~69 MB).
+
+    Two caveats are load-bearing and are documented at the point of use rather than
+    left for a reader to infer. **First, CDOT's "miles installed" counts concrete
+    upgrades of existing protected lanes** — in 2023 it reports 50.42 miles installed
+    against 25.09 miles of network growth — so the extracted `installed` block breaks
+    `protected_concrete_upgrade` out separately, and any published "miles built"
+    comparison must say which figure it means. **Second, a single year's GIS layer
+    cannot reconstruct the past**: grouped by install year it describes the network
+    that *survived* to that year, since removed lanes are absent and upgraded lanes
+    carry their upgrade year. CDOT's own buffered mileage falls after 2022
+    (115.6 -> 106.5) as buffered lanes became protected, which is the visible
+    signature of that effect. The annual dashboard series is the history;
+    `segment_install_years` answers segment-level questions only.
+
+    This lands as data and extraction code only. `site/data/bikeway_mileage_series.json`,
+    its "not backfillable" note, and the `commitments-vs-delivered` finding's caveat
+    that delivery-since-commitment is unmeasurable (SCHEMA.md, contract v1.16) are all
+    now outdated but are **deliberately left untouched here** — rewiring the published
+    series is a contract change and gets its own PR, so this one stays reviewable.
