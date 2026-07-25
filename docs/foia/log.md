@@ -7,7 +7,7 @@ full rationale and request bodies live in this folder's per-request files
 | # | Date sent | Agency | Contact | Subject | Status | Ref # | Statutory reply due | Follow-up |
 |---|-----------|--------|---------|---------|--------|-------|---------------------|-----------|
 | 1 | 2026-07-13 | CDOT | GovQA portal | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | **Answered 2026-07-24 — granted, records released** | S145367-071326 | 2026-07-20 (+5-day extension taken 2026-07-13) | 4 gaps identified; follow-up request not yet drafted |
-| 2 | 2026-07-17 | Office of the City Clerk | GovQA portal | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Response received 2026-07-20** — disposition is in an attached letter (`Base_Template_7202026.pdf`) not yet retrieved from the portal | F145909-071726 | 2026-07-24 | Download the letter and record the disposition (tracker #33) |
+| 2 | 2026-07-12 (received by agency 07-13) | Office of the City Clerk | clerkfoia@cityofchicago.org → GovQA | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Answered 2026-07-20 — denied, no responsive records** (Clerk is not the keeper; redirected to the department and to eLMS / Journals of Proceedings) | F145909-071726 | 2026-07-20 (met) | None. #1 was granted in full, so the fallback is moot |
 | 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 | 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Acknowledged same day**; DOF invoked +5 extension (consultation, 5 ILCS 140/3(e)); CDOT cc closed (not keeper → DOF). Outcome log in the outbox file | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | **2026-08-04** (extension invoked) | Nudge 2026-08-06 if no response |
 
@@ -53,6 +53,25 @@ See `DECISIONS.md` #35 for what this changes about the mileage series.
 2. **No GIS layers for 2011–2017.** The series jumps 2010 → 2018.
 3. **Annual granularity only** — the individual quarterly tracker snapshots were not produced.
 4. **No document version history**, so a figure revised after publication is not detectable.
+
+## #2 — outcome (answered 2026-07-20)
+
+**Denied: no responsive records.** The Office of the City Clerk is not the office that
+maintains these records — each City department is a separate "public body" under
+5 ILCS 140/2(a) (*Duncan Publishing v. City of Chicago*, 304 Ill. App. 3d 778, 784), so the
+request had to go to CDOT, which is where the parallel request already went. #1 was granted
+in full four days later, so **this fallback is moot and needs no appeal.** The denial rests
+on the law rather than evasion, arrived inside the statutory window, and came with a
+concrete redirect; no PAC review is warranted.
+
+The letter is committed at `data/foia/F145909-071726/`.
+
+**One lead worth keeping.** The Clerk volunteered that eLMS search has a
+**"search within attachments"** filter (open the filter panel, enable it) that returns a
+more complete result than the default. We already pull eLMS via `pull_agenda_items.py`, but
+from matter records and agenda PDFs — full-text search *inside* meeting attachments is a
+different surface, and it is exactly where CDOT's committee presentations would surface if
+they are public anywhere. Not pursued yet; see `data/foia/F145909-071726/README.md`.
 
 ## On receipt
 

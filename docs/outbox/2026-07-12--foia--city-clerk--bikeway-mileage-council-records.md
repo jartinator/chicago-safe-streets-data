@@ -1,11 +1,11 @@
 ---
-status: draft
+status: closed
 initiative: foia
 to: clerkfoia@cityofchicago.org
 subject: FOIA request — Council committee records reporting CDOT bikeway mileage
 drafted: 2026-07-12
-sent: —
-tracking: —
+sent: 2026-07-12
+tracking: F145909-071726
 tracker: #33
 ---
 
@@ -49,3 +49,27 @@ Sincerely,
 On Your Left! — an open-source Chicago bike-safety data project
 onyourleftopensource@gmail.com
 https://jartinator.github.io/chicago-safe-streets-data/
+
+---
+
+## Outcome
+
+**Denied 2026-07-20** by Lori Probasco, Office of the City Clerk — no responsive
+records. The Clerk is not the office that maintains these records; each City
+department is a separate "public body" under 5 ILCS 140/2(a), so the request had
+to go to CDOT. Received by the agency 2026-07-13, answered inside the statutory
+window.
+
+**This is moot rather than a loss.** The parallel CDOT request
+(`2026-07-12--foia--cdot--bikeway-mileage-history.md`, ref S145367-071326) was
+**granted in full** on 2026-07-24 and produced the 2010–2025 mileage history this
+request existed to backstop. No appeal, no PAC review.
+
+The Clerk did volunteer a useful lead: eLMS search has a **"search within
+attachments"** filter that returns more than the default, and the Journals of
+Proceedings are text-searchable. Letter and detail:
+[`data/foia/F145909-071726/`](../../data/foia/F145909-071726/README.md).
+
+**Identity note.** Filed 2026-07-12, before the 2026-07-23 project-identity rule,
+so it went out under the maintainer's personal name. The signature block above
+carries the current standing identity and governs future sends.

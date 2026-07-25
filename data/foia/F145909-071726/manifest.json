@@ -1,0 +1,24 @@
+{
+  "request": {
+    "reference": "F145909-071726",
+    "agency": "Chicago Office of the City Clerk",
+    "submitted": "2026-07-12 (email to clerkfoia@cityofchicago.org)",
+    "received_by_agency": "2026-07-13",
+    "acknowledged": "2026-07-17 (GovQA)",
+    "responded": "2026-07-20",
+    "foia_officer": "Lori Probasco",
+    "disposition": "denied \u2014 no responsive records; Clerk is not the keeper. Redirected to CDOT and to two public search systems.",
+    "channel": "email \u2192 GovQA (Chicago Public Records Center)"
+  },
+  "note": "Full text of the response letter. No records were released; the letter itself is the result.",
+  "file_count": 1,
+  "bytes_total": 218865,
+  "files": [
+    {
+      "path": "Base_Template_7202026.pdf",
+      "bytes": 218865,
+      "sha256": "2d209f3417085bf230872870f2d15edc1fc8db93e930efab0a9020069ffdd5e0",
+      "in_repo": true
+    }
+  ]
+}
