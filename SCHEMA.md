@@ -1211,3 +1211,63 @@ crash counts (a future ward-page integration, not this PR).
   `bikeway_mileage_series.json` itself now — both of its inputs (`data/snapshots/`
   and `data/cdot_bikeway_history.json`) are committed, so it is fully derivable
   offline and no longer read back as a possibly-stale file.
+
+## commitments_ledger.json — tier derived
+
+Chicago's published bikeway commitments scored against CDOT's own year-by-year figures
+(recovered under FOIA S145367-071326). Both sides of every comparison are the City's own
+data. Backed by the curated roster `data/commitments.json`; built by
+`commitments_metrics.build_commitments_ledger`.
+
+```
+{ data_tier: "derived", note, source,
+  scored: int, met: int,
+  commitments: [{
+    id, text, claim_quote, target, unit, year_committed, deadline,
+    basis: "network_state"|"network_delta"|"miles_added"|"low_stress_share"|"not_measurable",
+    categories: [facility_category] | null,     // null = all on-street
+    source_name, source_record, citations: [url], data_tier: "derived",
+    measurable: bool,
+    // when measurable:
+    actual, window, pct_of_target, met,
+    // only where a claim needs a more generous reading to clear:
+    actual_as_claimed, as_claimed_categories, as_claimed_met, alt_note,
+    // when not measurable:
+    reason
+  }] }
+```
+
+Sorted oldest commitment first. **The roster spans administrations deliberately** — the
+lens is the bikeway network, not who held office, and every pledge is scored the same way.
+
+`basis` says *how* each was measured, because "50 miles of protected bike lanes" and "150
+miles of new bikeways" are not the same kind of claim:
+
+| basis | meaning |
+|---|---|
+| `network_state` | the standing network in the target year |
+| `network_delta` | change in the standing network between baseline and target year |
+| `miles_added` | CDOT's installed miles summed over the window, **less** concrete upgrades |
+| `low_stress_share` | low-stress share of miles added over the window |
+| `not_measurable` | listed with a `reason`; never given a number |
+
+**`actual_as_claimed` is the honesty mechanism.** Where a claim is only reachable under a
+more generous reading of which facilities count, both numbers are published rather than
+one being chosen. The 2015 "first 100 miles of protected bike lanes" pledge scores 21.35
+on protected alone and 108.35 once buffered lanes are folded in; the ledger publishes
+both and says which is which. See DECISIONS.md #38.
+
+## Contract v1.18 changes (commitments ledger)
+
+`CONTRACT_VERSION` -> `"1.18"`. **Purely additive.**
+
+- **Added `site/data/commitments_ledger.json`** (documented above) and its
+  `commitments_ledger` entry in `meta.json`'s `sources`. No existing field changes shape.
+- **`data/commitments.json` entries gain scoring fields** — `basis`, `categories`,
+  `baseline_year`, `target_year`, and optionally `alt_categories` / `alt_note` /
+  `claim_quote` / `source_record`. Existing fields are untouched, and an entry without a
+  `basis` is reported `measurable: false` rather than silently skipped.
+- **Three pre-2023 commitments added to the roster**, sourced from City Council budget
+  filings found via the eLMS attachment sweep (`docs/foia/elms-attachment-sweep.md`).
+- Not exposed under `/api/v1/` this round; the ledger reaches API consumers only through
+  `findings.json`'s `commitments-vs-delivered` card for now.

@@ -31,7 +31,7 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     CDOT_BIKEWAY_HISTORY_PATH)
 from council_merge import load_all_council_records
 from bna_metrics import build_bna_scores, build_bna_finding
-from commitments_metrics import build_commitments_finding
+from commitments_metrics import build_commitments_finding, build_commitments_ledger
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core, check_trend_window_consistency)
 from socrata import write_json
@@ -2087,6 +2087,7 @@ def main():
     commitments_path = MAIN_ROUTES_PATH.parent / "commitments.json"
     commitments_doc = (json.loads(commitments_path.read_text())
                        if commitments_path.exists() else None)
+    commitments_ledger = None
     if commitments_doc and commitments_doc.get("commitments"):
         # Same fixtures rule as the series: no real FOIA history in a synthetic run.
         history_doc = (json.loads(CDOT_BIKEWAY_HISTORY_PATH.read_text())
@@ -2095,6 +2096,8 @@ def main():
                                                        history_doc)
         if commitments_finding:
             findings.append(commitments_finding)
+        # Full ledger: every roster commitment scored, across administrations.
+        commitments_ledger = build_commitments_ledger(commitments_doc, history_doc)
 
     name_to_ward = load_name_to_ward()
     council_records_out, council_records_list = build_council_records(name_to_ward)
@@ -2201,6 +2204,10 @@ def main():
              "date_range": ([bikeway_mileage_series["series"][0]["date"],
                              bikeway_mileage_series["series"][-1]["date"]]
                             if bikeway_mileage_series["series"] else None)},
+        ] + ([{"id": "commitments_ledger",
+               "name": "Bikeway Commitments Ledger (promises scored against CDOT's own figures)",
+               "tier": "derived", "records": len(commitments_ledger["commitments"]),
+               "date_range": None}] if commitments_ledger else []) + [
             {"id": "council_records", "name": "Council Records (street/bike-safety legislation)",
              "tier": council_records_out["data_tier"], "records": len(council_records_list),
              "date_range": None},
@@ -2245,6 +2252,8 @@ def main():
     write_json(SITE_DATA_DIR / "network_nodes.json", network_nodes_out)
     write_json(SITE_DATA_DIR / "ward_safety_index.json", ward_safety_index)
     write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", bikeway_mileage_series)
+    if commitments_ledger:
+        write_json(SITE_DATA_DIR / "commitments_ledger.json", commitments_ledger)
     write_json(SITE_DATA_DIR / "council_records.json", council_records_out)
     write_json(SITE_DATA_DIR / "aldermen_safety_record.json", aldermen_safety_record)
     write_json(SITE_DATA_DIR / "hearings.json", hearings_out)

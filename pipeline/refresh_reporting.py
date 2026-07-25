@@ -41,7 +41,7 @@ from aggregate import (build_main_routes, load_main_routes_roster,
                        load_proposed_projects_roster, crash_trend,
                        build_bikeway_mileage_series)
 from bna_metrics import build_bna_finding
-from commitments_metrics import build_commitments_finding
+from commitments_metrics import build_commitments_finding, build_commitments_ledger
 from config import (SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE,
                     SNAPSHOT_DIR, CDOT_BIKEWAY_HISTORY_PATH, MAIN_ROUTES_PATH)
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
@@ -301,6 +301,7 @@ def main():
     # Promise-vs-delivered card. build_findings_core doesn't produce it (it needs the
     # curated roster and CDOT's released install history, neither of which is crash
     # data), so without this an offline refresh would silently drop a published finding.
+    commitments_ledger = None
     commitments_path = MAIN_ROUTES_PATH.parent / "commitments.json"
     commitments_doc = (json.loads(commitments_path.read_text())
                        if commitments_path.exists() else None)
@@ -311,6 +312,10 @@ def main():
                                                         history_doc)
         if commitments_finding:
             findings.append(commitments_finding)
+        # Full ledger, same inputs — both are committed, so it rebuilds offline too.
+        commitments_ledger = build_commitments_ledger(commitments_doc, history_doc)
+        if commitments_ledger:
+            write_json(SITE_DATA_DIR / "commitments_ledger.json", commitments_ledger)
 
     write_json(SITE_DATA_DIR / "findings.json", findings)
 
@@ -435,6 +440,19 @@ def main():
                         network_nodes, upsert_osm_trails=rebuild_osm_trails,
                         bna_scores=bna_scores_out, upsert_bna=bna_rebuilt,
                         news_items=news_items, proposed_projects=proposed)
+    # commitments_ledger sits outside upsert_meta_sources' anchor chain — it has no
+    # ordering constraint against the other entries, so register it in place here.
+    if commitments_ledger:
+        entry = {"id": "commitments_ledger",
+                 "name": "Bikeway Commitments Ledger (promises scored against CDOT's own figures)",
+                 "tier": "derived", "records": len(commitments_ledger["commitments"]),
+                 "date_range": None}
+        ids = [s.get("id") for s in meta["sources"]]
+        if "commitments_ledger" in ids:
+            meta["sources"][ids.index("commitments_ledger")] = entry
+        else:
+            anchor_i = ids.index("council_records") if "council_records" in ids else len(ids)
+            meta["sources"].insert(anchor_i, entry)
     write_json(SITE_DATA_DIR / "meta.json", meta)
 
     print(f"refresh_reporting: {len(tuples)} crash tuples through {anchor}")

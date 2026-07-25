@@ -1,6 +1,77 @@
 {
-  "note": "Curated editorial roster of the City of Chicago's published bikeway-network commitments, with citations, kept separate from anything OYL measures itself. It exists to pair against OYL's own snapshot-built `site/data/bikeway_mileage_series.json` so readers can see the promise next to the network as it stands today. Delivery-since-2023 is NOT measurable from OYL data: the CDOT Bike Routes layer carries no install-date field, so the mileage series is built forward from snapshots (first snapshot 2026-07-11) with no way to attribute miles to when they were built. A FOIA requesting per-segment install / as-built dates from CDOT is drafted and ready to send: docs/outbox/2026-07-12--foia--cdot--bikeway-mileage-history.md (item 4). Only commitments with a direct citation below are listed; nothing here is inferred or estimated.",
+  "note": "Curated editorial roster of the City of Chicago's published bikeway-network commitments, with citations, kept separate from anything OYL measures itself. Delivery is scored against CDOT's own year-by-year figures, recovered under FOIA S145367-071326 and extracted to data/cdot_bikeway_history.json \u2014 so both sides of every comparison are the City's own data. The roster spans administrations deliberately: the lens is the bikeway network, not whoever happened to be in office, and a pledge is scored the same way regardless of who made it. Each entry carries a `basis` saying HOW it is scored (network_state, network_delta, or miles_added), the facility `categories` that count, and its window. Where a claim is only reachable under a more generous reading of which facilities count, `alt_categories` records that reading and the ledger publishes both numbers rather than picking one. Only commitments with a direct citation are listed; nothing here is inferred or estimated.",
   "commitments": [
+    {
+      "id": "100-miles-protected-2015",
+      "text": "The first 100 miles of protected bike lanes, complete before the end of 2015",
+      "claim_quote": "The City is on track to complete the first 100 miles of protected bike lanes before the end of 2015 with more lanes to be completed in 2016.",
+      "number": 100,
+      "unit": "miles",
+      "year_committed": 2015,
+      "deadline": 2015,
+      "basis": "network_state",
+      "categories": [
+        "protected"
+      ],
+      "baseline_year": null,
+      "target_year": 2015,
+      "alt_categories": [
+        "protected",
+        "buffered"
+      ],
+      "alt_note": "The claim is only reachable if buffered lanes are counted as protected. CDOT's own dashboard lists them separately and does not count buffered as low-stress (DECISIONS.md #37).",
+      "source_name": "City of Chicago, Budget Overview for Year 2016 (O2015-6370), filed with City Council",
+      "source_record": "O2015-6370",
+      "citations": [
+        "https://chicityclerkelms.chicago.gov/Matter/?matterRecordNumber=O2015-6370"
+      ],
+      "data_tier": "real"
+    },
+    {
+      "id": "50-more-protected-by-2019",
+      "text": "An additional 50 miles of protected bike lanes by 2019",
+      "claim_quote": "By 2019, the City plans to add an additional 50 miles of protected bike lanes.",
+      "number": 50,
+      "unit": "miles",
+      "year_committed": 2015,
+      "deadline": 2019,
+      "basis": "network_delta",
+      "categories": [
+        "protected"
+      ],
+      "baseline_year": 2015,
+      "target_year": 2019,
+      "alt_categories": [
+        "protected",
+        "buffered"
+      ],
+      "alt_note": "Shown on the generous reading too; the pledge is missed on either.",
+      "source_name": "City of Chicago, Budget Overview for Year 2016 (O2015-6370), filed with City Council",
+      "source_record": "O2015-6370",
+      "citations": [
+        "https://chicityclerkelms.chicago.gov/Matter/?matterRecordNumber=O2015-6370"
+      ],
+      "data_tier": "real"
+    },
+    {
+      "id": "100-new-miles-first-term",
+      "text": "100 new miles of bike lanes during the mayor's first term (2019-2022)",
+      "claim_quote": "Added 45 miles of new bike lanes, surpassing Mayor Lightfoot's goal of 100 new miles in her first term.",
+      "number": 100,
+      "unit": "miles",
+      "year_committed": 2019,
+      "deadline": 2022,
+      "basis": "miles_added",
+      "categories": null,
+      "baseline_year": 2018,
+      "target_year": 2022,
+      "source_name": "City of Chicago, Budget Overview for Year 2023 (O2022-3024), filed with City Council",
+      "source_record": "O2022-3024",
+      "citations": [
+        "https://chicityclerkelms.chicago.gov/Matter/?matterRecordNumber=O2022-3024"
+      ],
+      "data_tier": "real"
+    },
     {
       "id": "150-new-miles",
       "text": "150 miles of new bikeways",
@@ -13,21 +84,11 @@
         "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
         "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
       ],
-      "data_tier": "real"
-    },
-    {
-      "id": "80-percent-low-stress",
-      "text": "80% of the new bikeway miles built low-stress (protected lanes, neighborhood greenways, or off-street trails)",
-      "number": 80,
-      "unit": "percent",
-      "year_committed": 2023,
-      "deadline": null,
-      "source_name": "Chicago Department of Transportation, 2023 Chicago Cycling Strategy",
-      "citations": [
-        "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
-        "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
-      ],
-      "data_tier": "real"
+      "data_tier": "real",
+      "basis": "miles_added",
+      "categories": null,
+      "baseline_year": 2022,
+      "target_year": null
     },
     {
       "id": "70-percent-half-mile-access",
@@ -41,7 +102,30 @@
         "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
         "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
       ],
-      "data_tier": "real"
+      "data_tier": "real",
+      "basis": "not_measurable",
+      "categories": null,
+      "baseline_year": null,
+      "target_year": null,
+      "not_measurable_reason": "Needs a population-weighted half-mile access analysis against the low-stress network; OYL publishes no such measure yet."
+    },
+    {
+      "id": "80-percent-low-stress",
+      "text": "80% of the new bikeway miles built low-stress (protected lanes, neighborhood greenways, or off-street trails)",
+      "number": 80,
+      "unit": "percent",
+      "year_committed": 2023,
+      "deadline": null,
+      "source_name": "Chicago Department of Transportation, 2023 Chicago Cycling Strategy",
+      "citations": [
+        "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2023/march/cdot-releases-updated-cycling-strategy-to-expand-bike-network-an.html",
+        "https://www.chicago.gov/content/dam/city/depts/cdot/bike/2023/2023_Chicago%20Cycling%20Update.pdf"
+      ],
+      "data_tier": "real",
+      "basis": "low_stress_share",
+      "categories": null,
+      "baseline_year": 2022,
+      "target_year": null
     }
   ]
 }
