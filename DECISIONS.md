@@ -914,3 +914,60 @@ environment forced a deviation. Newest last.
     take it past its size budget. Each is independently stop-safe.
 
     130 API files revalidate; 420 tests pass, 7 of them new.
+
+41. **The co-location contract is enforced in CI, scoped per claim path rather
+    than per file.** `pipeline/check_colocation.py` runs as Check 5 of
+    `check_api.py`, which `data-guard.yml` already invokes — so it gates every
+    PR touching `site/api/**` or `pipeline/**`, including the Monday
+    auto-refresh, with no workflow change. Today it enforces 250 claims: 50 ward
+    files x the 5 paths #40 migrated.
+
+    **Per-path, not per-file, and that is the whole design.** An earlier draft
+    of this checker demanded a qualifier for every numeric key in an enforced
+    file. Against the real output it produced 346 violations on four files —
+    including all 107 `monthly` items and every number the migration does not
+    touch — and because scope was the file, the only exits were reverting or
+    migrating a whole file in one PR. `COLOCATION_ENFORCED_CLAIMS` now maps a
+    file glob to the specific paths someone has actually migrated. Everything
+    else passes untouched. That is what makes the migration abandonable partway
+    and resumable one claim at a time, and it is why the enforcement list must
+    grow in the same PR as the emitter.
+
+    **A check that cries wolf gets switched off, so three conditions stay
+    quiet on purpose.** Each is a legitimate state of the data, and each would
+    otherwise turn a normal Monday refresh into a blocked PR:
+
+    - A claim absent from *some* files under a glob but present in others — a
+      ward with no `crash_trend`. Reported, not fatal. Absent from *every* file
+      is still fatal, because that means the migration regressed.
+    - An `{"available": false}` subtree. "This data is missing" is a stated
+      condition and a missing number needs no caveat; the repo's standing rule
+      is never to invent zeros.
+    - A glob matching no file at all — a partial tree. **Found and fixed while
+      landing this**: the shipped rule conflated "the claim is gone from the
+      files" with "there are no files", so it failed on any tree without ward
+      files even though `check_api.py` already returns early for a wholly
+      absent API. That is the same defect the per-glob rule was written to fix,
+      one level up.
+
+    All three now print a `NOTE:` naming what was skipped. A skipped check that
+    prints nothing is indistinguishable from a check that passed, and this
+    contract is not worth having if it can go quiet without saying so.
+
+    **CC-8 runs here as well as at emit time, and it has to.** Hand-edited JSON
+    never passes through `qualify()`, so the emit-time assert cannot see it. The
+    extraction and comparison live in `caveats.py` and both callers import them,
+    so the truth rule has one implementation rather than two that drift — which
+    already paid for itself once, when a false negative in the date exemption
+    was fixed in a single place.
+
+    **Deviation from the studio's draft, stated:** it proposed pasting this into
+    `check_api.py`. It ships as its own module instead — 600 lines would have
+    dominated a 280-line CI entry point, the repo already uses flat sibling
+    modules (`caveats.py`, `config.py`), and enforcement can now be abandoned by
+    deleting one import. Behaviour is unchanged.
+
+    12 new tests; 432 pass. The backlog is **126 unmigrated claim paths**,
+    readable via `--audit-colocation` — deduplicated, so 50 ward files sharing
+    one gap are a single line and 107 `monthly` items are a single line. An
+    unreadable backlog is an ignored backlog.

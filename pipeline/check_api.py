@@ -48,6 +48,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
+from check_colocation import check_colocation
 from config import API_CRASH_SLICE_BUDGET_BYTES, API_SIZE_BUDGET_BYTES
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -259,6 +260,10 @@ def _check_version_coherence(index, parsed):
 
 
 def main():
+    # --audit-colocation lists every numeric claim no selector covers yet — the
+    # migration backlog. It never exits non-zero, so it is safe to run anywhere.
+    audit = "--audit-colocation" in sys.argv
+
     if not INDEX_PATH.exists():
         print(f"note: {INDEX_PATH} not present — agent API not yet "
               "published; skipping check_api.py.")
@@ -276,6 +281,7 @@ def main():
     _check_size_budgets()
     _check_manifest_completeness(index)
     _check_version_coherence(index, parsed)
+    check_colocation(parsed, audit_only=audit)
 
 
 if __name__ == "__main__":

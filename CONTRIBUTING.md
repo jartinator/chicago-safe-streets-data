@@ -31,6 +31,18 @@ honors those schemas.
   matching hand-written schema under `site/api/v1/schemas/` must be updated
   in the same PR — CI (`pipeline/check_api.py`) and reviewers will catch
   drift, but it's on you to know where that source of truth lives.
+- `pipeline/caveats.py` — the caveat co-location contract. A number and the
+  qualifier that makes it honest belong in the **same object**. Build a caveat
+  from the object you are attaching it to, never from a neighbouring one:
+  `qualify()` raises if a caveat restates a value its object does not carry,
+  because a wrong caveat welded to a number is more credible than no caveat.
+- `pipeline/check_colocation.py` — CI enforcement, scoped per JSON claim path.
+  `COLOCATION_ENFORCED_CLAIMS` lists the paths actually migrated; everything
+  else passes untouched, so the migration is resumable one claim at a time.
+  **Migrating a claim means adding its selector there in the same PR** — the
+  emitter and the enforcement list are two halves of one change. Run
+  `python pipeline/check_api.py --audit-colocation` for the backlog; it never
+  exits non-zero.
 
 ## Add an obstruction data source
 
