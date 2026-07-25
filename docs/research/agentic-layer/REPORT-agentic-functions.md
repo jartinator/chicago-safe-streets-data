@@ -183,8 +183,9 @@ unless noted).
    the trail. **Hard rule (maintainer, 2026-07-23): the requester identity
    defaults to "On Your Left!" — for the maintainer's future filings AND
    for the seed-bank's templates.** Future OYL requests file as the
-   project (organizational requester, project email alias — alias creation
-   is a tracked human task); seed-bank templates default outsiders to
+   project (organizational requester; the address exists —
+   `onyourleftopensource@gmail.com`, created 2026-07-23, forwarding and
+   send-as configured); seed-bank templates default outsiders to
    filing "on behalf of the On Your Left! open-data project" with their
    own contact details for delivery, personal names de-emphasized. The
    three staged outbox letters should be re-headed to the project identity

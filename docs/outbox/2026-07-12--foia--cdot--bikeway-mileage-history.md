@@ -82,8 +82,9 @@ please cite the specific statutory exemption for each redaction as required by 5
 Thank you for your assistance. Please contact me if you have any questions.
 
 Sincerely,
-Jared Meyer
-jaredthomasmeyer@gmail.com
+On Your Left! — an open-source Chicago bike-safety data project
+onyourleftopensource@gmail.com
+https://jartinator.github.io/chicago-safe-streets-data/
 
 ---
 
@@ -100,3 +101,9 @@ provided; item 6 was optional and moot.
 Released records, what arrived against what was asked, and the four known gaps:
 [`data/foia/S145367-071326/README.md`](../../data/foia/S145367-071326/README.md).
 Extracted 2010–2025 series: [`data/cdot_bikeway_history.json`](../../data/cdot_bikeway_history.json).
+
+**Identity note.** This request was actually filed on 2026-07-13, ten days before
+the 2026-07-23 project-identity rule — so it went to CDOT under the maintainer's
+personal name and appears that way in Chicago's public FOIA log. The signature
+block above carries the current standing identity and governs future sends; it
+does not describe how this particular request was filed.

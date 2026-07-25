@@ -85,9 +85,9 @@ spare your office future one-off requests like this one.
 Electronic delivery to the email below is preferred.
 
 Sincerely,
-[NAME]
-[EMAIL]
-[optional: postal address / phone]
+On Your Left! — an open-source Chicago bike-safety data project
+onyourleftopensource@gmail.com
+https://jartinator.github.io/chicago-safe-streets-data/
 
 ---
 
