@@ -6,10 +6,11 @@ full rationale and request bodies live in this folder's per-request files
 
 | # | Date sent | Agency | Contact | Subject | Status | Ref # | Statutory reply due | Follow-up |
 |---|-----------|--------|---------|---------|--------|-------|---------------------|-----------|
-| 1 | 2026-07-13 | CDOT | GovQA portal | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | **Answered 2026-07-24 — granted, records released** | S145367-071326 | 2026-07-20 (+5-day extension taken 2026-07-13) | 4 gaps identified; follow-up request not yet drafted |
+| 1 | 2026-07-13 | CDOT | GovQA portal | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | **Answered 2026-07-24 — granted, records released** | S145367-071326 | 2026-07-20 (+5-day extension taken 2026-07-13) | Follow-up drafted → row 5 |
 | 2 | 2026-07-12 (received by agency 07-13) | Office of the City Clerk | clerkfoia@cityofchicago.org → GovQA | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Answered 2026-07-20 — denied, no responsive records** (Clerk is not the keeper; redirected to the department and to eLMS / Journals of Proceedings) | F145909-071726 | 2026-07-20 (met) | None. #1 was granted in full, so the fallback is moot |
 | 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 | 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Acknowledged same day**; DOF invoked +5 extension (consultation, 5 ILCS 140/3(e)); CDOT cc closed (not keeper → DOF). Outcome log in the outbox file | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | **2026-08-04** (extension invoked) | Nudge 2026-08-06 if no response |
+| 5 | _(ready to send 2026-07-25 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Follow-up to S145367-071326: the 2025 layer's missing `.shp`, plus 2011–2017 layers, quarterly snapshots, and dashboard file metadata (items 2–4 optional) | Ready (`docs/outbox/2026-07-25--foia--cdot--bikeway-history-gaps.md`) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
 
 ## What each request seeks
 
@@ -46,13 +47,26 @@ See `DECISIONS.md` #35 for what this changes about the mileage series.
 
 **Not provided:** item 3 (document version history). Item 6 was optional and moot.
 
-### Gaps worth a follow-up request
+### Gaps worth a follow-up request — drafted, see row 5
+
+Drafted 2026-07-25 as `docs/outbox/2026-07-25--foia--cdot--bikeway-history-gaps.md`.
+Item 1 is written to stand alone; items 2–4 each carry an explicit drop-it line so the
+whole thing can be answered in minutes if CDOT only wants to fix the packaging slip.
 
 1. `2025_Bike Network_internal.shp.zip` ships **without its `.shp`** — 1,008 attribute rows,
-   no geometry. Reads like a packaging slip; worth simply asking again.
-2. **No GIS layers for 2011–2017.** The series jumps 2010 → 2018.
-3. **Annual granularity only** — the individual quarterly tracker snapshots were not produced.
-4. **No document version history**, so a figure revised after publication is not detectable.
+   no geometry, while every other year arrived complete. Reads like a packaging slip; the
+   follow-up leads with it and asks for nothing else as a hard requirement.
+2. **No GIS layers for 2011–2017.** The series jumps 2010 → 2018. Asked as optional, with
+   "not retained" named up front as a complete answer.
+3. **Annual granularity only** — the quarterly tracker snapshots were not produced. Narrowed
+   to *saved files that already exist*; explicitly not a request to reconstruct figures.
+4. **No document version history.** Narrowed from the original item 3 to just the
+   created/modified/author metadata for `CompleteStreets_Dashboard.xlsx` — enough to state
+   how current a cited figure was, and answerable from a properties pane.
+
+The letter also carries the standing open-data off-ramp (collaboration principle 3):
+publishing the `BW_INST_YR` / `BW_INST_MO` columns CDOT already maintains onto the public
+Bike Routes layer (`hvv9-38ut`) would retire most future requests of this kind.
 
 ## #2 — outcome (answered 2026-07-20)
 
