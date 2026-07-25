@@ -27,7 +27,8 @@ from config import (RAW_DIR, SITE_DATA_DIR, SNAPSHOT_DIR, FIXTURE_SNAPSHOT_DIR,
                     STREET_CLASSES_INCLUDED, STREET_STATUS_INCLUDED,
                     CURATED_TRAILS_PATH, ORIENTATION_POINTS_PATH,
                     SAFETY_TOPIC_KEYWORDS, NEWS_WINDOW_DAYS, NEWS_MAX_ITEMS,
-                    PROPOSED_PROJECTS_PATH)
+                    PROPOSED_PROJECTS_PATH, ON_STREET_CATEGORIES, OFF_STREET_CATEGORIES,
+                    CDOT_BIKEWAY_HISTORY_PATH)
 from council_merge import load_all_council_records
 from bna_metrics import build_bna_scores, build_bna_finding
 from commitments_metrics import build_commitments_finding
@@ -1265,30 +1266,90 @@ def infra_growth_trend(wards_gdf, snapshot_dir=SNAPSHOT_DIR):
     return out, note
 
 
-def build_bikeway_mileage_series(snapshot_dir=SNAPSHOT_DIR):
-    """Citywide bikeway miles by facility category per snapshot date — a machine-readable
-    equivalent of CDOT's quarterly Bike Lane Mileage Tracker, built from accumulated
-    snapshots so it can be correlated against crash trends over time.
+def _foia_history_points(history_path=CDOT_BIKEWAY_HISTORY_PATH):
+    """CDOT's own annual network figures, as series points on the on-street basis.
+
+    Sourced from the Complete Streets dashboard released under FOIA S145367-071326
+    (see pipeline/foia_bikeway_history.py). Each year becomes a point dated to that
+    year's end. Off-street miles are carried in their own field rather than folded
+    into the total, because our snapshots cannot see them at all.
     """
+    if history_path is None or not history_path.exists():
+        return []
+    doc = json.loads(history_path.read_text())
+    points = []
+    for entry in (doc.get("annual") or {}).get("network") or []:
+        by_cat = entry.get("by_category") or {}
+        on_street = {c: round(by_cat.get(c, 0.0), 2) for c in ON_STREET_CATEGORIES}
+        off_street = {c: round(by_cat.get(c, 0.0), 2) for c in OFF_STREET_CATEGORIES}
+        points.append({
+            "date": f"{entry['year']}-12-31",
+            "source": "cdot_foia_dashboard",
+            "by_category": on_street,
+            "total": round(sum(on_street.values()), 2),
+            "off_street": off_street,
+            "off_street_total": round(sum(off_street.values()), 2),
+        })
+    return points
+
+
+def build_bikeway_mileage_series(snapshot_dir=SNAPSHOT_DIR,
+                                 history_path=CDOT_BIKEWAY_HISTORY_PATH):
+    """Citywide on-street bikeway miles by facility category over time, 2010 -> present.
+
+    Two sources, spliced on the on-street basis and tagged per point:
+
+    - `cdot_foia_dashboard` — CDOT's own year-end figures for 2010-2025, recovered from
+      FOIA S145367-071326. This is the history; it is not something we could compute.
+    - `oyl_snapshot` — one point per committed `bike_routes_*.geojson`, computed here
+      from the public CDOT layer, continuing the series forward from 2026.
+
+    The splice is on the on-street subset because that is the only basis on which the
+    two agree: the public layer omits off-street trails entirely, so a snapshot's
+    trail miles are 0 while CDOT counts ~55. Where the two overlap they land 0.03 mi
+    apart, which is the evidence the methodologies match. CDOT's off-street figures
+    ride along in `off_street` for the years they exist and are `None` for snapshots,
+    rather than being summed into a total that would fall off a cliff at the seam.
+    """
+    history = _foia_history_points(history_path)
+
     snapshots = sorted(snapshot_dir.glob("bike_routes_*.geojson")) if snapshot_dir.exists() else []
-    series = []
+    snapshot_points = []
     for snap in snapshots:
         by_cat = citywide_miles_by_category(json.loads(snap.read_text()))
-        series.append({
+        on_street = {c: round(by_cat.get(c, 0.0), 2) for c in ON_STREET_CATEGORIES}
+        snapshot_points.append({
             "date": snap.stem.replace("bike_routes_", ""),
-            "by_category": {c: round(by_cat.get(c, 0.0), 2) for c in FACILITY_CATEGORIES},
-            "total": round(sum(by_cat.values()), 2),
+            "source": "oyl_snapshot",
+            "by_category": on_street,
+            "total": round(sum(on_street.values()), 2),
+            # The public Bike Routes layer has no off-street trails to measure, so this
+            # is unknown-not-zero. Publishing 0 here would read as "the trails vanished".
+            "off_street": None,
+            "off_street_total": None,
         })
-    if len(series) < 2:
-        note = ("Citywide bikeway miles by facility type. Only one snapshot exists so far — the "
-                "over-time series fills in as the pipeline runs on a quarterly cadence (the CDOT "
-                "Bike Routes layer has no install-date field, so history is built forward from "
-                "snapshots, not backfillable). Miles use CDOT centerline mileage where available.")
+
+    series = history + snapshot_points
+
+    if not series:
+        note = ("Citywide on-street bikeway miles by facility type. No history or snapshots "
+                "are available in this environment.")
+    elif not history:
+        note = (f"Citywide on-street bikeway miles by facility type across {len(snapshot_points)} "
+                f"snapshots ({series[0]['date']} to {series[-1]['date']}). Miles use CDOT "
+                f"centerline mileage where available, else projected geometry length. CDOT's "
+                f"released history is not present in this environment, so this run covers "
+                f"snapshots only.")
     else:
-        note = (f"Citywide bikeway miles by facility type across {len(series)} snapshots "
-                f"({series[0]['date']} to {series[-1]['date']}). Miles use CDOT centerline "
-                f"mileage where available, else projected geometry length. The CDOT Bike Routes "
-                f"layer has no install-date field, so this series is built forward from snapshots.")
+        note = (f"Citywide on-street bikeway miles by facility type, {series[0]['date'][:4]} to "
+                f"{series[-1]['date']}. Years {history[0]['date'][:4]}-{history[-1]['date'][:4]} are "
+                f"CDOT's own year-end figures from the Complete Streets dashboard released under "
+                f"FOIA S145367-071326; later points are OYL snapshots of the public CDOT Bike "
+                f"Routes layer. Both are centerline miles and agree to 0.03 mi where they overlap. "
+                f"The series is on-street only: the public layer omits off-street trails, so they "
+                f"are carried separately in `off_street` for the years CDOT reported them and are "
+                f"null for snapshots. Facility mix changes between years can reflect upgrades "
+                f"(a buffered lane rebuilt as protected) as well as new construction.")
     return {"data_tier": "derived", "note": note, "series": series}
 
 
@@ -2014,7 +2075,11 @@ def main():
     ward_safety_index = build_ward_safety_index(crashes, wards_gj, routes_gj, wards_gdf,
                                                 snapshot_dir, tuples=tuples,
                                                 road_miles_by_ward=road_miles_by_ward)
-    bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir)
+    # A --fixtures run must not splice CDOT's real released history onto synthetic
+    # snapshots: the output would be part real and part invented, and provenance
+    # stamping can't express that. Fixture runs stay snapshot-only.
+    history_path = None if provenance == "fixtures" else CDOT_BIKEWAY_HISTORY_PATH
+    bikeway_mileage_series = build_bikeway_mileage_series(snapshot_dir, history_path)
 
     # Promise-vs-delivered: curated published bikeway commitments (data/commitments.json,
     # editorial roster with citations) paired against the bikeway mileage series just
@@ -2023,7 +2088,11 @@ def main():
     commitments_doc = (json.loads(commitments_path.read_text())
                        if commitments_path.exists() else None)
     if commitments_doc and commitments_doc.get("commitments"):
-        commitments_finding = build_commitments_finding(commitments_doc, bikeway_mileage_series)
+        # Same fixtures rule as the series: no real FOIA history in a synthetic run.
+        history_doc = (json.loads(CDOT_BIKEWAY_HISTORY_PATH.read_text())
+                       if history_path and CDOT_BIKEWAY_HISTORY_PATH.exists() else None)
+        commitments_finding = build_commitments_finding(commitments_doc, bikeway_mileage_series,
+                                                       history_doc)
         if commitments_finding:
             findings.append(commitments_finding)
 

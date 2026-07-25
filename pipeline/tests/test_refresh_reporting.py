@@ -359,3 +359,40 @@ def test_refresh_reporting_main_calls_emit_api_at_the_end(tmp_path, monkeypatch)
     meta_out = json.loads((site_data_dir / "meta.json").read_text())
     index = json.loads((api_dir / "index.json").read_text())
     assert index["_meta"]["generated_at"] == meta_out["generated_at"]
+
+
+def test_refresh_offline_run_keeps_the_commitments_finding(tmp_path, monkeypatch):
+    """Regression test for the offline-refresh-drops-a-published-finding bug.
+
+    refresh_reporting.main() rebuilds findings.json wholesale from
+    build_findings_core, but that function never produced the
+    `commitments-vs-delivered` card — it needs the curated commitments roster and
+    CDOT's released install history, neither of which is crash data. So every
+    offline refresh silently deleted a card that WAS published in site/data/
+    findings.json, and nothing caught it. The fix re-appends the card the same way
+    the BNA card is re-appended; this test fails if that wiring is ever removed.
+    """
+    site_data_dir = tmp_path / "site_data"
+    raw_dir = tmp_path / "raw"
+    site_data_dir.mkdir()
+    raw_dir.mkdir()
+    _minimal_offline_fixture(site_data_dir, osm_trails_features=3)
+
+    monkeypatch.setattr(refresh_reporting, "SITE_DATA_DIR", site_data_dir)
+    monkeypatch.setattr(refresh_reporting, "RAW_DIR", raw_dir)
+    monkeypatch.setattr("sys.argv", ["refresh_reporting.py"])
+    monkeypatch.setattr(refresh_reporting.emit_api, "emit_all", lambda: {})
+
+    refresh_reporting.main()
+
+    findings = json.loads((site_data_dir / "findings.json").read_text())
+    ids = [f["id"] for f in findings]
+    assert "commitments-vs-delivered" in ids, (
+        "offline refresh dropped the commitments-vs-delivered finding — "
+        f"findings.json rebuilt as {ids}")
+
+    card = next(f for f in findings if f["id"] == "commitments-vs-delivered")
+    # The real roster and released history are on disk here, so the card must be
+    # the measured version, not the pre-FOIA "couldn't measure it" fallback.
+    assert "150" in card["description"]
+    assert "not available in this environment" not in card["caveat"]

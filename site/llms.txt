@@ -4,14 +4,14 @@ Police-reported cyclist crash data, bikeway network quality, and City Council ac
 
 generated_at: 2026-07-22T01:57:35+00:00
 provenance: socrata
-contract_version: 1.16
+contract_version: 1.17
 
 ## Start here
 https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json
 The discovery entry point: the full endpoint list with byte sizes, endpoint *families* (e.g. one file per ward), and fetch recipes for common questions.
 
 ## Endpoints
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (17,529 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (22,552 bytes)
   Citywide monthly cyclist crash trend, headline findings, and bikeway mileage / protected-share stats.
   e.g. "How many cyclists were killed or seriously injured in Chicago recently?"
   e.g. "Is cyclist crash frequency in Chicago trending up or down?"
@@ -20,7 +20,7 @@ The discovery entry point: the full endpoint list with byte sizes, endpoint *fam
   Per-street corridor crash rates and bikeway facility mix, plus labeled crash hotspot intersections.
   e.g. "Which Chicago streets have the highest cyclist crash rate per km?"
   e.g. "Where are Chicago's worst cyclist crash hotspot intersections?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/wards/index.json (58,404 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/wards/index.json (58,409 bytes)
   All 50 Chicago wards' comparable danger scores, crash counts, and bikeway stats in one file, ranked, with links to each ward's full detail file.
   e.g. "Which Chicago ward is most dangerous for cyclists?"
   e.g. "How does my ward's bikeway mileage compare to other wards?"

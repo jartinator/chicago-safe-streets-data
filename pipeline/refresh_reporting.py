@@ -38,9 +38,12 @@ from aggregate import (build_main_routes, load_main_routes_roster,
                        build_osm_trails_layer, build_network_nodes, load_orientation_points,
                        build_mellow_connectors, mellow_connector_records, build_bna,
                        build_news_items, build_proposed_projects,
-                       load_proposed_projects_roster, crash_trend)
+                       load_proposed_projects_roster, crash_trend,
+                       build_bikeway_mileage_series)
 from bna_metrics import build_bna_finding
-from config import SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE
+from commitments_metrics import build_commitments_finding
+from config import (SITE_DATA_DIR, RAW_DIR, CONTRACT_VERSION, CRASH_START_DATE,
+                    SNAPSHOT_DIR, CDOT_BIKEWAY_HISTORY_PATH, MAIN_ROUTES_PATH)
 from crash_metrics import (monthly_counts, per_ward_monthly, window_counts,
                            build_findings_core, check_trend_window_consistency)
 from socrata import write_json
@@ -264,11 +267,18 @@ def main():
     if not tuples:
         raise SystemExit("refresh_reporting: no crash tuples in crashes_cyclist.geojson")
 
-    # Protected share: latest committed mileage snapshot (CDOT centerline methodology,
-    # same as the live path); the trail exclusion happens inside protected_share.
-    series = _load("bikeway_mileage_series.json")["series"]
+    # The mileage series is fully derivable offline — its two inputs, the committed
+    # snapshots under data/snapshots/ and CDOT's released history in
+    # data/cdot_bikeway_history.json, are both versioned. So rebuild it here with the
+    # same function the live path uses, rather than reading back a stale file.
+    mileage_series = build_bikeway_mileage_series(SNAPSHOT_DIR, CDOT_BIKEWAY_HISTORY_PATH)
+    series = mileage_series["series"]
     if not series:
         raise SystemExit("refresh_reporting: bikeway_mileage_series.json has no snapshots")
+    write_json(SITE_DATA_DIR / "bikeway_mileage_series.json", mileage_series)
+
+    # Protected share: latest point (CDOT centerline methodology, same as the live
+    # path); the trail exclusion happens inside protected_share.
     by_category_miles = series[-1]["by_category"]
     as_of_date = series[-1]["date"]
 
@@ -287,6 +297,21 @@ def main():
     # PFB BNA scorecard card (B1) — re-appended from raw pull or committed
     # bna_scores.json so the full findings rebuild doesn't drop it.
     bna_scores_out, bna_rebuilt = apply_bna(findings, raw_is_fixture=raw_is_fixture)
+
+    # Promise-vs-delivered card. build_findings_core doesn't produce it (it needs the
+    # curated roster and CDOT's released install history, neither of which is crash
+    # data), so without this an offline refresh would silently drop a published finding.
+    commitments_path = MAIN_ROUTES_PATH.parent / "commitments.json"
+    commitments_doc = (json.loads(commitments_path.read_text())
+                       if commitments_path.exists() else None)
+    if commitments_doc and commitments_doc.get("commitments"):
+        history_doc = (json.loads(CDOT_BIKEWAY_HISTORY_PATH.read_text())
+                       if CDOT_BIKEWAY_HISTORY_PATH.exists() else None)
+        commitments_finding = build_commitments_finding(commitments_doc, mileage_series,
+                                                        history_doc)
+        if commitments_finding:
+            findings.append(commitments_finding)
+
     write_json(SITE_DATA_DIR / "findings.json", findings)
 
     # Citywide monthly trend — identical assembly to aggregate.main().
