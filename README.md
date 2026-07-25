@@ -65,6 +65,22 @@ endpoints get added, existing ones don't change shape without a
 - OYL publishes no obstruction data at all — not in this API, not on the
   human site; every response says so.
 
+### The assistant skill
+
+[`.claude/skills/chicago-bike-safety-data/`](.claude/skills/chicago-bike-safety-data/)
+is a distributable skill that teaches a general-purpose assistant to read this
+API: which of the three fetches answers a question, how to keep a number's
+caveat attached to it, and what this data cannot tell you. It exists because
+the API alone does not route anyone back here — in a 205-call evaluation,
+assistants working from the raw JSON cited a source in **0%** of answers, and
+assistants using the skill cited the matching human page in **91%**.
+
+Two limits belong with that evaluation wherever it is quoted: judge–human
+agreement is **not available** (heuristic scorer, no calibration set), and
+**n=5 per cell**. The skill also describes a per-number caveat contract that
+this repo has not built yet — see [DECISIONS.md](DECISIONS.md) #39 for what is
+live today and what is not.
+
 ## Repo layout
 
 ```
