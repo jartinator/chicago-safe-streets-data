@@ -8,12 +8,18 @@ an MCP server, head-to-head) and "stop at static + skill, the MCP is overkill" i
 **valued outcome**. Mirrors `../user-needs/` (method) and `../news-layer/`
 (replication pattern). Research first; implementation later, human-gated.
 
+> **Naming.** This folder also holds study #1 (the agentic-layer audit), which
+> already ran — its own paste-to-run file is `01-kickoff-prompt.md` and its
+> output is `REPORT-agentic-functions.md` / `REPORT-agentic-proposal.md`. This
+> study's kickoff is `01-kickoff-prompt-access.md`. The two are different
+> studies; do not paste one expecting the other.
+
 ## Layout
 
 | Path | What it is |
 |---|---|
 | `00-concept.md` | Goal, three-mechanism head-to-head, intent tools as one candidate shape, honest hazards, kill criteria, FOIA-seam fence |
-| `01-kickoff-prompt.md` | Paste-to-run orchestration: model routing, 9 steps, quality gates, collision guards, hard stop before any build |
+| `01-kickoff-prompt-access.md` | Paste-to-run orchestration: model routing, 9 steps, quality gates, collision guards, hard stop before any build |
 | `02-stimulus-access-experiences.md` | Stimulus: what exists today + mechanism-blind experience vignettes + (technical-only) mechanism menu + new-data question |
 | `03-interview-guide-addendum.md` | Agentic dimension layered on `../user-needs/03` |
 | `04-researcher-addendum.md` | Ground rules 7–9 + extended memo template (incl. `mechanism_implication`) |

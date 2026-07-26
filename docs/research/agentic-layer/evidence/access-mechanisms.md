@@ -1,7 +1,7 @@
 # Evidence brief: access mechanisms (feasibility, head-to-head)
 
 > **STATUS: STUB.** This file states the research question and method. The
-> kickoff (`../01-kickoff-prompt.md`, step 2) fills it with a live-verified brief
+> kickoff (`../01-kickoff-prompt-access.md`, step 2) fills it with a live-verified brief
 > before the study runs. Fill it on a Sonnet evidence agent; **verify every claim
 > against live docs/endpoints — do not infer from memory.** Match the depth and
 > citation style of `../../user-needs/evidence/*.md`.

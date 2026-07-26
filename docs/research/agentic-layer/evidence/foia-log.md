@@ -1,7 +1,7 @@
 # Evidence brief: Chicago public FOIA request log (`u9qt-tv7d`)
 
 > **STATUS: STUB.** States the research question + method. The kickoff
-> (`../01-kickoff-prompt.md`, step 2) fills it before the study runs, on a Sonnet
+> (`../01-kickoff-prompt-access.md`, step 2) fills it before the study runs, on a Sonnet
 > evidence agent, live-verified, in the citation style of
 > `../../user-needs/evidence/*.md`.
 
