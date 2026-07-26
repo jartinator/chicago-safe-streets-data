@@ -1074,3 +1074,40 @@ environment forced a deviation. Newest last.
     Additive; `CONTRACT_VERSION` stays 1.18 for the reasons in #40. 446 tests
     pass, 14 of them new; `check_api.py` and `check_provenance.py` are green and
     the UI test files still pass.
+
+44. **The Python tests run in their own workflow, not as a job inside
+    `data-guard.yml`.** Until now nothing enforced `pipeline/tests` on a pull
+    request: `gh pr checks` on #88 reported exactly one check, `provenance`.
+    448 tests passed locally and were load-bearing in review comments, but a PR
+    that broke them merged green. `.github/workflows/tests.yml` closes that.
+
+    Placing it beside `data-guard.yml` rather than inside it comes down to the
+    triggers. `data-guard.yml` is path-filtered — `pull_request` on
+    `site/data/**`, `site/api/**`, `pipeline/**`, and `push` to `main` on only
+    the first two. A test job inheriting that filter would not run on a push to
+    `main` that touched `pipeline/` alone, which is exactly the merge this is
+    meant to catch. Widening the filter to suit the tests would in turn widen
+    the provenance guard, which was scoped narrowly on purpose (#12). The new
+    workflow is therefore unfiltered on both triggers: it always reports, so it
+    can become a required check without the skipped-required-check problem,
+    where a filtered-out job never reports and the PR waits forever.
+
+    The two also answer different questions — "is this data real?" versus "does
+    this code still work?" — and separate check names read better in
+    `gh pr checks` and in branch protection. Dependency weight follows the same
+    line: `provenance` needs only stdlib plus `jsonschema`, while the test job
+    installs `geopandas`, `shapely` and `pyproj` from
+    `pipeline/requirements-dev.txt`. Keeping them apart keeps the fast guard
+    fast. `pip` is cached against both requirements files, since
+    `requirements-dev.txt` pulls the runtime list in with `-r` and hashing it
+    alone would reuse a stale cache after a runtime-dep bump.
+
+    This was deferred once already, in the Phase 4 note in
+    `docs/superpowers/cost-savings-orchestration.md`, as "available as a
+    standalone PR later." This is that PR.
+
+    **Deliberately not done.** The UI tests (`tests/ui/*.test.js`, run under
+    `node`) stay uncovered. `AGENTS.md` lists them next to the Python suite, so
+    they are the obvious follow-up, but they need a Node toolchain step and a
+    runner decision this PR does not make. No test was added, changed, or
+    skipped to make CI pass: the 448 that passed locally are the 448 CI runs.
