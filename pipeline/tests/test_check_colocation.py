@@ -163,7 +163,9 @@ def test_unmatched_glob_is_not_fatal_and_says_so(capsys):
     wholly absent api/v1, so a partial tree is anticipated, not broken. It is
     still reported: enforcement that goes quiet without saying so is
     indistinguishable from enforcement that passed."""
-    check_colocation({"citywide.json": {"_meta": {}, "findings": []}})
+    # corridors.json, not citywide.json: phase 6 put citywide.json under
+    # enforcement, so it is no longer an arbitrary unenforced file.
+    check_colocation({"corridors.json": {"_meta": {}, "corridors": []}})
     out = capsys.readouterr().out
     assert "NOTE:" in out
     assert "no file matches" in out

@@ -89,13 +89,44 @@ def test_missing_index_json_skips_cleanly(tmp_path, monkeypatch, capsys):
     assert "skipping" in out
 
 
+def _coherent_citywide():
+    """citywide.json came under the co-location contract at phase 6, so a tree
+    that is "coherent" now has to carry the contract envelope and the two
+    migrated claims — `trend` and `findings[*]`. Check 5 is entitled to fail a
+    tree that lists the file as migrated and then ships neither claim.
+
+    The other tests in this file trip an earlier check and never reach Check 5,
+    so they keep their bare-envelope fixture.
+    """
+    return {
+        "_meta": {**_ENVELOPE_REQUIRED, "caveat_contract": "v1",
+                  "agent_instruction": "Always name the caveat next to the number."},
+        "trend": {
+            "data_tier": "real", "window_end": "2026-06-30", "note": "n",
+            "caveat_tags": ["provisional", "not_ridership_normalized"],
+            "caveat": ("Monthly counts of police-reported cyclist crashes "
+                       "through 2026-06-30. The last 2 entries are provisional "
+                       "and can rise. Counts are not adjusted for ridership."),
+            "months": [{"month": "2026-06", "crashes": 10, "injury_crashes": 5,
+                       "ksi": 1, "fatal": 0, "caveat_tags": ["provisional"]}],
+        },
+        "findings": [{
+            "id": "ksi-trend", "title": "t", "stat": "216", "description": "d",
+            "data_tier": "real",
+            "caveat_tags": ["not_ridership_normalized", "provisional"],
+            "caveat": ("Crashes over the 12 months ending 2026-06-30 "
+                       "(216 crashes). The most recent 2 months are "
+                       "provisional. Counts are not adjusted for ridership."),
+        }],
+    }
+
+
 def test_all_four_checks_pass_on_a_coherent_minimal_tree(tmp_path, monkeypatch, capsys):
     api_dir, schemas_dir = _setup(tmp_path, monkeypatch)
     _write_schema(schemas_dir, "index.schema.json")
     _write_schema(schemas_dir, "citywide.schema.json")
 
-    citywide = {"_meta": {**_ENVELOPE_REQUIRED}}
-    (api_dir / "citywide.json").write_text(json.dumps(citywide))
+    (api_dir / "citywide.json").write_text(json.dumps(_coherent_citywide()))
 
     _write_index(api_dir, endpoints=[
         {"path": "citywide.json", "url": "https://example.com/api/v1/citywide.json",

@@ -135,6 +135,69 @@ CAVEAT_TAG_VOCAB = {
 }
 
 # ---------------------------------------------------------------------------
+# The canonical citywide.json findings[] tag assignment (CC-5)
+# ---------------------------------------------------------------------------
+#
+# ONE table. Nothing re-derives it, and that is exactly why it is a constant
+# here rather than a literal in each metrics module: during the studio
+# engagement two people built this list independently and disagreed on three of
+# eight rows, so the same finding would have shipped carrying different
+# qualifiers on the agent path (build_condition_b.py) and the human path
+# (findings-caveat-note.js). Any surface that renders these tags reads THIS.
+#
+# The first eight rows are 02-architecture.md §1.5, "The canonical
+# findings[].caveat_tags table". The per-row reasoning is there; read it rather
+# than re-deriving a row.
+#
+# `commitments-vs-delivered` is the ninth and postdates the studio's work
+# (DECISIONS.md #38), so §1.5 has no row for it. Decided with Jared 2026-07-25:
+# `third_party_method` alone. Both mileage figures come from CDOT's own Complete
+# Streets dashboard, and the finding exists because CDOT's counting definition
+# treats concrete upgrades to lanes that already existed as progress while the
+# pledge says "new bikeways" — "computed elsewhere, by a method that has changed
+# over time", word for word. Two tags were considered and rejected: `coverage_gap`
+# would assert the source is incomplete, and the finding claims a counting
+# difference rather than missing miles; `snapshot_derived` does not describe the
+# shipped path, whose delivered figures come from CDOT's FOIA-released
+# install-date history — the opposite of built-forward-from-snapshots. The
+# module's no-FOIA fallback branch DOES compare against a current network
+# snapshot, and adds `snapshot_derived` there. See build_commitments_finding().
+FINDING_CAVEAT_TAGS = {
+    "ksi-trend": ["not_ridership_normalized", "provisional"],
+    "protected-share": ["snapshot_derived"],
+    "street-coverage": ["snapshot_derived"],
+    "top-corridors": ["not_ridership_normalized", "small_n", "coverage_gap"],
+    "hit-and-run": ["coverage_gap"],
+    "ward-concentration": ["not_ridership_normalized"],
+    "dooring-undercount": ["coverage_gap"],
+    "bna-score": ["third_party_method", "coverage_gap"],
+    "commitments-vs-delivered": ["third_party_method"],
+}
+
+
+def finding_tags(finding_id, extra=()):
+    """Canonical caveat_tags for a findings[] id (CC-5).
+
+    Raises on an id this table does not know, rather than returning an empty
+    list. `caveat_tags` is minItems: 1 in claim.schema.json, so an unqualified
+    finding fails check_api.py regardless — this just fails it one step earlier,
+    at the call site, with a message naming the fix. A new finding gets a row in
+    FINDING_CAVEAT_TAGS in the same PR that adds the finding, the same way a
+    migrated claim gets a line in COLOCATION_ENFORCED_CLAIMS.
+    """
+    if finding_id not in FINDING_CAVEAT_TAGS:
+        raise ValueError(
+            f"findings[] id {finding_id!r} has no canonical caveat_tags. Add a "
+            f"row to FINDING_CAVEAT_TAGS in pipeline/caveats.py, decided "
+            f"against this finding's own caveat and description rather than "
+            f"guessed, and say so in the PR. Known ids: "
+            f"{sorted(FINDING_CAVEAT_TAGS)}")
+    tags = [*FINDING_CAVEAT_TAGS[finding_id], *extra]
+    _assert_tags(tags)
+    return tags
+
+
+# ---------------------------------------------------------------------------
 # Thresholds — PROJECT ASSUMPTIONS, NOT FINDINGS
 # ---------------------------------------------------------------------------
 #

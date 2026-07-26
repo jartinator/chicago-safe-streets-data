@@ -24,6 +24,7 @@ so the pledge and the network are scored on one consistent basis rather than two
 Pure functions over already-parsed dicts — no I/O, no network — so this stays
 testable and safe to call from aggregate.py once the inputs are loaded.
 """
+from caveats import finding_tags
 from config import LOW_STRESS_CATEGORIES, ON_STREET_CATEGORIES
 
 HEADLINE_COMMITMENT_ID = "150-new-miles"
@@ -120,9 +121,16 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             f"they put paint and signs between a rider and traffic, nothing more. "
             f"Source: {source}."
         )
-        caveat = ("This pairs the published commitment against the current network snapshot, "
-                  "not against what has been delivered since the commitment — CDOT's released "
-                  "install-date history is not available in this environment.")
+        caveat = (f"This pairs the published commitment against the bikeway network "
+                  f"snapshot as of {as_of}, not against what has been delivered since "
+                  f"the commitment — CDOT's released install-date history is not "
+                  f"available in this environment, so no delivery figure is claimed "
+                  f"here. The snapshot series is built forward from dated snapshots "
+                  f"because the public Bike Routes layer carries no install date.")
+        # This branch measures against a snapshot rather than against delivery, so
+        # it carries snapshot_derived on top of the canonical row. See
+        # caveats.FINDING_CAVEAT_TAGS for why the shipped branch does not.
+        tags = finding_tags("commitments-vs-delivered", extra=["snapshot_derived"])
         stat = f"{number} new {unit}"
     else:
         pct_new = round(100 * ledger["new_miles"] / number) if number else None
@@ -143,7 +151,8 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             f"from {FOIA_REFERENCE}."
         )
         caveat = (
-            "Both figures come from CDOT's own Complete Streets dashboard, so the gap is a "
+            f"Both figures cover {span} and come from CDOT's own Complete Streets "
+            "dashboard, so the gap is a "
             "counting difference, not a dispute about the underlying miles. The pledge says "
             "\"new bikeways,\" which is why the headline excludes the "
             f"{ledger['concrete_upgrade_miles']:,.1f} miles of concrete upgrades; CDOT's larger "
@@ -151,9 +160,10 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
             "protected lanes, neighborhood greenways, and off-street trails — buffered and "
             "painted lanes and sharrows are excluded, the same way this site's network map "
             "grades them, and the same way CDOT's own dashboard counts them. The pledge carries "
-            "no published deadline, so this is progress-to-date, not a verdict on whether CDOT "
-            "will meet it."
+            f"no published deadline, so this is progress through "
+            f"{ledger['through_year']}, not a verdict on whether CDOT will meet it."
         )
+        tags = finding_tags("commitments-vs-delivered")
         stat = f"{ledger['new_miles']:,.1f} of {number} new {unit}"
 
     return {
@@ -162,6 +172,7 @@ def build_commitments_finding(commitments_doc, bikeway_series, history_doc=None)
         "stat": stat,
         "description": description,
         "caveat": caveat,
+        "caveat_tags": tags,
         "map_state": {"screen": "table", "layers": [], "filters": {}},
         "data_tier": "derived",
     }

@@ -27,13 +27,35 @@ def _citywide_trend():
 
 
 def _findings():
+    """Two real findings[] ids carrying the Form A shape the contract requires:
+    data_tier + caveat_tags + caveat on the card that holds the number.
+
+    Real ids, canonical tags and CC-3-shaped prose, because the CC-3 and CC-8
+    lints below now run over citywide.json as well as the ward files, and a
+    fixture that could not pass them would test nothing. The second card exists
+    to exercise the CC-8 round-3 landmine on purpose: `stat` is "2032+" and the
+    caveat restates it as "(2032 crashes)", the form that a prefix-matching date
+    exemption used to wave through.
+    """
     return [
         {"id": "ksi-trend", "title": "KSI", "stat": "216", "description": "desc",
-         "caveat": "counts, not rates",
+         "caveat": ("Police-reported crashes in which a cyclist was killed or "
+                    "seriously injured, counted over the 12 months ending "
+                    "2026-06-30 (216 crashes). The most recent 2 months are "
+                    "provisional and can rise. Counts are not adjusted for how "
+                    "many people ride."),
+         "caveat_tags": ["not_ridership_normalized", "provisional"],
          "map_state": {"screen": "map", "layers": ["crashes"], "filters": {}},
          "data_tier": "real"},
-        {"id": "another", "title": "Another", "stat": "1", "description": "d2",
-         "caveat": "c2", "map_state": {}, "data_tier": "proxy"},
+        {"id": "dooring-undercount", "title": "Dooring", "stat": "2032+",
+         "description": "d2",
+         "caveat": ("Cyclist crashes reported from September 2017 through "
+                    "2026-06-30 that carry a dooring flag in the police record "
+                    "(2032 crashes). Dooring is excluded from reportable crash "
+                    "records unless a damage or injury threshold is met, so "
+                    "this is a floor and not a full count."),
+         "caveat_tags": ["coverage_gap"],
+         "map_state": {}, "data_tier": "proxy"},
     ]
 
 
@@ -380,12 +402,18 @@ def test_envelope_methodology_present_and_follows_human_page():
 
 def test_build_citywide_sections_present_and_map_state_stripped():
     out = build_citywide(_meta(), _citywide_trend(), _findings(), _mileage_series())
-    assert out["trend"]["months"] == _citywide_trend()["months"]
+    # The month payload passes through untouched; only caveat_tags is added to
+    # the provisional tail (see test_citywide_trend_carries_block_and_tail).
+    assert [{k: v for k, v in m.items() if k != "caveat_tags"}
+            for m in out["trend"]["months"]] == _citywide_trend()["months"]
     assert out["trend"]["data_tier"] == "real"
+    assert out["trend"]["note"] == _citywide_trend()["note"]
     assert len(out["findings"]) == 2
     for f in out["findings"]:
         assert "map_state" not in f
-    assert out["findings"][0]["caveat"] == "counts, not rates"
+    assert out["findings"][0]["caveat"] == _findings()[0]["caveat"]
+    assert out["findings"][0]["caveat_tags"] == ["not_ridership_normalized",
+                                                 "provisional"]
     assert out["findings"][0]["data_tier"] == "real"
     assert out["bikeway_mileage"]["data_tier"] == "derived"
     assert out["bikeway_mileage"]["series"] == _mileage_series()["series"]
@@ -1785,18 +1813,21 @@ def test_every_caveat_string_names_a_referent(tmp_path, monkeypatch):
     2026-06-30" does. The lint is deliberately loose: a date, a year, or a
     field name from the caveat's own object all count.
 
-    Scoped to the ward files, which are the surface this contract has migrated.
-    It is NOT yet global, and that is a statement about the repo rather than
-    about the rule: 6 of the 9 hand-written citywide findings[] caveats name no
-    referent today ("A floor, not a full count.", "counts, not rates"). Those
-    rewrites are a separate, later phase which must land behind the CI checker
-    and the contributor guidance, because a hand-typed caveat welded to a number
-    is the one thing nothing else here can check. Widen the glob when they land.
+    Scoped to the surfaces this contract has migrated: the ward files, and — as
+    of phase 6 — citywide.json. The citywide scope is what the five findings[]
+    prose rewrites bought. Before them, 5 of 9 hand-written caveats named no
+    referent at all ("A floor, not a full count."), which is why this lint used
+    to skip the file.
+
+    This runs over emit_all()'s output, so for findings it lints the FIXTURE
+    prose, not the strings crash_metrics.py actually authors — the prose lives
+    upstream in site/data/findings.json. test_authored_finding_caveats_are_self_
+    contained below is the one that reads the real generators.
     """
     emitted = _emit_to_tmp(tmp_path, monkeypatch, n_wards=3)
     checked = 0
     for relpath, doc in emitted.items():
-        if not relpath.startswith("wards/ward-"):
+        if not (relpath.startswith("wards/ward-") or relpath == "citywide.json"):
             continue
         for path, obj in _walk_claims(doc):
             for key, text, _scope in _caveat_strings(obj):
@@ -1834,6 +1865,44 @@ def test_every_restated_value_matches_its_sibling(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="CC-8"):
         caveats.qualify(trend, "derived", ["provisional"],
                         caveats.trend_caveat("2026-06-30", 116, 123))
+
+
+def test_citywide_trend_carries_block_and_tail():
+    """Phase 6. `trend` held 107 months and no qualifier at all — the citywide
+    series an agent charts was the last unqualified crash series in the API."""
+    trend_in = _citywide_trend()
+    trend_in["months"] = [{"month": f"2026-{m:02d}", "crashes": 10 + m,
+                          "injury_crashes": 5, "ksi": 1, "fatal": 0}
+                          for m in range(1, 8)]
+    out = build_citywide(_meta(), trend_in, _findings(), _mileage_series())
+    trend = out["trend"]
+
+    assert set(trend["caveat_tags"]) == {"provisional", "not_ridership_normalized"}
+    assert trend_in["window_end"] in trend["caveat"]
+    assert "provisional" in trend["caveat"]
+
+    tail = trend["months"][-caveats.PROVISIONAL_MONTHS:]
+    head = trend["months"][:-caveats.PROVISIONAL_MONTHS]
+    assert all(m["caveat_tags"] == ["provisional"] for m in tail)
+    assert all("caveat_tags" not in m for m in head)
+
+
+def test_citywide_trend_note_survives_the_caveat():
+    """`note` says what the data IS; `caveat` says how it can mislead. The
+    contract reads the second and never the first, so adding one must not
+    quietly consume the other."""
+    out = build_citywide(_meta(), _citywide_trend(), _findings(), _mileage_series())
+    assert out["trend"]["note"] == _citywide_trend()["note"]
+    assert out["trend"]["note"] != out["trend"]["caveat"]
+
+
+def test_citywide_findings_carry_the_canonical_tags():
+    """emit_api passes findings through verbatim, tags included. The tag table
+    itself is guarded in test_finding_caveats.py, which reads the generators."""
+    out = build_citywide(_meta(), _citywide_trend(), _findings(), _mileage_series())
+    for finding in out["findings"]:
+        assert finding["caveat_tags"], f"{finding['id']} lost its caveat_tags"
+        assert set(finding["caveat_tags"]) <= set(caveats.CAVEAT_TAG_VOCAB)
 
 
 def test_agent_instruction_identical_in_every_file(tmp_path, monkeypatch):

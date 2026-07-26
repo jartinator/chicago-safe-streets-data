@@ -109,7 +109,10 @@ def test_build_findings_core_ids_and_order():
     assert by_id["ward-concentration"]["wards"] == ["1", "2", "3", "4", "5"]
     assert "since Sept 2017" in by_id["ward-concentration"]["description"]
     assert "on-street bikeway miles" in by_id["protected-share"]["description"]
-    assert "Kinzie" in by_id["top-corridors"]["caveat"]
+    # The caveat names the corridor the data actually ranks first. It used to
+    # say "Kinzie" unconditionally, which was false whenever it was not.
+    assert "Milwaukee Ave" in by_id["top-corridors"]["caveat"]
+    assert by_id["top-corridors"]["stat"] == "Milwaukee Ave"
     assert by_id["street-coverage"]["stat"] == "12%"
     assert all(f["data_tier"] == "real" for f in findings)
 

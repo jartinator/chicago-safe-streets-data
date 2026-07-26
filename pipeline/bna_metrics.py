@@ -8,6 +8,7 @@ anti-discouragement + OSM-currency language in the caveat.
 """
 from datetime import datetime
 
+from caveats import finding_tags
 from config import BNA_LARGE_CITY_MIN_POPULATION
 
 # The verdict's master caveat: OSM-derived, uneven volunteer mapping — this
@@ -137,6 +138,10 @@ def build_bna_finding(scores):
         "stat": f"{score_int}/100",
         "description": description,
         "caveat": caveat,
+        # Canonical table, 02-architecture.md §1.5: third_party_method for PFB's
+        # changing methodology, coverage_gap for the uneven OSM base. Both facts
+        # are already in the caveat prose above.
+        "caveat_tags": finding_tags("bna-score"),
         "map_state": {"screen": "map", "layers": ["mainroutes"], "filters": {}},
         "data_tier": "crowdsourced",
     }

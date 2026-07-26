@@ -8,13 +8,16 @@
     "_meta": { "$ref": "envelope.schema.json" },
     "trend": {
       "type": "object",
-      "description": "Passthrough of site/data/citywide_trend.json — additionalProperties true because this is source-data passthrough, not hand-enumerated here.",
+      "description": "Passthrough of site/data/citywide_trend.json plus a Form A qualifier block (CC-1). additionalProperties true because this is source-data passthrough, not hand-enumerated here. `note` and `caveat` are different fields and both are required: `note` says what the series IS, `caveat` says how a month's count can be wrong. Do not merge them.",
       "properties": {
         "data_tier": { "type": "string" },
         "window_end": { "type": "string" },
         "note": { "type": "string" },
+        "caveat_tags": { "$ref": "claim.schema.json#/$defs/caveat_tags" },
+        "caveat": { "$ref": "claim.schema.json#/$defs/caveat_text" },
         "months": {
           "type": "array",
+          "description": "CC-4: the block on `trend` covers every item. The trailing PROVISIONAL_MONTHS items add caveat_tags of their own (claim.schema.json#/$defs/item_override) because they differ from the rest of the series; earlier items carry none.",
           "items": {
             "type": "object",
             "properties": {
@@ -22,19 +25,20 @@
               "crashes": { "type": "integer" },
               "injury_crashes": { "type": "integer" },
               "ksi": { "type": "integer" },
-              "fatal": { "type": "integer" }
+              "fatal": { "type": "integer" },
+              "caveat_tags": { "$ref": "claim.schema.json#/$defs/caveat_tags" }
             },
             "required": ["month", "crashes", "injury_crashes", "ksi", "fatal"],
             "additionalProperties": true
           }
         }
       },
-      "required": ["data_tier", "note", "months"],
+      "required": ["data_tier", "note", "months", "caveat_tags", "caveat"],
       "additionalProperties": true
     },
     "findings": {
       "type": "array",
-      "description": "Each findings.json record, verbatim except map_state (UI-only, stripped). additionalProperties true — editorial fields may grow.",
+      "description": "Each findings.json record, verbatim except map_state (UI-only, stripped). additionalProperties true — editorial fields may grow. Each record is a Form A claim: `stat` is the number, and `data_tier` + `caveat_tags` + `caveat` are its qualifier. The tag assignment is canonical and lives in one place, caveats.FINDING_CAVEAT_TAGS — a new finding gets a row there in the same PR that adds it.",
       "items": {
         "type": "object",
         "properties": {
@@ -42,10 +46,12 @@
           "title": { "type": "string" },
           "stat": { "type": "string" },
           "description": { "type": "string" },
-          "caveat": { "type": "string" },
+          "caveat": { "$ref": "claim.schema.json#/$defs/caveat_text" },
+          "caveat_tags": { "$ref": "claim.schema.json#/$defs/caveat_tags" },
           "data_tier": { "type": "string" }
         },
-        "required": ["id", "title", "stat", "description", "caveat", "data_tier"],
+        "required": ["id", "title", "stat", "description", "caveat",
+                     "caveat_tags", "data_tier"],
         "not": { "required": ["map_state"] },
         "additionalProperties": true
       }

@@ -137,10 +137,10 @@ COLOCATION_ENFORCED_CLAIMS = {
     #   "sr311", "safety_record/entries[*]", "menu_spending",
 
     # Phase 6 — citywide.json.
-    # "citywide.json": [
-    #     "trend",                          # Form A; CC-4 covers trend/months[*]
-    #     "findings[*]",                    # Form A per item
-    # ],
+    "citywide.json": [
+        "trend",                            # Form A; CC-4 covers trend/months[*]
+        "findings[*]",                      # Form A per item
+    ],
 
     # Phase 8 — wards/index.json under CC-7. See §1.6.
     # "wards/index.json": [
