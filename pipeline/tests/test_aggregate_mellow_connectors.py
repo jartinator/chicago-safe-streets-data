@@ -1,3 +1,5 @@
+import json
+
 import aggregate
 
 # One bike_routes segment running north-south along lon -87.650.
@@ -103,6 +105,44 @@ def test_custom_buffer_distance_narrows_the_drop():
     # With a tiny buffer, even the "overlapping" part (~5 m away) survives.
     out = aggregate.build_mellow_connectors(MELLOW_GJ, ROUTES_GJ, buffer_m=1.0)
     assert out["features"][0]["properties"]["parts"] == 2
+
+
+# --- reproducible output -----------------------------------------------------
+# site/data/mellow_connectors.geojson used to come back modified after every
+# `python refresh_reporting.py`, showing as a ~4.3 MB whole-file diff (the layer
+# is one long line). The parts kept were always the same and always in the same
+# order; ~1,000 of them differed in the 6th decimal place by exactly 1 unit.
+# Cause: the emitted coordinates were read back out of a METRIC_CRS round trip
+# (lon/lat -> UTM-16N -> lon/lat) instead of off the input geometry. Mellow ships
+# 7-decimal coordinates, so ~10% of them land exactly on a 6-dp rounding tie;
+# a round trip lands a hair either side of that tie depending on the platform's
+# PROJ/libm build, and round() then flips the last digit. The projection is still
+# needed for the dedupe buffer and for length_m — it just must not be the source
+# of the coordinates that ship.
+
+# Coordinates whose 7th decimal is a 5: each sits exactly on a 6-dp rounding tie.
+TIE_PART = [[-87.6918275, 41.8937965], [-87.6918295, 41.8938825], [-87.6917135, 41.8937985]]
+TIE_MELLOW = {"type": "FeatureCollection", "features": [
+    {"type": "Feature",
+     "geometry": {"type": "MultiLineString", "coordinates": [TIE_PART]},
+     "properties": {"segment_id": "mellow-street", "route_type": "street"}},
+]}
+NO_ROUTES = {"type": "FeatureCollection", "features": []}
+
+
+def test_coordinates_are_the_input_rounded_not_a_reprojection_roundtrip():
+    out = aggregate.build_mellow_connectors(TIE_MELLOW, NO_ROUTES)
+    part = out["features"][0]["geometry"]["coordinates"][0]
+    assert part == [[round(x, 6), round(y, 6)] for x, y in TIE_PART]
+
+
+def test_building_twice_is_byte_identical():
+    a = aggregate.build_mellow_connectors(TIE_MELLOW, ROUTES_GJ)
+    b = aggregate.build_mellow_connectors(TIE_MELLOW, ROUTES_GJ)
+    assert json.dumps(a) == json.dumps(b)
+    c = aggregate.build_mellow_connectors(MELLOW_GJ, ROUTES_GJ)
+    d = aggregate.build_mellow_connectors(MELLOW_GJ, ROUTES_GJ)
+    assert json.dumps(c) == json.dumps(d)
 
 
 def test_mellow_connector_records_is_part_count():

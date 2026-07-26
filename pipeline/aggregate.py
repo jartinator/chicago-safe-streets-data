@@ -360,8 +360,10 @@ def build_mellow_connectors(mellow_gj, routes_gj, buffer_m=MELLOW_DEDUPE_BUFFER_
     of every surviving part — the same one-big-MultiLineString shape
     mellow_routes.geojson itself uses (Leaflet draws it as one efficient
     multi-part polyline; per-part features would be ~10 MB of mostly-JSON
-    property overhead for the same geometry). Coordinates are rounded to 6
-    decimal places (~0.1 m). The feature's `parts` property carries the kept
+    property overhead for the same geometry). Coordinates are the input's own,
+    rounded to 6 decimal places (~0.1 m) — never re-derived from the METRIC_CRS
+    projection, so a rebuild is byte-identical on any platform (see the comment
+    on parts_ll below). The feature's `parts` property carries the kept
     part count — that's what meta.json's mellow_connectors `records` reports
     (see mellow_connector_records)."""
     mellow_feats = mellow_gj.get("features", [])
@@ -376,11 +378,21 @@ def build_mellow_connectors(mellow_gj, routes_gj, buffer_m=MELLOW_DEDUPE_BUFFER_
             "No mellow route geometry was available to dedupe this run "
             "(mellow_routes.geojson has no features this run) — see its own note.")
 
-    # Explode every mellow MultiLineString into its individual parts.
-    mellow_gdf = gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in mellow_feats],
-                                  crs=OUTPUT_CRS)
-    parts_m = (mellow_gdf.to_crs(METRIC_CRS).explode(index_parts=False)
-              .reset_index(drop=True).geometry)
+    # Explode every mellow MultiLineString into its individual parts, in lon/lat.
+    # These lon/lat parts are what ships; the METRIC_CRS copy below exists only
+    # to measure distance (the dedupe buffer test and length_m) and never becomes
+    # the source of an emitted coordinate. Reading the output back out of UTM-16N
+    # would put every coordinate through a projection round trip, and mellow ships
+    # 7-decimal coordinates, so ~10% of them sit exactly on a 6-dp rounding tie —
+    # a round trip lands a hair either side of that tie depending on the platform's
+    # PROJ/libm build, flipping the last digit and making this layer come back
+    # "modified" on every rebuild (a ~4.3 MB whole-file diff, since the layer is
+    # one long line). Exploding first also keeps the two frames row-aligned: one
+    # LineString per row, in the same order, so the keep mask applies to both.
+    parts_ll = (gpd.GeoDataFrame(geometry=[shape(f["geometry"]) for f in mellow_feats],
+                                 crs=OUTPUT_CRS)
+                .explode(index_parts=False).reset_index(drop=True).geometry)
+    parts_m = parts_ll.to_crs(METRIC_CRS)
     total_before_m = float(parts_m.length.sum())
 
     bike_feats = routes_gj.get("features", [])
@@ -389,13 +401,12 @@ def build_mellow_connectors(mellow_gj, routes_gj, buffer_m=MELLOW_DEDUPE_BUFFER_
                                     crs=OUTPUT_CRS)
         buffered = bike_gdf.to_crs(METRIC_CRS).geometry.buffer(buffer_m)
         bike_union = prep(unary_union(list(buffered)))
-        kept = [geom for geom in parts_m if not bike_union.intersects(geom)]
+        keep = [not bike_union.intersects(geom) for geom in parts_m]
     else:
-        kept = list(parts_m)
+        keep = [True] * len(parts_m)
 
-    kept_gdf = gpd.GeoDataFrame(geometry=kept, crs=METRIC_CRS)
-    kept_lengths = kept_gdf.geometry.length
-    kept_ll = kept_gdf.to_crs(OUTPUT_CRS).geometry
+    kept_lengths = parts_m[keep].length
+    kept_ll = parts_ll[keep]
 
     total_after_m = float(kept_lengths.sum())
     dropped_pct = (round(100 * (1 - total_after_m / total_before_m), 1)
