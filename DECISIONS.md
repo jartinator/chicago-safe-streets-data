@@ -1111,3 +1111,46 @@ environment forced a deviation. Newest last.
     they are the obvious follow-up, but they need a Node toolchain step and a
     runner decision this PR does not make. No test was added, changed, or
     skipped to make CI pass: the 448 that passed locally are the 448 CI runs.
+
+45. **`snapshot.yml` opens a PR instead of pushing, so that `main` can require
+    the `pytest` check.** #44 added the check but left `main` unprotected, so
+    the check reported and nothing acted on it. Making it *required* has a
+    consequence that is easy to miss: a required status check blocks direct
+    pushes for anyone who is not an admin, and `snapshot.yml` pushed straight to
+    `main` as `github-actions[bot]` (`git push`, old line 49). Protecting `main`
+    without touching that workflow would have broken the quarterly snapshot —
+    and because the cron next fires 2026-10-01, the breakage would have sat
+    invisible for two months, silently ending the bikeway-mileage time series
+    that only exists because these snapshots accumulate.
+
+    **The bypass that does not exist here.** The tidy fix is a repository
+    ruleset requiring `pytest` with `github-actions[bot]` on the bypass list.
+    That was attempted and rejected: *"Actor GitHub Actions integration must be
+    part of the ruleset source or owner organization."* Actions-as-bypass-actor
+    is org-scoped, and `jartinator` is a personal account. A repository-admin
+    bypass does not substitute — `GITHUB_TOKEN` acts as the Actions app, not as
+    a repository role, so the bot stays blocked. The remaining alternative, a
+    fine-grained PAT in a repo secret, was rejected as worse: it trades an
+    automation problem for a credential with an expiry date to babysit.
+
+    So the workflow changes instead, and adopts the pattern `data-refresh.yml`
+    (#23) already uses: `peter-evans/create-pull-request@v6` onto
+    `data/quarterly-snapshot`, with `pull-requests: write` added to the
+    permissions block. `main` now has exactly one entry path — a reviewed PR —
+    which is the same human-review ethos as #2 and #23, applied to the last
+    workflow that still bypassed it. The snapshot stays automated; only the
+    landing becomes manual.
+
+    A gate step was added rather than relying on `create-pull-request`'s silent
+    no-op, so "layer unchanged, nothing to do" reads as an explicit line in the
+    run log instead of an empty green run. The gate was exercised both ways
+    locally, including that `git status --porcelain data/snapshots/` does detect
+    an *untracked* new snapshot file, which is the case that actually matters.
+
+    **The residual risk, stated plainly.** `snapshot.yml` cannot be
+    end-to-end tested before 2026-10-01 without polluting the snapshot series —
+    a `workflow_dispatch` run today would either commit an off-cadence snapshot
+    or, more likely, hit the same-day/unchanged path and exercise nothing. The
+    YAML parses, the step order is confirmed, and the gate logic is verified;
+    the live PR-creation path is not. That verification is filed on issue #33 as
+    a human check for the October run, because nothing in CI will notice it.

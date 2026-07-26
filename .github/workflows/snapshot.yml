@@ -5,9 +5,18 @@
 # (see snapshot_bike_routes.py, aggregate.infra_growth_trend, bikeway_mileage_series.json).
 # A snapshot is worthless if taken only when someone remembers, so this automates ONLY the
 # snapshot — not the full data refresh, which stays a deliberate manual local run (see
-# DECISIONS.md and deploy.yml). Snapshots land under data/ (not site/), so committing one
-# does NOT trigger the Pages deploy; the accumulated history is picked up by the next manual
-# run_all.py that rebuilds site/data.
+# DECISIONS.md and deploy.yml). Snapshots land under data/ (not site/), so merging one
+# does NOT trigger the Pages deploy (deploy.yml is path-filtered to site/**); the accumulated
+# history is picked up by the next manual run_all.py that rebuilds site/data.
+#
+# This opens a PR rather than pushing to main directly, matching data-refresh.yml. main
+# requires the `pytest` check, and a required check blocks direct pushes for anyone who is
+# not an admin — github-actions[bot] included. Bypassing that needs an org, and this repo
+# is owned by a personal account. See DECISIONS.md #45.
+#
+# One-time repo setting required for the PR step (already enabled for data-refresh.yml):
+#   Settings -> Actions -> General -> Workflow permissions ->
+#   check "Allow GitHub Actions to create and approve pull requests".
 name: Quarterly bike-routes snapshot
 
 on:
@@ -17,6 +26,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: snapshot
@@ -37,14 +47,37 @@ jobs:
         run: |
           python pull_bike_routes.py
           python snapshot_bike_routes.py
-      - name: Commit new snapshot if one was added
+      - name: Report whether a snapshot was added
+        id: changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/snapshots/
-          if git diff --cached --quiet; then
-            echo "No new snapshot to commit (layer unchanged or same-day rerun)."
+          if [ -z "$(git status --porcelain data/snapshots/)" ]; then
+            echo "No new snapshot (layer unchanged or same-day rerun). No PR will be opened."
+            echo "any=false" >> "$GITHUB_OUTPUT"
           else
-            git commit -m "data: quarterly bike-routes snapshot ($(date -u +%Y-%m-%d))"
-            git push
+            git status --porcelain data/snapshots/
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "SNAPSHOT_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
           fi
+
+      # create-pull-request no-ops when nothing changed, but gating on the step above
+      # keeps the skip explicit in the run log instead of an empty, silent success.
+      - name: Open or update the snapshot PR
+        if: steps.changed.outputs.any == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: data/snapshots/**
+          branch: data/quarterly-snapshot
+          delete-branch: true
+          commit-message: "data: quarterly bike-routes snapshot (${{ env.SNAPSHOT_DATE }})"
+          title: "data: quarterly bike-routes snapshot (${{ env.SNAPSHOT_DATE }})"
+          body: |
+            Automated quarterly snapshot of the CDOT Bike Routes layer, opened by
+            `.github/workflows/snapshot.yml`.
+
+            The Bike Routes dataset is current-state only, so the bikeway-mileage time
+            series exists only because these snapshots accumulate. Merging this adds one
+            point to that series; it does not rebuild `site/data`, which the next
+            `run_all.py` does.
+
+            **Review:** confirm the diff touches only `data/snapshots/`, and that the new
+            file is a plausible full layer rather than a truncated pull.
