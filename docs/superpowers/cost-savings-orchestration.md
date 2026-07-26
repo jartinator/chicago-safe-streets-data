@@ -127,6 +127,8 @@ step in the playbook calls for a different model.
 - P4: DONE, merged PR #44 — schemas/*.schema.json (hand-written, normative), check_api.py,
   jsonschema dev dep, data-guard step. tests.yml (separate pytest CI) intentionally
   skipped as optional (repo has no pytest CI) — still available as a standalone PR later.
+  **Landed 2026-07-26** as `.github/workflows/tests.yml`; rationale for keeping it
+  separate from data-guard.yml is DECISIONS #44.
 - P5: DONE, PR #45 (open) — llms.txt, sitemap.xml, robots.txt, HTML head links + JSON-LD,
   README/CONTRIBUTING/SCHEMA.md section, DECISIONS entry, CONTRACT_VERSION note.
 

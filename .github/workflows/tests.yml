@@ -1,0 +1,37 @@
+# Runs the Python test suite on every pull request and on every push to main.
+#
+# Deliberately a separate workflow from data-guard.yml. That workflow answers
+# "is this data real?" and is path-filtered to site/data, site/api and pipeline.
+# This one answers "does the code still work?" and must run unfiltered, so the
+# check is always reported and can be made a required check without the
+# skipped-required-check problem. Keeping them apart also keeps the provenance
+# guard fast: it needs only stdlib plus jsonschema, while this job installs
+# geopandas, shapely and pyproj.
+#
+# Was deferred once already — see docs/superpowers/cost-savings-orchestration.md
+# (Phase 4 note). This is that standalone PR.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          # requirements-dev.txt pulls in requirements.txt with `-r`, so hash
+          # both — otherwise a runtime-dep bump would reuse a stale cache.
+          cache-dependency-path: |
+            pipeline/requirements.txt
+            pipeline/requirements-dev.txt
+      - name: Install test dependencies
+        run: pip install -r pipeline/requirements-dev.txt
+      - name: Run Python tests
+        run: python -m pytest pipeline/tests -q
