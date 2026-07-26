@@ -288,8 +288,23 @@ def build_citywide(meta, citywide_trend, findings, mileage_series):
     stripped_findings = [{k: v for k, v in f.items() if k != "map_state"}
                          for f in findings]
 
+    # Form A over `trend`, plus per-item provisional marks on the month tail —
+    # the same treatment the ward files' `monthly` series gets. `trend` holds no
+    # numbers of its own; every number in it is a month, so one block over the
+    # object covers all of them (CC-2) and CC-4 covers the items.
+    #
+    # `note` is deliberately untouched and NOT merged into the caveat. `note`
+    # says what the data is; `caveat` says how the number can be wrong. The
+    # contract reads the second and never the first.
+    trend = {**citywide_trend}
+    if trend.get("months"):
+        trend["months"] = mark_provisional_tail(trend["months"])
+    trend = qualify(trend, trend.get("data_tier", "real"),
+                    ["provisional", "not_ridership_normalized"],
+                    monthly_caveat(trend.get("window_end")))
+
     payload = {
-        "trend": citywide_trend,
+        "trend": trend,
         "findings": stripped_findings,
         "bikeway_mileage": mileage_series,
     }

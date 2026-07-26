@@ -15,6 +15,8 @@ Severity definitions (see SCHEMA.md):
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+from caveats import PROVISIONAL_MONTHS, finding_tags
+
 INJURY_SEVERITIES = ("fatal", "incapacitating", "non_incapacitating")
 KSI_SEVERITIES = ("fatal", "incapacitating")
 
@@ -154,10 +156,30 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
 
     Order (checkpoint-1 approved): ksi-trend, protected-share, street-coverage,
     top-corridors, hit-and-run, ward-concentration, dooring-undercount.
+
+    Every caveat here is hand-written prose welded to a number, which is the one
+    place the caveat contract has no automated truth check (AGENTS.md landmines,
+    DECISIONS.md #42/#43). Two rules bind anything written below:
+
+      CC-3  The string names its own referent — a window, a date, a field from
+            its own object — because a caveat travels quoted on its own.
+      CC-8  A value the caveat restates goes in parentheses BEGINNING with the
+            value, `(2040 crashes)`, and it must equal a value the finding
+            object carries. A number in running prose is checked by nothing and
+            must therefore never be a restatement.
+
+    Tags come from caveats.FINDING_CAVEAT_TAGS, which is the canonical table
+    (02-architecture.md §1.5). Do not re-derive a row here.
     """
     findings = []
 
     anchor_date = max((t["date"][:10] for t in tuples), default=None)
+
+    # The window every whole-series finding below names, so each caveat carries
+    # its own referent. Degrades to the start date rather than to the string
+    # "None" when there are no crashes at all.
+    span = (f"reported from September 2017 through {anchor_date}"
+            if anchor_date else "reported since September 2017")
     if anchor_date:
         ksi = window_counts(tuples, anchor_date)
         findings.append({
@@ -169,8 +191,15 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                             f"{ksi['recent_12mo']['ksi']} crashes in the 12 months through "
                             f"{ksi['window_end']}, vs {ksi['prior_12mo']['ksi']} the prior "
                             "12 months. Vision Zero's goal is zero."),
-            "caveat": "Counts, not rates — ridership growth is not netted out. "
-                      "Recent months are provisional.",
+            "caveat": (f"Police-reported crashes in which a cyclist was killed "
+                       f"or seriously injured, counted over the 12 months "
+                       f"ending {ksi['window_end']} "
+                       f"({ksi['recent_12mo']['ksi']} crashes). The most recent "
+                       f"{PROVISIONAL_MONTHS} months are provisional — police "
+                       f"records are amended for weeks after a crash, so this "
+                       f"figure can rise. Counts are not adjusted for how many "
+                       f"people ride, so growth in cycling is not netted out."),
+            "caveat_tags": finding_tags("ksi-trend"),
             "map_state": {"screen": "map", "layers": ["crashes"], "filters": {}},
             "data_tier": "real",
         })
@@ -189,6 +218,7 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
             "caveat": (f"Share of current on-street network mileage as of {as_of_date}; "
                        "protected = barrier/curb-protected on-street lanes. Off-street trails "
                        "are excluded — they live in the separate OSM layer."),
+            "caveat_tags": finding_tags("protected-share"),
             "map_state": {"screen": "map", "layers": ["mainroutes"], "filters": {}},
             "data_tier": "real",
         })
@@ -210,6 +240,7 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                        "miles; off-street trails are excluded from bikeway miles. "
                        "The street centerline layer was last updated in 2021 — the "
                        "grid changes slowly."),
+            "caveat_tags": finding_tags("street-coverage"),
             "map_state": {"screen": "map", "layers": ["infrastructure"], "filters": {}},
             "data_tier": "real",
         })
@@ -223,8 +254,20 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
             "description": "Top corridors by cyclist crashes per km of bikeway: " +
                            "; ".join(f"{c['street'].title()} ({c['crashes_per_km']}/km)"
                                      for c in top) + ".",
-            "caveat": "Raw counts, not normalized by bike volume. Dooring is undercounted. "
-                      "Per-km rates inflate short segments — Kinzie's rate rides on very few km.",
+            # No parenthetical restatement is possible here: `stat` is a street
+            # name, so this finding object carries no numeric value at all and
+            # CC-8 would reject any `(N ...)` form. The rates stay in running
+            # prose in `description`.
+            "caveat": (f"Cyclist crashes {span}, divided by each corridor's "
+                       f"bikeway kilometres. Not adjusted for how many people "
+                       f"ride, so a busier corridor can rank higher without "
+                       f"being more dangerous per rider. Dooring is "
+                       f"undercounted in police records, so every corridor's "
+                       f"count here is a floor. The shortest corridors — "
+                       f"{top[0]['street'].title()} among them — compute their "
+                       f"rate over very few kilometres, which makes those rates "
+                       f"unstable rather than a finding."),
+            "caveat_tags": finding_tags("top-corridors"),
             "map_state": {"screen": "map", "layers": ["crashes", "infrastructure"],
                           "corridor": top[0]["street"], "filters": {}},
             "data_tier": "real",
@@ -240,7 +283,12 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                             f"Sept 2017 ({hr['hit_and_run']} of {hr['total']}), the driver left "
                             f"the scene — {hr['injury_share_pct']:.0f}% when the cyclist was "
                             "injured."),
-            "caveat": "Share of reported crashes; unreported crashes are not counted.",
+            "caveat": (f"Share of police-reported cyclist crashes {span} in "
+                       f"which the driver left the scene. Crashes that were "
+                       f"never reported to police are on neither side of this "
+                       f"share, so it describes reported crashes only and the "
+                       f"true rate is unknown."),
+            "caveat_tags": finding_tags("hit-and-run"),
             "map_state": {"screen": "table", "layers": [], "filters": {}},
             "data_tier": "real",
         })
@@ -256,7 +304,12 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
             "description": (f"5 of 50 wards account for {share:.0f}% of located cyclist crashes "
                             "since Sept 2017: "
                             + ", ".join(f"Ward {w} ({v})" for w, v in top_wards) + "."),
-            "caveat": "Ward totals reflect where people ride most, not only where streets are worst.",
+            "caveat": (f"Located cyclist crashes {span}, summed by ward — the "
+                       f"five highest-count wards against all 50. Ward totals "
+                       f"are not adjusted for how many people ride, so a ward "
+                       f"with heavy bike traffic can top this list without "
+                       f"having the most dangerous streets."),
+            "caveat_tags": finding_tags("ward-concentration"),
             "wards": [w for w, _ in top_wards],
             "map_state": {"screen": "map", "layers": ["crashes", "wards"],
                           "ward": top_wards[0][0], "filters": {}},
@@ -272,7 +325,15 @@ def build_findings_core(tuples, by_category_miles, corridors, ward_counts, as_of
                         "structurally excluded from 'reportable' crash records unless damage/injury "
                         "thresholds are met, so the real number is higher than any count on this "
                         "site."),
-        "caveat": "A floor, not a full count.",
+        # CC-8 landmine: `stat` is "2040+", so the canonical restatement is
+        # "(2040 crashes)" and the checker compares it against that stat. A bare
+        # number in running prose here would be checked by nothing.
+        "caveat": (f"Cyclist crashes {span} that carry a dooring flag in the "
+                   f"police record ({doorings} crashes). Dooring is excluded "
+                   f"from reportable crash records unless a damage or injury "
+                   f"threshold is met, so this is a floor on dooring crashes "
+                   f"and not a full count."),
+        "caveat_tags": finding_tags("dooring-undercount"),
         "map_state": {"screen": "map", "layers": ["crashes"], "filters": {"dooring": True}},
         "data_tier": "real",
     })

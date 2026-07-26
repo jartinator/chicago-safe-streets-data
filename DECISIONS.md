@@ -997,3 +997,80 @@ environment forced a deviation. Newest last.
     four legitimate conditions by design, and tightening any of them into a hard
     failure would block the Monday auto-refresh. A guardrail that blocks routine
     work does not survive contact with a volunteer schedule.
+
+43. **`citywide.json` joins the caveat contract, and the five caveats that
+    named no referent are rewritten.** All nine `findings[]` cards now carry a
+    `caveat_tags` twin beside their prose, `trend` carries a Form A block with
+    provisional marks on its month tail, and `COLOCATION_ENFORCED_CLAIMS` gains
+    `citywide.json` → `trend`, `findings[*]`. 260 enforced claims, up from 250;
+    the file grows 22,847 → 24,956 bytes against a 100,000-byte budget.
+
+    **This is the phase with no automated guard behind it, which is why it went
+    last.** CC-8 checks a restated value only in canonical parenthetical form,
+    `(2040 crashes)`. A number in running prose is checked by nothing, at emit
+    time or in CI (#42). Every other caveat in this API comes out of a generator
+    in `caveats.py` and cannot be phrased wrong; these nine are typed by a
+    person. So the five rewrites — `ksi-trend`, `top-corridors`, `hit-and-run`,
+    `ward-concentration`, `dooring-undercount` — landed behind the CI checker
+    (#41) and `AGENTS.md` (#42), and `pipeline/tests/test_finding_caveats.py`
+    runs the shipped Check 5 rules over both the committed `findings.json` and
+    the generators' own output, including the commitments fallback branch that
+    never reaches `site/data/` for CI to see. `dooring-undercount` gets its own
+    assertion: its `stat` is `2040+`, the exact case a prefix-matching date
+    exemption used to wave through.
+
+    **The tag table is a constant, not a literal, and that is the whole point.**
+    `caveats.FINDING_CAVEAT_TAGS` holds 02-architecture.md §1.5's eight rows
+    verbatim. That table exists because two people built the list independently
+    during the studio engagement and disagreed on three rows, which would have
+    shipped the same finding carrying different qualifiers on the agent path and
+    the human path. Anything rendering these tags reads the constant.
+    `finding_tags()` raises on an id the table does not know rather than
+    returning `[]`: `caveat_tags` is `minItems: 1`, so an untagged finding fails
+    `check_api.py` regardless — this just fails it at the call site with a
+    message naming the fix.
+
+    **The ninth finding was decided, not assumed.** `commitments-vs-delivered`
+    postdates the studio's work (#38) and §1.5 has no row for it. Decided with
+    Jared 2026-07-25: **`third_party_method` alone.** Both mileage figures come
+    from CDOT's own Complete Streets dashboard, and the finding exists because
+    CDOT's counting definition treats concrete upgrades to lanes that already
+    existed as progress while the pledge says "new bikeways" — the tag's
+    definition word for word. `coverage_gap` was rejected because the finding
+    claims a counting difference, not missing miles; `snapshot_derived` was
+    rejected for the shipped path, whose delivered figures come from CDOT's
+    FOIA-released install-date history, the opposite of built-forward-from-
+    snapshots. The module's no-FOIA fallback branch *does* compare against a
+    current network snapshot and carries `snapshot_derived` on top — different
+    evidence, different tags, which is CC-2 applied to a branch.
+
+    **Regeneration: the offline path, chosen deliberately.** The prose is
+    authored in Python and lands in `site/data/findings.json`, so a code-only PR
+    would have shipped a schema requiring `caveat_tags` against a published file
+    that lacked it — `check_api.py` fails on that — and would have left the five
+    rewrites unpublished until the next weekly refresh, which in turn blocks
+    `findings[*]` from entering the enforcement list at all. `refresh_reporting.py`
+    recomputes `findings.json` from already-committed data using the same
+    functions as the live path, with **no network**, and then re-emits the API.
+    A no-op run on the clean tree was measured first: it changed exactly one
+    unrelated file, `site/data/mellow_connectors.geojson`, whose 38,114 parts
+    come back reordered with identical properties and length — pre-existing
+    non-determinism in `build_mellow_connectors`, reverted here and worth fixing
+    separately. A full live `run_all.py` was not needed and was not run.
+
+    **Two things deliberately not done.** `wards/index.json` still needs Form C
+    (#40) and is untouched. And §1.5 consequence 2 asks that `snapshot_derived`
+    be stated in the prose of `protected-share` and `street-coverage`, whose
+    caveats otherwise pass CC-3 and which the session brief said to leave alone;
+    the brief won, nothing enforces tag/prose agreement except for
+    `provisional`, and those two caveats keep a tag their text does not spell
+    out. `top-corridors`' third tag, `small_n`, *is* now stated, because that
+    caveat was being rewritten anyway.
+
+    Also fixed in passing: `top-corridors`' caveat said "Kinzie" unconditionally
+    while the corridor roster is rebuilt weekly and the name is not pinned. It
+    now names whichever corridor the data actually ranks first.
+
+    Additive; `CONTRACT_VERSION` stays 1.18 for the reasons in #40. 446 tests
+    pass, 14 of them new; `check_api.py` and `check_provenance.py` are green and
+    the UI test files still pass.

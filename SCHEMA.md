@@ -77,9 +77,13 @@ Top 25 crash clusters (~100 m grid, ≥ 2 crashes):
 `[{ lat, lng, label, crashes, data_tier }]`
 
 ## findings.json — tier per finding
-`[{ id, title, stat, description, caveat, data_tier,
+`[{ id, title, stat, description, caveat, caveat_tags, data_tier,
 map_state: { screen: "map"|"table", layers: [..], ward?, corridor?, filters: {dooring?} } }]`
 `map_state` is translated into `map.html` query params by the findings screen.
+`caveat_tags` is the structured twin of `caveat` (CC-5), drawn from the closed
+vocabulary in `pipeline/caveats.py`. The assignment per `id` is canonical and
+lives in exactly one place, `caveats.FINDING_CAVEAT_TAGS`; a new finding gets a
+row there in the same PR that adds the finding. Never build a second list.
 
 ## Normalized obstruction schema — swap-in target, no file currently published
 On Your Left! publishes no bike-lane-obstruction data today (see a blocked
@@ -1342,3 +1346,34 @@ name no referent ("A floor, not a full count."), so the CC-3 lint is scoped to
 the ward files rather than run globally. `wards/index.json` needs Form C, since
 50 inline blocks would take it past the size budget. Those are separate phases
 and each is independently stop-safe.
+
+> **Amended 2026-07-25 (see the citywide section below).** The `citywide.json`
+> half of that paragraph is now done: findings carry `caveat_tags`, the five
+> caveats that named no referent are rewritten, and the CC-3 lint covers the
+> file. `wards/index.json` Form C is still outstanding.
+
+## citywide.json caveat co-location (contract v1.18, additive — no version bump)
+
+`citywide.json` is the second payload under `caveat_contract: "v1"`, after the
+ward files.
+
+- **`findings[]`** — every card is a Form A claim: `stat` is the number,
+  `data_tier` + `caveat_tags` + `caveat` are its qualifier. Tags come from
+  `caveats.FINDING_CAVEAT_TAGS`. The field is added to `site/data/findings.json`
+  upstream, in the three modules that author the cards
+  (`crash_metrics.build_findings_core`, `bna_metrics.build_bna_finding`,
+  `commitments_metrics.build_commitments_finding`), and `emit_api` passes it
+  through verbatim — so the human findings page and the agent API read one list.
+- **`trend`** — gains a Form A block (`caveat_tags` + `caveat`) covering the
+  whole month series, and the trailing `PROVISIONAL_MONTHS` items of
+  `trend.months` carry `caveat_tags: ["provisional"]` of their own (CC-4).
+  `trend.note` is **unchanged and not merged into the caveat**: `note` says what
+  the series is, `caveat` says how a count can be wrong.
+- **Five caveat strings were rewritten** so each names its own referent and
+  survives being quoted alone (CC-3): `ksi-trend`, `top-corridors`,
+  `hit-and-run`, `ward-concentration`, `dooring-undercount`. Any value they
+  restate is in CC-8's canonical parenthetical form, `(2040 crashes)`.
+- **Enforcement**: `COLOCATION_ENFORCED_CLAIMS` gains `citywide.json` →
+  `trend`, `findings[*]`. 260 claims enforced, up from 250.
+
+`citywide.json` grows 22,847 → 24,956 bytes against a 100,000-byte budget.
