@@ -15,8 +15,10 @@ Byte sizes are approximate and from the 2026-07-13 build. The published cap is
 
 **`index.json`** (~10 KB) — the full manifest. Every endpoint with example
 questions, every file family with its path template, and `fetch_recipes`
-pairing a question with the files to fetch and what to read in them. Also
-carries the `integration` object if you are building software against this data.
+pairing a question with the files to fetch and what to read in them. It also
+carries an `integration` object where present — stability, refresh cadence, the
+caveat contract, identifiers and limits — for building software against this
+data. Read it from the file; do not assume it is there.
 
 ---
 
