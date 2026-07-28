@@ -74,7 +74,7 @@
     {
       name: "main_routes.geojson", tier: "derived",
       title: "Main routes", sourceId: "main_routes", sourceName: "Main routes",
-      description: "The 21 marquee corridors — each named line's segments with a facility grade (protected / paint / mellow / none; trails are off-street).",
+      description: "The marquee corridors — each named line's segments with a facility grade (protected / paint / mellow / none; trails are off-street).",
       calc: "Hand-curated roster in data/main_routes.json; each pipeline run assigns real CDOT/OSM segments to lines and computes grade mileage."
     },
     {
