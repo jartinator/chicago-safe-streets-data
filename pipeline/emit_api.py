@@ -197,10 +197,20 @@ _ENDPOINTS = [
     },
     {
         "path": "routes/index.json",
-        "description": ("All 21 Chicago main bike routes' mileage-by-grade "
+        # No count in this string. The roster is editorial and recomputed each
+        # build, so a number written here goes stale silently the next time a
+        # route is added or merged -- which is exactly what happened: this said
+        # "All 21" while routes/index.json carried count: 20, and the wrong
+        # number shipped in llms.txt and index.json. The count is already
+        # published, twice, in machine-readable form: routes/index.json's own
+        # `count`, and this manifest's routes/line-{id}.json family `count`,
+        # which check_api.py enforces against the files on disk. Nothing
+        # enforces prose. Do not restate it here.
+        "description": ("Chicago's main bike routes: mileage-by-grade "
                         "breakdown, crash totals, and protected-lane share, plus "
                         "network interchange points, with links to each route's "
-                        "full segment-level detail file."),
+                        "full segment-level detail file. Read `count` from the "
+                        "file for how many."),
         "example_questions": [
             "Which Chicago main bike routes are the most protected?",
             "How many miles of the 606 / Bloomingdale Trail are off-street?",
@@ -705,7 +715,7 @@ GRADE_LEGEND = {
 
 
 def build_routes_index(meta, main_routes, network_nodes):
-    """routes/index.json: the 21 main-route report cards verbatim (source
+    """routes/index.json: the main-route report cards verbatim (source
     order preserved — never re-sorted) plus a detail_url per line, plus the
     network's interchange nodes (point wayfinding markers, not line
     geometry — allowed in this API). `network_nodes`' per-node data_tier is
@@ -1436,8 +1446,10 @@ def emit_all():
     write_json(SITE_API_DIR / "routes" / "index.json", routes_index)
     written["routes/index.json"] = (SITE_API_DIR / "routes" / "index.json").stat().st_size
 
-    # One file per main route (21 today); every line in main_routes["lines"]
-    # gets a file, in source order (never re-sorted).
+    # One file per main route; every line in main_routes["lines"] gets a file,
+    # in source order (never re-sorted). No count here either -- the emitted
+    # family `count` is derived and check_api.py enforces it against the files
+    # on disk.
     line_files_bytes = {}
     for line in main_routes["lines"]:
         line_file = build_line_file(meta, line, main_routes["features"], network_nodes)
