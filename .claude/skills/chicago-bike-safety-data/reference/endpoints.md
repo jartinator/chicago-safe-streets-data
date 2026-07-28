@@ -89,8 +89,10 @@ done on bike safety?" · "Is my ward getting better or worse?"
 labelled hotspot intersections. `crashes_per_km` inflates short segments and is
 not normalized by how many people ride. Say both.
 
-**`routes/index.json`** (~17 KB) — 21 named main bike routes with
-mileage-by-grade, crash totals, protected share, and network interchanges.
+**`routes/index.json`** (~17 KB) — the named main bike routes with
+mileage-by-grade, crash totals, protected share, and network interchanges. The
+roster is editorial and recomputed each build: read `count` and the slug list
+from the file. Do not restate a number from here.
 
 **`routes/line-{slug}.json`** (~3 KB) — one route's segment-level detail. Get
 the slug list from `routes/index.json`; never construct one from a street name.
