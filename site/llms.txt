@@ -33,7 +33,7 @@ The discovery entry point: the full endpoint list with byte sizes, endpoint *fam
   e.g. "What bike or trail projects are proposed or under construction in Chicago?"
   e.g. "What is the current status of the 606 / Bloomingdale Trail extension?"
 - https://jartinator.github.io/chicago-safe-streets-data/api/v1/routes/index.json (17,040 bytes)
-  All 21 Chicago main bike routes' mileage-by-grade breakdown, crash totals, and protected-lane share, plus network interchange points, with links to each route's full segment-level detail file.
+  Chicago's main bike routes: mileage-by-grade breakdown, crash totals, and protected-lane share, plus network interchange points, with links to each route's full segment-level detail file. Read `count` from the file for how many.
   e.g. "Which Chicago main bike routes are the most protected?"
   e.g. "How many miles of the 606 / Bloomingdale Trail are off-street?"
 - https://jartinator.github.io/chicago-safe-streets-data/api/v1/council/index.json (3,421 bytes)
