@@ -18,9 +18,10 @@ assertions a silent no-op against an empty temp directory.
 """
 import hashlib
 import json
+import re
 
 import sync_skill
-from config import REPO_ROOT, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME
+from config import REPO_ROOT, SITE_BASE_URL, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME
 
 FIX = ("Fix with `python pipeline/sync_skill.py`, then "
        "`python pipeline/emit_api.py`. Do NOT hand-edit site/skills/ to match — "
@@ -67,7 +68,15 @@ def test_index_json_skill_hashes_match_the_published_files():
 
 def test_the_advertised_skill_url_is_one_string_everywhere():
     """F1. Change SKILL_NAME and every generator follows it; only the string a
-    third party actually reads can be left behind. Bind all four together."""
+    third party actually reads can be left behind. Bind all SIX together:
+    llms.txt, index.json's skill.entry_point, its files[] entry, the file on
+    disk, and the two human-facing pages that advertise the same URL to a
+    person (site/assets/js/home.js and site/assets/js/contributing.js).
+
+    The last two are the reason this test grew. They are static JS assets and
+    cannot import SKILL_ENTRY_URL from config.py, so they are checked as text.
+    See the two blocks at the end for which check is exact and which is not.
+    """
     entry_rel = f"skills/{SKILL_NAME}/SKILL.md"
 
     llms_path = SITE_DIR / "llms.txt"
@@ -110,6 +119,63 @@ def test_the_advertised_skill_url_is_one_string_everywhere():
         f"every surface advertises {SKILL_ENTRY_URL}, and site/{entry_rel} is "
         f"not on disk, so the deployed URL will 404. Do NOT change the "
         f"advertised URL to match whatever is published — publish the file. {FIX}")
+
+    # --- copies 5 and 6: the human-facing pages -----------------------------
+    # A person who is handed a stale URL gets the same 404 an agent does, and
+    # nothing regenerates these two files. They are plain JS assets, so this is
+    # a text check on the shipped source rather than a value comparison.
+
+    # contributing.js carries the URL as ONE literal inside <code>, so this
+    # check is exact: the byte sequence a reader copies is the byte sequence
+    # config.py declares.
+    contributing = SITE_DIR / "assets" / "js" / "contributing.js"
+    assert contributing.is_file(), (
+        f"site/assets/js/contributing.js is missing; it is one of the two "
+        f"human-facing surfaces that advertise {SKILL_ENTRY_URL}. {FIX}")
+    assert SKILL_ENTRY_URL in contributing.read_text(encoding="utf-8"), (
+        f"site/assets/js/contributing.js does not contain {SKILL_ENTRY_URL}. A "
+        f"person reading the Downloads & Docs page is handed that URL by hand; "
+        f"nothing regenerates this file, so it goes stale silently while every "
+        f"agent-facing surface moves. Update the <code> literal in metadataDiv. "
+        f"Do NOT delete the paragraph to make this pass — that reopens the "
+        f"human-side parity gap this test exists to keep closed.")
+
+    # home.js builds the URL from its own SITE_ORIGIN constant, following the
+    # convention the file already uses for llms.txt. So the full URL is not one
+    # contiguous literal and a substring search would not find it. Reconstruct
+    # it instead — which is a STRONGER check, because it also binds home.js's
+    # SITE_ORIGIN to config.py's SITE_BASE_URL. Nothing else in this repo
+    # checks that, and they are two hand-written copies of the same origin.
+    home = SITE_DIR / "assets" / "js" / "home.js"
+    assert home.is_file(), (
+        f"site/assets/js/home.js is missing; it is one of the two human-facing "
+        f"surfaces that advertise {SKILL_ENTRY_URL}. {FIX}")
+    home_text = home.read_text(encoding="utf-8")
+
+    origins = re.findall(r'SITE_ORIGIN\s*=\s*"([^"]+)"', home_text)
+    assert len(origins) == 1, (
+        f"expected exactly one SITE_ORIGIN assignment in home.js, found "
+        f"{len(origins)}: {origins}. This test reconstructs the advertised "
+        f"skill URL from it. Keep the origin in one constant.")
+    assert origins[0] == SITE_BASE_URL, (
+        f"home.js's SITE_ORIGIN is {origins[0]!r} but config.py's "
+        f"SITE_BASE_URL is {SITE_BASE_URL!r}. Every URL this page prints is "
+        f"built from the first and every URL the API prints is built from the "
+        f"second, so the whole human side of the site is pointing at a "
+        f"different host from the agent side. Fix home.js, not config.py — "
+        f"config.py is what the generated files use.")
+
+    path_suffix = f"/skills/{SKILL_NAME}/SKILL.md"
+    assert path_suffix in home_text, (
+        f"site/assets/js/home.js does not contain {path_suffix!r}, so the "
+        f"'Ask an AI assistant' section's copy-paste block is advertising a "
+        f"different skill path from the one this repo publishes. A reader "
+        f"pastes that line into their own assistant and it 404s. Rebuild the "
+        f"`skill` const in agentHTML(). Do NOT hard-code the whole origin "
+        f"again — it is already in SITE_ORIGIN one line above.")
+    assert origins[0] + path_suffix == SKILL_ENTRY_URL, (
+        f"home.js advertises {origins[0] + path_suffix!r} but config.py "
+        f"declares {SKILL_ENTRY_URL!r}.")
 
 
 def test_site_skills_holds_exactly_the_one_published_skill():
