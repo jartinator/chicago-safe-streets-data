@@ -15,8 +15,10 @@ Byte sizes are approximate and from the 2026-07-13 build. The published cap is
 
 **`index.json`** (~10 KB) — the full manifest. Every endpoint with example
 questions, every file family with its path template, and `fetch_recipes`
-pairing a question with the files to fetch and what to read in them. Also
-carries the `integration` object if you are building software against this data.
+pairing a question with the files to fetch and what to read in them. It also
+carries an `integration` object where present — stability, refresh cadence, the
+caveat contract, identifiers and limits — for building software against this
+data. Read it from the file; do not assume it is there.
 
 ---
 
@@ -87,8 +89,10 @@ done on bike safety?" · "Is my ward getting better or worse?"
 labelled hotspot intersections. `crashes_per_km` inflates short segments and is
 not normalized by how many people ride. Say both.
 
-**`routes/index.json`** (~17 KB) — 21 named main bike routes with
-mileage-by-grade, crash totals, protected share, and network interchanges.
+**`routes/index.json`** (~17 KB) — the named main bike routes with
+mileage-by-grade, crash totals, protected share, and network interchanges. The
+roster is editorial and recomputed each build: read `count` and the slug list
+from the file. Do not restate a number from here.
 
 **`routes/line-{slug}.json`** (~3 KB) — one route's segment-level detail. Get
 the slug list from `routes/index.json`; never construct one from a street name.
