@@ -142,10 +142,14 @@ def test_the_advertised_skill_url_is_one_string_everywhere():
 
     # home.js builds the URL from its own SITE_ORIGIN constant, following the
     # convention the file already uses for llms.txt. So the full URL is not one
-    # contiguous literal and a substring search would not find it. Reconstruct
-    # it instead — which is a STRONGER check, because it also binds home.js's
-    # SITE_ORIGIN to config.py's SITE_BASE_URL. Nothing else in this repo
-    # checks that, and they are two hand-written copies of the same origin.
+    # contiguous literal and a plain substring search would not find it. Both
+    # halves are read OUT OF THE FILE and recombined: the origin from the
+    # SITE_ORIGIN assignment, the path from the `skill` template literal's own
+    # text. Neither side of the final comparison may be built from a constant
+    # this test already asserted, or the assert is a tautology -- which is
+    # exactly the defect Hale found in the first version of this block, where
+    # `origins[0] + path_suffix == SKILL_ENTRY_URL` reduced to
+    # SITE_BASE_URL + suffix == SITE_BASE_URL + suffix and could not fail.
     home = SITE_DIR / "assets" / "js" / "home.js"
     assert home.is_file(), (
         f"site/assets/js/home.js is missing; it is one of the two human-facing "
@@ -165,17 +169,30 @@ def test_the_advertised_skill_url_is_one_string_everywhere():
         f"different host from the agent side. Fix home.js, not config.py — "
         f"config.py is what the generated files use.")
 
-    path_suffix = f"/skills/{SKILL_NAME}/SKILL.md"
-    assert path_suffix in home_text, (
-        f"site/assets/js/home.js does not contain {path_suffix!r}, so the "
-        f"'Ask an AI assistant' section's copy-paste block is advertising a "
-        f"different skill path from the one this repo publishes. A reader "
-        f"pastes that line into their own assistant and it 404s. Rebuild the "
-        f"`skill` const in agentHTML(). Do NOT hard-code the whole origin "
-        f"again — it is already in SITE_ORIGIN one line above.")
-    assert origins[0] + path_suffix == SKILL_ENTRY_URL, (
-        f"home.js advertises {origins[0] + path_suffix!r} but config.py "
-        f"declares {SKILL_ENTRY_URL!r}.")
+    # Pin the `skill` const's own right-hand side, not merely "the path appears
+    # somewhere in the file". This is what makes the do_not below enforceable:
+    # a hard-coded full origin does not match, so the assert fires. It also
+    # rules out a stale URL sitting in a comment while the live one moved.
+    skill_const = re.search(
+        r"const\s+skill\s*=\s*`\$\{SITE_ORIGIN\}([^`]*)`", home_text)
+    assert skill_const, (
+        f"site/assets/js/home.js has no `const skill = "
+        f"`${{SITE_ORIGIN}}/...`` assignment in agentHTML(). Either it was "
+        f"removed, or the origin was hard-coded back into it. Do NOT hard-code "
+        f"the origin: it is already in SITE_ORIGIN, this test checks SITE_ORIGIN "
+        f"against config.py's SITE_BASE_URL, and a hard-coded copy is a fifth "
+        f"origin that nothing compares to anything. Build the URL as "
+        f"`${{SITE_ORIGIN}}/skills/{SKILL_NAME}/SKILL.md`.")
+
+    # Both halves came out of home.js. Nothing here is a constant this test
+    # already asserted, so this comparison can actually fail.
+    rendered = origins[0] + skill_const.group(1)
+    assert rendered == SKILL_ENTRY_URL, (
+        f"home.js's 'Ask an AI assistant' copy-paste block renders "
+        f"{rendered!r}, but config.py declares {SKILL_ENTRY_URL!r}. A reader "
+        f"pastes that line into their own assistant and it 404s. Fix the path "
+        f"in the `skill` const in agentHTML(). Do NOT change SKILL_NAME or "
+        f"SITE_BASE_URL to match the page — the generated files use those.")
 
 
 def test_site_skills_holds_exactly_the_one_published_skill():
