@@ -77,7 +77,19 @@ assistants using the skill cited the matching human page in **91%**.
 
 Two limits belong with that evaluation wherever it is quoted: judge–human
 agreement is **not available** (heuristic scorer, no calibration set), and
-**n=5 per cell**.
+**n=5 per cell**. Both figures were measured with the skill's text already in
+the assistant's context. Publishing a URL is a different mechanism and the
+numbers do not carry across it.
+
+The skill is also **published**, so an agent that never clones the repo can
+fetch it: [`site/skills/chicago-bike-safety-data/`](site/skills/chicago-bike-safety-data/),
+advertised in `llms.txt` and in `api/v1/index.json`'s top-level `skill` object
+with a `sha256` per file. `.claude/skills/chicago-bike-safety-data/` is the
+single source of truth and is edited by hand; `python pipeline/sync_skill.py`
+regenerates the published copy, and
+`pipeline/tests/test_skill_publication.py` fails CI whenever the two differ.
+**Exactly that one directory is ever published** — `board/` and `verify/` are
+internal instructions for this repo.
 
 ### The caveat co-location contract
 

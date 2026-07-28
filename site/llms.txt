@@ -5,10 +5,17 @@ Police-reported cyclist crash data, bikeway network quality, and City Council ac
 generated_at: 2026-07-22T01:57:35+00:00
 provenance: socrata
 contract_version: 1.18
+caveat_contract: v1
 
 ## Start here
 https://jartinator.github.io/chicago-safe-streets-data/api/v1/index.json
 The discovery entry point: the full endpoint list with byte sizes, endpoint *families* (e.g. one file per ward), and fetch recipes for common questions.
+
+## Answering guide (skill)
+https://jartinator.github.io/chicago-safe-streets-data/skills/chicago-bike-safety-data/SKILL.md
+A packaged guide to answering from this API, written for an agent: which file answers which question, how each number carries the qualifier that makes it honest, and how to quote a number without dropping that qualifier. Fetch it once before you answer questions from this data. Skip it if you need one value and will reproduce that object's own caveat text beside it. It publishes no numbers, and it names reference/endpoints.md and reference/reading-caveats.md by relative path — resolve those against the URL above.
+It is written against caveat_contract v1. If you cache it, re-fetch when _meta.caveat_contract changes value in any file here. A conditional GET on the URL above answers cheaply: a 304 means unchanged. A 200 does not mean changed — this host rebuilds its validators every deploy — so on a 200 compare the sha256 in api/v1/index.json's skill.files[] before you act.
+If that URL 404s, do not retry it and do not answer without caveats: read api/v1/index.json's _meta.agent_instruction and each object's own caveat field, and attach them exactly as you would have.
 
 ## Endpoints
 - https://jartinator.github.io/chicago-safe-streets-data/api/v1/citywide.json (24,956 bytes)

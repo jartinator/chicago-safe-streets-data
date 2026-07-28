@@ -412,6 +412,24 @@ SITE_API_DIR = REPO_ROOT / "site" / "api" / "v1"
 # (above), never SITE_API_DIR, so _prune_stale (which only scans
 # SITE_API_DIR) never touches them.
 SITE_BASE_URL = "https://jartinator.github.io/chicago-safe-streets-data"
+
+# The one agent skill this repo publishes to the open internet.
+# EXACTLY ONE directory under .claude/skills/ is published, and it is named
+# here. The mapping is .claude/skills/$SKILL_NAME/** -> site/skills/$SKILL_NAME/**.
+# It is NOT a glob over .claude/skills/: board/ and verify/ are internal build
+# instructions for this repo, and verify/SKILL.md tells its reader to pip
+# install playwright, download chromium, start a local HTTP server and drive a
+# browser at it. That is not something to hand an arbitrary agent off the open
+# internet. See pipeline/sync_skill.py and
+# pipeline/tests/test_skill_publication.py.
+SKILL_NAME = "chicago-bike-safety-data"
+SKILL_SOURCE_DIR = REPO_ROOT / ".claude" / "skills" / SKILL_NAME
+# The one advertised URL. build_llms_txt and emit_api._skill_block both import
+# this; neither builds it from a literal. Renaming SKILL_NAME moves every
+# surface at once, and test_the_advertised_skill_url_is_one_string_everywhere
+# fails if any of them is left behind.
+SKILL_ENTRY_URL = f"{SITE_BASE_URL}/skills/{SKILL_NAME}/SKILL.md"
+
 # emit_api.py hard-fails if any emitted file exceeds this — the design goal is
 # a cold agent reaching a cited answer in <=3 fetches of <100 KB each.
 API_SIZE_BUDGET_BYTES = 100_000

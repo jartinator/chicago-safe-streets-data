@@ -25,6 +25,7 @@ pipeline/       Python. Pulls, joins, aggregates, emits. No web framework.
   pull_*.py     One dataset each. Deterministic fetching only.
   aggregate.py  Owns every published schema. Writes site/data/.
   emit_api.py   Writes the agent-facing API: site/api/v1/, llms.txt, sitemap.
+  sync_skill.py Publishes ONE skill to site/skills/. Never a glob — see below.
   caveats.py    The caveat co-location contract: vocabulary and generators.
   check_*.py    CI guardrails. They are allowed to fail your PR.
 site/           Static. Vanilla JS, vendored Leaflet, no build step.
@@ -57,6 +58,15 @@ python pipeline/check_api.py --audit-colocation
 
 # Regenerate the agent API from the committed site/data/ (no network)
 cd pipeline && python emit_api.py
+
+# Republish the skill to site/skills/, then refresh index.json's hashes.
+# .claude/skills/chicago-bike-safety-data/ is the single source of truth and is
+# edited by hand; site/skills/ is a generated copy — never hand-edit it.
+# ONLY that one directory is ever published: board/ and verify/ are internal
+# instructions for this repo, and verify/SKILL.md tells its reader to install
+# Playwright, start a local HTTP server and drive a browser at it.
+python pipeline/sync_skill.py --check   # exit 1 if the two copies differ
+python pipeline/sync_skill.py && python pipeline/emit_api.py
 
 # Serve the site
 cd site && python -m http.server 8000
