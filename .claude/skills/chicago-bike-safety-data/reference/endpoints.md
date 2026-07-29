@@ -34,8 +34,9 @@ headline stats, and **every finding carries its own `caveat` next to its
 - `findings[]` — killed-or-seriously-injured trend, protected share of the
   network, street-grid coverage, top crash corridors, hit-and-run share, ward
   concentration, dooring undercount, national network score.
-- `trend.months` — 107 months of citywide counts since September 2017. The
-  trailing entries are provisional.
+- `trend.months` — monthly citywide counts since September 2017. Read the
+  length from the array; do not restate it. The trailing entries are
+  provisional.
 - `bikeway_mileage.series` — miles by facility type across dated snapshots.
 - `protected_share` — the derived protected percentage. May be absent.
 
@@ -65,8 +66,9 @@ otherwise be five files.
   caveats on purpose. Do not merge them into one disclaimer.
 - `safety.crash_trend` — direction and percent change. On low-count wards this
   is noisy and the caveat says so.
-- `safety.monthly` — 107 months for this ward. The trailing entries carry their
-  own `caveat_tags`.
+- `safety.monthly` — the same monthly series for this ward. Read the length
+  from the array; do not restate it. The trailing entries carry their own
+  `caveat_tags`.
 - `safety.comparable_danger_score` — a **relative rank among the 50 wards**,
   higher is worse. Not an absolute risk and not a probability.
 - `alderman` — name, email, phone, website, from the city's own Ward Offices

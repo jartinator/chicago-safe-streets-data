@@ -21,7 +21,9 @@ import json
 import re
 
 import sync_skill
-from config import REPO_ROOT, SITE_BASE_URL, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME
+from caveats import CAVEAT_CONTRACT_VERSION
+from config import (REPO_ROOT, SITE_BASE_URL, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME,
+                    SKILL_SOURCE_DIR)
 
 FIX = ("Fix with `python pipeline/sync_skill.py`, then "
        "`python pipeline/emit_api.py`. Do NOT hand-edit site/skills/ to match — "
@@ -214,3 +216,54 @@ def test_site_skills_holds_exactly_the_one_published_skill():
         f"drive a browser at it — that is not something to hand an arbitrary "
         f"agent off the open internet. Publishing a second skill is a config "
         f"change plus a deliberate widening of this assertion.")
+
+
+def test_the_guide_never_names_a_caveat_contract_the_pipeline_does_not_declare():
+    """SKILL.md's front matter states the contract the guide was written against,
+    so a copy fetched without its URL still says what it is for (R2 6.5). That
+    value is hand-written in a file nothing generates, which is the same defect
+    class as the byte sizes and the route count -- so it is checked here instead.
+
+    The rule is deliberately narrow: only lines that mention `caveat_contract`.
+    A blanket search for `v<N>` would also match `/api/v1/`, which is API_VERSION,
+    a different constant that happens to render the same string today.
+    """
+    version_token = re.compile(r"\bv[0-9]+\b")
+    files = sorted(p for p in SKILL_SOURCE_DIR.rglob("*.md") if p.is_file())
+    assert files, f"no .md files under {SKILL_SOURCE_DIR}"
+
+    found = []
+    for path in files:
+        rel = path.relative_to(SKILL_SOURCE_DIR).as_posix()
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if "caveat_contract" not in line:
+                continue
+            for token in version_token.findall(line):
+                found.append((rel, n, token))
+                assert token == CAVEAT_CONTRACT_VERSION, (
+                    f"{rel}:{n} names caveat_contract {token!r}, but the pipeline "
+                    f"declares {CAVEAT_CONTRACT_VERSION!r} "
+                    f"(caveats.CAVEAT_CONTRACT_VERSION). A guide that claims the "
+                    f"wrong contract is worse than one that claims none: an agent "
+                    f"applies the older placement rules to newer data and never "
+                    f"finds out. Update the guide, and re-read R2 6.4 first -- when "
+                    f"the contract moves the guide is REPLACED, not annotated. "
+                    f"Do NOT change CAVEAT_CONTRACT_VERSION to match the prose.")
+
+    front_matter = (SKILL_SOURCE_DIR / "SKILL.md").read_text(
+        encoding="utf-8").split("---")[1]
+    assert f"caveat_contract: {CAVEAT_CONTRACT_VERSION}" in front_matter, (
+        f"SKILL.md's front matter does not declare "
+        f"caveat_contract: {CAVEAT_CONTRACT_VERSION}. llms.txt tells an agent to "
+        f"fetch the entry point and nothing else, so without this line the file it "
+        f"holds carries no version marker at all -- copied somewhere without its "
+        f"URL, nothing in it says what it is for. Extra front-matter keys are "
+        f"tolerated by the skill loader (verified: 105 SKILL.md files on this "
+        f"machine, 14 carry `version`, 5 `compatibility`, 1 `license`). "
+        f"Do NOT move this into the body: the point is that it survives a copy "
+        f"of the front matter alone.")
+
+    assert len(found) >= 2, (
+        f"expected the contract version to be named in the front matter and in at "
+        f"least one rule; found {found}. If the guide stopped naming it, this "
+        f"guard is no longer guarding anything.")

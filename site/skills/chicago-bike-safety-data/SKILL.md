@@ -1,6 +1,7 @@
 ---
 name: chicago-bike-safety-data
 description: Answer plain-language questions about cyclist crashes, bikeway protection, ward danger rankings, and City Council bike-safety action in Chicago, using the On Your Left! open data API. Use when someone asks how dangerous a Chicago street, ward, or corridor is for cycling, how much of the bike network is protected, who their alderman is and what they have done on bike safety, or what bike projects are proposed. Do NOT use for bike routing or directions, real-time conditions, bike-lane obstruction or blocking reports (this data does not exist here), any city other than Chicago, or crash data about drivers or pedestrians. Returns cited numbers with the data-quality caveat attached.
+caveat_contract: v1
 ---
 
 # Chicago bike safety data — On Your Left!
@@ -177,6 +178,9 @@ that is actually settled.
 | **`menu_spending.available` is `false`** | The source was unreachable. That is a gap, not a zero. Say the data is unavailable. |
 | **You are asked about obstructions or blocked bike lanes** | The data does not exist here. Say so plainly, and point at 311 or Bike Lane Uprising. Do not use the site's preview layer. |
 | **Timeout or 5xx** | Transient. Retry with backoff. |
+| **The guide disagrees with `index.json`** | `index.json` wins. Take paths from `endpoints[].path` and `families[].path_template`, counts from `families[].count`, sizes from `bytes_approx`. This file is prose and is not checked against the data; that one is. |
+| **A `reference/` file 404s** | Proceed. This file alone carries the Always/Never rules and the fetch plan. |
+| **`_meta.caveat_contract` is not `v1`** | This guide is written for `v1`. Discard it and re-fetch. `_meta` wins over this file, always. |
 
 ---
 
