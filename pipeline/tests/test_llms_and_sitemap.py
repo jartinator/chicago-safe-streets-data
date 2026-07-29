@@ -11,7 +11,8 @@ import pytest
 
 import emit_api
 import test_emit_api as fx
-from config import CONTRACT_VERSION, SITE_BASE_URL
+from caveats import CAVEAT_CONTRACT_VERSION
+from config import CONTRACT_VERSION, SITE_BASE_URL, SKILL_ENTRY_URL
 from emit_api import API_BASE_URL, build_llms_txt, build_sitemap_xml, emit_all
 
 
@@ -56,6 +57,95 @@ def test_llms_txt_no_mock_obstruction_leakage_outside_disclaimer():
     without_disclaimer = text.replace(emit_api.NO_SYNTHETIC_DATA_STATEMENT, "")
     without_disclaimer = without_disclaimer.replace(emit_api.ANSWERING_GUIDANCE, "")
     assert "obstruction" not in without_disclaimer.lower()
+
+
+def test_llms_txt_header_carries_caveat_contract():
+    """F2. _meta.caveat_contract is the one field an agent is told to watch for a
+    breaking change, and llms.txt is the first file an orienting agent reads.
+    Without this line it cannot see the break signal without a second fetch."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert f"caveat_contract: {CAVEAT_CONTRACT_VERSION}" in text
+
+
+def test_llms_txt_advertises_the_skill_section_and_the_one_url():
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "## Answering guide (skill)" in text
+    assert SKILL_ENTRY_URL in text
+
+
+def test_llms_txt_skill_section_states_when_not_to_fetch():
+    """tool-api-design 2: the when-NOT line prevents more misfires than any
+    other. Without it an agent that needs one crash count pays a 10.8 KB fetch
+    to be told to read a field it already has."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "Skip it if you need one value" in text
+
+
+def test_llms_txt_skill_section_carries_the_versioning_rule():
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "a 304 means unchanged" in text
+    assert "A 200 does not mean changed" in text
+    assert "skill.files[]" in text
+
+
+def test_llms_txt_skill_section_carries_a_404_rule():
+    """The only error guidance that survives the one reachable state where
+    index.json's skill.errors is absent: a first-time agent that read llms.txt,
+    fetched the URL, got a 404, and has never held the block."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "If that URL 404s" in text
+    assert "do not retry" in text
+    assert "do not answer without caveats" in text
+    assert "_meta.agent_instruction" in text
+
+
+def test_llms_txt_skill_section_sits_above_the_endpoint_listing():
+    """An agent that reads the top of the file and stops must have seen it. A
+    trailing section below 38 lines of endpoints is written to be skipped."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert text.index("## Answering guide (skill)") < text.index("## Endpoints")
+    assert text.index("## Start here") < text.index("## Answering guide (skill)")
+
+
+def test_llms_txt_skill_url_is_not_hard_coded_in_build_llms_txt():
+    """F1. The failure mode is a renamed SKILL_NAME that moves index.json and
+    the published file while llms.txt keeps advertising the old URL."""
+    import inspect
+    source = inspect.getsource(build_llms_txt)
+    assert "SKILL_ENTRY_URL" in source
+    assert "chicago-bike-safety-data" not in source
+
+
+def test_llms_txt_skill_section_carries_the_manifest_precedence_rule():
+    """Hale round 3 4.3. index.json's skill.errors carries this rule in full, but
+    the consumer most likely to act on a wrong figure in the guide is the one
+    least likely to have fetched index.json. The 404 rule covers the guide being
+    absent; this covers it being present and wrong, which is the state that
+    exists: five prose restatements of families[].count survive commit 5a4ee58.
+    Ordering is asserted because a rule below 38 lines of endpoints is a rule
+    written to be skipped."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "every count from families[].count" in text
+    assert "every size from bytes_approx" in text
+    assert "never from the guide's prose" in text
+    assert text.index("never from the guide's prose") < text.index("## Endpoints")
+    # The claim this rule replaces. It shipped on three surfaces and could never
+    # have been made true: SKILL.md's worked answer is the guide's teaching
+    # device. If it comes back anywhere in this file, the file contradicts itself.
+    assert "publishes no numbers" not in text
+
+
+def test_llms_txt_precedence_rule_names_the_same_fields_as_the_manifest_error():
+    """One rule, two surfaces, one vocabulary. The defect under repair is two
+    surfaces disagreeing about the same subject; a fix that leaves them naming
+    different fields is that defect at a smaller size. Fails if either surface
+    drops or renames a field."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    rule = emit_api._SKILL_ERRORS["on_the_guide_disagreeing_with_this_manifest"]
+    for field in ("endpoints[].path", "families[].path_template",
+                  "families[].count", "bytes_approx"):
+        assert field in rule, f"{field} left skill.errors"
+        assert field in text, f"{field} left llms.txt's precedence rule"
 
 
 def test_llms_txt_lists_every_known_endpoint_with_description_and_questions():
