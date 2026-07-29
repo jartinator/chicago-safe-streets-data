@@ -1050,8 +1050,11 @@ _SKILL_STRINGS = {
         "A packaged guide to answering questions from this API, written to be "
         "read by an agent: which file answers which question, how each number "
         "carries the qualifier that makes it honest, and how to quote a number "
-        "without dropping that qualifier. It is instructions, not data. It "
-        "publishes no numbers."),
+        "without dropping that qualifier. It is instructions, not data. Do not "
+        "take a figure about the data from it: its numbers are worked examples "
+        "or restatements, and only the endpoint files and this manifest are "
+        "checked every build; see "
+        "errors.on_the_guide_disagreeing_with_this_manifest."),
     "when_to_fetch": (
         "Once, before you answer a question from this API in your own prose."),
     "when_not_to_fetch": (
@@ -1365,9 +1368,19 @@ def build_llms_txt(meta, endpoint_bytes):
         "makes it honest, and how to quote a number without dropping that "
         "qualifier. Fetch it once before you answer questions from this data. Skip "
         "it if you need one value and will reproduce that object's own caveat text "
-        "beside it. It publishes no numbers, and it names reference/endpoints.md "
+        "beside it. It names reference/endpoints.md "
         "and reference/reading-caveats.md by relative path — resolve those against "
         "the URL above.",
+        # The precedence rule. skill.errors.on_the_guide_disagreeing_with_this_
+        # manifest carries it in full, but the consumer most likely to act on a
+        # wrong figure in the guide is the one least likely to have fetched
+        # index.json. The 404 rule below covers the guide being absent; this
+        # covers it being present and wrong, which is the state that exists.
+        # Same three fields and same words as that error string, deliberately.
+        "Take every path from api/v1/index.json's endpoints[].path or "
+        "families[].path_template, every count from families[].count, and every "
+        "size from bytes_approx, never from the guide's prose: the manifest is "
+        "checked against the files on disk every build; the guide is not.",
         f"It is written against caveat_contract {CAVEAT_CONTRACT_VERSION}. If you "
         "cache it, re-fetch when _meta.caveat_contract changes value in any file "
         "here. A conditional GET on the URL above answers cheaply: a 304 means "

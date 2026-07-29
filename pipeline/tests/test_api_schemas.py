@@ -339,3 +339,14 @@ def test_read_published_skill_orders_by_posix_string_not_path_object(tmp_path):
     paths = [f["path"] for f in emit_api.read_published_skill(root)]
     assert paths == sorted(paths), paths
     assert paths[0].endswith("SKILL.md")
+
+
+def test_index_skill_block_makes_no_publishes_no_numbers_claim():
+    """Soren 08-guide-precedence.md section 4, "Not covered": his test forbids the
+    claim in llms.txt only. Both strings landed in one commit, so bind the second
+    surface too. The claim could never have been made true -- SKILL.md's worked
+    question-and-answer is the guide's teaching device, and deleting it to make
+    the sentence true would destroy the thing that moved qualifier survival from
+    0.188 to 0.753."""
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    assert "publishes no numbers" not in json.dumps(out)

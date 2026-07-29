@@ -116,6 +116,38 @@ def test_llms_txt_skill_url_is_not_hard_coded_in_build_llms_txt():
     assert "chicago-bike-safety-data" not in source
 
 
+def test_llms_txt_skill_section_carries_the_manifest_precedence_rule():
+    """Hale round 3 4.3. index.json's skill.errors carries this rule in full, but
+    the consumer most likely to act on a wrong figure in the guide is the one
+    least likely to have fetched index.json. The 404 rule covers the guide being
+    absent; this covers it being present and wrong, which is the state that
+    exists: five prose restatements of families[].count survive commit 5a4ee58.
+    Ordering is asserted because a rule below 38 lines of endpoints is a rule
+    written to be skipped."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    assert "every count from families[].count" in text
+    assert "every size from bytes_approx" in text
+    assert "never from the guide's prose" in text
+    assert text.index("never from the guide's prose") < text.index("## Endpoints")
+    # The claim this rule replaces. It shipped on three surfaces and could never
+    # have been made true: SKILL.md's worked answer is the guide's teaching
+    # device. If it comes back anywhere in this file, the file contradicts itself.
+    assert "publishes no numbers" not in text
+
+
+def test_llms_txt_precedence_rule_names_the_same_fields_as_the_manifest_error():
+    """One rule, two surfaces, one vocabulary. The defect under repair is two
+    surfaces disagreeing about the same subject; a fix that leaves them naming
+    different fields is that defect at a smaller size. Fails if either surface
+    drops or renames a field."""
+    text = build_llms_txt(_meta(), fx._endpoint_bytes())
+    rule = emit_api._SKILL_ERRORS["on_the_guide_disagreeing_with_this_manifest"]
+    for field in ("endpoints[].path", "families[].path_template",
+                  "families[].count", "bytes_approx"):
+        assert field in rule, f"{field} left skill.errors"
+        assert field in text, f"{field} left llms.txt's precedence rule"
+
+
 def test_llms_txt_lists_every_known_endpoint_with_description_and_questions():
     text = build_llms_txt(_meta(), fx._endpoint_bytes())
     for ep in emit_api._ENDPOINTS:
