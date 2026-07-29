@@ -47,7 +47,7 @@ pip install -r pipeline/requirements.txt
 
 # Tests — run both before proposing any change
 python -m pytest pipeline/tests -q
-for f in tests/ui/*.test.js; do node "$f" || exit 1; done   # || exit 1: a bare loop exits with the LAST test's status
+fail=0; for f in tests/ui/*.test.js; do node "$f" || fail=1; done; [ $fail -eq 0 ]
 
 # Guardrails — run both before proposing a pipeline or API change
 python pipeline/check_provenance.py

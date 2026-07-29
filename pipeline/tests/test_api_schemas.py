@@ -350,3 +350,14 @@ def test_index_skill_block_makes_no_publishes_no_numbers_claim():
     0.188 to 0.753."""
     out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
     assert "publishes no numbers" not in json.dumps(out)
+    # The dual of "a guard that can find nothing must assert it found something":
+    # a guard that FORBIDS a string must assert the string that replaced it is
+    # still there. Without this, trimming the sentence back satisfies the test --
+    # the false claim does not return, nothing fires, and Soren's rule is gone.
+    assert "worked examples or restatements" in out["skill"]["what_it_is"], (
+        "skill.what_it_is no longer tells an agent to disbelieve figures in the "
+        "guide. index.schema.json types it {'type': 'string'} with no minLength "
+        "and requires only that the key exist, so \"\" validates; nothing else "
+        "in the repo reads this string. Restore the rule from "
+        "08-guide-precedence.md 3.1. Do NOT delete the sentence to make this "
+        "pass -- deleting it is the failure this asserts against.")

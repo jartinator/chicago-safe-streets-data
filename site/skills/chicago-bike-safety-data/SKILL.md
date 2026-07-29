@@ -171,7 +171,7 @@ that is actually settled.
 | What happened | What to do |
 |---|---|
 | **404, or you got HTML instead of JSON** | You constructed a path. Do not retry it. Fetch `index.json` and read the real path from `endpoints[].path` or `families[].path_template`. |
-| **Ward number out of range** | Chicago has 50 wards, `01`–`50`, zero-padded in the path. Every one has a file, including wards with zero crashes — a valid number never 404s. |
+| **Ward number out of range** | Ward numbers are zero-padded in the path. Every ward in `families[].count` has a file, including wards with zero crashes — a valid number never 404s. |
 | **`generated_at` is months old** | Say so in your answer. Do not present stale safety data as current. |
 | **The number you want is not there** | It probably does not exist. This dataset has no obstruction data, no ridership counts, no pedestrian or driver crash data, and no address geocoding. Say what is missing rather than substituting something adjacent. |
 | **`data_tier` is `proxy`** | Report direction, never magnitude. 311 counts measure who complains as much as what happens. |
