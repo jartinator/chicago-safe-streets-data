@@ -72,6 +72,7 @@ jobs:
         with:
           add-paths: |
             site/data/**
+            site/api/**
             data/snapshots/**
           branch: data/auto-refresh
           delete-branch: true
