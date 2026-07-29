@@ -134,7 +134,18 @@ def test_the_advertised_skill_url_is_one_string_everywhere():
     assert contributing.is_file(), (
         f"site/assets/js/contributing.js is missing; it is one of the two "
         f"human-facing surfaces that advertise {SKILL_ENTRY_URL}. {FIX}")
-    assert SKILL_ENTRY_URL in contributing.read_text(encoding="utf-8"), (
+    contributing_text = contributing.read_text(encoding="utf-8")
+    # Pinned to the <code> element, not merely "somewhere in the file". Same move
+    # as home.js's `skill` const: a substring search would pass on a stale URL
+    # left in a comment while the live one moved. Hale named this residual in
+    # round 3 and it is closed here.
+    assert re.search(r"<code>\s*" + re.escape(SKILL_ENTRY_URL) + r"\s*</code>",
+                     contributing_text), (
+        f"site/assets/js/contributing.js does not render {SKILL_ENTRY_URL} inside "
+        f"a <code> element. The URL must be the one a reader copies off the page, "
+        f"not merely present somewhere in the source. Do NOT satisfy this by "
+        f"leaving the URL in a comment.")
+    assert SKILL_ENTRY_URL in contributing_text, (
         f"site/assets/js/contributing.js does not contain {SKILL_ENTRY_URL}. A "
         f"person reading the Downloads & Docs page is handed that URL by hand; "
         f"nothing regenerates this file, so it goes stale silently while every "
