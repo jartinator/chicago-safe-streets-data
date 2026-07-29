@@ -179,6 +179,14 @@
       metadataDiv.innerHTML = `
         <p><strong>Contract v${BSD.esc(meta.contract_version)}</strong>, generated ${BSD.esc(generatedDate)}, provenance: <code>${BSD.esc(meta.provenance)}</code></p>
         <p><a href="https://github.com/jartinator/chicago-safe-streets-data/blob/main/SCHEMA.md" target="_blank" rel="noopener">View full field documentation (SCHEMA.md)</a> in the repo.</p>
+        <p>Pointing an AI coding assistant at this API? Ask it to read
+        <code>https://jartinator.github.io/chicago-safe-streets-data/skills/chicago-bike-safety-data/SKILL.md</code>
+        first — it's the same guide <a href="llms.txt">llms.txt</a> already points
+        agents at, and it names which file answers which question and how to carry a
+        number's caveat along when your code surfaces it. If that path doesn't
+        resolve, nothing else here depends on it: every endpoint's own
+        <code>_meta</code> and <code>caveats</code> fields carry the same rules on
+        their own.</p>
       `;
       app.appendChild(metadataDiv);
 

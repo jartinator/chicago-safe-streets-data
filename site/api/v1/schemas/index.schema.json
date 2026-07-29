@@ -71,6 +71,60 @@
     "planned": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "skill": {
+      "type": "object",
+      "properties": {
+        "entry_point":       { "type": "string" },
+        "what_it_is":        { "type": "string" },
+        "when_to_fetch":     { "type": "string" },
+        "when_not_to_fetch": { "type": "string" },
+        "format":            { "type": "string" },
+        "caveat_contract":   { "type": "string" },
+        "cache_rule":        { "type": "string" },
+        "source_of_truth":   { "type": "string" },
+        "repository":        { "type": "string" },
+        "errors": {
+          "type": "object",
+          "properties": {
+            "there_is_no_error_body":                      { "type": "string" },
+            "on_404_for_a_skill_url":                      { "type": "string" },
+            "on_html_where_markdown_expected":             { "type": "string" },
+            "on_5xx_or_timeout":                           { "type": "string" },
+            "on_sha256_mismatch":                          { "type": "string" },
+            "on_a_200_from_a_conditional_get":             { "type": "string" },
+            "on_caveat_contract_mismatch":                 { "type": "string" },
+            "on_a_reference_file_404":                     { "type": "string" },
+            "on_the_guide_disagreeing_with_this_manifest": { "type": "string" },
+            "on_this_block_disappearing":                  { "type": "string" },
+            "why_this_shape":                              { "type": "string" }
+          },
+          "required": ["there_is_no_error_body", "on_404_for_a_skill_url",
+                       "on_sha256_mismatch", "on_caveat_contract_mismatch",
+                       "on_the_guide_disagreeing_with_this_manifest",
+                       "on_this_block_disappearing"],
+          "additionalProperties": false
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "path":   { "type": "string" },
+              "url":    { "type": "string" },
+              "bytes":  { "type": "integer", "minimum": 0 },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            },
+            "required": ["path", "url", "bytes", "sha256"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entry_point", "what_it_is", "when_to_fetch", "when_not_to_fetch",
+                   "format", "caveat_contract", "cache_rule", "source_of_truth",
+                   "repository", "errors", "files"],
+      "additionalProperties": false
     }
   },
   "required": ["_meta", "title", "description", "endpoints", "families",

@@ -185,9 +185,17 @@
   // link. The one-liner is exactly what a person would paste into an assistant.
   function agentHTML() {
     const llms = `${SITE_ORIGIN}/llms.txt`;
+    // Built from SITE_ORIGIN, the same way `llms` above is, so the origin lives
+    // in one place in this file. pipeline/tests/test_skill_publication.py
+    // reconstructs this URL from SITE_ORIGIN plus the path below and asserts it
+    // equals SKILL_ENTRY_URL in pipeline/config.py — a JS asset cannot import
+    // the Python constant, so the test reads this file's text instead.
+    const skill = `${SITE_ORIGIN}/skills/chicago-bike-safety-data/SKILL.md`;
     const oneLiner = `Read ${llms} and answer questions about Chicago cyclist ` +
       `safety, bike infrastructure, and City Council accountability. Tell me how ` +
       `reliable each number is.`;
+    const skillOneLiner = `Before you answer questions about Chicago cyclist ` +
+      `safety from On Your Left!, read ${skill} and follow it.`;
     const copyBlock = (id, text) =>
       `<div class="agent-copy"><code id="${id}">${B.esc(text)}</code>` +
       `<button type="button" class="btn agent-copy-btn" data-copy="${id}">Copy</button></div>`;
@@ -215,6 +223,17 @@
       `&ldquo;not published here&rdquo; rather than guess.</p>` +
       `<p class="muted">Paste this into an assistant that can browse the web:</p>` +
       copyBlock("agent-oneliner", oneLiner) +
+      `<p class="home-agent-skill">On Your Left! also publishes a longer guide, ` +
+      `written for an assistant to read before it answers more than one question: ` +
+      `which file answers which, and how to carry a number's caveat along instead of ` +
+      `dropping it. It's a normal web page — ask your assistant to read it, the same ` +
+      `way you'd ask it to read any link:</p>` +
+      copyBlock("agent-skill-oneliner", skillOneLiner) +
+      `<p class="home-agent-skill-note">If your assistant can't open that link, it ` +
+      `isn't stuck: the same caveats live on this site's ` +
+      `<a href="methodology.html">Methodology</a> and ` +
+      `<a href="sources.html">Sources</a> pages, and every number on this site already ` +
+      `shows its own data-quality tag.</p>` +
       `<p class="home-agent-foot">Building something? Point code at the open JSON ` +
       `API — no key, no sign-up, rebuilt weekly. Start at the ` +
       `<a href="contributing.html">Downloads &amp; Docs page</a>, where every ` +

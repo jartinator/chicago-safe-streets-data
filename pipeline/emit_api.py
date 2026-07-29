@@ -34,6 +34,7 @@ the one family allowed a bigger byte budget (API_CRASH_SLICE_BUDGET_BYTES).
 Usage: python emit_api.py
 """
 import argparse
+import hashlib
 import json
 from collections import Counter, defaultdict
 
@@ -42,7 +43,7 @@ from caveats import (AGENT_INSTRUCTION, CAVEAT_CONTRACT_VERSION, mark_provisiona
                      trend_caveat, window_caveat)
 from config import (API_CRASH_SLICE_BUDGET_BYTES, API_SIZE_BUDGET_BYTES, API_VERSION,
                     CONTRACT_VERSION, CRASH_ID_PREFIX_LEN, CRASH_START_DATE, SITE_API_DIR,
-                    SITE_BASE_URL, SITE_DATA_DIR, SITE_DIR)
+                    SITE_BASE_URL, SITE_DATA_DIR, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME)
 from socrata import write_json
 
 API_BASE_URL = f"{SITE_BASE_URL}/api/v1"
@@ -971,8 +972,174 @@ def build_aldermen_api(meta, aldermen, safety_record, menu_spending):
     }
 
 
+# --- the published agent skill (site/skills/$SKILL_NAME/) -------------------
+#
+# A published skill is a set of instructions an arbitrary third-party agent will
+# follow, which is a heavier obligation than publishing data. Everything below
+# exists so a consumer can tell (a) that the guide exists, (b) which caveat
+# contract it was written against, (c) whether the copy they hold is the copy we
+# publish, and (d) what to do when any of that fails. A static file host cannot
+# write an agent-legible error at failure time, so every rule an agent needs at
+# failure time ships here, in a file it has already fetched, before the failure.
+#
+# The block is deliberately pure ASCII: write_json's json.dump defaults to
+# ensure_ascii=True, so one em dash would cost six bytes rather than three and
+# make the measured size depend on a serialiser flag.
+
+_SKILL_ERRORS = {
+    "there_is_no_error_body": (
+        "This is a static file host. A wrong path returns GitHub Pages' 404 HTML "
+        "page, not JSON and not Markdown. Check the HTTP status and the "
+        "Content-Type header before you parse anything you fetched from a skill "
+        "URL."),
+    "on_404_for_a_skill_url": (
+        "Do not retry. The path is wrong or was retired, not the moment. Fall "
+        "back to this index.json: read _meta.agent_instruction and each object's "
+        "own caveat field, and attach them exactly as you would have. Do NOT "
+        "conclude that no answering rules exist, and do NOT answer without "
+        "caveats. The rules live in the JSON; the guide only summarises them."),
+    "on_html_where_markdown_expected": (
+        "A 200 carrying a <!DOCTYPE html> body is this host's 404 page. Treat it "
+        "as on_404_for_a_skill_url. Do NOT parse the HTML for content."),
+    "on_5xx_or_timeout": (
+        "Transient. Retry with backoff. This is the host, not the data. Do NOT "
+        "record it as 'the skill does not exist'."),
+    "on_sha256_mismatch": (
+        "The published bytes moved since you cached them. Re-fetch the file whose "
+        "hash no longer matches. Do NOT keep using the cached copy because it "
+        "worked last time: this is instructions, not data, and stale instructions "
+        "are followed silently."),
+    "on_a_200_from_a_conditional_get": (
+        "Not evidence of change. This host derives its validators from the deploy "
+        "time and the byte length, so every deploy issues new ones for files that "
+        "did not move. Compare the sha256 in files[], or hash the body you just "
+        "received, before you invalidate anything downstream. Do NOT re-run "
+        "downstream work on a changed ETag alone."),
+    "on_caveat_contract_mismatch": (
+        "You hold a guide written for one caveat_contract and _meta declares "
+        "another. Discard the cached guide and re-fetch it. If the fresh copy "
+        "still names the older contract, the guide is stale: follow _meta and "
+        "report it at repository. Do NOT apply the older placement rules to newer "
+        "data. _meta wins over the guide, always."),
+    "on_a_reference_file_404": (
+        "Proceed. SKILL.md alone carries the Always/Never rules and the fetch "
+        "plan; the two files under reference/ are elaboration, not prerequisite. "
+        "Do not retry, and do NOT abandon the answer."),
+    "on_the_guide_disagreeing_with_this_manifest": (
+        "This index.json wins. Take every path from endpoints[].path and "
+        "families[].path_template, every count from families[].count, and every "
+        "size from bytes_approx, never from the guide's prose. The manifest is "
+        "checked against the files on disk on every build; the guide's prose is "
+        "not. Do NOT construct a path, assert a count, or budget a fetch from the "
+        "guide when this file disagrees."),
+    "on_this_block_disappearing": (
+        "Read this while it is here, because it is the instruction for when it is "
+        "gone. If a later fetch of this index.json carries no skill key, the guide "
+        "is no longer published. Answer from this file and its caveat fields. Do "
+        "NOT keep requesting the URL you cached, and do NOT guess a new one: "
+        "absence is a fact, not a gap to fill."),
+    "why_this_shape": (
+        "A static host cannot write an agent-legible error at failure time. So "
+        "every rule an agent needs at failure time is stated here, on a file it "
+        "has already fetched, before the failure."),
+}
+
+_SKILL_STRINGS = {
+    "entry_point": SKILL_ENTRY_URL,
+    "what_it_is": (
+        "A packaged guide to answering questions from this API, written to be "
+        "read by an agent: which file answers which question, how each number "
+        "carries the qualifier that makes it honest, and how to quote a number "
+        "without dropping that qualifier. It is instructions, not data. Do not "
+        "take a figure about the data from it: its numbers are worked examples "
+        "or restatements, and only the endpoint files and this manifest are "
+        "checked every build; see "
+        "errors.on_the_guide_disagreeing_with_this_manifest."),
+    "when_to_fetch": (
+        "Once, before you answer a question from this API in your own prose."),
+    "when_not_to_fetch": (
+        "Do not fetch it to look up a value. Every number, and the caveat text "
+        "that belongs to it, is already in the endpoint file. If you will "
+        "reproduce that caveat text beside the number, you already have what the "
+        "guide asks for."),
+    "format": (
+        "Markdown with a YAML front-matter block carrying `name` and "
+        "`description`. Readable as plain text by any agent; installable as a "
+        "skill directory by hosts that support one. The two files under "
+        "reference/ are named in SKILL.md as backticked plain text, not as "
+        "Markdown links: join each name to this entry point's directory yourself. "
+        "They are optional."),
+    "caveat_contract": (
+        f"{CAVEAT_CONTRACT_VERSION}. The guide is written against the same "
+        "contract this API declares in _meta.caveat_contract. If the two ever "
+        "disagree, _meta wins and the guide is stale; report it at the repository "
+        "below."),
+    "cache_rule": (
+        "Safe to cache. Re-fetch when _meta.caveat_contract changes value. For a "
+        "cheap unchanged-check, send a conditional GET on entry_point with the "
+        "ETag or Last-Modified you were given: a 304 is a definitive unchanged. A "
+        "200 is not a definitive changed; see "
+        "errors.on_a_200_from_a_conditional_get, and compare the sha256 in files[] "
+        "before acting on one. Do NOT re-fetch on every _meta.generated_at change: "
+        "generated_at moves with the weekly data rebuild and says nothing about "
+        "whether this guide moved."),
+    "source_of_truth": (
+        f"Generated from .claude/skills/{SKILL_NAME}/ in the source repository. "
+        "The two copies are compared content-for-content by "
+        "pipeline/tests/test_skill_publication.py, which fails CI if they "
+        "differ."),
+    "repository": "https://github.com/jartinator/chicago-safe-streets-data",
+}
+
+
+def read_published_skill(root):
+    """[{path, url, bytes, sha256}] for every file under the published skill
+    directory, or [] when it is absent.
+
+    `path` is relative to site/ (e.g. "skills/<name>/SKILL.md"), not to the API
+    root — the skill does not live under site/api/v1/, so an endpoints[] row is
+    impossible (check_api._check_manifest_completeness resolves endpoint paths
+    against site/api/v1/) and the block carries absolute URLs instead.
+
+    Hashes are of LF-normalised bytes, matching sync_skill._tree, so a Windows
+    checkout with autocrlf on produces the same manifest as the Linux runner.
+
+    Ordered by the posix relative-path string, NOT by Path objects: see
+    sync_skill._tree's docstring. Path ordering is platform-dependent and this
+    order reaches a committed generated file.
+    """
+    if not root.exists():
+        return []
+    rels = sorted(p.relative_to(root).as_posix()
+                  for p in root.rglob("*") if p.is_file())
+    out = []
+    for rel in rels:
+        data = (root / rel).read_bytes().replace(b"\r\n", b"\n")
+        site_rel = f"skills/{SKILL_NAME}/{rel}"
+        out.append({
+            "path": site_rel,
+            "url": f"{SITE_BASE_URL}/{site_rel}",
+            "bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        })
+    return out
+
+
+def _skill_block(skill_files):
+    """index.json's top-level `skill` object.
+
+    Top-level, beside `integration`, not inside it: the pending integration
+    block has not landed, and burying a runtime pointer inside a design-time
+    block couples two PRs that have no reason to be coupled.
+
+    No string here is computed from anything but SKILL_NAME, SKILL_ENTRY_URL,
+    CAVEAT_CONTRACT_VERSION and the files on disk.
+    """
+    return {**_SKILL_STRINGS, "errors": _SKILL_ERRORS, "files": skill_files}
+
+
 def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=None,
-                line_files_bytes=None):
+                line_files_bytes=None, skill_files=None):
     """index.json: the discovery entry point. Hand-assembled manifest listing
     the endpoints and endpoint *families* that actually exist so far.
 
@@ -987,6 +1154,14 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
     50 individually hand-listed endpoints) is added only when files were
     actually written — crash_files_bytes reuses the same seam ward_files_bytes
     established, both keyed the same way emit_all's `written` dict already is.
+
+    skill_files: read_published_skill()'s output, or None/[] when
+    site/skills/$SKILL_NAME/ does not exist. The `skill` key is emitted only
+    when there is something published to point at, which is why `skill` is in
+    index.schema.json's `properties` but NOT in its top-level `required` — the
+    two existing build_index schema tests call this with no skill argument and
+    must keep passing. The missing enforcement lives at the repo level instead,
+    in pipeline/tests/test_skill_publication.py.
     """
     endpoints = [
         {
@@ -1123,7 +1298,7 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
         },
     ]
 
-    return {
+    out = {
         "_meta": envelope,
         "title": "On Your Left! — Chicago bike safety, on the record",
         "description": PROJECT_DESCRIPTION,
@@ -1137,6 +1312,9 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
         "no_synthetic_data": NO_SYNTHETIC_DATA_STATEMENT,
         "planned": [],
     }
+    if skill_files:
+        out["skill"] = _skill_block(skill_files)
+    return out
 
 
 def build_llms_txt(meta, endpoint_bytes):
@@ -1167,12 +1345,55 @@ def build_llms_txt(meta, endpoint_bytes):
         f"generated_at: {meta['generated_at']}",
         f"provenance: {meta['provenance']}",
         f"contract_version: {CONTRACT_VERSION}",
+        # The one field §6 tells agents to watch for a breaking change. Without
+        # it an orienting agent cannot see the break signal without a second
+        # fetch. Emitted from the constant, never typed.
+        f"caveat_contract: {CAVEAT_CONTRACT_VERSION}",
         "",
         "## Start here",
         f"{API_BASE_URL}/index.json",
         "The discovery entry point: the full endpoint list with byte sizes, "
         "endpoint *families* (e.g. one file per ward), and fetch recipes for "
         "common questions.",
+        # Immediately after "## Start here" and above the endpoint listing, so
+        # an agent that reads the top of the file and stops has seen it. It does
+        # not go INSIDE "## Start here": that section's force comes from
+        # declaring exactly one destination. A trailing "## Skill" section below
+        # the endpoints, tiers and caveats is a section written to be skipped.
+        "",
+        "## Answering guide (skill)",
+        SKILL_ENTRY_URL,
+        "A packaged guide to answering from this API, written for an agent: which "
+        "file answers which question, how each number carries the qualifier that "
+        "makes it honest, and how to quote a number without dropping that "
+        "qualifier. Fetch it once before you answer questions from this data. Skip "
+        "it if you need one value and will reproduce that object's own caveat text "
+        "beside it. It names reference/endpoints.md "
+        "and reference/reading-caveats.md by relative path — resolve those against "
+        "the URL above.",
+        # The precedence rule. skill.errors.on_the_guide_disagreeing_with_this_
+        # manifest carries it in full, but the consumer most likely to act on a
+        # wrong figure in the guide is the one least likely to have fetched
+        # index.json. The 404 rule below covers the guide being absent; this
+        # covers it being present and wrong, which is the state that exists.
+        # Same three fields and same words as that error string, deliberately.
+        "Take every path from api/v1/index.json's endpoints[].path or "
+        "families[].path_template, every count from families[].count, and every "
+        "size from bytes_approx, never from the guide's prose: the manifest is "
+        "checked against the files on disk every build; the guide is not.",
+        f"It is written against caveat_contract {CAVEAT_CONTRACT_VERSION}. If you "
+        "cache it, re-fetch when _meta.caveat_contract changes value in any file "
+        "here. A conditional GET on the URL above answers cheaply: a 304 means "
+        "unchanged. A 200 does not mean changed — this host rebuilds its "
+        "validators every deploy — so on a 200 compare the sha256 in "
+        "api/v1/index.json's skill.files[] before you act.",
+        # The 404 rule. index.json's skill.errors carries the full catalogue, but
+        # this is the only error guidance that survives the one reachable state
+        # where skill.errors is absent: a first-time agent that read llms.txt,
+        # fetched the URL, got a 404, and never held the block.
+        "If that URL 404s, do not retry it and do not answer without caveats: read "
+        "api/v1/index.json's _meta.agent_instruction and each object's own caveat "
+        "field, and attach them exactly as you would have.",
         "",
         "## Endpoints",
     ]
@@ -1471,7 +1692,16 @@ def emit_all():
     write_json(SITE_API_DIR / "council" / "aldermen.json", aldermen_api)
     written["council/aldermen.json"] = (SITE_API_DIR / "council" / "aldermen.json").stat().st_size
 
-    index = build_index(meta, written, ward_files_bytes, crash_files_bytes, line_files_bytes)
+    # Derived from SITE_DIR, deliberately: conftest.py's autouse
+    # _isolate_emit_api_site_dir fixture already redirects emit_api.SITE_DIR to
+    # tmp_path for every test in this suite, so the whole existing suite sees an
+    # absent directory, emits no `skill` key, and needs no new plumbing. A
+    # separate config constant imported straight into this module would be
+    # patched by nothing, and every emit_all test would silently start depending
+    # on the state of the real site/skills/.
+    skill_files = read_published_skill(SITE_DIR / "skills" / SKILL_NAME)
+    index = build_index(meta, written, ward_files_bytes, crash_files_bytes,
+                        line_files_bytes, skill_files)
     write_json(SITE_API_DIR / "index.json", index)
     written["index.json"] = (SITE_API_DIR / "index.json").stat().st_size
 

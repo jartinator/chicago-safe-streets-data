@@ -15,7 +15,7 @@ from referencing import Registry, Resource
 
 import emit_api
 import test_emit_api as fx  # reuse the fixture builders (all _foo() helpers)
-from config import CONTRACT_VERSION
+from config import CONTRACT_VERSION, SKILL_ENTRY_URL, SKILL_NAME
 from emit_api import (build_aldermen_api, build_citywide, build_corridors_api,
                       build_council_index, build_council_records_api, build_crash_slice,
                       build_index, build_line_file, build_news_api, build_proposed_api,
@@ -246,3 +246,118 @@ def test_emit_all_output_carries_schema_field_and_validates(tmp_path, monkeypatc
     ward = json.loads((api_dir / "wards" / "ward-01.json").read_text())
     assert ward["_meta"]["schema"] == f"{BASE_SCHEMA_URL}/ward.schema.json"
     assert_valid(ward, "ward.schema.json")
+
+
+# --- the published skill block (index.json's top-level `skill`) ----------------
+
+def _skill_files():
+    return [
+        {"path": "skills/x/SKILL.md",
+         "url": "https://example.invalid/skills/x/SKILL.md",
+         "bytes": 3, "sha256": "a" * 64},
+    ]
+
+
+def test_index_with_skill_block_validates_and_round_trips_the_hashes():
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    assert_valid(out, "index.schema.json")
+    assert out["skill"]["files"] == _skill_files()
+    assert out["skill"]["entry_point"] == SKILL_ENTRY_URL
+
+
+def test_index_skill_block_carries_a_non_empty_errors_object():
+    """The blocker from round 1: R1's error catalogue shipped nowhere. `errors`
+    is required inside `skill`'s sub-schema, so a block without it fails
+    check_api.py's _check_schema_conformance rather than passing quietly."""
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    errors = out["skill"]["errors"]
+    assert errors
+    for key in ("there_is_no_error_body", "on_404_for_a_skill_url",
+                "on_sha256_mismatch", "on_caveat_contract_mismatch",
+                "on_the_guide_disagreeing_with_this_manifest",
+                "on_this_block_disappearing"):
+        assert errors[key].strip(), f"{key} is empty"
+
+
+def test_index_skill_block_without_errors_fails_the_schema():
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    del out["skill"]["errors"]
+    schema = SCHEMAS_BY_ID[f"{BASE_SCHEMA_URL}/index.schema.json"]
+    errors = list(Draft202012Validator(schema, registry=REGISTRY).iter_errors(out))
+    assert any("'errors' is a required property" in e.message for e in errors), errors
+
+
+def test_index_without_skill_files_emits_no_skill_key():
+    """`skill` is NOT in the schema's top-level `required`, so the two existing
+    build_index tests keep passing and main is valid before this ships."""
+    assert "skill" not in build_index(fx._meta(), fx._endpoint_bytes())
+    assert "skill" not in build_index(fx._meta(), fx._endpoint_bytes(), skill_files=[])
+
+
+def test_index_skill_block_is_pure_ascii():
+    """write_json's json.dump defaults to ensure_ascii=True: one em dash costs
+    six bytes rather than three and makes the block's measured size depend on a
+    serialiser flag."""
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    json.dumps(out["skill"]).encode("ascii")
+
+
+def test_read_published_skill_is_empty_when_the_directory_is_absent(tmp_path):
+    assert emit_api.read_published_skill(tmp_path / "nope") == []
+
+
+def test_read_published_skill_hashes_lf_normalised_bytes(tmp_path):
+    """A Windows checkout with autocrlf on must produce the same manifest as the
+    Linux runner, or every hash in the committed index.json flips by platform."""
+    root = tmp_path / SKILL_NAME
+    (root / "reference").mkdir(parents=True)
+    (root / "SKILL.md").write_bytes(b"a\r\nb\r\n")
+    (root / "reference" / "endpoints.md").write_bytes(b"a\nb\n")
+
+    out = emit_api.read_published_skill(root)
+    assert [f["path"] for f in out] == [
+        f"skills/{SKILL_NAME}/SKILL.md",
+        f"skills/{SKILL_NAME}/reference/endpoints.md",
+    ]
+    assert out[0]["bytes"] == out[1]["bytes"] == 4
+    assert out[0]["sha256"] == out[1]["sha256"]
+    assert out[0]["url"].endswith(out[0]["path"])
+
+
+def test_read_published_skill_orders_by_posix_string_not_path_object(tmp_path):
+    """sorted(root.rglob("*")) compares Path objects, and PureWindowsPath is
+    case-insensitive while PurePosixPath is not — so SKILL.md sorts before
+    reference/ on Linux and after it on Windows. files[] order reaches a
+    committed generated file, so it must not depend on the machine that ran the
+    build."""
+    root = tmp_path / SKILL_NAME
+    (root / "reference").mkdir(parents=True)
+    (root / "SKILL.md").write_bytes(b"x")
+    (root / "reference" / "aaa.md").write_bytes(b"y")
+    (root / "reference" / "zzz.md").write_bytes(b"z")
+
+    paths = [f["path"] for f in emit_api.read_published_skill(root)]
+    assert paths == sorted(paths), paths
+    assert paths[0].endswith("SKILL.md")
+
+
+def test_index_skill_block_makes_no_publishes_no_numbers_claim():
+    """Soren 08-guide-precedence.md section 4, "Not covered": his test forbids the
+    claim in llms.txt only. Both strings landed in one commit, so bind the second
+    surface too. The claim could never have been made true -- SKILL.md's worked
+    question-and-answer is the guide's teaching device, and deleting it to make
+    the sentence true would destroy the thing that moved qualifier survival from
+    0.188 to 0.753."""
+    out = build_index(fx._meta(), fx._endpoint_bytes(), skill_files=_skill_files())
+    assert "publishes no numbers" not in json.dumps(out)
+    # The dual of "a guard that can find nothing must assert it found something":
+    # a guard that FORBIDS a string must assert the string that replaced it is
+    # still there. Without this, trimming the sentence back satisfies the test --
+    # the false claim does not return, nothing fires, and Soren's rule is gone.
+    assert "worked examples or restatements" in out["skill"]["what_it_is"], (
+        "skill.what_it_is no longer tells an agent to disbelieve figures in the "
+        "guide. index.schema.json types it {'type': 'string'} with no minLength "
+        "and requires only that the key exist, so \"\" validates; nothing else "
+        "in the repo reads this string. Restore the rule from "
+        "08-guide-precedence.md 3.1. Do NOT delete the sentence to make this "
+        "pass -- deleting it is the failure this asserts against.")

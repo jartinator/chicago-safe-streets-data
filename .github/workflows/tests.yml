@@ -35,3 +35,36 @@ jobs:
         run: pip install -r pipeline/requirements-dev.txt
       - name: Run Python tests
         run: python -m pytest pipeline/tests -q
+
+  # tests/ui/*.test.js are plain node scripts with no package.json and no runner
+  # (AGENTS.md). They ran in no workflow until this job existed, so a change to
+  # site/assets/js/ could go green on every check while the page was broken --
+  # which nearly happened: the skill URL reached home.js and contributing.js
+  # before anything executed them in CI.
+  #
+  # A SEPARATE job on purpose. It cannot slow or break the pytest check above,
+  # which is the one that may already be a required check.
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run the UI model tests
+        run: |
+          shopt -s nullglob
+          files=(tests/ui/*.test.js)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::no tests/ui/*.test.js files found -- this job is guarding nothing"
+            exit 1
+          fi
+          fail=0
+          for f in "${files[@]}"; do
+            echo "--- $f"
+            # Do not stop at the first failure: one run should show them all.
+            # AGENTS.md's documented loop masks a mid-loop failure, because a
+            # bare for-loop exits with the status of its LAST iteration.
+            node "$f" || { echo "::error file=$f::UI model test failed"; fail=1; }
+          done
+          exit $fail
