@@ -6,14 +6,15 @@ All static JSON. No key, no rate limit, no query parameters. Every file opens
 with a `_meta` envelope carrying provenance, tier, license, attribution, the
 matching human page, the methodology link, and its own JSON Schema URL.
 
-Byte sizes are approximate and from the 2026-07-13 build. The published cap is
-100,000 bytes per file, 150,000 for crash slices.
+Get every file's size from `bytes_approx` in `index.json` — `bytes_approx_max`
+for a family. It is recomputed every build; never restate a size from prose.
+The published cap is 100,000 bytes per file, 150,000 for crash slices.
 
 ---
 
 ## Start here, if nothing below fits
 
-**`index.json`** (~10 KB) — the full manifest. Every endpoint with example
+**`index.json`** — the full manifest. Every endpoint with example
 questions, every file family with its path template, and `fetch_recipes`
 pairing a question with the files to fetch and what to read in them. It also
 carries an `integration` object where present — stability, refresh cadence, the
@@ -24,7 +25,7 @@ data. Read it from the file; do not assume it is there.
 
 ## Citywide
 
-**`citywide.json`** (~15 KB)
+**`citywide.json`**
 
 The best-designed file in the API for quoting: `findings[]` is an array of
 headline stats, and **every finding carries its own `caveat` next to its
@@ -45,7 +46,7 @@ network is protected?" · "How does Chicago's bike network rank nationally?"
 
 ## Wards
 
-**`wards/index.json`** (~80 KB) — all 50 wards, already ranked, with danger
+**`wards/index.json`** — all 50 wards, already ranked, with danger
 scores, crash counts, bikeway stats, and a `detail_url` per ward. Do not
 re-sort unless asked. This file uses **Form C**: resolve each `caveat_ref`
 against the file's own top-level `caveats` map before quoting. If you are going
@@ -54,7 +55,7 @@ file carries the same numbers with the caveat written out beside them.
 
 Answers: "Which ward is worst for cyclists?" · "How does my ward compare?"
 
-**`wards/ward-NN.json`** (~15-21 KB, `NN` is `01`-`50` zero-padded)
+**`wards/ward-NN.json`** (`NN` is `01`-`50` zero-padded)
 
 The single best fetch for a ward question — it bundles five things that would
 otherwise be five files.
@@ -85,16 +86,16 @@ done on bike safety?" · "Is my ward getting better or worse?"
 
 ## Streets and routes
 
-**`corridors.json`** (~44 KB) — per-street crash rates, facility mix, and
+**`corridors.json`** — per-street crash rates, facility mix, and
 labelled hotspot intersections. `crashes_per_km` inflates short segments and is
 not normalized by how many people ride. Say both.
 
-**`routes/index.json`** (~17 KB) — the named main bike routes with
+**`routes/index.json`** — the named main bike routes with
 mileage-by-grade, crash totals, protected share, and network interchanges. The
 roster is editorial and recomputed each build: read `count` and the slug list
 from the file. Do not restate a number from here.
 
-**`routes/line-{slug}.json`** (~3 KB) — one route's segment-level detail. Get
+**`routes/line-{slug}.json`** — one route's segment-level detail. Get
 the slug list from `routes/index.json`; never construct one from a street name.
 
 Answers: "Which streets are worst for cyclists?" · "How protected is Milwaukee
@@ -104,7 +105,7 @@ Avenue?" · "Where are the worst intersections?"
 
 ## Crashes
 
-**`crashes/ward-NN.json`** (up to ~146 KB) — one ward's cyclist crash records
+**`crashes/ward-NN.json`** — one ward's cyclist crash records
 as columnar rows: `crash_id`, `date`, `lat`, `lng`, `injury_severity`,
 `dooring`, `hit_and_run`, `street`.
 
@@ -122,15 +123,15 @@ in ward 27?"
 
 ## City Council
 
-**`council/index.json`** (~8 KB) — upcoming and recent bike-safety-relevant
+**`council/index.json`** — upcoming and recent bike-safety-relevant
 committee hearings, plus a summary of tagged legislative activity.
 
-**`council/records.json`** (~83 KB) — individual ordinances and resolutions
+**`council/records.json`** — individual ordinances and resolutions
 tagged bike/street-safety, with sponsors, status, dates, and official links.
 Topic tagging is partly automated (`derived` tier) — an incidental match is
 possible.
 
-**`council/aldermen.json`** (~26 KB) — the 50-ward roster with contact info and
+**`council/aldermen.json`** — the 50-ward roster with contact info and
 each member's sponsorship record.
 
 Note on `recorded_no_votes`: most council street-safety actions pass by voice
@@ -144,11 +145,11 @@ the most bike-safety legislation?" · "Is there a hearing coming up?"
 
 ## Context
 
-**`news.json`** (~35 KB) — recent bike/street-safety coverage, matched to wards,
+**`news.json`** — recent bike/street-safety coverage, matched to wards,
 alderpersons, routes, and projects. Links only; headlines and outlets are real,
 the matching is automated.
 
-**`proposed.json`** (~12 KB) — curated roster of proposed and in-progress
+**`proposed.json`** — curated roster of proposed and in-progress
 bikeway and trail projects with volunteer-reviewed status and official links.
 Status is hand-reviewed, so check `status_as_of`.
 
