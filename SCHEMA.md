@@ -1408,5 +1408,12 @@ additive.
   PR, per that schema's rule).
 - **`meta.json` gains a conditional `divvy_ward_exposure` sources entry**,
   present iff the data file exists, appended after `proposed_projects`.
+- **`divvy.json`'s `_meta.license` is the Lyft Divvy Data License Agreement**,
+  not the default Data Portal line — the trips are Lyft's, under Lyft's
+  terms. First per-endpoint license override; every other endpoint keeps the
+  Data Portal line. (`_meta.provenance` stays `"socrata"` on every file by
+  design — it labels the BUILD as live-vs-fixtures, verbatim from
+  `meta.json`, and is not a per-dataset source claim; the per-dataset source
+  is `exposure.source_key` and the sources entry.)
 - The hard rule survives promotion verbatim: no per-rider risk rate is ever
   computed from this data, anywhere in the pipeline or the API.

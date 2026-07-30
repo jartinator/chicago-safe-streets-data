@@ -496,6 +496,18 @@ def test_divvy_api_envelope_carries_divvy_volume_proxy_caveat():
     assert codes == ["divvy_volume_proxy"]
 
 
+def test_divvy_api_envelope_carries_lyft_license_not_data_portal():
+    # The trips are Lyft's, under Lyft's license — the default Data Portal
+    # LICENSE line on this endpoint would misstate the terms (design critique
+    # finding, 2026-07-30). Other endpoints keep the default.
+    out = emit_api.build_divvy_api(_meta(), _divvy_exposure())
+    assert "Divvy Data License Agreement" in out["_meta"]["license"]
+    assert "Data Portal" not in out["_meta"]["license"]
+    citywide = emit_api.build_citywide(_meta(), _citywide_trend(), _findings(),
+                                       _mileage_series())
+    assert "Data Portal" in citywide["_meta"]["license"]
+
+
 def test_divvy_api_absent_source_emits_no_data_yet():
     out = emit_api.build_divvy_api(_meta(), None)
     assert out["status"] == "no_data_yet"

@@ -50,6 +50,12 @@ API_BASE_URL = f"{SITE_BASE_URL}/api/v1"
 
 LICENSE = ("City of Chicago Data Portal Terms of Use (data.cityofchicago.org); "
           "derived analyses by On Your Left!")
+# Divvy trip data is Lyft's, not the Data Portal's — the modern S3 feed ships
+# under Lyft's own license, so divvy.json must not carry the default LICENSE
+# line (caught in the divvy-ward-display design critique, 2026-07-30).
+DIVVY_LICENSE = ("Divvy Data License Agreement (Lyft Bikes and Scooters, LLC; "
+                "divvybikes.com/data-license-agreement); derived analyses by "
+                "On Your Left!")
 ATTRIBUTION = ("On Your Left! — Chicago bike safety, on the record "
               "(https://github.com/jartinator/chicago-safe-streets-data)")
 
@@ -270,7 +276,8 @@ _ENDPOINTS = [
 ]
 
 
-def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=None):
+def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=None,
+              license=None):
     """Build the `_meta` object every emitted API file opens with.
 
     generated_at/provenance are copied verbatim from site/data/meta.json — see
@@ -299,7 +306,9 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=
         envelope["tier_note"] = tier_note
     if caveats:
         envelope["caveats"] = [{"code": c, "text": CAVEAT_TEXT[c]} for c in caveats]
-    envelope["license"] = LICENSE
+    # Per-endpoint license override for data that is not the Data Portal's
+    # (currently only divvy.json, whose trips are Lyft's under Lyft's license).
+    envelope["license"] = license if license is not None else LICENSE
     envelope["attribution"] = ATTRIBUTION
     envelope["human_page"] = human_page
     envelope["methodology"] = f"{SITE_BASE_URL}/methodology.html"
@@ -752,7 +761,8 @@ def build_divvy_api(meta, divvy):
     envelope = _envelope(meta, data_tier="proxy",
                          human_page=f"{SITE_BASE_URL}/index.html",
                          schema_name="divvy.schema.json",
-                         caveats=["divvy_volume_proxy"])
+                         caveats=["divvy_volume_proxy"],
+                         license=DIVVY_LICENSE)
     if not divvy:
         return {
             "_meta": envelope,

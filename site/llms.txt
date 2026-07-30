@@ -40,7 +40,7 @@ If that URL 404s, do not retry it and do not answer without caveats: read api/v1
   Curated roster of proposed and in-progress Chicago bikeway/trail projects with volunteer-reviewed status, official links, and recent news coverage.
   e.g. "What bike or trail projects are proposed or under construction in Chicago?"
   e.g. "What is the current status of the 606 / Bloomingdale Trail extension?"
-- https://jartinator.github.io/chicago-safe-streets-data/api/v1/divvy.json (4,209 bytes)
+- https://jartinator.github.io/chicago-safe-streets-data/api/v1/divvy.json (4,242 bytes)
   Per-ward Divvy bikeshare trip counts for the latest published month — a station-placement-biased proxy for cycling volume, published as context to read beside crash counts. Not an exposure denominator: never divide crash counts by these trips.
   e.g. "How much Divvy riding starts in ward 27?"
   e.g. "Which Chicago wards have the most Divvy bikeshare trips?"
