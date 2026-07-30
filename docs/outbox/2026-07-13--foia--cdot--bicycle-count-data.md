@@ -1,13 +1,24 @@
 ---
-status: ready
+status: sent
 initiative: foia
 to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → Transportation)
 subject: FOIA request — CDOT bicycle count data
 drafted: 2026-07-13
-sent: —
-tracking: —
+sent: 2026-07-26
+tracking: S146898-072726 (CDOT) — acknowledged 2026-07-27, +5 extension taken same day, response due 2026-08-10
 tracker: #33
 ---
+
+> **Sent 2026-07-26** from the project address, as the project. Recorded here
+> 2026-07-29 during a mailbox reconciliation — the letter went out three days
+> earlier and this file still said `ready`.
+>
+> CDOT's extension notice checked two boxes: *records not located in the course
+> of routine search* and *consultation needed*. The first one is the interesting
+> one. It suggests the 2009 count study data (item 1) is not sitting anywhere
+> obvious, which is consistent with it being 17 years old and predating any
+> current records system. A "no responsive records" answer on item 1 is a real
+> possibility; items 2–5 are the ones to watch.
 
 # FOIA request: CDOT bicycle count data
 
