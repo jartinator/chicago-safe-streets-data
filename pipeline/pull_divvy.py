@@ -135,7 +135,14 @@ def aggregate_station_counts(zip_bytes):
     """
     stations = {}  # station_key -> {name, lat, lng, trip_count}
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
-        csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+        # Divvy builds these zips on a Mac: skip __MACOSX/._*.csv AppleDouble
+        # members, which are binary (not UTF-8) despite the .csv suffix.
+        csv_names = [
+            n for n in zf.namelist()
+            if n.lower().endswith(".csv")
+            and not n.startswith("__MACOSX/")
+            and not n.rsplit("/", 1)[-1].startswith("._")
+        ]
         if not csv_names:
             raise RuntimeError("zip contained no CSV members")
         for name in csv_names:
