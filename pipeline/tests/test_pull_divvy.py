@@ -58,3 +58,25 @@ def test_aggregate_raises_when_only_resource_forks_match():
         assert "no CSV" in str(exc)
     else:
         raise AssertionError("expected RuntimeError for a zip with no real CSV")
+
+
+def test_as_of_from_key():
+    assert pull_divvy.as_of_from_key("202606-divvy-tripdata.zip") == "2026-06"
+    try:
+        pull_divvy.as_of_from_key("weird-name.zip")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("expected RuntimeError for an unparseable key")
+
+
+def test_pull_is_non_fatal_on_failure(monkeypatch, capsys):
+    import sys as _sys
+    import requests
+
+    def _boom(*a, **k):
+        raise requests.RequestException("network down")
+    monkeypatch.setattr(_sys, "argv", ["pull_divvy.py"])
+    monkeypatch.setattr(pull_divvy.requests, "get", _boom)
+    pull_divvy.main()  # must NOT raise and must NOT sys.exit — run_all continues
+    assert "WARNING" in capsys.readouterr().err

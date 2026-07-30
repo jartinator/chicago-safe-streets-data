@@ -725,6 +725,24 @@ def monthly_caveat(window_end, months=PROVISIONAL_MONTHS):
             "adjusted for how many people ride.")
 
 
+def divvy_caveat(as_of):
+    """Caveat for the per-ward Divvy trip-volume proxy (divvy.json exposure).
+
+    Carries the two ways the number misleads — coverage (Divvy only) and
+    station-placement bias — plus the standing prohibition: this count is
+    never a denominator. The only parenthetical is the as_of month, a date
+    expression, so CC-8 has nothing to check.
+    """
+    return (f"Trip counts are Divvy bikeshare trips starting in each ward "
+            f"during the covered month ({as_of}). They are a floor on cycling "
+            "volume, not a full count: non-Divvy riding is invisible here, and "
+            "Divvy station placement skews toward downtown and the North Side, "
+            "so a low ward count can mean few stations rather than little "
+            "riding. Never divide crash counts by these trips — Divvy trips "
+            "are not all cycling and crash victims are not all Divvy riders, "
+            "so the quotient is not a risk rate.")
+
+
 def rank_caveat(score_desc):
     """Caveat for comparable_danger_score.
 

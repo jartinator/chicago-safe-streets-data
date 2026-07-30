@@ -37,7 +37,7 @@
       "items": {
         "type": "object",
         "properties": {
-          "code": { "type": "string", "enum": ["not_normalized_by_ridership", "recent_months_provisional", "dooring_undercounted", "sponsorship_proxy_not_vote_tally"] },
+          "code": { "type": "string", "enum": ["not_normalized_by_ridership", "recent_months_provisional", "dooring_undercounted", "sponsorship_proxy_not_vote_tally", "divvy_volume_proxy"] },
           "text": { "type": "string" }
         },
         "required": ["code", "text"],

@@ -1100,35 +1100,40 @@ source_name, citations: [url], data_tier: "real" }]`. Consumed by
 entirely if the roster is empty. Add new commitments only with a citable
 public source — never inferred or estimated numbers.
 
-## PLANNED (not yet published): divvy_ward_exposure.json — tier proxy
+## divvy_ward_exposure.json — tier proxy
 
-**Status: scaffolding only — no real numbers exist yet, and nothing below is
-contract until it ships.** `pipeline/pull_divvy.py` and the `pipeline/config.py`
-Divvy stanza exist so a future session can run the real ingest without
-re-deriving the source/shape decisions; it has not been run in this PR
-because a monthly Divvy trip export is 100MB+ and validating that volume of
-real numbers for publication is out of scope here (mirrors the Smart Streets
-`smart_streets_enforcement.json` FOIA-pending precedent above). Publishing
-this file (and any keys it adds) requires the usual `CONTRACT_VERSION` bump
-at that time.
-
-Per-ward Divvy trip-density, aggregated from Lyft's public monthly trip
-exports (`divvy-tripdata.s3.amazonaws.com` — the modern feed; the old Data
-Portal "Divvy Trips" set is deprecated). Trips are grouped to station level,
-then station points are joined to wards by point-in-polygon. Target shape:
+**Published as of contract v1.19** (scaffolded in v1.16; see that section's
+entry). Per-ward Divvy trip-density for the latest published month,
+aggregated from Lyft's public monthly trip exports
+(`divvy-tripdata.s3.amazonaws.com` — the modern feed; the old Data Portal
+"Divvy Trips" set is deprecated). Trips are grouped to station level (start
+station), then station points are joined to wards by point-in-polygon (same
+method as `spatial_join.py`). Built by `pipeline/pull_divvy.py`, which writes
+this file directly and is non-fatal on any failure — the file is left
+untouched, never guessed.
 
 ```
-{ data_tier: "proxy", status: "ok" | "no_data_yet", as_of, source_key, note,
+{ data_tier: "proxy", status: "ok", as_of, source_key, note,
   wards: [{ ward, trip_count }] }
 ```
 
-Rules already settled: this is a SYSTEM-AREA-BIASED PROXY FOR CYCLING VOLUME,
-NOT EXPOSURE — it covers Divvy trips only (not all cycling), and station
-placement itself skews downtown/North Side vs. the West Side, so an absent or
-low ward count means fewer stations, not necessarily less riding. This number
-is never divided by, or used to divide, crash counts — no per-rider risk rate
-is ever computed from it; it is published only as ward-level CONTEXT beside
-crash counts (a future ward-page integration, not this PR).
+- `as_of` — the month the trips cover, `"YYYY-MM"`, derived from the source
+  key (`202606-divvy-tripdata.zip` → `2026-06`).
+- `wards` — one entry per ward with at least one located start station,
+  sorted numerically by ward. A missing ward means no station coverage, not
+  zero riding. Stations without usable coordinates, or falling outside every
+  ward polygon, are excluded — never guessed into a ward.
+
+Rules (settled at scaffolding time, unchanged by promotion): this is a
+SYSTEM-AREA-BIASED PROXY FOR CYCLING VOLUME, NOT EXPOSURE — it covers Divvy
+trips only (not all cycling), and station placement itself skews
+downtown/North Side vs. the West Side, so an absent or low ward count means
+fewer stations, not necessarily less riding. This number is never divided by,
+or used to divide, crash counts — no per-rider risk rate is ever computed
+from it; it is published only as ward-level CONTEXT beside crash counts. The
+agent API mirrors this file at `site/api/v1/divvy.json` (see the v1.19
+changes section); the human ward-page display is a separate, design-led
+integration and does not exist yet.
 
 ## Contract v1.16 changes (obstruction-layer removal; promise-vs-delivered seed; Divvy scaffolding)
 
@@ -1160,8 +1165,8 @@ crash counts (a future ward-page integration, not this PR).
   (no install dates) pending the ready CDOT install-date FOIA
   (`docs/outbox/2026-07-12--foia--cdot--bikeway-mileage-history.md`, item 4).
 
-- **Divvy exposure scaffolding (PLANNED, no data published)** — see the
-  `divvy_ward_exposure.json` PLANNED section above. `pipeline/pull_divvy.py`
+- **Divvy exposure scaffolding (PLANNED at the time; published in v1.19)** —
+  see the `divvy_ward_exposure.json` section above. `pipeline/pull_divvy.py`
   and the `config.py` Divvy stanza ship as scaffolding only; nothing is
   published and no contract shape is added this round.
 
@@ -1377,3 +1382,38 @@ ward files.
   `trend`, `findings[*]`. 260 claims enforced, up from 250.
 
 `citywide.json` grows 22,847 → 24,956 bytes against a 100,000-byte budget.
+
+## Contract v1.19 changes (Divvy trip-volume proxy published)
+
+`pipeline/config.py`'s `CONTRACT_VERSION` is bumped to `"1.19"`, and
+`site/data/meta.json`'s `contract_version` is hand-set to match. Purely
+additive.
+
+- **`site/data/divvy_ward_exposure.json` is published** (tier `proxy`) — the
+  v1.16 scaffolding ran for real. First landed month is `2026-06`: 1,521
+  stations, 600,357 trips, all 50 wards matched. `pull_divvy.py` is wired
+  into `run_all.py` as a non-fatal stage (WARNING + exit 0 on any failure,
+  matching `pull_bna`/`pull_osm_trails`) and now emits `as_of`. Prerequisite
+  fix (PR #101): Divvy zips carry a binary `__MACOSX/._*.csv` AppleDouble
+  member the CSV selection now skips.
+- **New API endpoint `site/api/v1/divvy.json`** with hand-written schema
+  `schemas/divvy.schema.json`: `{ _meta, status, note, exposure }`, where
+  `exposure` is `{ as_of, source_key, wards[], data_tier, caveat_tags,
+  caveat }` — one Form A qualifier block over the trip counts, generated by
+  `caveats.divvy_caveat()`. `COLOCATION_ENFORCED_CLAIMS` gains `divvy.json`
+  → `exposure`. When no pull has landed, the endpoint still exists with
+  `status: "no_data_yet"` and no `exposure` key — the endpoint's existence
+  is contract; its numbers are not. New `_meta.caveats` code
+  `divvy_volume_proxy` (`envelope.schema.json`'s enum updated in the same
+  PR, per that schema's rule).
+- **`meta.json` gains a conditional `divvy_ward_exposure` sources entry**,
+  present iff the data file exists, appended after `proposed_projects`.
+- **`divvy.json`'s `_meta.license` is the Lyft Divvy Data License Agreement**,
+  not the default Data Portal line — the trips are Lyft's, under Lyft's
+  terms. First per-endpoint license override; every other endpoint keeps the
+  Data Portal line. (`_meta.provenance` stays `"socrata"` on every file by
+  design — it labels the BUILD as live-vs-fixtures, verbatim from
+  `meta.json`, and is not a per-dataset source claim; the per-dataset source
+  is `exposure.source_key` and the sources entry.)
+- The hard rule survives promotion verbatim: no per-rider risk rate is ever
+  computed from this data, anywhere in the pipeline or the API.

@@ -38,9 +38,9 @@ import hashlib
 import json
 from collections import Counter, defaultdict
 
-from caveats import (AGENT_INSTRUCTION, CAVEAT_CONTRACT_VERSION, mark_provisional_tail,
-                     monthly_caveat, pair, qualify, rank_caveat, small_n_tags,
-                     trend_caveat, window_caveat)
+from caveats import (AGENT_INSTRUCTION, CAVEAT_CONTRACT_VERSION, divvy_caveat,
+                     mark_provisional_tail, monthly_caveat, pair, qualify,
+                     rank_caveat, small_n_tags, trend_caveat, window_caveat)
 from config import (API_CRASH_SLICE_BUDGET_BYTES, API_SIZE_BUDGET_BYTES, API_VERSION,
                     CONTRACT_VERSION, CRASH_ID_PREFIX_LEN, CRASH_START_DATE, SITE_API_DIR,
                     SITE_BASE_URL, SITE_DATA_DIR, SITE_DIR, SKILL_ENTRY_URL, SKILL_NAME)
@@ -50,6 +50,12 @@ API_BASE_URL = f"{SITE_BASE_URL}/api/v1"
 
 LICENSE = ("City of Chicago Data Portal Terms of Use (data.cityofchicago.org); "
           "derived analyses by On Your Left!")
+# Divvy trip data is Lyft's, not the Data Portal's — the modern S3 feed ships
+# under Lyft's own license, so divvy.json must not carry the default LICENSE
+# line (caught in the divvy-ward-display design critique, 2026-07-30).
+DIVVY_LICENSE = ("Divvy Data License Agreement (Lyft Bikes and Scooters, LLC; "
+                "divvybikes.com/data-license-agreement); derived analyses by "
+                "On Your Left!")
 ATTRIBUTION = ("On Your Left! — Chicago bike safety, on the record "
               "(https://github.com/jartinator/chicago-safe-streets-data)")
 
@@ -102,6 +108,13 @@ CAVEAT_TEXT = {
         "Council sponsorship counts are a proxy for engagement, not a "
         "roll-call vote tally — most Chicago street-safety measures pass "
         "by voice vote with no individual vote recorded."),
+    "divvy_volume_proxy": (
+        "Divvy ward trip counts are a station-placement-biased proxy for "
+        "cycling volume, not exposure — they cover Divvy trips only, and "
+        "station placement skews toward downtown and the North Side, so a "
+        "low count means fewer stations, not necessarily less riding. Never "
+        "divide crash counts by these trips; no per-rider risk rate can be "
+        "computed from them."),
 }
 
 # Canonical tier vocabulary, worded to match SCHEMA.md's table exactly (the
@@ -197,6 +210,18 @@ _ENDPOINTS = [
         ],
     },
     {
+        "path": "divvy.json",
+        "description": ("Per-ward Divvy bikeshare trip counts for the latest "
+                        "published month — a station-placement-biased proxy for "
+                        "cycling volume, published as context to read beside "
+                        "crash counts. Not an exposure denominator: never "
+                        "divide crash counts by these trips."),
+        "example_questions": [
+            "How much Divvy riding starts in ward 27?",
+            "Which Chicago wards have the most Divvy bikeshare trips?",
+        ],
+    },
+    {
         "path": "routes/index.json",
         # No count in this string. The roster is editorial and recomputed each
         # build, so a number written here goes stale silently the next time a
@@ -251,7 +276,8 @@ _ENDPOINTS = [
 ]
 
 
-def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=None):
+def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=None,
+              license=None):
     """Build the `_meta` object every emitted API file opens with.
 
     generated_at/provenance are copied verbatim from site/data/meta.json — see
@@ -280,7 +306,9 @@ def _envelope(meta, data_tier, human_page, schema_name, tier_note=None, caveats=
         envelope["tier_note"] = tier_note
     if caveats:
         envelope["caveats"] = [{"code": c, "text": CAVEAT_TEXT[c]} for c in caveats]
-    envelope["license"] = LICENSE
+    # Per-endpoint license override for data that is not the Data Portal's
+    # (currently only divvy.json, whose trips are Lyft's under Lyft's license).
+    envelope["license"] = license if license is not None else LICENSE
     envelope["attribution"] = ATTRIBUTION
     envelope["human_page"] = human_page
     envelope["methodology"] = f"{SITE_BASE_URL}/methodology.html"
@@ -713,6 +741,47 @@ GRADE_LEGEND = {
     "offstreet": "off-street trail, fully separated from traffic",
     "none": "no bike facility (shared lane / sharrow / gap)",
 }
+
+
+def build_divvy_api(meta, divvy):
+    """divvy.json: per-ward Divvy trip counts — a volume proxy published as
+    CONTEXT to read beside crash counts, never a denominator (SCHEMA.md's
+    divvy_ward_exposure section carries the full rules).
+
+    `divvy` is site/data/divvy_ward_exposure.json's parsed content, or None
+    when no pull has landed (pull_divvy.py is non-fatal, and a fixtures build
+    doesn't run it). Absence emits an honest `no_data_yet` placeholder rather
+    than omitting the endpoint — the endpoint's existence is contract; its
+    numbers are not.
+
+    The numbers live under `exposure`, one Form A qualifier block over the
+    whole object (CC-2: every number in it is a trip count the same caveat
+    covers; as_of and source_key are referents, not measurements).
+    """
+    envelope = _envelope(meta, data_tier="proxy",
+                         human_page=f"{SITE_BASE_URL}/index.html",
+                         schema_name="divvy.schema.json",
+                         caveats=["divvy_volume_proxy"],
+                         license=DIVVY_LICENSE)
+    if not divvy:
+        return {
+            "_meta": envelope,
+            "status": "no_data_yet",
+            "note": ("No Divvy trip pull has landed in this build yet. When "
+                     "one lands, `exposure` carries per-ward trip counts for "
+                     "the latest published month."),
+        }
+    exposure = qualify(
+        {"as_of": divvy["as_of"],
+         "source_key": divvy["source_key"],
+         "wards": divvy["wards"]},
+        "proxy", ["coverage_gap"], divvy_caveat(divvy["as_of"]))
+    return {
+        "_meta": envelope,
+        "status": divvy["status"],
+        "note": divvy["note"],
+        "exposure": exposure,
+    }
 
 
 def build_routes_index(meta, main_routes, network_nodes):
@@ -1280,6 +1349,14 @@ def build_index(meta, endpoint_bytes, ward_files_bytes=None, crash_files_bytes=N
                     "news headlines about it."),
         },
         {
+            "question": "How much Divvy riding starts in a specific ward?",
+            "fetch": [f"{API_BASE_URL}/divvy.json"],
+            "then": ("Find the ward in exposure.wards; trip_count is Divvy "
+                    "trips starting there during exposure.as_of. Quote it with "
+                    "the exposure block's caveat — it is volume context beside "
+                    "crash counts, never a denominator for a risk rate."),
+        },
+        {
             "question": "Is the Milwaukee Avenue bike route protected?",
             "fetch": [f"{API_BASE_URL}/routes/line-milwaukee.json"],
             "then": ("Read pct_protected and miles_by_grade for the route-wide "
@@ -1662,6 +1739,15 @@ def emit_all():
     proposed_api = build_proposed_api(meta, proposed)
     write_json(SITE_API_DIR / "proposed.json", proposed_api)
     written["proposed.json"] = (SITE_API_DIR / "proposed.json").stat().st_size
+
+    # Optional: pull_divvy.py is non-fatal and writes site/data directly, so
+    # the source file may be absent (never guessed) — build_divvy_api emits an
+    # honest no_data_yet placeholder in that case.
+    divvy = (_load("divvy_ward_exposure.json")
+             if (SITE_DATA_DIR / "divvy_ward_exposure.json").exists() else None)
+    divvy_api = build_divvy_api(meta, divvy)
+    write_json(SITE_API_DIR / "divvy.json", divvy_api)
+    written["divvy.json"] = (SITE_API_DIR / "divvy.json").stat().st_size
 
     routes_index = build_routes_index(meta, main_routes, network_nodes)
     write_json(SITE_API_DIR / "routes" / "index.json", routes_index)

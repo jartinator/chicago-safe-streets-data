@@ -65,6 +65,7 @@ EXACT_SCHEMA_BY_PATH = {
     "corridors.json": "corridors.schema.json",
     "news.json": "news.schema.json",
     "proposed.json": "proposed.schema.json",
+    "divvy.json": "divvy.schema.json",
     "wards/index.json": "wards-index.schema.json",
     "routes/index.json": "routes-index.schema.json",
     "council/index.json": "council-index.schema.json",

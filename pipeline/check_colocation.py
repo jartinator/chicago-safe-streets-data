@@ -142,6 +142,13 @@ COLOCATION_ENFORCED_CLAIMS = {
         "findings[*]",                      # Form A per item
     ],
 
+    # Divvy trip-volume proxy (contract v1.19). One Form A block over the
+    # whole exposure object; absent (status no_data_yet) files are skipped by
+    # the resolver, which is the honest state before a pull lands.
+    "divvy.json": [
+        "exposure",                         # Form A; CC-4 covers exposure/wards[*]
+    ],
+
     # Phase 8 — wards/index.json under CC-7. See §1.6.
     # "wards/index.json": [
     #     "wards[*]/windows/recent_12mo",
