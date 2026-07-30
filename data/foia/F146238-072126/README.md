@@ -41,9 +41,31 @@ expect. The project would be doing to them exactly what its own FOIA letter said
 not be done. Nothing derived from this file gets published until the name columns are
 dropped or reduced to an individual/business flag.
 
-This is a decision for the maintainer, not a settled matter. Two things worth weighing:
-whether to tell DOF what they released, and whether the local copy should be reduced to a
-redacted version immediately rather than kept whole.
+**Both open questions were settled 2026-07-29.**
+
+1. **DOF will be told.** A courtesy notice is drafted and ready to send at
+   [`docs/outbox/2026-07-29--foia--dof--individual-names-over-release-notice.md`](../../../docs/outbox/2026-07-29--foia--dof--individual-names-over-release-notice.md).
+   It reports the fact, states that the project is not publishing the names, and asks for
+   nothing.
+2. **A redacted derivative exists.** `pipeline/foia_smart_streets.py` reads the workbook
+   and writes [`data/smart_streets_violations.csv`](../../smart_streets_violations.csv) —
+   112,318 rows, no individual names. **That CSV is the only form anything downstream may
+   read.** The original stays local and whole, as the provenance record: it is what proves
+   what DOF actually sent, and re-requesting it would restart the clock.
+
+### How the redaction decides
+
+Names survive only for confirmed organizations, and the default is redaction:
+
+| Class | Rows | Name kept |
+|---|---:|:--:|
+| `business` — no first name, and an explicit token (`INC`, `LLC`, `TRUST`, `RENTAL`, …) | 27,549 | yes |
+| `individual` — any row with a first name | 82,880 | no |
+| `unknown` — no first name, no recognizable token | 1,889 | no |
+
+`unknown` is redacted deliberately. Getting it wrong in that direction costs one data
+point; getting it wrong the other way publishes somebody's name. The script asserts that
+no non-business row carries a name and refuses to write the file if that ever fails.
 
 ---
 
@@ -97,24 +119,31 @@ stated, not dropped silently.
 Business and fleet names came through intact. 29,438 rows (26.2%) have a last name but no
 first name — the fleet-registrant pattern. On **bicycle path violations specifically**:
 
+Counted on `registrant_normalized`, which folds legal suffixes and fleet numbers so that
+FEDERAL EXPRESS, FEDERAL EXPRESS CORP, and FEDERAL EXPRESS 225877 are one fleet:
+
 | Registrant | Bike-path violations |
 |---|---:|
-| AMAZON LOGISTICS INC | 649 |
-| TRANS ONE INCORPORATED | 192 |
-| FEDERAL EXPRESS | 178 |
-| UNITED PARCEL SERVICE | 163 |
-| NORTHWEST EXPRESS INC | 153 |
-| FEDERAL EXPRESS CORP | 142 |
-| RYDER TRUCK RENTAL LT | 128 |
-| CHICAGO BEVERAGE SYSTEMS | 123 |
+| AMAZON LOGISTICS | 661 |
+| FEDERAL EXPRESS | 517 |
+| UNITED PARCEL SERVICE | 278 |
+| TRANS ONE | 193 |
+| CHICAGO BEVERAGE SYSTEMS | 190 |
+| RYDER TRUCK RENTAL | 164 |
+| NORTHWEST EXPRESS | 153 |
+| CITY BEVERAGE ILLINOIS | 103 |
 
-This is the company-level attribution the request was built to get, and it is the first
-obstruction-adjacent layer the project has held. Note that the same company appears under
-several spellings — FEDERAL EXPRESS, FEDERAL EXPRESS CORP, FEDERAL EXPRESS CORPORATION —
-so any ranking needs a name-normalization step before it means anything. Rental and
-leasing companies (EAN/Enterprise, Hertz, PV Holding) rank high on the all-types list
-because the registrant is the lessor, not the driver; they are not comparable to a
-delivery fleet and should not sit in the same ranking without a caveat.
+This is the company-level attribution the request was built to get, and the first
+obstruction-adjacent layer the project has held.
+
+**Rank on `registrant_normalized`, never on `registrant`.** The raw field splits one fleet
+across dozens of strings, and any ranking built on it understates the largest operators
+most — which is the opposite of the error you want.
+
+**Leasing companies are not fleets.** Ryder, Penske, Enterprise, Hertz, and PV Holding
+rank high because the registered owner is the *lessor*, not whoever was driving. They rank
+even higher on the all-types list. Publishing them beside Amazon and FedEx without saying
+so would assert something the data does not support.
 
 ---
 

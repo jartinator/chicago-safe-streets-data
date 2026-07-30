@@ -140,10 +140,14 @@ Publishing it as received would do to 82,880 people precisely what the project's
 letter argued should not be done. **Nothing derived from this file ships until the name
 columns are dropped or collapsed to an individual/business flag.**
 
-Two open questions for the maintainer, neither settled:
-
-1. Whether to tell DOF what they released.
-2. Whether the local copy should be redacted now rather than kept whole.
+**Both resolved 2026-07-29.** A courtesy notice to April Lundberg is drafted and ready
+at `docs/outbox/2026-07-29--foia--dof--individual-names-over-release-notice.md` — it
+reports the fact, says the project is not publishing the names, and asks for nothing.
+And `pipeline/foia_smart_streets.py` now writes `data/smart_streets_violations.csv`:
+112,318 rows, business names kept (27,549), every individual (82,880) and every
+unclassifiable row (1,889) redacted. The script refuses to write if a non-business row
+carries a name. **The CSV is the only form anything downstream may read.** The original
+stays local and whole as the provenance record.
 
 ### Not provided
 
