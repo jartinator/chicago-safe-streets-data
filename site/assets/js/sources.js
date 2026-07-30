@@ -327,6 +327,20 @@
       metaId: "news_items"
     },
     {
+      id: "divvy",
+      name: "Divvy Trip Volume by Ward",
+      short: "Divvy trips",
+      origin: "Lyft Bikes and Scooters, LLC — Divvy Data License Agreement (divvybikes.com/data-license-agreement)",
+      tier: "proxy",
+      cadence: "Lyft publishes monthly; weekly pipeline pull, best-effort",
+      description: "Monthly count of Divvy bike-share trips starting in each ward, from Lyft's public Divvy trip-data export, shown on ward pages alongside the crash count.",
+      limitations: "Divvy trips only — not all cycling. Station placement skews toward downtown and the North Side, so a low ward count can mean fewer nearby stations, not less riding. A ward missing from the file means no located station, which can mean no stations or stations whose coordinates didn't resolve — never zero riding. Never divided by, or dividing, crash counts; no per-rider risk rate is computed from it.",
+      links: [
+        { text: "Divvy System Data", url: "https://divvybikes.com/system-data" }
+      ],
+      metaId: "divvy_ward_exposure"
+    },
+    {
       id: "proposed_projects",
       name: "Proposed & In-Progress Bikeway Projects (curated roster)",
       short: "Proposed projects",

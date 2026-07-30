@@ -75,6 +75,41 @@
                       source: item.source || null, published: item.published }));
   }
 
+  // Confidence Signal (design-studio/product/divvy-ward-display/03-experience.md
+  // §6.3, critique round 2 §3.2/§7.1.1): word-based approximation for large
+  // counts, exact below 1000. Fixed to be BSD-free per the critique's fix —
+  // this module has no DOM, no BSD (see header comment).
+  function roundForDisplay(n) {
+    if (n < 1000) return { display: Number(n).toLocaleString("en-US"), approx: false };
+    const unit = n < 10000 ? 100 : 1000;
+    return { display: "about " + Number(Math.round(n / unit) * unit).toLocaleString("en-US"), approx: true };
+  }
+
+  // Month-granularity difference between two ISO dates/months ("YYYY-MM" or a
+  // full timestamp — only year/month used).
+  function monthsBetween(fromISO, toISO) {
+    const [fy, fm] = String(fromISO).slice(0, 7).split("-").map(Number);
+    const [ty, tm] = String(toISO).slice(0, 7).split("-").map(Number);
+    return (ty - fy) * 12 + (tm - fm);
+  }
+
+  // Flagged proposal, not a measured fact (03-experience.md §6.5): Lyft's
+  // normal one-month publication lag plus room for ~2 missed weekly pulls
+  // before flagging a stuck Divvy pipeline.
+  const STALE_THRESHOLD_MONTHS = 3;
+
+  function isDivvyStale(divvyAsOf, buildGeneratedAt) {
+    if (!divvyAsOf || !buildGeneratedAt) return false; // can't assess — don't guess
+    return monthsBetween(divvyAsOf, buildGeneratedAt) > STALE_THRESHOLD_MONTHS;
+  }
+
+  const MONTH_FULL = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+  function fmtMonth(iso) {
+    const m = /^(\d{4})-(\d{2})/.exec(String(iso || ""));
+    return m ? `${MONTH_FULL[Number(m[2]) - 1]} ${m[1]}` : String(iso || "—");
+  }
+
   // Assemble everything the one-pager renders, from already-loaded JSON.
   // Every field is null-safe: the artifact renders honestly with gaps rather
   // than failing or inventing (missing data shows as "no data", never 0).
@@ -82,7 +117,7 @@
     const wardStr = String(ward);
     const {
       safetyIndexData, aldermenData, wardsData, routesData,
-      hearingsData, menuData, metaData, newsData,
+      hearingsData, menuData, metaData, newsData, divvyData,
     } = inputs || {};
 
     let entry = null, rank = null, total = null;
@@ -107,6 +142,12 @@
     const win = entry && entry.windows;
     const menuEntry = menuData && menuData.wards ? menuData.wards[wardStr] || null : null;
 
+    // Divvy trip volume (proxy tier — see SCHEMA.md divvy_ward_exposure.json).
+    // A ward absent from `wards[]` means no *located* station coverage —
+    // never zero riding (some stations may exist but fail geocoding).
+    const divvyOk = divvyData && divvyData.status === "ok" && Array.isArray(divvyData.wards);
+    const divvyEntry = divvyOk ? divvyData.wards.find(w => w.ward === wardStr) || null : null;
+
     return {
       ward: wardStr,
       asOf: metaData && metaData.generated_at ? String(metaData.generated_at).slice(0, 10) : null,
@@ -130,10 +171,19 @@
       news: newsForWard(newsData, wardStr, 5),
       menuBikeSpent: menuEntry ? (menuEntry.bike_safety_spent ?? 0) : null,
       menuTotalSpent: menuEntry ? menuEntry.total_spent : null,
+      divvy: divvyOk ? {
+        tripCount: divvyEntry ? divvyEntry.trip_count : null,   // null = state B (no coverage)
+        hasCoverage: !!divvyEntry,
+        asOf: divvyData.as_of || null,
+        isStale: isDivvyStale(divvyData.as_of, metaData && metaData.generated_at),
+      } : null,   // null = state C (no file, fetch failed, or status !== "ok")
     };
   }
 
-  const api = { bboxOf, topCorridorsForWard, nextMeeting, newsForWard, buildOnePager };
+  const api = {
+    bboxOf, topCorridorsForWard, nextMeeting, newsForWard, buildOnePager,
+    roundForDisplay, monthsBetween, isDivvyStale, fmtMonth, STALE_THRESHOLD_MONTHS,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof window !== "undefined") window.BSDWard = api;
 })();

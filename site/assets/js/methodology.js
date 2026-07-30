@@ -82,6 +82,9 @@
           codes — treat as an enforcement pattern, not a neutral safety signal.</li>
           <li><strong>Crowdsourced layers</strong> (trails, mellow routes) reflect who maps, and
           vary in completeness by neighborhood.</li>
+          <li><strong>Divvy trip counts</strong> (ward pages) are Divvy bike-share trips only, not all
+          cycling, and station placement skews toward downtown and the North Side — a low ward count can
+          mean fewer nearby stations, not less riding. Never divided by, or dividing, crash counts.</li>
         </ul>`,
     },
     {
@@ -103,7 +106,8 @@
           pulls weeks apart can differ.</li>
         </ul>
         <p>If a number still doesn't reconcile after checking these, please
-        <a href="contributing.html">open an issue</a> — an unexplained mismatch is a bug.</p>`,
+        <a href="https://github.com/jartinator/chicago-safe-streets-data/issues/new" target="_blank" rel="noopener">open an issue</a> —
+        an unexplained mismatch is a bug.</p>`,
     },
     {
       id: "freshness",

@@ -132,6 +132,12 @@
       name: "citywide_trend.json", tier: "real",
       title: "Citywide crash trend", sourceId: "citywide_trend", sourceName: "Crash trend",
       description: "Monthly citywide cyclist crash, injury, and KSI counts since Sept 2017."
+    },
+    {
+      name: "divvy_ward_exposure.json", tier: "proxy",
+      title: "Divvy trip volume by ward", sourceId: "divvy", sourceName: "Divvy trips",
+      description: "Monthly Divvy bike-share trip counts starting in each ward, shown on ward pages — a station-coverage-biased proxy for cycling volume, not a full count.",
+      calc: "Divvy trips are grouped by the ward containing each trip's start station, from Lyft's monthly Divvy trip-data export."
     }
   ];
 
