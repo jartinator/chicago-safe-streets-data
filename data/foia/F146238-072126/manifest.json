@@ -1,0 +1,46 @@
+{
+  "request": {
+    "reference": "F146238-072126",
+    "agency": "Chicago Department of Finance",
+    "submitted": "2026-07-20 (email to DOFfoia@cityofchicago.org, cc cdotfoia@cityofchicago.org)",
+    "received_by_agency": "2026-07-21",
+    "acknowledged": "2026-07-21 (GovQA), +5 extension invoked same day under 5 ILCS 140/3(e)",
+    "responded": "2026-07-28",
+    "foia_officer": "April Lundberg",
+    "disposition": "granted in part — 112,318 violation records released; license plates and registrant addresses withheld under 7(1)(b) and 7(1)(c). No fee charged. Item 3 (data dictionary) not provided.",
+    "channel": "email → GovQA acknowledgment, but the response itself came direct from April.Lundberg@cityofchicago.org rather than through the portal",
+    "related_reference": "S146292-072126 (CDOT, opened by the cc and closed same day — DOF is the keeper)"
+  },
+  "note": "The spreadsheet is DELIBERATELY NOT COMMITTED. DOF withheld license plates but released owner first and last names, so 82,880 of the 112,318 rows name a private individual next to the violation they received. That is a broader release than the request asked for — the request explicitly consented to redacting private individual identifiers. This repository is public. The file is hashed here, ignored by .gitignore, and kept only on local disk until a redacted derivative exists. See README.md.",
+  "file_count": 2,
+  "bytes_total": 7716864,
+  "files": [
+    {
+      "path": "FOIA Enclosure Meyer 08032026.pdf",
+      "bytes": 223601,
+      "sha256": "63e0e5e5b77a05a953f28f33305fb7687224dad9655a27f7185c0471346bc38f",
+      "in_repo": true,
+      "description": "April Lundberg's determination letter, 2026-07-28. Quotes the request in full, then states the exemptions claimed. Contains no third-party personal data."
+    },
+    {
+      "path": "FOIA_Meyer_A52294_20260721.xlsx",
+      "bytes": 7493263,
+      "sha256": "d52ab9f5d2fb5f103f0ceb48fc2d0a500f5ab6c9596c71bf7e81f11ba754c9a6",
+      "in_repo": false,
+      "excluded_reason": "Names 82,880 private individuals alongside their violations. Public repo. Withheld pending redaction.",
+      "description": "One sheet, 112,318 data rows, 10 columns, violations dated 2024-11-06 to 2026-07-18.",
+      "columns": [
+        "Ticket Number",
+        "Issued Date",
+        "Location",
+        "Ward",
+        "Violation Code",
+        "Violation Description",
+        "Fine Level 1",
+        "Ticket Queue",
+        "Owner Last Name",
+        "Owner First Name"
+      ]
+    }
+  ]
+}

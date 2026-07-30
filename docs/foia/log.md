@@ -8,9 +8,9 @@ full rationale and request bodies live in this folder's per-request files
 |---|-----------|--------|---------|---------|--------|-------|---------------------|-----------|
 | 1 | 2026-07-13 | CDOT | GovQA portal | Historical CDOT Bike Lane Mileage Tracker (all versions, source data, GIS install dates) | **Answered 2026-07-24 — granted, records released** | S145367-071326 | 2026-07-20 (+5-day extension taken 2026-07-13) | Follow-up drafted → row 5 |
 | 2 | 2026-07-12 (received by agency 07-13) | Office of the City Clerk | clerkfoia@cityofchicago.org → GovQA | City Council committee records reporting CDOT bikeway/bike-lane mileage | **Answered 2026-07-20 — denied, no responsive records** (Clerk is not the keeper; redirected to the department and to eLMS / Journals of Proceedings) | F145909-071726 | 2026-07-20 (met) | None. #1 was granted in full, so the fallback is moot |
-| 3 | _(ready to send 2026-07-13 — not yet sent)_ | CDOT | cdotfoia@cityofchicago.org / GovQA portal | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | Ready (`docs/outbox/2026-07-13--foia--cdot--bicycle-count-data.md`, anchors verified) | — | 5 business days after send (extendable +5) | +7 business days if no acknowledgment |
-| 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Acknowledged same day**; DOF invoked +5 extension (consultation, 5 ILCS 140/3(e)); CDOT cc closed (not keeper → DOF). Outcome log in the outbox file | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | **2026-08-04** (extension invoked) | Nudge 2026-08-06 if no response |
-| 5 | **2026-07-25** (Sat — agency receipt expected Mon 07-27) | CDOT | cdotfoia@cityofchicago.org → GovQA | Follow-up to S145367-071326: the 2025 layer's missing `.shp`, plus 2011–2017 layers, quarterly snapshots, and dashboard file metadata (items 2–4 optional) | **Sent** — awaiting acknowledgment. First request filed as the project (`onyourleftopensource@gmail.com`) | — (pending) | ~**2026-08-03** (5 business days from expected 07-27 receipt; +5 extension → ~08-10) | Nudge **2026-08-05** if no acknowledgment |
+| 3 | **2026-07-26** (received by agency 07-27) | CDOT | cdotfoia@cityofchicago.org → GovQA | Bicycle count data: 2009 count study, 2010–present counts, Chicago/Wells counter records + feed interruption, Replica agreement, 2023 ridership-claims basis | **Acknowledged 2026-07-27**; CDOT invoked +5 extension the same day, checking *records not located in routine search* **and** *consultation needed* (5 ILCS 140/3(e)). Filed as the project (`onyourleftopensource@gmail.com`) | S146898-072726 | **2026-08-10** (extension invoked) | Nudge 2026-08-12 if no response |
+| 4 | 2026-07-21 | Dept. of Finance (cc CDOT) | DOFfoia@cityofchicago.org → GovQA | Smart Streets pilot violation-level data (bike/bus lane/bus stop camera enforcement, Nov 2024–present, incl. commercial registrant names + the Tribune production) | **Answered 2026-07-28 — granted in part, 112,318 records, 7 days early.** Company attribution survived: Amazon Logistics leads bike-path violations at 649. Plates and addresses withheld under 7(1)(b)/(c) — correctly, and not worth appealing. **But DOF over-released: 82,880 rows name a private individual.** The spreadsheet is `.gitignore`d and stays off the public repo. Items 2 and 3 not delivered. Intake at `data/foia/F146238-072126/` | F146238-072126 (DOF); S146292-072126 (CDOT, closed) | ~~2026-08-04~~ — met 2026-07-28 | None outstanding to DOF on the main items |
+| 5 | **2026-07-25** (Sat — agency receipt Mon 07-27) | CDOT | cdotfoia@cityofchicago.org → GovQA | Follow-up to S145367-071326: the 2025 layer's missing `.shp`, plus 2011–2017 layers, quarterly snapshots, and dashboard file metadata (items 2–4 optional) | **Acknowledged 2026-07-27** by G. Rubenstein, FOIA Officer (312-744-7335). Treated as a fresh request, not a continuation: *"We have assigned a new 10-day FOIA clock."* Note the acknowledgment threaded to the **personal** address, because it hangs off S145367-071326, which predates the project-identity rule | — (tracked under S145367-071326) | **2026-08-10** (agency-stated, not computed) | Nudge **2026-08-12** if no response |
 
 ## What each request seeks
 
@@ -98,6 +98,69 @@ with it. Two findings, no FOIA required:
    by 2019" delivered **+2.95 mi**. A third claim — 100 new miles in Lightfoot's first term
    — does hold up (117.03 genuinely new miles, 2019–2022).
 
+## #4 — outcome (answered 2026-07-28)
+
+**Granted in part.** 112,318 violation records covering 2024-11-06 through 2026-07-18 —
+the whole pilot to date. No fee charged. Full account, column list, and category
+breakdowns: `data/foia/F146238-072126/README.md`.
+
+**The request got what it was built to get.** Business and fleet registrant names came
+through intact, so company-level attribution works. On bicycle-path violations
+specifically, Amazon Logistics leads with 649, ahead of Trans One (192), FedEx (178), and
+UPS (163). This is the project's first obstruction-adjacent layer with a named actor
+behind it.
+
+Two things temper it. **76% of all rows (85,512) are zero-fine warnings**, so any headline
+that does not separate warnings from citations overstates enforcement roughly fourfold.
+And the same company appears under several spellings — FEDERAL EXPRESS, FEDERAL EXPRESS
+CORP, FEDERAL EXPRESS CORPORATION — so nothing can be ranked before a name-normalization
+pass. Rental and leasing registrants (Enterprise, Hertz, PV Holding) rank high on the
+all-types list purely because the lessor is the registered owner; they do not belong in a
+delivery-fleet ranking.
+
+**Exemptions are fine.** Plates and addresses withheld under 7(1)(b) and 7(1)(c). Both are
+ordinary, both are correctly applied, and neither costs the project anything — it wanted
+companies, not plates. **No appeal is warranted.**
+
+### The problem: DOF released more than was asked
+
+The production carries `Owner First Name` and `Owner Last Name` on every row. **82,880 of
+the 112,318 rows (73.8%) name a private individual** next to the violation they received,
+with its address, date, and time.
+
+The request had explicitly offered to give that up — it stated no objection to redacting
+private individual identifiers under 7(1)(b)–(c), and asked only that business names be
+kept. DOF withheld the plates and kept the names. The determination letter never addresses
+names at all; it discusses plates and "the address of the person who received each
+delinquent ticket," phrasing that reads as boilerplate from a different request type.
+
+**The spreadsheet is therefore excluded from git** — `.gitignore` blocks it by exact path,
+`manifest.json` records its hash, and it lives on local disk only. This repo is public.
+Publishing it as received would do to 82,880 people precisely what the project's own FOIA
+letter argued should not be done. **Nothing derived from this file ships until the name
+columns are dropped or collapsed to an individual/business flag.**
+
+**Both resolved 2026-07-29.** A courtesy notice to April Lundberg is drafted and ready
+at `docs/outbox/2026-07-29--foia--dof--individual-names-over-release-notice.md` — it
+reports the fact, says the project is not publishing the names, and asks for nothing.
+And `pipeline/foia_smart_streets.py` now writes `data/smart_streets_violations.csv`:
+112,318 rows, business names kept (27,549), every individual (82,880) and every
+unclassifiable row (1,889) redacted. The script refuses to write if a non-business row
+carries a name. **The CSV is the only form anything downstream may read.** The original
+stays local and whole as the provenance record.
+
+### Not provided
+
+- **Item 3, the data dictionary.** Nothing supplied; field meanings are inferred.
+  `Fine Level 1` is unexplained — presumably the initial assessment, but whether a level 2
+  exists is unknown.
+- **Item 2, the Tribune production.** Not delivered separately. The violation-level data
+  probably subsumes it, but DOF never said so.
+
+Both are worth a short follow-up. Neither blocks using the data.
+
+Downstream: `docs/superpowers/plans/2026-07-21-smart-streets-enforcement-integration.md`.
+
 ## On receipt
 
 1. Save returned files under `data/foia/<reference>/records/`, preserving original formats
@@ -145,3 +208,8 @@ Going forward:
   had in fact been filed and answered — caught 2026-07-24 by reconciling against the GovQA
   acknowledgment emails. Reconcile with the mailbox whenever a response lands, not only
   when something is sent.
+- **It drifted again.** Reconciled **2026-07-29** against the mailbox. Row 3 had sat at
+  "ready to send — not yet sent" since 07-13, but it was in fact sent 2026-07-26 and
+  acknowledged the next day as S146898-072726. Same failure mode as rows 1 and 2: the letter
+  went out and the log never heard about it. Rows 4 and 5 had both moved too. **Sending a
+  letter and updating this row are one task, not two.**

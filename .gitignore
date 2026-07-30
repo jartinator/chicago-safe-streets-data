@@ -6,3 +6,10 @@ pipeline/raw/*
 # Synthetic snapshots written by make_fixtures.py for offline --fixtures runs only;
 # the real snapshot history under data/snapshots/ is versioned.
 data/snapshots_fixtures/
+
+# DO NOT REMOVE. The DOF Smart Streets production (F146238-072126) names 82,880
+# private individuals alongside the violation each one received. DOF released far
+# more than was asked for. Committing it would republish that on a public repo.
+# The manifest hashes it; the folder README explains it; the file stays local
+# until a redacted derivative exists. See data/foia/F146238-072126/README.md.
+data/foia/F146238-072126/records/FOIA_Meyer_A52294_20260721.xlsx

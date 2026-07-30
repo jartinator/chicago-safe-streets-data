@@ -5,9 +5,21 @@ to: cdotfoia@cityofchicago.org (or GovQA portal: chicago.gov/publicrecords → T
 subject: FOIA follow-up to S145367-071326 — one incomplete GIS file and three narrower items
 drafted: 2026-07-25
 sent: 2026-07-25
-tracking: — (pending GovQA acknowledgment)
+tracking: filed under S145367-071326 — acknowledged 2026-07-27 by G. Rubenstein, FOIA Officer; new 10-day clock, response due 2026-08-10
 tracker: #33
 ---
+
+> **Acknowledged 2026-07-27.** CDOT did not treat this as a continuation of the
+> granted request. G. Rubenstein (312-744-7335) wrote that the follow-up "has
+> been forwarded for review" under a **new 10-day FOIA clock**, due on or before
+> **August 10, 2026** — so the item-1 packaging fix gets a full fresh cycle
+> rather than a quick correction. No extension was invoked; 10 days is the
+> agency's own stated figure.
+>
+> The acknowledgment came to the personal address, not the project address,
+> because it threads off S145367-071326 — a request filed before the
+> project-identity rule took effect. Nothing to correct; noting it so the
+> mismatch is not read later as a lapse.
 
 # FOIA follow-up: gaps in the S145367-071326 release
 

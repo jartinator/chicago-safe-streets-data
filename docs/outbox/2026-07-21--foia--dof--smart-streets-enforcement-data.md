@@ -1,13 +1,38 @@
 ---
-status: sent
+status: answered
 initiative: foia
 to: DOFfoia@cityofchicago.org (cc cdotfoia@cityofchicago.org; or GovQA portal: chicago.gov/publicrecords → Finance)
 subject: FOIA request — Smart Streets pilot violation data (bike/bus lane camera enforcement)
 drafted: 2026-07-21
 sent: 2026-07-21
 tracking: F146238-072126 (DOF); cc spawned CDOT S146292-072126, closed same day (not keeper → referred to DOF)
+answered: 2026-07-28
 tracker: #33
 ---
+
+> **Answered 2026-07-28 — records released, not yet reviewed.**
+>
+> April Lundberg, DOF FOIA Officer (`April.Lundberg@cityofchicago.org`,
+> 312-742-7150), replied directly to the original email rather than through
+> GovQA, with two attachments:
+>
+> - `FOIA Enclosure Meyer 08032026.pdf` — the determination letter
+> - `FOIA_Meyer_A52294_20260721.xlsx` — the data production
+>
+> That is **seven days ahead** of the extended 2026-08-04 deadline, which is
+> unusually fast for a request this broad.
+>
+> **Neither file has been downloaded or opened.** Treat everything about the
+> outcome as unknown until they are. The question that decides whether this
+> becomes a real data layer: did **commercial registrant names** survive, or did
+> DOF redact them under 7(1)(b)–(c) despite the letter pre-arguing that business
+> names are not private and were already public via the Tribune? If they were
+> withheld, that is the PAC-review decision point, and the 60-day window for a
+> Public Access Counselor request starts from the determination letter's date.
+>
+> Intake goes to `data/foia/F146238-072126/records/` per the "On receipt" steps
+> in `docs/foia/log.md`. Downstream plan:
+> `docs/superpowers/plans/2026-07-21-smart-streets-enforcement-integration.md`.
 
 # FOIA request: Smart Streets enforcement data (DOF, cc CDOT)
 

@@ -322,6 +322,21 @@ CDOT_BIKEWAY_2024_LAYER = CDOT_MILEAGE_FOIA_DIR / "GIS" / "Bikeway_Network_2024_
 # Derived, committed output of pipeline/foia_bikeway_history.py.
 CDOT_BIKEWAY_HISTORY_PATH = REPO_ROOT / "data" / "cdot_bikeway_history.json"
 
+# DOF FOIA F146238-072126 (released 2026-07-28) — Smart Streets camera
+# enforcement, 112,318 violations from 2024-11-06 on.
+#
+# UNLIKE EVERY OTHER ENTRY HERE, THE SOURCE FILE IS NOT IN THE REPOSITORY.
+# DOF withheld license plates but released owner names, so 82,880 of its rows
+# name a private individual next to their violation. It is .gitignore'd and
+# lives on local disk only. `foia_smart_streets.py` reads it and writes the
+# redacted CSV below, which is what everything downstream may use. If the source
+# is missing, that is the normal state for a fresh clone — regenerate nothing and
+# fall back to the committed CSV. See data/foia/F146238-072126/README.md.
+SMART_STREETS_FOIA_DIR = FOIA_DIR / "F146238-072126" / "records"
+SMART_STREETS_RAW_XLSX = SMART_STREETS_FOIA_DIR / "FOIA_Meyer_A52294_20260721.xlsx"
+# Derived, committed, name-free output of pipeline/foia_smart_streets.py.
+SMART_STREETS_VIOLATIONS_PATH = REPO_ROOT / "data" / "smart_streets_violations.csv"
+
 # facility_category -> main-route grade (network tiers v2 design, spec §3,
 # docs/superpowers/specs/2026-07-13-network-tiers-design.md). Four independent
 # grade levels: protected <- protected; paint <- buffered/painted (still just
