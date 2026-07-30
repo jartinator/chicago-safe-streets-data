@@ -52,6 +52,7 @@ keys elsewhere).
 | `agent-api` | Static agent API under `site/api/v1/` | `docs/superpowers/plans/2026-07-13-agent-api-layer.md` |
 | `ux-tranche2` | Second UX tranche (P7–P11) | `docs/research/user-needs/REPORT-ux-proposal.md` |
 | `core-site` | Dashboard/pipeline maintenance (refresh reviews, etc.) | `README.md` |
+| `oyl-agent-layer` | design-studio `oyl-agent-layer` engagement handoff (caveat co-location, agent skill) | `design-studio/product/oyl-agent-layer/00-HANDOFF.md` |
 
 ## For Claude sessions (binding — see CLAUDE.md)
 
