@@ -207,7 +207,7 @@
       `<ul class="home-agent-ways">` +
       `<li><strong>Paste a link and ask.</strong> Give any assistant that can ` +
       `browse the web the link below, then ask in plain English — ` +
-      `&ldquo;Which ward is worst for hit-and-runs?&rdquo; Each answer can tell ` +
+      `&ldquo;Has cycling gotten safer or more dangerous in my ward this year?&rdquo; Each answer can tell ` +
       `you how solid the number is: measured, estimated, or a stand-in.</li>` +
       `<li><strong>Browse alongside.</strong> Open this site with an assistant ` +
       `that can see the screen and talk you through the map or a ward page while ` +
