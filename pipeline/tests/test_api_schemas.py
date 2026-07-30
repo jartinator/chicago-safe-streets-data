@@ -18,9 +18,9 @@ import test_emit_api as fx  # reuse the fixture builders (all _foo() helpers)
 from config import CONTRACT_VERSION, SKILL_ENTRY_URL, SKILL_NAME
 from emit_api import (build_aldermen_api, build_citywide, build_corridors_api,
                       build_council_index, build_council_records_api, build_crash_slice,
-                      build_index, build_line_file, build_news_api, build_proposed_api,
-                      build_routes_index, build_ward_file, build_wards_index,
-                      crash_id_prefixes)
+                      build_divvy_api, build_index, build_line_file, build_news_api,
+                      build_proposed_api, build_routes_index, build_ward_file,
+                      build_wards_index, crash_id_prefixes)
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent.parent / "site" / "api" / "v1" / "schemas"
 
@@ -60,7 +60,7 @@ def test_all_thirteen_schemas_exist_and_load():
         "crash-slice.schema.json", "news.schema.json", "proposed.schema.json",
         "routes-index.schema.json", "route-line.schema.json",
         "council-index.schema.json", "council-records.schema.json",
-        "council-aldermen.schema.json",
+        "council-aldermen.schema.json", "divvy.schema.json",
     }
     on_disk = {p.name for p in SCHEMAS_DIR.glob("*.schema.json")}
     assert expected <= on_disk
@@ -186,6 +186,23 @@ def test_news_api_validates():
 def test_proposed_api_validates():
     out = build_proposed_api(fx._meta(), fx._proposed_projects())
     assert_valid(out, "proposed.schema.json")
+
+
+def test_divvy_api_ok_validates():
+    out = build_divvy_api(fx._meta(), {
+        "data_tier": "proxy", "status": "ok", "as_of": "2026-06",
+        "source_key": "202606-divvy-tripdata.zip", "note": "proxy note",
+        "wards": [{"ward": "1", "trip_count": 30909},
+                  {"ward": "42", "trip_count": 104720}],
+    })
+    assert_valid(out, "divvy.schema.json")
+
+
+def test_divvy_api_no_data_yet_validates():
+    out = build_divvy_api(fx._meta(), None)
+    assert_valid(out, "divvy.schema.json")
+    assert out["status"] == "no_data_yet"
+    assert "exposure" not in out
 
 
 def test_routes_index_validates():

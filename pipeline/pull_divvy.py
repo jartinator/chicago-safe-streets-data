@@ -1,20 +1,6 @@
 """Pull Divvy (Lyft-operated bikeshare) trip data and build a per-ward trip-density proxy.
 
-SCAFFOLDING — not run as part of this PR, and its output is not published.
-
-Egress to divvy-tripdata.s3.amazonaws.com is reachable from a normal pipeline
-environment, but a single monthly trip export unzips to 100MB+ of row-level
-trip data. Downloading, parsing, and — critically — hand-validating that many
-rows before publishing real numbers into a research PR risks tripping CI's
-provenance/size checks and isn't something this change should attempt blind.
-So this module follows the repo's own precedent for "we know the source and
-the shape, we haven't validated the output yet" (see the Smart Streets
-enforcement plan, docs/superpowers/plans/2026-07-21-smart-streets-enforcement-
-integration.md, and SCHEMA.md's "PLANNED (not yet published)" sections): a
-real, runnable pull script that fails honestly and is not exercised in this
-session.
-
-What this does, when it IS eventually run in the real pipeline:
+What this does:
   1. List the public S3 bucket (DIVVY_S3_LIST_URL) to find the most recent
      monthly "*-divvy-tripdata.zip" key — the modern feed. (The old Data
      Portal "Divvy Trips" Socrata dataset is deprecated and frozen; do not
@@ -37,8 +23,7 @@ What this does, when it IS eventually run in the real pipeline:
      entirely, and Divvy station placement itself skews downtown/North Side
      relative to the West Side, so low ward counts here conflate "less
      riding" with "no station coverage." This is ward-level CONTEXT to sit
-     beside crash counts on a future ward-page integration — it is NOT
-     integrated into ward.html/ward.js in this PR.
+     beside crash counts — never a denominator.
 
 HARD RULE, enforced by omission in this module: never compute crashes/trips
 or any other per-rider risk rate from this data. Exposure count and crash
@@ -48,14 +33,11 @@ a number that looks like a risk rate but isn't one (Divvy trips are not all
 cycling trips, and crash victims are not all Divvy riders).
 
 Failure handling: ANY failure (network/egress blocked, listing empty, object
-too large, zip/CSV parse error, wards.geojson missing) is treated as
-non-fatal-but-visible — this script prints a clear WARNING to stderr, leaves
-site/data/divvy_ward_exposure.json untouched (absent if it was already
-absent), and exits 1. It never writes synthetic/fabricated numbers to fill
-the gap.
-
-Not invoked by run_all.py yet. Intentionally not run in this session — see
-the module docstring above and the group-b-c-run task notes.
+too large, zip/CSV parse error, wards.geojson missing) is non-fatal, matching
+the other optional pulls (pull_bna, pull_osm_trails): print a clear WARNING
+to stderr, leave site/data/divvy_ward_exposure.json untouched (absent if it
+was already absent), and exit 0 so run_all.py continues. It never writes
+synthetic/fabricated numbers to fill the gap.
 """
 import argparse
 import io
@@ -215,6 +197,14 @@ def join_stations_to_wards(stations):
     return dict(by_ward)
 
 
+def as_of_from_key(key):
+    """'202606-divvy-tripdata.zip' -> '2026-06' (the month the trips cover)."""
+    m = re.match(r"(\d{4})(\d{2})-divvy-tripdata\.zip$", key.rsplit("/", 1)[-1])
+    if not m:
+        raise RuntimeError(f"cannot derive as_of month from key {key!r}")
+    return f"{m.group(1)}-{m.group(2)}"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.parse_args()
@@ -232,6 +222,7 @@ def main():
         output = {
             "data_tier": "proxy",
             "status": "ok",
+            "as_of": as_of_from_key(key),
             "source_key": key,
             "note": (
                 "System-area-biased proxy for cycling VOLUME, not exposure; "
@@ -243,7 +234,7 @@ def main():
             ),
             "wards": [
                 {"ward": ward, "trip_count": count}
-                for ward, count in sorted(by_ward.items(), key=lambda kv: kv[0])
+                for ward, count in sorted(by_ward.items(), key=lambda kv: int(kv[0]))
             ],
         }
         write_json(DIVVY_WARD_EXPOSURE_PATH, output)
@@ -253,11 +244,10 @@ def main():
         print(
             f"WARNING: Divvy pull failed ({exc}) — "
             f"{DIVVY_WARD_EXPOSURE_PATH.name} left absent/unchanged this run. "
-            f"This is scaffolding (see module docstring); a failure here never "
-            f"writes synthetic numbers.",
+            f"Non-fatal (see module docstring); a failure here never writes "
+            f"synthetic numbers.",
             file=sys.stderr,
         )
-        sys.exit(1)
 
 
 if __name__ == "__main__":

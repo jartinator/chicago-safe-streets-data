@@ -469,11 +469,46 @@ def test_build_corridors_api_envelope_is_real_no_tier_note():
     assert out["_meta"]["human_page"] == SITE_BASE_URL + "/index.html"
 
 
+# --- build_divvy_api -----------------------------------------------------------
+
+def _divvy_exposure():
+    return {"data_tier": "proxy", "status": "ok", "as_of": "2026-06",
+            "source_key": "202606-divvy-tripdata.zip", "note": "proxy note",
+            "wards": [{"ward": "1", "trip_count": 30909},
+                      {"ward": "42", "trip_count": 104720}]}
+
+
+def test_divvy_api_qualifies_exposure_with_form_a_block():
+    out = emit_api.build_divvy_api(_meta(), _divvy_exposure())
+    assert out["_meta"]["data_tier"] == "proxy"
+    exp = out["exposure"]
+    assert exp["data_tier"] == "proxy"
+    assert exp["caveat_tags"] == ["coverage_gap"]
+    # The caveat carries the two bias facts and the standing prohibition.
+    assert "2026-06" in exp["caveat"]
+    assert "Never divide crash counts" in exp["caveat"]
+    assert exp["wards"][0] == {"ward": "1", "trip_count": 30909}
+
+
+def test_divvy_api_envelope_carries_divvy_volume_proxy_caveat():
+    out = emit_api.build_divvy_api(_meta(), _divvy_exposure())
+    codes = [c["code"] for c in out["_meta"]["caveats"]]
+    assert codes == ["divvy_volume_proxy"]
+
+
+def test_divvy_api_absent_source_emits_no_data_yet():
+    out = emit_api.build_divvy_api(_meta(), None)
+    assert out["status"] == "no_data_yet"
+    assert "exposure" not in out
+    assert "note" in out
+
+
 # --- 4. build_index ------------------------------------------------------------
 
 def _endpoint_bytes(**overrides):
     bytes_ = {"citywide.json": 1234, "corridors.json": 5678, "wards/index.json": 999,
-             "news.json": 2222, "proposed.json": 3333, "routes/index.json": 4444,
+             "news.json": 2222, "proposed.json": 3333, "divvy.json": 888,
+             "routes/index.json": 4444,
              "council/index.json": 5555, "council/records.json": 6666,
              "council/aldermen.json": 7777}
     bytes_.update(overrides)
@@ -484,7 +519,8 @@ def test_build_index_lists_exactly_the_known_endpoints():
     out = build_index(_meta(), _endpoint_bytes())
     paths = [e["path"] for e in out["endpoints"]]
     assert paths == ["citywide.json", "corridors.json", "wards/index.json",
-                     "news.json", "proposed.json", "routes/index.json",
+                     "news.json", "proposed.json", "divvy.json",
+                     "routes/index.json",
                      "council/index.json", "council/records.json",
                      "council/aldermen.json"]
 
@@ -525,11 +561,12 @@ def test_build_index_fetch_recipes_reference_known_urls():
               SITE_BASE_URL + "/api/v1/crashes/ward-40.json",
               SITE_BASE_URL + "/api/v1/news.json",
               SITE_BASE_URL + "/api/v1/proposed.json",
+              SITE_BASE_URL + "/api/v1/divvy.json",
               SITE_BASE_URL + "/api/v1/routes/line-milwaukee.json",
               SITE_BASE_URL + "/api/v1/council/index.json",
               SITE_BASE_URL + "/api/v1/council/records.json",
               SITE_BASE_URL + "/api/v1/council/aldermen.json"}
-    assert 8 <= len(out["fetch_recipes"]) <= 9
+    assert 8 <= len(out["fetch_recipes"]) <= 10
     for recipe in out["fetch_recipes"]:
         assert recipe["question"] and recipe["then"]
         for url in recipe["fetch"]:
@@ -638,12 +675,13 @@ def test_emit_all_writes_all_files(tmp_path, monkeypatch):
     written = emit_all()
 
     # phase-1 (2) + wards/index.json (1) + 50 ward files + 50 crash files
-    # + news.json (1) + proposed.json (1) + routes/index.json (1) +
-    # 2 route line files (fixture has 2 lines) + council/{index,records,
-    # aldermen}.json (3) + index.json (1) = 112
-    assert len(written) == 112
+    # + news.json (1) + proposed.json (1) + divvy.json (1, no_data_yet — the
+    # fixture site_data has no divvy_ward_exposure.json) + routes/index.json
+    # (1) + 2 route line files (fixture has 2 lines) + council/{index,records,
+    # aldermen}.json (3) + index.json (1) = 113
+    assert len(written) == 113
     expected = {"citywide.json", "corridors.json", "index.json", "wards/index.json",
-               "news.json", "proposed.json", "routes/index.json",
+               "news.json", "proposed.json", "divvy.json", "routes/index.json",
                "routes/line-milwaukee.json", "routes/line-lakefront.json",
                "council/index.json", "council/records.json", "council/aldermen.json"}
     expected |= {f"wards/ward-{n:02d}.json" for n in range(1, 51)}

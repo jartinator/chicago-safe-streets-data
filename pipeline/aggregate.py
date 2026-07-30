@@ -2165,6 +2165,13 @@ def main():
                                                     news_items_out)
 
     dates = sorted(c["date"] for c in (f["properties"] for f in crash_gj["features"]) if c["date"])
+
+    # pull_divvy.py writes site/data/divvy_ward_exposure.json directly (and is
+    # non-fatal), so the file may be absent or a committed copy from an earlier
+    # run — either way, the sources entry reflects exactly what's on disk.
+    divvy_path = SITE_DATA_DIR / "divvy_ward_exposure.json"
+    divvy_exposure = json.loads(divvy_path.read_text()) if divvy_path.exists() else None
+
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "contract_version": CONTRACT_VERSION,
@@ -2238,7 +2245,12 @@ def main():
              "name": "Proposed & In-Progress Bikeway Projects (curated roster)",
              "tier": "derived", "records": len(proposed_projects_out["projects"]),
              "date_range": None},
-        ],
+        ] + ([{"id": "divvy_ward_exposure",
+               "name": "Divvy Trip Volume by Ward (Lyft monthly S3 exports)",
+               "tier": "proxy", "records": len(divvy_exposure["wards"]),
+               "date_range": ([divvy_exposure["as_of"], divvy_exposure["as_of"]]
+                              if divvy_exposure.get("as_of") else None)}]
+             if divvy_exposure else []),
     }
 
     write_json(SITE_DATA_DIR / "crashes_cyclist.geojson", crash_gj)
