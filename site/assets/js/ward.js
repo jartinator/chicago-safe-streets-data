@@ -74,10 +74,11 @@
     B.loadJSON("data/menu_spending.json").catch(() => null),
     B.loadJSON("data/meta.json").catch(() => null),
     B.loadJSON("data/news_items.json").catch(() => null),
-  ]).then(([safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData]) => {
+    B.loadJSON("data/divvy_ward_exposure.json").catch(() => null),
+  ]).then(([safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData, divvyData]) => {
     const today = new Date().toISOString().slice(0, 10);
     const o = W.buildOnePager(
-      { safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData },
+      { safetyIndexData, aldermenData, wardsData, routesData, hearingsData, menuData, metaData, newsData, divvyData },
       wardNorm, today);
     render(o);
   }).catch(err => {
@@ -89,6 +90,50 @@
       `<span class="op-value">${valueHTML}</span></div>`;
   }
   const noData = `<span class="muted">no data this run</span>`;
+  // One correction destination, on purpose (critique round-2 §3.5/§7.5) —
+  // methodology.js's corrections link points at the same URL.
+  const DIVVY_ISSUES_URL = "https://github.com/jartinator/chicago-safe-streets-data/issues/new";
+  const DIVVY_ATTRIBUTION = "On Your Left!, from Lyft's public Divvy trip export";
+  function divvyFinePrint() {
+    return `<div class="fine-print">${DIVVY_ATTRIBUTION} — ` +
+      `<a href="${DIVVY_ISSUES_URL}" target="_blank" rel="noopener">something look wrong? tell us →</a></div>`;
+  }
+  function divvyStaleNotice(o) {
+    return `<div class="notice">This ward's Divvy count is from ${W.fmtMonth(o.divvy.asOf)} — more than ` +
+      `${W.STALE_THRESHOLD_MONTHS} months behind this page's own data refresh. The weekly Divvy pull may ` +
+      `be stuck; treat this number as extra stale until it updates.</div>`;
+  }
+  // Brief-register kv row for the Divvy trip-volume proxy (states A/B/C; E is
+  // appended separately since it's a flag, not a branch — 03-experience.md §5).
+  function divvyBriefRow(o) {
+    if (!o.divvy) {
+      // State C: no file, fetch failed, or status !== "ok" — explicit empty
+      // state reusing the page's own shipped idiom (critique round-2 §3.6),
+      // not a new phrase.
+      return kv("Divvy trips originating here", noData, "proxy");
+    }
+    if (!o.divvy.hasCoverage) {
+      // State B, softened per critique round-2 §4/§7.3: absence in wards[]
+      // can mean no stations OR unlocatable stations — never assert the
+      // physical fact "no stations here" from a missing JSON row.
+      return kv("Divvy trips originating here", `
+        <span class="muted">No Divvy stations are recorded in this ward for ${W.fmtMonth(o.divvy.asOf)} —
+        this reflects station coverage in the data, not zero cycling. A low or absent count here means
+        fewer nearby stations, not necessarily less riding. Never a rate: not divided by, or dividing,
+        crash counts.</span>
+        ${divvyFinePrint()}
+      `, "proxy");
+    }
+    const divvy = W.roundForDisplay(o.divvy.tripCount);
+    const restated = divvy.approx ? `${B.fmt(o.divvy.tripCount)} exactly, ` : "";
+    return kv("Divvy trips originating here", `
+      <strong>${divvy.display}</strong>
+      <br><span class="muted">${restated}${W.fmtMonth(o.divvy.asOf)} — Divvy bikeshare only, a floor on
+      cycling, not a full count. Station placement skews downtown/North Side, so a low count can mean
+      fewer stations, not less riding. Never a rate: not divided by, or dividing, crash counts.</span>
+      ${divvyFinePrint()}
+    `, "proxy");
+  }
   // Two visual bands so three uncertain numbers (safety index, menu money,
   // legislative record) never read as one certain verdict alongside the two
   // directly-counted numbers (crashes, bikeway mileage). Plain inline style
@@ -133,6 +178,8 @@
     html += kv("Concern rank", o.concern
       ? `${B.fmt(o.concern.score)} / 100 — rank ${o.concern.rank} of ${o.concern.total} <span class="muted">(relative, higher = worse — <a href="methodology.html#ward-index">methodology</a>)</span>`
       : noData, "derived");
+    html += divvyBriefRow(o);
+    if (o.divvy && o.divvy.isStale) html += divvyStaleNotice(o);
     html += kv("Menu-money on bike/traffic-calming", o.menuBikeSpent != null
       ? `${B.money(o.menuBikeSpent)} <span class="muted">of ${B.money(o.menuTotalSpent)} total — source: ` +
         `<a href="https://www.wardwisechicago.org" target="_blank" rel="noopener">Ward Wise</a> (Chi Hack Night volunteer ` +
@@ -172,6 +219,42 @@
     return html;
   }
 
+  // Plain-register paragraph(s) for the Divvy trip-volume proxy — states
+  // A/B/C, plus E appended separately (03-experience.md §6.2, §5).
+  function divvyPlainParagraphs(o) {
+    if (!o.divvy) {
+      return `<p class="op-plain muted">We don't have Divvy bike-share numbers for this ward yet in the current data.</p>`;
+    }
+    let html;
+    if (!o.divvy.hasCoverage) {
+      // Softened per critique round-2 §4/§7.3 — reports the record, not the
+      // physical fact the record can't establish.
+      html = `<p class="op-plain">Divvy's data shows no bike-share stations in Ward ${B.esc(o.ward)} for
+        ${W.fmtMonth(o.divvy.asOf)}, so there's no trip count to show. That doesn't mean nobody bikes here.
+        <span class="muted">If this looks wrong, or doesn't match something an AI assistant told you,
+        <a href="${DIVVY_ISSUES_URL}" target="_blank" rel="noopener">tell the project on GitHub</a> —
+        source: ${DIVVY_ATTRIBUTION}.</span></p>`;
+    } else {
+      const divvy = W.roundForDisplay(o.divvy.tripCount);
+      const restated = divvy.approx ? ` (${B.fmt(o.divvy.tripCount)} exactly)` : "";
+      html = `<p class="op-plain">Divvy — Chicago's bike-share system — recorded ${divvy.display} rides
+        starting in Ward ${B.esc(o.ward)} in ${W.fmtMonth(o.divvy.asOf)}${restated}. That's not the full
+        picture of biking here: it only counts Divvy's rental bikes, not people on their own bikes, and
+        Divvy has more stations downtown and on the North Side. A low number here can mean fewer nearby
+        stations, not fewer people biking. <strong>This number is never used to work out a safety
+        rate</strong> — it's shown for background next to the crash count above, not as a way to measure
+        risk. <span class="muted">If this looks wrong, or doesn't match something an AI assistant told you,
+        <a href="${DIVVY_ISSUES_URL}" target="_blank" rel="noopener">tell the project on GitHub</a> —
+        source: ${DIVVY_ATTRIBUTION}.</span></p>`;
+    }
+    if (o.divvy && o.divvy.isStale) {
+      html += `<p class="op-plain muted">Note: this Divvy number hasn't updated in a while — it's from
+        ${W.fmtMonth(o.divvy.asOf)}, older than the rest of this page. Treat it as extra out of date until
+        it refreshes.</p>`;
+    }
+    return html;
+  }
+
   function plainBody(o) {
     const r = o.windows && o.windows.recent, p = o.windows && o.windows.prior;
     let html = "";
@@ -203,8 +286,12 @@
       html += `<p class="op-plain">The streets with the most bike crashes around here:
         <strong>${o.topCorridors.map(c => B.esc(c.street)).join(", ")}</strong>.</p>`;
     }
+    // Header triggers on Divvy or menu-money (implementation note,
+    // 03-experience.md §6.2) — Divvy always contributes content (explicit
+    // states A/B/C/E), so this section is no longer gated on menu-money alone.
+    html += sectionLabel("Estimates & other sources", "— not directly counted by us, read with care");
+    html += divvyPlainParagraphs(o);
     if (o.menuBikeSpent != null) {
-      html += sectionLabel("Estimates & other sources", "— not directly counted by us, read with care");
       html += `<p class="op-plain">Every ward gets about $1.5 million a year to spend on streets
         ("menu money"). ${o.alderman ? `Your alderperson` : `This ward's office`} has put
         <strong>${B.money(o.menuBikeSpent)}</strong> of it toward bike safety and traffic calming, out of
@@ -260,8 +347,12 @@
         ${register === "plain" ? plainBody(o) : briefBody(o)}
         <footer class="op-foot">
           On Your Left! · data as of ${B.esc(o.asOf || "unknown")} · crash records: Chicago Data Portal
-          (recent months provisional; dooring undercounted) · counts are raw, not ridership-normalized ·
+          (recent months provisional; dooring undercounted) · counts are raw, not ridership-normalized —
+          the Divvy trip count on this page, where shown, is not a ridership denominator and no rate is
+          computed from the two ·
           concern rank is a relative comparison across wards, not an absolute risk grade ·
+          Divvy trip counts: ${DIVVY_ATTRIBUTION} (proxy tier, station-coverage biased — not a cycling
+          exposure measure) ·
           menu-money is an unverified <a href="https://www.wardwisechicago.org" target="_blank" rel="noopener">Ward Wise</a>
           extract (Chi Hack Night volunteer project), cross-check before citing ·
           sponsorships ≠ votes — the record shows sponsorship &amp; final status only, not committee vs. floor action,

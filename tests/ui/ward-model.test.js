@@ -132,3 +132,86 @@ assert.strictEqual(W.nextMeeting(hearings, "2026-07-13").agenda_items, null,
     "missing news data → empty list, never null (renders explicit empty state)");
   console.log("ward-model news OK");
 }
+
+// ---- roundForDisplay: Confidence Signal, boundary cases (03-experience.md
+// §6.3; must be BSD-free per critique round-2 §3.2/§7.1.1) ----
+{
+  assert.deepStrictEqual(W.roundForDisplay(82), { display: "82", approx: false });
+  assert.deepStrictEqual(W.roundForDisplay(999), { display: "999", approx: false }, "999: exact branch");
+  assert.deepStrictEqual(W.roundForDisplay(1000), { display: "about 1,000", approx: true },
+    "1000: rounded branch, nearest-100");
+  assert.deepStrictEqual(W.roundForDisplay(9999), { display: "about 10,000", approx: true },
+    "9999: rounded branch, nearest-100, still under the nearest-1000 unit switch");
+  assert.deepStrictEqual(W.roundForDisplay(10000), { display: "about 10,000", approx: true },
+    "10000: rounded branch, nearest-1000 unit");
+  assert.deepStrictEqual(W.roundForDisplay(104720), { display: "about 105,000", approx: true },
+    "ward 42 worked example");
+  assert.deepStrictEqual(W.roundForDisplay(59589), { display: "about 60,000", approx: true },
+    "ward 27 worked example");
+  console.log("roundForDisplay OK");
+}
+
+// ---- monthsBetween / isDivvyStale (03-experience.md §6.5) ----
+{
+  assert.strictEqual(W.monthsBetween("2026-06", "2026-07-27"), 1);
+  assert.strictEqual(W.monthsBetween("2026-04", "2026-07-27"), 3);
+  assert.strictEqual(W.monthsBetween("2026-03", "2026-07-27"), 4);
+  assert.strictEqual(W.monthsBetween("2025-12", "2026-01-01"), 1, "year boundary");
+
+  assert.strictEqual(W.isDivvyStale("2026-06", "2026-07-27T18:07:34+00:00"), false, "1 month: live, not stale");
+  assert.strictEqual(W.isDivvyStale("2026-04", "2026-07-27"), false, "3 months: at threshold, not stale");
+  assert.strictEqual(W.isDivvyStale("2026-03", "2026-07-27"), true, "4 months: over threshold, stale");
+  assert.strictEqual(W.isDivvyStale(null, "2026-07-27"), false, "null as_of: can't assess, don't guess");
+  assert.strictEqual(W.isDivvyStale("2026-03", null), false, "null build date: can't assess, don't guess");
+  console.log("isDivvyStale OK");
+}
+
+// ---- fmtMonth ----
+{
+  assert.strictEqual(W.fmtMonth("2026-06"), "June 2026");
+  assert.strictEqual(W.fmtMonth("2026-06-15T00:00:00Z"), "June 2026");
+  assert.strictEqual(W.fmtMonth(null), "—");
+  console.log("fmtMonth OK");
+}
+
+// ---- buildOnePager: Divvy state selection (A/B/C, plus the E flag) ----
+{
+  const divvyOkData = {
+    status: "ok", as_of: "2026-06",
+    wards: [{ ward: "42", trip_count: 104720 }, { ward: "41", trip_count: 82 }],
+  };
+  const meta = { generated_at: "2026-07-27T18:07:34+00:00" };
+
+  // State A — ward present, live (rounded branch).
+  const a = W.buildOnePager({ divvyData: divvyOkData, metaData: meta }, 42, "2026-07-13");
+  assert.strictEqual(a.divvy.tripCount, 104720);
+  assert.strictEqual(a.divvy.hasCoverage, true);
+  assert.strictEqual(a.divvy.asOf, "2026-06");
+  assert.strictEqual(a.divvy.isStale, false);
+
+  // State B — ward absent from wards[], but status ok and file loaded.
+  const b = W.buildOnePager({ divvyData: divvyOkData, metaData: meta }, 7, "2026-07-13");
+  assert.strictEqual(b.divvy.hasCoverage, false);
+  assert.strictEqual(b.divvy.tripCount, null, "state B: no number, never zero");
+
+  // State C — file missing/fetch failed (divvyData null).
+  const c = W.buildOnePager({ divvyData: null, metaData: meta }, 42, "2026-07-13");
+  assert.strictEqual(c.divvy, null, "state C: no file → divvy is null, not an object with nulls");
+
+  // State C — status !== "ok".
+  const cBadStatus = W.buildOnePager(
+    { divvyData: { status: "error", wards: [] }, metaData: meta }, 42, "2026-07-13");
+  assert.strictEqual(cBadStatus.divvy, null, "state C: status !== ok → null");
+
+  // State E flag — co-occurs with A, doesn't replace it.
+  const staleData = { status: "ok", as_of: "2026-03", wards: [{ ward: "42", trip_count: 104720 }] };
+  const e = W.buildOnePager({ divvyData: staleData, metaData: meta }, 42, "2026-07-13");
+  assert.strictEqual(e.divvy.isStale, true);
+  assert.strictEqual(e.divvy.tripCount, 104720, "E is a flag alongside A, not a replacement for it");
+
+  // No divvyData input at all (existing fixtures that don't pass it).
+  const none = W.buildOnePager({}, 42, "2026-07-13");
+  assert.strictEqual(none.divvy, null);
+
+  console.log("buildOnePager divvy state selection OK");
+}
